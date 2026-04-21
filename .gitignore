@@ -1,0 +1,41 @@
+# ── Build artifacts ──────────────────────────────────────────────────────────
+src-tauri/target/
+dist/
+node_modules/
+
+# ── Base de données locale (données personnelles) ────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# ── Secrets & credentials — NE JAMAIS COMMITER ──────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.*
+credentials.*
+
+# ── Tauri generated (régénéré automatiquement) ───────────────────────────────
+src-tauri/gen/
+
+# ── IDE & OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Lock files (garder package-lock, exclure yarn) ───────────────────────────
+yarn.lock

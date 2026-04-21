@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xenna Paie</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0a0c10;
+      --bg2:    #0f1520;
+      --bg3:    #060810;
+      --border: #1e3a5f;
+      --dim:    #2d4a6b;
+      --muted:  #4a6a8a;
+      --text:   #c8daf0;
+      --blue:   #38bdf8;
+      --green:  #4ade80;
+      --red:    #f87171;
+      --orange: #fb923c;
+      --yellow: #fbbf24;
+      --purple: #c084fc;
+      --gray:   #7a9ab8;
+      --white:  #e8f4ff;
+    }
+
+    body {
+      font-family: 'Courier New', 'Consolas', 'Fira Code', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* ══════════════════════════════
+       HEADER ASCII
+    ══════════════════════════════ */
+    .ascii-header {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem 0.7rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .banner-art {
+      font-size: 0.7rem;
+      line-height: 1.15;
+      font-weight: bold;
+      white-space: pre;
+      color: var(--blue);
+      text-shadow: 0 0 12px rgba(56,189,248,0.4);
+    }
+    .banner-sub {
+      color: var(--muted);
+      font-size: 0.7rem;
+      margin-top: 0.3rem;
+    }
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.4rem;
+    }
+
+    /* ══════════════════════════════
+       TOGGLE DE VUE
+    ══════════════════════════════ */
+    .view-bar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0.4rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .view-label { color: var(--muted); font-size: 0.72rem; margin-right: 0.25rem; }
+    .btn-view {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+    }
+    .btn-view:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-view.active {
+      border-color: var(--blue);
+      color: var(--bg);
+      background: var(--blue);
+      font-weight: bold;
+    }
+
+    /* ══════════════════════════════
+       LAYOUT BUREAU
+    ══════════════════════════════ */
+    .view-desktop { display: flex; min-height: calc(100vh - 100px); }
+    .view-mobile  { display: none; }
+    body.is-mobile .view-desktop { display: none; }
+    body.is-mobile .view-mobile  { display: block; }
+
+    /* ── Panneau formulaire ── */
+    .form-panel {
+      width: 240px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--bg3);
+      display: flex;
+      flex-direction: column;
+    }
+    .fp-title {
+      padding: 0.6rem 1rem;
+      font-size: 0.68rem;
+      font-weight: bold;
+      color: var(--yellow);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.1em;
+    }
+    .fp-title::before { content: '┌─ '; }
+    .fp-title::after  { content: ' '; }
+    .fp-body { padding: 0.75rem 1rem; flex: 1; }
+    .field { margin-bottom: 0.6rem; }
+    .field label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-bottom: 0.15rem;
+      letter-spacing: 0.06em;
+    }
+    .field label::before { content: '· '; color: var(--blue); }
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--dim);
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .field input:focus,
+    .field select:focus { outline: none; border-color: var(--blue); }
+    .field select option { background: var(--bg2); }
+    .btn-calc {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: bold;
+      padding: 0.45rem;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.15s;
+      margin-top: 0.25rem;
+    }
+    .btn-calc:hover { background: var(--green); color: var(--bg); }
+
+    /* ── Panneau résultat bureau ── */
+    .result-panel { flex: 1; overflow: auto; }
+    .empty-ascii {
+      padding: 2rem 2.5rem;
+      color: var(--dim);
+      white-space: pre;
+      font-size: 0.78rem;
+      line-height: 1.7;
+    }
+
+    /* ── Ligne récap ── */
+    .summary-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .sb-cell {
+      flex: 1;
+      padding: 0.5rem 0.9rem;
+      border-right: 1px solid var(--border);
+    }
+    .sb-cell:last-child { border-right: none; }
+    .sb-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .sb-val { font-size: 1rem; font-weight: bold; margin-top: 0.1rem; font-variant-numeric: tabular-nums; }
+    .sb-val.c-gray   { color: var(--gray); }
+    .sb-val.c-green  { color: var(--green); }
+    .sb-val.c-red    { color: var(--red); }
+    .sb-val.c-orange { color: var(--orange); }
+    .sb-val.c-yellow { color: var(--yellow); }
+
+    /* ── Table cotisations bureau ── */
+    .tbl-wrap { width: 100%; }
+    .tbl-section-head {
+      background: var(--bg3);
+      padding: 0.35rem 0.9rem;
+      font-size: 0.62rem;
+      font-weight: bold;
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+    }
+    .ascii-tbl { width: 100%; border-collapse: collapse; }
+    .ascii-tbl thead th {
+      background: var(--bg3);
+      color: var(--muted);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 0.35rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-weight: normal;
+    }
+    .ascii-tbl thead th.r { text-align: right; }
+    .ascii-tbl tbody tr.data-row {
+      border-bottom: 1px solid #0c1520;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .ascii-tbl tbody tr.data-row:hover { background: var(--bg3); }
+    .ascii-tbl tbody tr.data-row.open  { background: #060a14; }
+    .ascii-tbl td { padding: 0.38rem 0.75rem; font-size: 0.78rem; }
+    .ascii-tbl td.r { text-align: right; font-variant-numeric: tabular-nums; }
+    .ascii-tbl td.c-sal  { color: var(--red);    }
+    .ascii-tbl td.c-pat  { color: var(--orange); }
+    .ascii-tbl td.c-dim  { color: var(--dim);    }
+    .ascii-tbl tr.tbl-total td {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      font-weight: bold;
+      font-size: 0.8rem;
+    }
+
+    /* expand indicator */
+    .expand-icon { color: var(--dim); font-size: 0.7rem; margin-right: 0.35rem; }
+    .data-row.open .expand-icon { color: var(--blue); }
+
+    /* explication */
+    .expl-row td { padding: 0; }
+    .expl-box {
+      margin: 0.2rem 0.75rem 0.4rem 1.5rem;
+      border-left: 2px solid var(--blue);
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      background: #050810;
+    }
+    .expl-txt  { font-size: 0.73rem; color: var(--gray); line-height: 1.6; flex: 1; }
+    .expl-ref  {
+      font-size: 0.65rem;
+      color: var(--muted);
+      border: 1px solid var(--dim);
+      padding: 0.25rem 0.5rem;
+      flex-shrink: 0;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    /* badges catégorie */
+    .cat { font-size: 0.62rem; font-weight: bold; margin-right: 0.35rem; }
+    .cat-ss   { color: #60a5fa; }
+    .cat-csg  { color: #c084fc; }
+    .cat-ret  { color: #34d399; }
+    .cat-prev { color: #fbbf24; }
+    .cat-cho  { color: #fb7185; }
+
+    /* ══════════════════════════════
+       VUE MOBILE — BULLETIN VERTICAL
+    ══════════════════════════════ */
+    .mob-wrap {
+      max-width: 500px;
+      margin: 0.75rem auto;
+      padding: 0 0.75rem 2rem;
+    }
+
+    /* Formulaire compact mobile */
+    .mob-form {
+      border: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+      background: var(--bg3);
+    }
+    .mob-form-head {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.65rem;
+      font-weight: bold;
+      color: var(--yellow);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.1em;
+    }
+    .mob-form-head::before { content: '┌─ '; }
+    .mob-form-body { padding: 0.65rem 0.75rem; }
+    .mob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+    /* Bulletin mobile */
+    .mob-bulletin {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      font-variant-numeric: tabular-nums;
+    }
+    .mob-head {
+      background: var(--bg2);
+      padding: 0.5rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mob-head-title { font-size: 0.72rem; font-weight: bold; color: var(--blue); letter-spacing: 0.1em; }
+    .mob-head-name  { font-size: 0.72rem; color: var(--gray); }
+
+    .mob-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.3rem 0.9rem;
+      border-bottom: 1px solid #0c1520;
+      font-size: 0.78rem;
+    }
+    .mob-row.section {
+      background: #070c14;
+      padding: 0.28rem 0.9rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .mob-row.section .mob-lbl {
+      font-size: 0.62rem;
+      font-weight: bold;
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .mob-row.subtot {
+      background: var(--bg2);
+      font-weight: bold;
+      border-top: 1px solid var(--border);
+    }
+    .mob-row.net-row {
+      background: #071a10;
+      font-weight: bold;
+      font-size: 0.9rem;
+      border-top: 1px solid #1a5a30;
+    }
+    .mob-row.pas-row { background: #120a1a; }
+    .mob-row.final-row {
+      background: #071a10;
+      font-weight: bold;
+      font-size: 1.05rem;
+      border-top: 2px solid var(--green);
+      padding: 0.5rem 0.9rem;
+    }
+    .mob-row.superbrut {
+      background: #0a1628;
+      font-weight: bold;
+      font-size: 0.9rem;
+      border-top: 2px solid var(--blue);
+    }
+    .mob-lbl { color: var(--gray); }
+    .mob-val { font-size: inherit; }
+    .mob-val.c-gray   { color: var(--gray);   }
+    .mob-val.c-green  { color: var(--green);  }
+    .mob-val.c-red    { color: var(--red);    }
+    .mob-val.c-orange { color: var(--orange); }
+    .mob-val.c-purple { color: var(--purple); }
+    .mob-val.c-blue   { color: var(--blue);   }
+    .mob-val.c-yellow { color: var(--yellow); }
+    .mob-val.c-white  { color: var(--white);  }
+
+    .mob-separator {
+      border: none;
+      border-top: 1px dashed var(--dim);
+      margin: 0;
+    }
+
+    /* Responsive auto-mobile */
+    @media (max-width: 680px) {
+      body.is-desktop .view-desktop { display: none; }
+      body.is-desktop .view-mobile  { display: block; }
+      .view-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ HEADER ══ -->
+  <div class="ascii-header">
+    <div>
+      <div class="banner-art">╔╗ ╦╔═╗╔╗╔╔╗╔╔═╗  ╔═╗╔═╗╦╔═╗
+╔╩╗ ║║╣ ║║║║║║╠═╣  ╠═╝╠═╣║║╣
+╚═╝╚╝╚═╝╝╚╝╝╚╝╩ ╩  ╩  ╩ ╩╩╚═╝</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paie français · v0.1.0</div>
+    </div>
+  </div>
+
+  <!-- ══ BARRE DE VUE ══ -->
+  <div class="view-bar">
+    <span class="view-label">VUE :</span>
+    <button class="btn-view active" id="btn-desk" onclick="setView('desktop')">⊞ BUREAU</button>
+    <button class="btn-view" id="btn-mob" onclick="setView('mobile')">☰ MOBILE / SMARTPHONE</button>
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE BUREAU
+  ════════════════════════════════ -->
+  <div class="view-desktop">
+
+    <!-- Formulaire -->
+    <div class="form-panel">
+      <div class="fp-title">SAISIE SALARIÉ</div>
+      <div class="fp-body">
+        <div class="field"><label>PRÉNOM</label>
+          <input type="text" id="d-prenom" value="Marie" /></div>
+        <div class="field"><label>NOM</label>
+          <input type="text" id="d-nom" value="Dupont" /></div>
+        <div class="field"><label>SALAIRE BRUT (€)</label>
+          <input type="number" id="d-brut" value="3500.00" step="50" min="1766.96" /></div>
+        <div class="field"><label>STATUT</label>
+          <select id="d-statut">
+            <option value="non_cadre">Non-cadre</option>
+            <option value="cadre">Cadre</option>
+          </select></div>
+        <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
+          <input type="number" id="d-pas" value="8.0" step="0.5" min="0" max="45" /></div>
+        <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
+      </div>
+    </div>
+
+    <!-- Résultat bureau -->
+    <div class="result-panel" id="res-desktop">
+      <div class="empty-ascii">  ┌──────────────────────────────────────────┐
+  │                                          │
+  │   Saisissez un salaire et cliquez sur    │
+  │   [ CALCULER ] pour générer le bulletin  │
+  │                                          │
+  │   ▶ Cliquez sur une ligne de cotisation  │
+  │     pour afficher son explication        │
+  │     historique et la référence légale    │
+  │                                          │
+  └──────────────────────────────────────────┘</div>
+    </div>
+
+  </div><!-- /view-desktop -->
+
+  <!-- ════════════════════════════════
+       VUE MOBILE
+  ════════════════════════════════ -->
+  <div class="view-mobile">
+    <div class="mob-wrap">
+
+      <!-- Formulaire compact -->
+      <div class="mob-form">
+        <div class="mob-form-head">SAISIE</div>
+        <div class="mob-form-body">
+          <div class="mob-grid">
+            <div class="field"><label>PRÉNOM</label>
+              <input type="text" id="m-prenom" value="Marie" /></div>
+            <div class="field"><label>NOM</label>
+              <input type="text" id="m-nom" value="Dupont" /></div>
+            <div class="field"><label>BRUT (€)</label>
+              <input type="number" id="m-brut" value="3500" step="50" /></div>
+            <div class="field"><label>STATUT</label>
+              <select id="m-statut">
+                <option value="non_cadre">Non-cadre</option>
+                <option value="cadre">Cadre</option>
+              </select></div>
+          </div>
+          <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
+            <input type="number" id="m-pas" value="8.0" step="0.5" /></div>
+          <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
+        </div>
+      </div>
+
+      <!-- Bulletin vertical -->
+      <div id="res-mobile">
+        <div class="mob-bulletin">
+          <div class="mob-row" style="justify-content:center;color:var(--dim);font-size:0.75rem;padding:1.5rem">
+            En attente de saisie...
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /view-mobile -->
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
