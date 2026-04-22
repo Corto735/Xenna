@@ -1,4 +1,17 @@
-import { invoke } from "@tauri-apps/api/core";
+// ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
+async function api(command, args = {}) {
+  if (window.__TAURI__) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke(command, args);
+  }
+  const r = await fetch(`/api/${command}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!r.ok) throw await r.text();
+  return r.json();
+}
 
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
@@ -392,7 +405,7 @@ async function calculate(source) {
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
   try {
-    const bulletin = await invoke("calculer_bulletin", {
+    const bulletin = await api("calculer_bulletin", {
       salarie: { nom, prenom, salaire_brut: brut.toString(), statut },
       datePaie: date,
     });
@@ -501,7 +514,7 @@ async function calculerAnnee() {
   el.innerHTML = `<div style="color:var(--muted);padding:1rem;font-size:0.78rem">Calcul en cours…</div>`;
 
   try {
-    const sim = await invoke("simuler_annee", {
+    const sim = await api("simuler_annee", {
       annee,
       salaireBrut: brut.toString(),
       statut,
