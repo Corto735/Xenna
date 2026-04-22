@@ -36,6 +36,37 @@ pub struct LigneCotisation {
     pub categorie:   String,
 }
 
+/// Une ligne dans la simulation annuelle (un mois).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LigneMensuelle {
+    pub mois:         u32,
+    pub mois_libelle: String,
+    #[serde(with = "rust_decimal::serde::str")] pub brut:             Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub smic:             Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub pmss:             Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_sal:        Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_pat_brut:   Decimal,
+    /// Fillon calculé mois par mois sans régularisation (formule mensuelle simple).
+    #[serde(with = "rust_decimal::serde::str")] pub fillon_simple:    Decimal,
+    /// Fillon après régularisation annuelle cumulée.
+    #[serde(with = "rust_decimal::serde::str")] pub fillon_regularise: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub net_a_payer:      Decimal,
+    /// Coût employeur avec Fillon régularisé.
+    #[serde(with = "rust_decimal::serde::str")] pub cout_employeur:   Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulationAnnuelle {
+    pub annee:  i32,
+    pub lignes: Vec<LigneMensuelle>,
+    #[serde(with = "rust_decimal::serde::str")] pub total_brut:     Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_fillon:   Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_net:      Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_cout:     Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_sal:      Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub total_pat_brut: Decimal,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bulletin {
     pub salarie:       Salarie,

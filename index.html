@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Xenna Paie</title>
+  <title>Xenna Paye</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -47,17 +47,18 @@
       gap: 1rem;
     }
     .banner-art {
-      font-size: 0.7rem;
-      line-height: 1.15;
+      font-size: 0.62rem;
+      line-height: 1.2;
       font-weight: bold;
       white-space: pre;
       color: var(--blue);
-      text-shadow: 0 0 12px rgba(56,189,248,0.4);
+      text-shadow: 0 0 18px rgba(56,189,248,0.5);
+      overflow-x: auto;
     }
     .banner-sub {
       color: var(--muted);
       font-size: 0.7rem;
-      margin-top: 0.3rem;
+      margin-top: 0.5rem;
     }
     .header-right {
       display: flex;
@@ -267,11 +268,16 @@
 
     /* badges catégorie */
     .cat { font-size: 0.62rem; font-weight: bold; margin-right: 0.35rem; }
-    .cat-ss   { color: #60a5fa; }
-    .cat-csg  { color: #c084fc; }
-    .cat-ret  { color: #34d399; }
-    .cat-prev { color: #fbbf24; }
-    .cat-cho  { color: #fb7185; }
+    .cat-ss    { color: #60a5fa; }
+    .cat-csg   { color: #c084fc; }
+    .cat-ret   { color: #34d399; }
+    .cat-prev  { color: #fbbf24; }
+    .cat-cho   { color: #fb7185; }
+    .cat-alleg { color: #4ade80; }
+
+    /* Montants allègements (vert — économie employeur) */
+    .ascii-tbl td.c-alleg { color: #4ade80; }
+    .mob-val.c-alleg      { color: #4ade80; }
 
     /* ══════════════════════════════
        VUE MOBILE — BULLETIN VERTICAL
@@ -380,6 +386,63 @@
       margin: 0;
     }
 
+    /* ══════════════════════════════
+       VUE ANNUELLE
+    ══════════════════════════════ */
+    .view-annuel { display: none; padding: 1rem 1.5rem 2rem; }
+    body.is-annuel .view-desktop { display: none; }
+    body.is-annuel .view-mobile  { display: none; }
+    body.is-annuel .view-annuel  { display: block; }
+
+    .ann-form {
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+      align-items: flex-end;
+      border: 1px solid var(--border); background: var(--bg3);
+      padding: 0.75rem 1rem; margin-bottom: 1rem;
+    }
+    .ann-form .field { margin: 0; min-width: 140px; }
+    .ann-form .btn-calc { width: auto; padding: 0.35rem 1.2rem; margin: 0; }
+
+    /* Table annuelle */
+    .ann-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .ann-tbl thead th {
+      background: var(--bg3); color: var(--muted);
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;
+      padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border);
+      text-align: right; font-weight: normal;
+    }
+    .ann-tbl thead th:first-child { text-align: left; }
+    .ann-tbl tbody tr { border-bottom: 1px solid #0c1520; }
+    .ann-tbl tbody tr:hover { background: var(--bg3); }
+    .ann-tbl td { padding: 0.32rem 0.6rem; text-align: right; font-variant-numeric: tabular-nums; }
+    .ann-tbl td:first-child { text-align: left; color: var(--blue); font-weight: bold; }
+    .ann-tbl tr.ann-total td {
+      background: var(--bg2); border-top: 1px solid var(--border);
+      font-weight: bold; font-size: 0.82rem;
+    }
+    .ann-tbl tr.ann-total td:first-child { color: var(--yellow); }
+    /* Ligne avec SMIC différent du mois précédent */
+    .ann-tbl tr.smic-change td:nth-child(2) { color: var(--yellow); }
+    /* Δ régularisation non nul */
+    .delta-nonzero { color: var(--blue); }
+
+    /* Champ date — force le mode sombre sur le picker navigateur */
+    .field input[type="date"] { color-scheme: dark; }
+
+    /* Bandeau de période de simulation (vue bureau) */
+    .sim-period {
+      padding: 0.22rem 0.9rem;
+      font-size: 0.62rem;
+      color: var(--muted);
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.07em;
+    }
+    .sim-period .sp-accent { color: var(--blue); font-weight: bold; }
+
+    /* Date sur l'en-tête du bulletin mobile */
+    .mob-head-date { font-size: 0.62rem; color: var(--muted); margin-top: 0.1rem; }
+
     /* Responsive auto-mobile */
     @media (max-width: 680px) {
       body.is-desktop .view-desktop { display: none; }
@@ -393,10 +456,20 @@
   <!-- ══ HEADER ══ -->
   <div class="ascii-header">
     <div>
-      <div class="banner-art">╔╗ ╦╔═╗╔╗╔╔╗╔╔═╗  ╔═╗╔═╗╦╔═╗
-╔╩╗ ║║╣ ║║║║║║╠═╣  ╠═╝╠═╣║║╣
-╚═╝╚╝╚═╝╝╚╝╝╚╝╩ ╩  ╩  ╩ ╩╩╚═╝</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paie français · v0.1.0</div>
+      <div class="banner-art">██████╗  █████╗ ██╗   ██╗███████╗    ████████╗ ██████╗ ███╗   ██╗
+██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝       ██║   ██╔═══██╗████╗  ██║
+██████╔╝███████║ ╚████╔╝ █████╗         ██║   ██║   ██║██╔██╗ ██║
+██╔═══╝ ██╔══██║  ╚██╔╝  ██╔══╝         ██║   ██║   ██║██║╚██╗██║
+██║     ██║  ██║   ██║   ███████╗        ██║   ╚██████╔╝██║ ╚████║
+╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝       ╚═╝    ╚═════╝ ╚═╝  ╚═══╝
+
+██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗██╗███╗   ██╗
+██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝██║████╗  ██║
+██████╔╝██║   ██║██║     ██║     █████╗     ██║   ██║██╔██╗ ██║
+██╔══██╗██║   ██║██║     ██║     ██╔══╝     ██║   ██║██║╚██╗██║
+██████╔╝╚██████╔╝███████╗███████╗███████╗   ██║   ██║██║ ╚████║
+╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   ╚═╝╚═╝  ╚═══╝</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.0</div>
     </div>
   </div>
 
@@ -404,7 +477,8 @@
   <div class="view-bar">
     <span class="view-label">VUE :</span>
     <button class="btn-view active" id="btn-desk" onclick="setView('desktop')">⊞ BUREAU</button>
-    <button class="btn-view" id="btn-mob" onclick="setView('mobile')">☰ MOBILE / SMARTPHONE</button>
+    <button class="btn-view" id="btn-mob"  onclick="setView('mobile')">☰ MOBILE</button>
+    <button class="btn-view" id="btn-ann"  onclick="setView('annuel')">▦ SIMULATION ANNUELLE</button>
   </div>
 
   <!-- ════════════════════════════════
@@ -427,6 +501,8 @@
             <option value="non_cadre">Non-cadre</option>
             <option value="cadre">Cadre</option>
           </select></div>
+        <div class="field"><label>DATE DE SIMULATION</label>
+          <input type="date" id="d-date" min="2015-01-01" /></div>
         <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
           <input type="number" id="d-pas" value="8.0" step="0.5" min="0" max="45" /></div>
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
@@ -472,6 +548,8 @@
                 <option value="cadre">Cadre</option>
               </select></div>
           </div>
+          <div class="field" style="grid-column:1/-1"><label>DATE DE SIMULATION</label>
+            <input type="date" id="m-date" min="2015-01-01" /></div>
           <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
             <input type="number" id="m-pas" value="8.0" step="0.5" /></div>
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
@@ -489,6 +567,32 @@
 
     </div>
   </div><!-- /view-mobile -->
+
+  <!-- ════════════════════════════════
+       VUE ANNUELLE
+  ════════════════════════════════ -->
+  <div class="view-annuel">
+
+    <div class="ann-form">
+      <div class="field"><label>ANNÉE</label>
+        <input type="number" id="a-annee" value="2022" min="2015" max="2025" step="1" style="width:90px" /></div>
+      <div class="field"><label>SALAIRE BRUT MENSUEL (€)</label>
+        <input type="number" id="a-brut" value="2000" step="50" min="0" /></div>
+      <div class="field"><label>STATUT</label>
+        <select id="a-statut">
+          <option value="non_cadre">Non-cadre</option>
+          <option value="cadre">Cadre</option>
+        </select></div>
+      <button class="btn-calc" id="a-calc">[ SIMULER L'ANNÉE ]</button>
+    </div>
+
+    <div id="res-annuel">
+      <div style="color:var(--dim);font-size:0.78rem;padding:1rem">
+        Saisissez un salaire brut mensuel et une année, puis cliquez sur [ SIMULER L'ANNÉE ].
+      </div>
+    </div>
+
+  </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

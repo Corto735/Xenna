@@ -1,36 +1,37 @@
 use rust_decimal::Decimal;
+use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
 use super::cotisations::*;
 
-pub fn generer_bulletin(salarie: Salarie) -> Bulletin {
+pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
     let mut cotisations = Vec::new();
 
-    cotisations.push(ss_maladie(brut));
-    cotisations.push(ss_vieillesse_plafonnee(brut));
-    cotisations.push(ss_vieillesse_deplafonnee(brut));
-    cotisations.push(famille(brut));
-    cotisations.push(accident_travail(brut));
-    cotisations.push(chomage(brut));
+    cotisations.push(ss_maladie(brut, ctx));
+    cotisations.push(ss_vieillesse_plafonnee(brut, ctx));
+    cotisations.push(ss_vieillesse_deplafonnee(brut, ctx));
+    cotisations.push(famille(brut, ctx));
+    cotisations.push(accident_travail(brut, ctx));
+    cotisations.push(chomage(brut, ctx));
+    cotisations.extend(csg_contributions(brut, ctx));
+    cotisations.extend(retraite_complementaire(brut, &salarie.statut, ctx));
 
-    let (csg_ded, csg_non_ded) = csg_crds(brut);
-    cotisations.push(csg_ded);
-    cotisations.push(csg_non_ded);
-
-    let retraites = retraite_complementaire(brut, &salarie.statut);
-    cotisations.extend(retraites);
-
-    if let Some(prev) = prevoyance_cadre(brut, &salarie.statut) {
-        cotisations.push(prev);
+    if let Some(fillon) = reduction_fillon(brut, ctx) {
+        cotisations.push(fillon);
     }
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
 
-    // Net imposable = Brut - cotisations salariales + CSG non déductible
-    // (la CSG non ded est déjà dans total_sal donc on la rajoute car non déductible IR)
-    let net_imposable = (brut - total_sal).round_dp(2);
-    let net_a_payer   = net_imposable;
+    // Net imposable = brut - cotisations salariales
+    // (la CSG non déductible et la CRDS sont dans total_sal mais ne réduisent pas le net imposable)
+    let csg_non_ded_et_crds: Decimal = cotisations.iter()
+        .filter(|c| c.code == "CSG_NON_DEDUCTIBLE" || c.code == "CRDS")
+        .map(|c| c.montant_sal)
+        .sum();
+
+    let net_imposable = (brut - total_sal + csg_non_ded_et_crds).round_dp(2);
+    let net_a_payer   = (brut - total_sal).round_dp(2);
 
     Bulletin {
         cotisations,

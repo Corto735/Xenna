@@ -1,6 +1,6 @@
 {
-  "productName": "Xenna Paie",
-  "version": "0.1.0",
+  "productName": "Xenna Paye",
+  "version": "1.1.0",
   "identifier": "fr.xenna.paie",
   "build": {
     "frontendDist": "../dist",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "Xenna Paie — Simulateur bulletin de paie français",
+        "title": "Xenna Paye — Simulateur bulletin de paye français",
         "width": 1280,
         "height": 900,
         "resizable": true
