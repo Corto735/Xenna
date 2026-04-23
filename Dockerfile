@@ -7,7 +7,7 @@ COPY index.html vite.config.js ./
 COPY src ./src
 RUN npm run build
 
-# ── Stage 2 : build Rust binary ───────────────────────────────────────────────
+# ── Stage 2 : build Rust binary (web uniquement, sans dépendances GTK/Tauri) ──
 FROM rust:1.88-slim AS backend
 WORKDIR /app
 
