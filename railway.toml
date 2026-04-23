@@ -1,0 +1,11 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "./web"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+
+[[volumes]]
+mountPath = "/data"
