@@ -36,7 +36,7 @@ COPY --from=backend /app/target/release/web ./web
 COPY --from=frontend /app/dist ./dist
 
 ENV DIST_DIR=/app/dist
-ENV DATABASE_PATH=/data/xenna.db
+ENV DATABASE_PATH=/tmp/xenna.db
 EXPOSE 8080
 
 CMD ["./web"]

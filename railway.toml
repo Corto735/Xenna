@@ -7,5 +7,5 @@ healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 
-[[volumes]]
-mountPath = "/data"
+# Pas de volume persistant nécessaire : la DB SQLite est reconstruite
+# depuis les migrations à chaque démarrage (données de référence uniquement).
