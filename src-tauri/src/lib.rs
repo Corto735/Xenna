@@ -1,16 +1,23 @@
 pub mod calculs;
-pub mod commands;
 pub mod db;
 pub mod models;
 
+#[cfg(feature = "desktop")]
+pub mod commands;
+
+#[cfg(feature = "desktop")]
 use commands::{calculer_bulletin, simuler_annee};
+#[cfg(feature = "desktop")]
 use sqlx::SqlitePool;
+#[cfg(feature = "desktop")]
 use tauri::Manager;
 
+#[cfg(feature = "desktop")]
 pub struct AppState {
     pub db: SqlitePool,
 }
 
+#[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

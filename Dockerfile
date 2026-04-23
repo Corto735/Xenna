@@ -22,7 +22,7 @@ COPY src-tauri/migrations ./migrations
 COPY src-tauri/build.rs ./build.rs
 COPY src-tauri/capabilities ./capabilities
 
-RUN cargo build --release --bin web
+RUN cargo build --release --bin web --no-default-features
 
 # ── Stage 3 : image finale ────────────────────────────────────────────────────
 FROM debian:bookworm-slim
