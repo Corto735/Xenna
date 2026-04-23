@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build
 
 # ── Stage 2 : build Rust binary ───────────────────────────────────────────────
-FROM rust:1.87-slim AS backend
+FROM rust:1.88-slim AS backend
 WORKDIR /app
 
 # Dépendances système pour SQLx (sqlite3)
