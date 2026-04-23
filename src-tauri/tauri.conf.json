@@ -14,7 +14,8 @@
         "title": "Xenna Paye — Simulateur bulletin de paye français",
         "width": 1280,
         "height": 900,
-        "resizable": true
+        "resizable": true,
+        "devtools": true
       }
     ],
     "security": {

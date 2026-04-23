@@ -1,6 +1,19 @@
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
+//
+// Architecture duale : la même UI tourne à la fois dans l'app Tauri (desktop)
+// et dans le serveur Axum (Railway/web).
+//
+// Détection Tauri v1 vs v2 :
+//   - Tauri v1 injectait window.__TAURI__
+//   - Tauri v2 injecte window.__TAURI_INTERNALS__ (window.__TAURI__ n'existe plus)
+//   → toujours tester __TAURI_INTERNALS__ en v2, sinon on tombe dans la branche
+//     web et fetch() appelle Vite qui répond 404 → body vide → erreur muette "".
+//
+// Nommage des arguments : Tauri convertit snake_case Rust → camelCase JS.
+//   ex. date_paie (Rust) → datePaie (JS)
+//       salaire_brut (Rust) → salaireBrut (JS)
 async function api(command, args = {}) {
-  if (window.__TAURI__) {
+  if (window.__TAURI_INTERNALS__) {
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke(command, args);
   }
@@ -11,6 +24,28 @@ async function api(command, args = {}) {
   });
   if (!r.ok) throw await r.text();
   return r.json();
+}
+
+// ── Sérialisation d'erreur ───────────────────────────────────────────────────
+// Tauri v2 peut rejeter une Promise avec :
+//   - une string  → erreur Rust propagée normalement (e.g. "Date invalide : …")
+//   - une string vide ""  → panic Rust intercepté sans message (e.g. état non géré)
+//   - un objet    → erreur interne Tauri (désérialisation d'args, commande inconnue…)
+//   - null/undefined → cas rare, erreur silencieuse complète
+// String(objet) donnerait "[object Object]" — on utilise JSON.stringify à la place.
+function errToStr(e) {
+  if (e === null || e === undefined) {
+    return "(erreur nulle — redémarre l'app ou ouvre DevTools Ctrl+Shift+I)";
+  }
+  if (typeof e === "string") {
+    // Chaîne vide = panic Rust sans message ou erreur interne Tauri muette
+    return e || "(erreur muette — ouvre DevTools Ctrl+Shift+I et consulte la Console)";
+  }
+  if (e instanceof Error) {
+    return e.message || e.toString();
+  }
+  // Objet Tauri interne : on sérialise en JSON pour voir la structure complète
+  try { return JSON.stringify(e, null, 2); } catch { return String(e); }
 }
 
 // ── État global ──────────────────────────────────────────────────────────────
@@ -386,6 +421,15 @@ function renderAll(b) {
   renderMobile(b);
 }
 
+// ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
+// Utilisé pour les validations côté JS — évite d'envoyer des args invalides à
+// Rust, ce qui provoque des erreurs opaques de désérialisation dans Tauri.
+function showInputError(msg) {
+  const errHtml = `<div style="padding:1.5rem;color:#f87171;font-size:0.8rem">⚠ ${esc(msg)}</div>`;
+  document.getElementById("res-desktop").innerHTML = errHtml;
+  document.getElementById("res-mobile").innerHTML  = errHtml;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // CALCUL
 // ═════════════════════════════════════════════════════════════════════════════
@@ -396,6 +440,20 @@ async function calculate(source) {
   const nom     = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom  = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
   const date    = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
+
+  // ── Validation côté JS ────────────────────────────────────────────────────
+  // Si brut est vide ou non numérique, input[type="number"] retourne "".
+  // Envoyer "" à Rust provoque une erreur de désérialisation Tauri muette.
+  const brutVal = parseFloat(brut);
+  if (!brut || isNaN(brutVal) || brutVal <= 0) {
+    showInputError("Salaire brut invalide — saisir un montant positif.");
+    return;
+  }
+  // La date est forcée à TODAY si vide, mais on vérifie le format ISO au cas où.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    showInputError(`Date invalide : '${date}' (format attendu : YYYY-MM-DD).`);
+    return;
+  }
 
   // Sync les deux formulaires
   ["d-brut","m-brut"].forEach(id => { const e = document.getElementById(id); if(e) e.value = brut; });
@@ -412,7 +470,11 @@ async function calculate(source) {
     lastBulletin = bulletin;
     renderAll(bulletin);
   } catch (e) {
-    const errHtml = `<div style="padding:1.5rem;color:#f87171;font-size:0.8rem">ERREUR : ${esc(String(e))}</div>`;
+    // console.error permet de voir l'objet brut dans DevTools (F12 → Console)
+    // même quand l'affichage UI est tronqué.
+    console.error("[calculer_bulletin] erreur brute :", e);
+    const msg     = errToStr(e);
+    const errHtml = `<div style="padding:1.5rem;color:#f87171;font-size:0.8rem">ERREUR : ${esc(msg)}</div>`;
     document.getElementById("res-desktop").innerHTML = errHtml;
     document.getElementById("res-mobile").innerHTML  = errHtml;
   }
@@ -511,6 +573,20 @@ async function calculerAnnee() {
   const statut = document.getElementById("a-statut").value;
 
   const el = document.getElementById("res-annuel");
+
+  // ── Validation côté JS ────────────────────────────────────────────────────
+  // parseInt("") → NaN ; JSON.stringify({annee: NaN}) → {"annee":null}
+  // Tauri ne peut pas désérialiser null en i32 → erreur muette.
+  if (isNaN(annee) || annee < 1900 || annee > 2100) {
+    el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">⚠ Année invalide.</div>`;
+    return;
+  }
+  const brutVal = parseFloat(brut);
+  if (!brut || isNaN(brutVal) || brutVal <= 0) {
+    el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">⚠ Salaire brut invalide — saisir un montant positif.</div>`;
+    return;
+  }
+
   el.innerHTML = `<div style="color:var(--muted);padding:1rem;font-size:0.78rem">Calcul en cours…</div>`;
 
   try {
@@ -521,7 +597,8 @@ async function calculerAnnee() {
     });
     renderAnnuel(sim);
   } catch (e) {
-    el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">ERREUR : ${esc(String(e))}</div>`;
+    console.error("[simuler_annee] erreur brute :", e);
+    el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">ERREUR : ${esc(errToStr(e))}</div>`;
   }
 }
 

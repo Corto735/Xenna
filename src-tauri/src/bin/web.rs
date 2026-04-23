@@ -1,5 +1,12 @@
 //! Serveur HTTP standalone — Railway / Docker.
 //! Expose les mêmes commandes que Tauri via POST JSON sur /api/{commande}.
+//!
+//! Les routes correspondent exactement aux noms de commandes Tauri :
+//!   POST /api/calculer_bulletin  ←→  tauri::command calculer_bulletin
+//!   POST /api/simuler_annee      ←→  tauri::command simuler_annee
+//!
+//! Le frontend détecte le mode via window.__TAURI__ (absent en web) et bascule
+//! entre invoke() et fetch() de façon transparente (voir src/main.js).
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -25,7 +32,11 @@ use xenna_paie_lib::{
 // ── State ─────────────────────────────────────────────────────────────────────
 type Db = Arc<SqlitePool>;
 
-// ── Corps de requête (JS envoie camelCase — Tauri convention) ─────────────────
+// ── Corps de requête ──────────────────────────────────────────────────────────
+// Le JS envoie les champs en camelCase (convention Tauri) → on rename ici.
+// Si la désérialisation échoue (champ manquant, mauvais type), Axum retourne
+// automatiquement un 422 avec le message d'erreur serde en plain text.
+// Ce n'est PAS capturé par ApiError ci-dessous — c'est voulu.
 #[derive(Deserialize)]
 struct BulletinReq {
     salarie: Salarie,
@@ -41,7 +52,8 @@ struct AnneeReq {
     statut: Statut,
 }
 
-// ── Erreur HTTP simple ────────────────────────────────────────────────────────
+// ── Erreur métier (400 Bad Request, corps = texte lisible) ────────────────────
+// Distinct des erreurs de désérialisation JSON (422, gérées par Axum).
 struct ApiError(String);
 
 impl IntoResponse for ApiError {

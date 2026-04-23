@@ -186,29 +186,105 @@ pub fn chomage(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     }
 }
 
+/// Calcule le coefficient Fillon pour un ratio SMIC/brut donné.
+///
+/// Accepte des valeurs mensuelles ou cumulées annualisées indifféremment,
+/// car le ratio `seuil × smic / brut` est invariant à l'échelle (les mois se simplifient).
+///
+/// Deux formules selon la période (détectée via `ctx.fillon_puissance`) :
+///
+///   2019+ (puissance, formule officielle URSSAF) :
+///     inner = (1/2) × (seuil × SMIC / brut − 1)
+///     C = Tmin + (Tdelta × inner^P)   ∈ [0 ; Tmax]   arrondi à 4 décimales
+///
+///   2015-2018 (linéaire) :
+///     C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)   ∈ [0 ; Tmax]
+///
+/// Retourne Decimal::ZERO si le brut dépasse le seuil (aucune réduction applicable).
+pub fn fillon_coeff(smic: Decimal, brut: Decimal, ctx: &ContextPaie) -> Decimal {
+    let tmax  = match ctx.fillon_coeff_max  { Some(v) => v, None => return Decimal::ZERO };
+    let seuil = ctx.fillon_seuil_smic.unwrap_or(dec!(1.6));
+
+    if brut <= Decimal::ZERO || smic <= Decimal::ZERO {
+        return Decimal::ZERO;
+    }
+
+    if let Some(p) = ctx.fillon_puissance {
+        // ── Formule 2019+ (puissance) ────────────────────────────────────────
+        let tmin   = ctx.fillon_tmin.unwrap_or(Decimal::ZERO);
+        let tdelta = tmax - tmin;
+
+        // inner = (1/2) × (seuil × SMIC / brut − 1)
+        // Vaut 0 à brut = seuil × SMIC, vaut 1 à brut = SMIC (si seuil=3).
+        let inner = (seuil * smic / brut - Decimal::ONE) / dec!(2);
+
+        if inner <= Decimal::ZERO {
+            return Decimal::ZERO; // brut ≥ seuil × SMIC → aucune réduction
+        }
+
+        // On borne inner à 1 (brut en dessous du SMIC → coefficient plafonné à Tmax)
+        let inner_clamped = inner.min(Decimal::ONE);
+
+        // L'élévation à la puissance nécessite f64 (rust_decimal n'a pas de powf).
+        // L'erreur de représentation flottante est < 1e-14, absorbée par l'arrondi à 4dp.
+        let inner_f64: f64 = inner_clamped.to_string().parse().unwrap_or(0.0);
+        let p_f64:     f64 = p.to_string().parse().unwrap_or(1.75);
+        let powered:   Decimal = format!("{:.10}", inner_f64.powf(p_f64))
+            .parse()
+            .unwrap_or(Decimal::ZERO);
+
+        (tmin + tdelta * powered).clamp(tmin, tmax).round_dp(4)
+    } else {
+        // ── Formule 2015-2018 (linéaire) ─────────────────────────────────────
+        let ratio = (seuil * smic / brut).round_dp(10);
+        if ratio <= Decimal::ONE {
+            return Decimal::ZERO;
+        }
+        ((tmax / dec!(0.6)) * (ratio - Decimal::ONE))
+            .min(tmax)
+            .max(Decimal::ZERO)
+            .round_dp(4)
+    }
+}
+
 /// Réduction générale des cotisations patronales (loi Fillon, CSS art. L241-13).
-/// Calcul mensuel simplifié — équivalent à l'annualisé pour un salaire constant sur 12 mois.
-/// Retourne None si le salaire dépasse le seuil (1,6 SMIC par défaut).
+/// Retourne None si le salaire dépasse le seuil ou si les paramètres Fillon
+/// ne sont pas en base pour cette date.
 pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
-    let coeff_max = ctx.fillon_coeff_max?;
+    let coeff = fillon_coeff(ctx.smic_mensuel, brut, ctx);
+    if coeff == Decimal::ZERO {
+        return None;
+    }
+
+    let tmax      = ctx.fillon_coeff_max.unwrap_or(coeff);
     let seuil     = ctx.fillon_seuil_smic.unwrap_or(dec!(1.6));
-
-    if brut <= Decimal::ZERO || ctx.smic_mensuel <= Decimal::ZERO {
-        return None;
-    }
-
-    // ratio = seuil × SMIC / brut  (si < 1 → pas de réduction)
-    let ratio = (seuil * ctx.smic_mensuel / brut).round_dp(10);
-    if ratio <= Decimal::ONE {
-        return None;
-    }
-
-    let coeff   = ((coeff_max / dec!(0.6)) * (ratio - Decimal::ONE))
-        .min(coeff_max)
-        .max(Decimal::ZERO)
-        .round_dp(4);
-    let montant = (brut * coeff).round_dp(2);
+    let tmin      = ctx.fillon_tmin.unwrap_or(Decimal::ZERO);
+    let tdelta    = tmax - tmin;
+    let montant   = (brut * coeff).round_dp(2);
     let seuil_eur = (seuil * ctx.smic_mensuel).round_dp(2);
+    let smic      = ctx.smic_mensuel;
+
+    let explication = if ctx.fillon_puissance.is_some() {
+        // Formule 2019+ : détail du calcul pour la valeur actuelle
+        let inner = (seuil * smic / brut - Decimal::ONE) / dec!(2);
+        let inner_clamped = inner.min(Decimal::ONE).max(Decimal::ZERO);
+        let p = ctx.fillon_puissance.unwrap_or(dec!(1.75));
+        format!(
+            "Formule officielle URSSAF : C = Tmin + (Tdelta × [(1/2) × (seuil × SMIC / brut − 1)]^P)\n\
+            = {tmin} + ({tdelta} × [(1/2) × ({seuil} × {smic} / {brut} − 1)]^{p})\n\
+            = {tmin} + ({tdelta} × {inner_clamped}^{p}) = {coeff}\n\
+            La réduction s'annule progressivement jusqu'à {seuil} SMIC ({seuil_eur} €/mois), \
+            avec un minimum de {tmin} au seuil. \
+            Instaurée par la loi Fillon du 17/01/2003 (CSS art. L241-13), elle réduit le coût \
+            patronal des bas salaires pour favoriser l'emploi peu qualifié."
+        )
+    } else {
+        format!(
+            "Ancienne formule linéaire (2015-2018) : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n\
+            = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1) = {coeff}\n\
+            La réduction s'annule à {seuil} SMIC ({seuil_eur} €/mois)."
+        )
+    };
 
     Some(LigneCotisation {
         code:        "REDUCTION_FILLON".into(),
@@ -219,15 +295,7 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
         taux_pat:    -coeff,
         montant_pat: -montant,
         categorie:   "Allègement".into(),
-        explication: format!(
-            "Coefficient = ({coeff_max} / 0,6) × ({seuil} × {smic} / {brut} − 1) = {coeff}. \
-            SMIC mensuel : {smic} €. \
-            La réduction s'annule à {seuil} SMIC ({seuil_eur} €/mois). \
-            Instaurée par la loi Fillon du 17/01/2003, elle remplace la ristourne dégressive Juppé (1995). \
-            Objectif : réduire le coût patronal des bas salaires pour favoriser l'emploi peu qualifié. \
-            ⚠ Calcul mensuel simplifié — l'annualisation avec régularisation sera intégrée ultérieurement.",
-            smic = ctx.smic_mensuel
-        ),
+        explication,
         loi_ref: Some("Loi n°2003-47 du 17/01/2003 (Fillon) — CSS art. L241-13".into()),
     })
 }

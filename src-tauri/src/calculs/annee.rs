@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use sqlx::SqlitePool;
 
 use crate::db::ContextPaie;
 use crate::models::{LigneMensuelle, Salarie, SimulationAnnuelle, Statut};
 use super::bulletin::generer_bulletin;
+use super::cotisations::fillon_coeff;
 
 const MOIS_FR: [&str; 12] = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -38,14 +38,19 @@ pub async fn generer_annee(
 
         let ctx = ContextPaie::charger(pool, date).await?;
 
-        // Bulletin standard (inclut Fillon mensuel simple qu'on extrait et remplace)
+        // On génère un bulletin complet pour réutiliser toute la logique de
+        // cotisations (SS, AGIRC-ARRCO, etc.) sans la dupliquer ici.
+        // Le Fillon inclus dans ce bulletin est le calcul mensuel simple ;
+        // on l'extrait séparément pour le remplacer par la version régularisée.
         let dummy = Salarie {
             nom: String::new(), prenom: String::new(),
             salaire_brut: brut, statut: statut.clone(),
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 
-        // Totaux souscrits sans Fillon (on gère la régularisation séparément)
+        // total_pat_brut = charges patronales hors Fillon.
+        // On exclu REDUCTION_FILLON du cumul car on recalcule le montant
+        // régularisé ci-dessous (fillon_verse/fillon_reg).
         let total_sal: Decimal = bulletin.cotisations.iter()
             .map(|c| c.montant_sal)
             .sum();
@@ -96,34 +101,33 @@ pub async fn generer_annee(
     })
 }
 
-/// Fillon régularisé pour le mois N.
+/// Fillon régularisé pour le mois N (méthode officielle annualisée).
 ///
-/// Formule :
-///   coeff_cumulé = (T / 0,6) × (seuil × SMIC_cumulé / brut_cumulé − 1)  ∈ [0 ; T]
-///   Fillon_théorique_cumulé = brut_cumulé × coeff_cumulé
-///   Fillon_mois_N = max(0 ; Fillon_théorique_cumulé − Fillon_déjà_versé)
+/// Principe de la régularisation :
+///   1. On calcule le Fillon THÉORIQUE cumulé depuis janvier, avec le coefficient
+///      calculé sur les cumuls de brut et de SMIC (= moyenne pondérée si SMIC change).
+///   2. On soustrait le Fillon déjà versé les mois précédents.
+///   3. Le résultat est forcément ≥ 0 (on ne peut pas "rembourser" une réduction).
+///
+/// L'utilisation de `fillon_coeff(smic_cumule, brut_cumule, ctx)` applique
+/// automatiquement la bonne formule (puissance 2019+ ou linéaire 2015-2018)
+/// selon les paramètres chargés depuis la DB pour la date du mois en cours.
 fn fillon_regularise_mois(
-    brut_cumule:   Decimal,
-    smic_cumule:   Decimal,
-    fillon_verse:  Decimal,
-    ctx:           &ContextPaie,
+    brut_cumule:  Decimal,
+    smic_cumule:  Decimal,
+    fillon_verse: Decimal,
+    ctx:          &ContextPaie,
 ) -> Decimal {
-    let Some(coeff_max) = ctx.fillon_coeff_max else { return Decimal::ZERO };
-    let seuil = ctx.fillon_seuil_smic.unwrap_or(dec!(1.6));
-
     if brut_cumule <= Decimal::ZERO {
         return Decimal::ZERO;
     }
 
-    let ratio = (seuil * smic_cumule / brut_cumule).round_dp(10);
-    if ratio <= Decimal::ONE {
+    // Le ratio smic_cumule/brut_cumule représente la moyenne pondérée SMIC/brut
+    // sur les mois écoulés → reflète correctement les revalorisations du SMIC en cours d'année.
+    let coeff = fillon_coeff(smic_cumule, brut_cumule, ctx);
+    if coeff == Decimal::ZERO {
         return Decimal::ZERO;
     }
-
-    let coeff = ((coeff_max / dec!(0.6)) * (ratio - Decimal::ONE))
-        .min(coeff_max)
-        .max(Decimal::ZERO)
-        .round_dp(4);
 
     let theorique_cumule = (brut_cumule * coeff).round_dp(2);
     (theorique_cumule - fillon_verse).max(Decimal::ZERO)

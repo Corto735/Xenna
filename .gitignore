@@ -39,3 +39,8 @@ npm-debug.log*
 
 # ── Lock files (garder package-lock, exclure yarn) ───────────────────────────
 yarn.lock
+
+# ── Artefacts npm/tauri CLI (fichiers vides générés par les commandes CLI) ───
+tauri
+vite
+xenna-paie@*
