@@ -58,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const el = document.getElementById(id);
     if (el) { el.value = TODAY; el.max = TODAY; }
   });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 });
 
 // ── Sécurité : neutralise tout HTML dans les entrées utilisateur ─────────────
@@ -125,6 +126,89 @@ const CAT_CLASS = {
   "Allègement":             "cat-alleg",
 };
 
+// ── Registre formules ────────────────────────────────────────────────────────
+// Alimenté à chaque render ; clé stable = code_cotisation + '_' + type.
+const _fmStore = {};
+
+// Assiette : formule de calcul selon le code de cotisation.
+const BASE_FORMULES = {
+  SS_VIEILLESSE_PLAF:   'min(Salaire brut, Plafond Mensuel Sécurité Sociale — PMSS)',
+  CHOMAGE:              'min(Salaire brut, 4 × PMSS)',
+  AGS:                  'min(Salaire brut, 4 × PMSS)',
+  CSG_DEDUCTIBLE:       'Salaire brut × 98,25 %  — abattement forfaitaire frais professionnels (CSS art. L136-2)',
+  CSG_NON_DEDUCTIBLE:   'Salaire brut × 98,25 %  — abattement forfaitaire frais professionnels',
+  CRDS:                 'Salaire brut × 98,25 %  — abattement forfaitaire frais professionnels',
+  AGIRC_ARRCO_T1:       'min(Salaire brut, PMSS)  — Tranche 1 (entre 0 et 1 PMSS)',
+  AGIRC_ARRCO_CEG_T1:   'min(Salaire brut, PMSS)  — Tranche 1',
+  PREVOYANCE_CADRE_MIN: 'min(Salaire brut, PMSS)  — Tranche A',
+  AGIRC_ARRCO_T2:       'Fraction du salaire entre 1 PMSS et 8 PMSS  — Tranche 2',
+  AGIRC_ARRCO_CEG_T2:   'Fraction du salaire entre 1 PMSS et 8 PMSS  — Tranche 2',
+};
+
+function buildFormulaStar(key) {
+  return `<span class="formula-star" onclick="event.stopPropagation();showFormula('${key}')">*</span>`;
+}
+
+function buildFormulaContent(c, type) {
+  // Fillon : l'explication contient déjà la formule complète avec valeurs substituées.
+  if (c.code === 'REDUCTION_FILLON') {
+    return `<pre class="fm-fillon">${esc(c.explication)}</pre>`;
+  }
+
+  const isSal     = type === 'sal';
+  const taux      = isSal ? c.taux_sal : c.taux_pat;
+  const base      = parseFloat(c.base);
+  const montant   = isSal ? parseFloat(c.montant_sal) : Math.abs(parseFloat(c.montant_pat));
+  const tauxLbl   = isSal ? 'Taux salarial' : 'Taux patronal';
+  const montLbl   = isSal ? 'Montant salarial' : type === 'alleg' ? 'Montant allègement' : 'Montant patronal';
+  const resCls    = isSal ? 'c-sal' : type === 'alleg' ? 'c-alleg' : 'c-pat';
+
+  const baseNote = BASE_FORMULES[c.code]
+    ? `<div class="fm-base-note">Assiette  =  ${esc(BASE_FORMULES[c.code])}</div>`
+    : '';
+
+  return `
+    <div class="fm-generic">Montant  =  Assiette  ×  ${tauxLbl}</div>
+    ${baseNote}
+    <table class="fm-calc">
+      <tr>
+        <td>Assiette</td>
+        <td class="fm-op">=</td>
+        <td class="fm-val c-base">${fmt(base)}</td>
+      </tr>
+      <tr>
+        <td>${tauxLbl}</td>
+        <td class="fm-op">×</td>
+        <td class="fm-val c-taux">${fmtPct(taux)}</td>
+      </tr>
+      <tr class="fm-result fm-sep">
+        <td>${montLbl}</td>
+        <td class="fm-op">=</td>
+        <td class="fm-val ${resCls}">${fmt(montant)}</td>
+      </tr>
+    </table>`;
+}
+
+window.showFormula = function(key) {
+  const entry = _fmStore[key];
+  if (!entry) return;
+  const { c, type } = entry;
+  const isSal = type === 'sal';
+  const badge = c.code === 'REDUCTION_FILLON'
+    ? '── Allègement patronal ──────────────────────'
+    : isSal
+      ? '── Part salariale ───────────────────────────'
+      : '── Part patronale ───────────────────────────';
+  document.getElementById('fm-title').textContent = c.libelle;
+  document.getElementById('fm-badge').textContent = badge;
+  document.getElementById('fm-body').innerHTML = buildFormulaContent(c, type);
+  document.getElementById('fm-modal').classList.add('open');
+};
+
+window.closeFmModal = function() {
+  document.getElementById('fm-modal').classList.remove('open');
+};
+
 // ── TOGGLE EXPLICATION (bureau) ───────────────────────────────────────────────
 window.toggleExpl = function (i) {
   const row  = document.getElementById(`row-${i}`);
@@ -177,16 +261,27 @@ function renderDesktop(b) {
     </div>`;
 
   // ── Table cotisations salariales ──
-  const cotSal   = cots.filter(c => parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0");
-  const cotPat   = cots.filter(c => parseFloat(c.montant_pat) > 0);
-  const cotAlleg = cots.filter(c => c.categorie === "Allègement");
+  const cotSal      = cots.filter(c => parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0");
+  const cotPat      = cots.filter(c => parseFloat(c.montant_pat) > 0);
+  const cotAlleg    = cots.filter(c => c.categorie === "Allègement");
+  // Brut patronal = somme des lignes affichées (positives seulement, hors Fillon).
+  // totalPat (net) est réservé au super brut dans la barre récap.
+  const totalPatBrut = cotPat.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   function buildRows(list, offset) {
     return list.map((c, i) => {
-      const idx = offset + i;
+      const idx    = offset + i;
       const catCls = CAT_CLASS[c.categorie] || "cat-ss";
       const salCls = parseFloat(c.montant_sal) > 0 ? "c-sal" : "c-dim";
       const patCls = parseFloat(c.montant_pat) > 0 ? "c-pat" : "c-dim";
+
+      const keySal = `${c.code}_sal`;
+      const keyPat = `${c.code}_pat`;
+      _fmStore[keySal] = { c, type: 'sal' };
+      _fmStore[keyPat] = { c, type: 'pat' };
+      const starSal = parseFloat(c.montant_sal) > 0 ? buildFormulaStar(keySal) : '';
+      const starPat = parseFloat(c.montant_pat) > 0 ? buildFormulaStar(keyPat) : '';
+
       return `
         <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
           <td>
@@ -196,9 +291,9 @@ function renderDesktop(b) {
           </td>
           <td class="r">${fmt(c.base)}</td>
           <td class="r">${fmtPct(c.taux_sal)}</td>
-          <td class="r ${salCls}">${fmt(c.montant_sal)}</td>
+          <td class="r ${salCls}">${fmt(c.montant_sal)}${starSal}</td>
           <td class="r">${fmtPct(c.taux_pat)}</td>
-          <td class="r ${patCls}">${fmt(c.montant_pat)}</td>
+          <td class="r ${patCls}">${fmt(c.montant_pat)}${starPat}</td>
         </tr>
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
@@ -212,6 +307,14 @@ function renderDesktop(b) {
   }
 
   const thead = `
+    <colgroup>
+      <col>
+      <col style="width:13%">
+      <col style="width:9%">
+      <col style="width:13%">
+      <col style="width:9%">
+      <col style="width:13%">
+    </colgroup>
     <thead>
       <tr>
         <th>COTISATION</th>
@@ -245,7 +348,7 @@ function renderDesktop(b) {
         ${buildRows(cotPat, cotSal.length)}
         <tr class="tbl-total">
           <td colspan="5">TOTAL COTISATIONS PATRONALES</td>
-          <td class="r c-pat">+ ${fmt(totalPat)}</td>
+          <td class="r c-pat">+ ${fmt(totalPatBrut)}</td>
         </tr>
       </tbody>
     </table>`;
@@ -263,9 +366,11 @@ function renderDesktop(b) {
       ${thead}
       <tbody>
         ${cotAlleg.map((c, i) => {
-          const idx = cotSal.length + cotPat.length + i;
+          const idx    = cotSal.length + cotPat.length + i;
           const catCls = CAT_CLASS[c.categorie] || "cat-alleg";
           const montant = Math.abs(parseFloat(c.montant_pat));
+          const keyAlleg = `${c.code}_alleg`;
+          _fmStore[keyAlleg] = { c, type: 'alleg' };
           return `
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>
@@ -274,10 +379,10 @@ function renderDesktop(b) {
                 <span>${c.libelle}</span>
               </td>
               <td class="r">${fmt(c.base)}</td>
-              <td class="r">${fmtPct(Math.abs(parseFloat(c.taux_pat)))}</td>
               <td class="r"></td>
-              <td class="r c-alleg">− ${fmt(montant)}</td>
               <td class="r"></td>
+              <td class="r c-alleg">${fmtPct(Math.abs(parseFloat(c.taux_pat)))}</td>
+              <td class="r c-alleg">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>
             </tr>
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
@@ -289,9 +394,8 @@ function renderDesktop(b) {
             </tr>`;
         }).join("")}
         <tr class="tbl-total">
-          <td colspan="4">TOTAL ALLÈGEMENTS PATRONAUX</td>
+          <td colspan="5">TOTAL ALLÈGEMENTS PATRONAUX</td>
           <td class="r c-alleg">− ${fmt(Math.abs(totalAlleg))}</td>
-          <td></td>
         </tr>
       </tbody>
     </table>`;
@@ -323,13 +427,14 @@ function renderMobile(b) {
         <span class="mob-val c-red">− ${fmt(c.montant_sal)}</span>
       </div>`).join("");
 
-  const cotPatLines = cots
-    .filter(c => parseFloat(c.montant_pat) > 0)
+  const cotPatFiltered = cots.filter(c => parseFloat(c.montant_pat) > 0);
+  const cotPatLines = cotPatFiltered
     .map(c => `
       <div class="mob-row">
         <span class="mob-lbl">${c.libelle}</span>
         <span class="mob-val c-orange">+ ${fmt(c.montant_pat)}</span>
       </div>`).join("");
+  const totalPatBrutMob = cotPatFiltered.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   const cotAllegLines = cots
     .filter(c => c.categorie === "Allègement")
@@ -392,7 +497,7 @@ function renderMobile(b) {
       ${cotPatLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales brutes</span>
-        <span class="mob-val c-orange">+ ${fmt(totalPat)}</span>
+        <span class="mob-val c-orange">+ ${fmt(totalPatBrutMob)}</span>
       </div>
 
       <!-- Allègements -->

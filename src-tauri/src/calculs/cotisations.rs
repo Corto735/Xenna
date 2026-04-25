@@ -265,24 +265,48 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
     let smic      = ctx.smic_mensuel;
 
     let explication = if ctx.fillon_puissance.is_some() {
-        // Formule 2019+ : détail du calcul pour la valeur actuelle
         let inner = (seuil * smic / brut - Decimal::ONE) / dec!(2);
-        let inner_clamped = inner.min(Decimal::ONE).max(Decimal::ZERO);
+        // Arrondi à 4 dp pour l'affichage — évite les longues suites décimales
+        let inner_disp = inner.min(Decimal::ONE).max(Decimal::ZERO).round_dp(4);
         let p = ctx.fillon_puissance.unwrap_or(dec!(1.75));
         format!(
-            "Formule officielle URSSAF : C = Tmin + (Tdelta × [(1/2) × (seuil × SMIC / brut − 1)]^P)\n\
-            = {tmin} + ({tdelta} × [(1/2) × ({seuil} × {smic} / {brut} − 1)]^{p})\n\
-            = {tmin} + ({tdelta} × {inner_clamped}^{p}) = {coeff}\n\
-            La réduction s'annule progressivement jusqu'à {seuil} SMIC ({seuil_eur} €/mois), \
-            avec un minimum de {tmin} au seuil. \
-            Instaurée par la loi Fillon du 17/01/2003 (CSS art. L241-13), elle réduit le coût \
-            patronal des bas salaires pour favoriser l'emploi peu qualifié."
+            "[ Calcul mensuel — CSS art. L241-13 ]\n\
+            \n\
+            Formule : C = Tmin + (Tdelta × D^P)\n\
+            D = (1/2) × (seuil × SMIC mensuel / Salaire brut − 1)\n\
+            \n\
+            Paramètres : Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Seuil={seuil}×SMIC\n\
+            \n\
+            D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
+              = {inner_disp}\n\
+            \n\
+            C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
+              = {coeff}\n\
+            \n\
+            ── Réduction mensuelle ─────────────────────────────\n\
+            Réduction = Salaire brut × C\n\
+                      = {brut} × {coeff}\n\
+                      = {montant} €\n\
+            ────────────────────────────────────────────────────\n\
+            \n\
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.\n\
+            Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires."
         )
     } else {
         format!(
-            "Ancienne formule linéaire (2015-2018) : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n\
-            = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1) = {coeff}\n\
-            La réduction s'annule à {seuil} SMIC ({seuil_eur} €/mois)."
+            "[ Calcul mensuel — ancienne formule linéaire 2015-2018 ]\n\
+            \n\
+            Formule : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n\
+              = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
+              = {coeff}\n\
+            \n\
+            ── Réduction mensuelle ─────────────────────────────\n\
+            Réduction = Salaire brut × C\n\
+                      = {brut} × {coeff}\n\
+                      = {montant} €\n\
+            ────────────────────────────────────────────────────\n\
+            \n\
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois."
         )
     };
 

@@ -208,7 +208,7 @@
       border-bottom: 1px solid var(--border);
       border-top: 1px solid var(--border);
     }
-    .ascii-tbl { width: 100%; border-collapse: collapse; }
+    .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
       background: var(--bg3);
       color: var(--muted);
@@ -449,6 +449,97 @@
       body.is-desktop .view-mobile  { display: block; }
       .view-bar { display: none; }
     }
+
+    /* ── Étoile formule (survol montant) ─────────────────────── */
+    .formula-star {
+      display: none;
+      cursor: pointer;
+      color: var(--yellow);
+      font-size: 0.68em;
+      vertical-align: super;
+      margin-left: 2px;
+      user-select: none;
+      font-style: normal;
+      font-weight: normal;
+    }
+    td:hover .formula-star { display: inline; }
+
+    /* ── Modal formule ───────────────────────────────────────── */
+    #fm-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 900;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #fm-modal.open { display: flex; }
+    #fm-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      width: min(580px, 100%);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .fm-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.55rem 0.9rem;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .fm-title { font-size: 0.78rem; font-weight: bold; color: var(--yellow); letter-spacing: 0.04em; }
+    .fm-close {
+      background: none; border: none; color: var(--muted);
+      font-family: inherit; font-size: 1.1rem; cursor: pointer;
+      padding: 0; line-height: 1; flex-shrink: 0;
+    }
+    .fm-close:hover { color: var(--text); }
+    .fm-badge {
+      padding: 0.22rem 0.9rem;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .fm-body { padding: 1rem 1.1rem 1.3rem; }
+    .fm-generic {
+      font-size: 0.76rem;
+      color: var(--blue);
+      margin-bottom: 0.9rem;
+      letter-spacing: 0.03em;
+    }
+    .fm-base-note {
+      font-size: 0.68rem;
+      color: var(--muted);
+      border-left: 2px solid var(--dim);
+      padding: 0.28rem 0.6rem;
+      margin-bottom: 0.85rem;
+      line-height: 1.5;
+    }
+    .fm-calc { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+    .fm-calc td { padding: 0.2rem 0; vertical-align: baseline; }
+    .fm-calc td:first-child { color: var(--muted); width: 52%; }
+    .fm-calc td.fm-op { width: 8%; text-align: center; color: var(--dim); }
+    .fm-calc td.fm-val { text-align: right; }
+    .fm-calc td.c-base  { color: var(--gray); }
+    .fm-calc td.c-taux  { color: var(--muted); }
+    .fm-calc tr.fm-sep td { border-top: 1px solid var(--border); padding-top: 0.45rem; }
+    .fm-calc tr.fm-result td:first-child { color: var(--text); font-weight: bold; }
+    .fm-calc tr.fm-result td.fm-val { font-weight: bold; font-size: 0.88rem; }
+    .fm-fillon {
+      font-size: 0.71rem;
+      line-height: 1.85;
+      color: var(--gray);
+      white-space: pre-wrap;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -592,6 +683,18 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ── Modal formule mathématique ── -->
+  <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">
+    <div id="fm-box">
+      <div class="fm-head">
+        <span class="fm-title" id="fm-title"></span>
+        <button class="fm-close" onclick="closeFmModal()">×</button>
+      </div>
+      <div class="fm-badge" id="fm-badge"></div>
+      <div class="fm-body" id="fm-body"></div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
