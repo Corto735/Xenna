@@ -189,6 +189,31 @@
     .sb-cell:last-child { border-right: none; }
     .sb-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
     .sb-val { font-size: 1rem; font-weight: bold; margin-top: 0.1rem; font-variant-numeric: tabular-nums; }
+
+    /* Cellule retenues (cot. salariales + PAS) */
+    .sb-ded { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.2rem; }
+    .sb-ded-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.6rem;
+      font-size: 0.72rem;
+    }
+    .sb-ded-row span:first-child { color: var(--muted); }
+    .sb-ded-row span:last-child  { font-variant-numeric: tabular-nums; font-weight: bold; white-space: nowrap; }
+    .sb-ded-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      font-weight: bold;
+      border-top: 1px solid var(--dim);
+      padding-top: 0.18rem;
+      margin-top: 0.05rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .sb-ded-total span:first-child { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
     .sb-val.c-gray   { color: var(--gray); }
     .sb-val.c-green  { color: var(--green); }
     .sb-val.c-red    { color: var(--red); }

@@ -330,12 +330,21 @@ function renderDesktop(b) {
         <div class="sb-val c-gray">${fmt(b.brut)}</div>
       </div>
       <div class="sb-cell">
-        <div class="sb-lbl">▸ NET IMPOSABLE</div>
-        <div class="sb-val c-green">${fmt(b.net_imposable)}</div>
-      </div>
-      <div class="sb-cell">
-        <div class="sb-lbl">▸ PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</div>
-        <div class="sb-val c-red">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</div>
+        <div class="sb-lbl">▸ RETENUES</div>
+        <div class="sb-ded">
+          <div class="sb-ded-row">
+            <span>Cot. salariales</span>
+            <span style="color:var(--red)">− ${fmt(totalSal)}</span>
+          </div>
+          <div class="sb-ded-row">
+            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
+            <span style="color:var(--purple)">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
+          </div>
+          <div class="sb-ded-total">
+            <span>Total retenues</span>
+            <span style="color:var(--red)">− ${fmt(totalSal + pas.total)}</span>
+          </div>
+        </div>
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ NET À PAYER</div>
