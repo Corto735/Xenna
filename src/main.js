@@ -182,7 +182,7 @@ const BASE_FORMULES = {
 };
 
 function buildFormulaStar(key) {
-  return `<span class="formula-star" onclick="event.stopPropagation();showFormula('${key}')">*</span>`;
+  return `<span class="formula-star" data-fmkey="${key}" onclick="event.stopPropagation();showFormula('${key}')">f(x)</span>`;
 }
 
 function buildFormulaContent(c, type) {
@@ -275,6 +275,7 @@ window.showFormula = function(key) {
     document.getElementById('fm-badge').textContent = '── Détail par tranche — barème neutre mensuel DGFIP ─────────';
     document.getElementById('fm-body').innerHTML = buildPasFormulaContent(entry.netImposable);
     document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
     return;
   }
 
@@ -289,6 +290,7 @@ window.showFormula = function(key) {
   document.getElementById('fm-badge').textContent = badge;
   document.getElementById('fm-body').innerHTML = buildFormulaContent(c, type);
   document.getElementById('fm-modal').classList.add('open');
+  document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
 };
 
 window.closeFmModal = function() {

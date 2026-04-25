@@ -450,18 +450,24 @@
       .view-bar { display: none; }
     }
 
-    /* ── Étoile formule (survol montant) ─────────────────────── */
+    /* ── Lien formule f(x) (survol montant) ──────────────────── */
     .formula-star {
       display: none;
       cursor: pointer;
-      color: var(--yellow);
-      font-size: 0.68em;
+      color: var(--blue);
+      font-size: 0.63em;
       vertical-align: super;
-      margin-left: 2px;
+      margin-left: 3px;
       user-select: none;
-      font-style: normal;
-      font-weight: normal;
+      font-style: italic;
+      font-weight: bold;
+      letter-spacing: -0.02em;
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--blue) 40%, transparent);
+      text-underline-offset: 2px;
     }
+    .formula-star.visited { color: var(--purple); text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent); }
+    .formula-star:hover   { opacity: 0.8; }
     td:hover .formula-star,
     .sb-cell:hover .formula-star,
     .pas-row:hover .formula-star { display: inline; }
