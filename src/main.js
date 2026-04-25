@@ -59,6 +59,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) { el.value = TODAY; el.max = TODAY; }
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
+
+  // Détection automatique mobile / bureau — breakpoint identique au media query CSS
+  const mq = window.matchMedia("(max-width: 680px)");
+  const applyView = e => {
+    if (!document.body.classList.contains("is-annuel"))
+      setView(e.matches ? "mobile" : "desktop");
+  };
+  mq.addEventListener("change", applyView);
+  applyView(mq);
 });
 
 // ── Sécurité : neutralise tout HTML dans les entrées utilisateur ─────────────
