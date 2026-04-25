@@ -40,31 +40,23 @@
     .ascii-header {
       background: var(--bg3);
       border-bottom: 1px solid var(--border);
-      padding: 0.9rem 1.5rem 0.7rem;
+      padding: 0.65rem 1.5rem;
       display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
+      align-items: center;
       gap: 1rem;
     }
-    .banner-art {
-      font-size: 0.62rem;
-      line-height: 1.2;
+    .banner-title {
+      font-size: 1.55rem;
       font-weight: bold;
-      white-space: pre;
       color: var(--blue);
-      text-shadow: 0 0 18px rgba(56,189,248,0.5);
-      overflow-x: auto;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 20px rgba(56,189,248,0.4);
+      line-height: 1;
     }
     .banner-sub {
       color: var(--muted);
       font-size: 0.7rem;
-      margin-top: 0.5rem;
-    }
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.4rem;
+      margin-top: 0.35rem;
     }
 
     /* ══════════════════════════════
@@ -673,19 +665,7 @@
   <!-- ══ HEADER ══ -->
   <div class="ascii-header">
     <div>
-      <div class="banner-art">██████╗  █████╗ ██╗   ██╗███████╗    ████████╗ ██████╗ ███╗   ██╗
-██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝       ██║   ██╔═══██╗████╗  ██║
-██████╔╝███████║ ╚████╔╝ █████╗         ██║   ██║   ██║██╔██╗ ██║
-██╔═══╝ ██╔══██║  ╚██╔╝  ██╔══╝         ██║   ██║   ██║██║╚██╗██║
-██║     ██║  ██║   ██║   ███████╗        ██║   ╚██████╔╝██║ ╚████║
-╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝       ╚═╝    ╚═════╝ ╚═╝  ╚═══╝
-
-██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗██╗███╗   ██╗
-██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝██║████╗  ██║
-██████╔╝██║   ██║██║     ██║     █████╗     ██║   ██║██╔██╗ ██║
-██╔══██╗██║   ██║██║     ██║     ██╔══╝     ██║   ██║██║╚██╗██║
-██████╔╝╚██████╔╝███████╗███████╗███████╗   ██║   ██║██║ ╚████║
-╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   ╚═╝╚═╝  ╚═══╝</div>
+      <div class="banner-title">paye ton bulletin</div>
       <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.0</div>
     </div>
   </div>
