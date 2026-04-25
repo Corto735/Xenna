@@ -15,6 +15,8 @@ pub struct Salarie {
     #[serde(with = "rust_decimal::serde::str")]
     pub salaire_brut: Decimal,
     pub statut:       Statut,
+    #[serde(default)]
+    pub alsace_moselle: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

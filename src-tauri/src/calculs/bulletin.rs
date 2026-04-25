@@ -16,6 +16,12 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     cotisations.extend(csg_contributions(brut, ctx));
     cotisations.extend(retraite_complementaire(brut, &salarie.statut, ctx));
 
+    if salarie.alsace_moselle {
+        if let Some(am) = maladie_alsace_moselle(brut, ctx) {
+            cotisations.push(am);
+        }
+    }
+
     if let Some(fillon) = reduction_fillon(brut, ctx) {
         cotisations.push(fillon);
     }

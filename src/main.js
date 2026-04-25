@@ -686,11 +686,12 @@ function showInputError(msg) {
 // ═════════════════════════════════════════════════════════════════════════════
 async function calculate(source) {
   const isM = source === "mobile";
-  const brut    = document.getElementById(isM ? "m-brut"   : "d-brut").value;
-  const statut  = document.getElementById(isM ? "m-statut" : "d-statut").value;
-  const nom     = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
-  const prenom  = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
-  const date    = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
+  const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
+  const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
+  const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
+  const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
+  const date         = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
+  const alsaceMoselle = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
 
   // ── Validation côté JS ────────────────────────────────────────────────────
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
@@ -715,7 +716,7 @@ async function calculate(source) {
 
   try {
     const bulletin = await api("calculer_bulletin", {
-      salarie: { nom, prenom, salaire_brut: brut.toString(), statut },
+      salarie: { nom, prenom, salaire_brut: brut.toString(), statut, alsace_moselle: alsaceMoselle },
       datePaie: date,
     });
     lastBulletin = bulletin;
@@ -852,6 +853,24 @@ async function calculerAnnee() {
     el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">ERREUR : ${esc(errToStr(e))}</div>`;
   }
 }
+
+// ── Paramètres avancés ───────────────────────────────────────────────────────
+window.toggleParams = function(prefix) {
+  const panel  = document.getElementById(`${prefix}-params`);
+  const toggle = document.getElementById(`${prefix}-params-toggle`);
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display  = open ? 'none' : 'block';
+  toggle.classList.toggle('open', !open);
+};
+
+// Synchronise un paramètre checkbox entre les deux formulaires (desktop ↔ mobile)
+window.syncParam = function(paramName, checked) {
+  ['d', 'm'].forEach(prefix => {
+    const el = document.getElementById(`${prefix}-${paramName}`);
+    if (el && el.checked !== checked) el.checked = checked;
+  });
+};
 
 // ── Listeners ────────────────────────────────────────────────────────────────
 document.getElementById("d-calc").addEventListener("click", () => calculate("desktop"));

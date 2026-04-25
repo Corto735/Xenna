@@ -639,6 +639,63 @@
       margin: 0;
     }
 
+    /* ── Panneau paramètres avancés ────────────────────────── */
+    .btn-params-toggle {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.64rem;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      letter-spacing: 0.07em;
+      text-align: left;
+      transition: all 0.15s;
+      margin-top: 0.55rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn-params-toggle:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-params-toggle.open  { border-color: var(--blue); color: var(--blue); }
+    .btn-params-toggle .chevron { transition: transform 0.2s; display: inline-block; }
+    .btn-params-toggle.open .chevron { transform: rotate(180deg); }
+
+    .params-panel {
+      border: 1px solid var(--blue);
+      border-top: none;
+      background: #050810;
+      padding: 0.45rem 0.6rem;
+      margin-bottom: 0.25rem;
+    }
+    .param-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.68rem;
+      color: var(--text);
+      padding: 0.12rem 0;
+      user-select: none;
+    }
+    .param-item input[type="checkbox"] {
+      accent-color: var(--blue);
+      cursor: pointer;
+      width: 11px;
+      height: 11px;
+      flex-shrink: 0;
+    }
+    .param-item:hover { color: var(--blue); }
+    .param-item .param-badge {
+      font-size: 0.58rem;
+      color: var(--muted);
+      border: 1px solid var(--dim);
+      padding: 0 0.28rem;
+      margin-left: 0.3rem;
+      white-space: nowrap;
+    }
+
     /* ── Table tranches PAS ─────────────────────────────────── */
     .pas-tbl {
       width: 100%;
@@ -711,6 +768,18 @@
           </select></div>
         <div class="field"><label>DATE DE SIMULATION</label>
           <input type="date" id="d-date" min="2015-01-01" /></div>
+
+        <!-- Paramètres avancés -->
+        <button class="btn-params-toggle" id="d-params-toggle" onclick="toggleParams('d')" type="button">
+          <span class="chevron">▼</span> PARAMÈTRES
+        </button>
+        <div class="params-panel" id="d-params" style="display:none">
+          <label class="param-item">
+            <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+            Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
+          </label>
+        </div>
+
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
       </div>
     </div>
@@ -756,6 +825,18 @@
           </div>
           <div class="field" style="grid-column:1/-1"><label>DATE DE SIMULATION</label>
             <input type="date" id="m-date" min="2015-01-01" /></div>
+
+          <!-- Paramètres avancés mobile -->
+          <button class="btn-params-toggle" id="m-params-toggle" onclick="toggleParams('m')" type="button" style="grid-column:1/-1">
+            <span class="chevron">▼</span> PARAMÈTRES
+          </button>
+          <div class="params-panel" id="m-params" style="display:none;grid-column:1/-1">
+            <label class="param-item">
+              <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+              Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
+            </label>
+          </div>
+
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
         </div>
       </div>

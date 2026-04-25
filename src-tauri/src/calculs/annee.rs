@@ -45,6 +45,7 @@ pub async fn generer_annee(
         let dummy = Salarie {
             nom: String::new(), prenom: String::new(),
             salaire_brut: brut, statut: statut.clone(),
+            alsace_moselle: false,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 

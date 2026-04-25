@@ -324,6 +324,35 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
     })
 }
 
+/// Cotisation maladie complémentaire du régime local d'Alsace-Moselle (droit local).
+/// Uniquement salariale, assiette = salaire brut total.
+/// Retourne None si le code n'est pas en base pour la date (avant 2015 ou absent).
+pub fn maladie_alsace_moselle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
+    let ts = ctx.taux_sal("ALSACE_MOSELLE_MALADIE");
+    if ts == Decimal::ZERO {
+        return None;
+    }
+    Some(LigneCotisation {
+        code:        "ALSACE_MOSELLE_MALADIE".into(),
+        libelle:     "Maladie complémentaire Alsace-Moselle (régime local)".into(),
+        base:        brut,
+        taux_sal:    ts,
+        montant_sal: (brut * ts).round_dp(2),
+        taux_pat:    Decimal::ZERO,
+        montant_pat: Decimal::ZERO,
+        categorie:   "Sécurité Sociale".into(),
+        explication: "Le régime local d'Alsace-Moselle (droit local) offre une couverture \
+            maladie complémentaire obligatoire aux salariés des départements du Bas-Rhin (67), \
+            Haut-Rhin (68) et Moselle (57). Cette cotisation, uniquement salariale, est prélevée \
+            en sus du régime général. Elle finance un remboursement à 90 % (contre 70 % en régime \
+            général) des frais de santé, sans ticket modérateur pour les hospitalisations. \
+            Ce régime est issu du droit bismarckien applicable depuis 1871, maintenu lors du \
+            retour de l'Alsace-Lorraine à la France en 1919 (loi du 1er juin 1924). \
+            Taux 1,50 % jusqu'au 30/06/2018, puis 1,30 % à compter du 01/07/2018 (LFSS 2018).".into(),
+        loi_ref: Some("Loi locale du 1/06/1924 — CSS art. L325-1 et s. — Loi 2018-1203 du 22/12/2018".into()),
+    })
+}
+
 pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie) -> Vec<LigneCotisation> {
     let t1_base = brut.min(ctx.pmss);
     let t2_base = if brut > ctx.pmss {
