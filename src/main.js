@@ -109,11 +109,47 @@ function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-function getPasTaux() {
-  const src = document.body.classList.contains("is-mobile") ? "m-pas" : "d-pas";
-  const other = src === "m-pas" ? "d-pas" : "m-pas";
-  const v = parseFloat(document.getElementById(src)?.value || document.getElementById(other)?.value || 0);
-  return isNaN(v) ? 0 : v / 100;
+// ── Barème PAS mensuel neutre (DGFIP — situation personne seule, 0 part) ────
+// Source : Bulletin Officiel des Finances Publiques (BOFIP), barème 2025.
+// Chaque taux s'applique UNIQUEMENT à la fraction de revenu dans la tranche.
+const PAS_TRANCHES = [
+  { min:     0, max:  1620, taux: 0.000 },
+  { min:  1620, max:  1683, taux: 0.005 },
+  { min:  1683, max:  1791, taux: 0.013 },
+  { min:  1791, max:  1911, taux: 0.021 },
+  { min:  1911, max:  2042, taux: 0.029 },
+  { min:  2042, max:  2151, taux: 0.035 },
+  { min:  2151, max:  2294, taux: 0.041 },
+  { min:  2294, max:  2714, taux: 0.053 },
+  { min:  2714, max:  3107, taux: 0.075 },
+  { min:  3107, max:  3539, taux: 0.099 },
+  { min:  3539, max:  3983, taux: 0.119 },
+  { min:  3983, max:  4648, taux: 0.138 },
+  { min:  4648, max:  5574, taux: 0.158 },
+  { min:  5574, max:  6974, taux: 0.179 },
+  { min:  6974, max:  8711, taux: 0.200 },
+  { min:  8711, max: 12091, taux: 0.240 },
+  { min: 12091, max: 16376, taux: 0.280 },
+  { min: 16376, max: 25706, taux: 0.330 },
+  { min: 25706, max: 55062, taux: 0.380 },
+  { min: 55062, max: Infinity, taux: 0.430 },
+];
+
+function calculerPas(netImposable) {
+  const n = parseFloat(netImposable);
+  if (isNaN(n) || n <= 0) return { total: 0, taux_effectif: 0, details: [] };
+  let total = 0;
+  const details = [];
+  for (const t of PAS_TRANCHES) {
+    if (n <= t.min) break;
+    const upper  = t.max === Infinity ? n : Math.min(n, t.max);
+    const base   = +(upper - t.min).toFixed(2);
+    const montant = base * t.taux;
+    details.push({ min: t.min, max: t.max === Infinity ? null : t.max, taux: t.taux, base, montant: +montant.toFixed(2) });
+    total += montant;
+    if (t.max === Infinity || n <= t.max) break;
+  }
+  return { total: +total.toFixed(2), taux_effectif: n > 0 ? total / n : 0, details };
 }
 
 // ── Catégorie → classe CSS ────────────────────────────────────────────────────
@@ -189,9 +225,59 @@ function buildFormulaContent(c, type) {
     </table>`;
 }
 
+function buildPasFormulaContent(netImposable) {
+  const r = calculerPas(netImposable);
+  const rows = r.details.map(d => {
+    const minStr = d.min.toLocaleString('fr-FR') + ' €';
+    const maxStr = d.max === null ? '∞' : d.max.toLocaleString('fr-FR') + ' €';
+    const zero   = d.taux === 0;
+    return `
+      <tr class="${zero ? 'pas-zero' : ''}">
+        <td>${minStr} → ${maxStr}</td>
+        <td class="r">${fmt(d.base)}</td>
+        <td class="r ${zero ? 'c-dim' : ''}">${(d.taux * 100).toFixed(1).replace('.', ',')} %</td>
+        <td class="r ${zero ? 'c-dim' : 'c-purple'}">${zero ? '—' : fmt(d.montant)}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="fm-generic">Calcul progressif tranche par tranche</div>
+    <div class="fm-base-note">Barème neutre mensuel DGFIP — situation : personne seule, 0 part (célibataire sans charge de famille).<br>
+    Chaque taux s'applique uniquement à la fraction de revenu dans la tranche,<br>
+    pas à la totalité du net imposable. Source : BOFIP — barème 2025.</div>
+    <table class="pas-tbl">
+      <thead>
+        <tr>
+          <th>Tranche mensuelle</th>
+          <th class="r">Base imposée</th>
+          <th class="r">Taux</th>
+          <th class="r">Retenue</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr>
+          <td>Net imposable</td>
+          <td class="r c-gray">${fmt(netImposable)}</td>
+          <td class="r c-taux">${(r.taux_effectif * 100).toFixed(2)} %&nbsp;<span style="color:var(--dim);font-size:0.7em">(taux effectif)</span></td>
+          <td class="r c-purple" style="font-weight:bold">${fmt(r.total)}</td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
 window.showFormula = function(key) {
   const entry = _fmStore[key];
   if (!entry) return;
+
+  if (entry.type === 'pas') {
+    document.getElementById('fm-title').textContent = 'Prélèvement à la Source (PAS)';
+    document.getElementById('fm-badge').textContent = '── Détail par tranche — barème neutre mensuel DGFIP ─────────';
+    document.getElementById('fm-body').innerHTML = buildPasFormulaContent(entry.netImposable);
+    document.getElementById('fm-modal').classList.add('open');
+    return;
+  }
+
   const { c, type } = entry;
   const isSal = type === 'sal';
   const badge = c.code === 'REDUCTION_FILLON'
@@ -227,9 +313,9 @@ function renderDesktop(b) {
   const cots = b.cotisations;
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const tauxPas  = getPasTaux();
-  const montPas  = parseFloat(b.net_imposable) * tauxPas;
-  const netPayer = parseFloat(b.net_a_payer) - montPas;
+  const pas      = calculerPas(b.net_imposable);
+  const netPayer = parseFloat(b.net_a_payer) - pas.total;
+  _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
 
   // ── Barre récap ──
   const summaryBar = `
@@ -243,8 +329,8 @@ function renderDesktop(b) {
         <div class="sb-val c-green">${fmt(b.net_imposable)}</div>
       </div>
       <div class="sb-cell">
-        <div class="sb-lbl">▸ PAS (${(tauxPas * 100).toFixed(1)} %)</div>
-        <div class="sb-val c-red">− ${fmt(montPas)}</div>
+        <div class="sb-lbl">▸ PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</div>
+        <div class="sb-val c-red">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</div>
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ NET À PAYER</div>
@@ -414,9 +500,8 @@ function renderMobile(b) {
 
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const tauxPas   = getPasTaux();
-  const montPas   = parseFloat(b.net_imposable) * tauxPas;
-  const netPayer  = parseFloat(b.net_a_payer) - montPas;
+  const pas       = calculerPas(b.net_imposable);
+  const netPayer  = parseFloat(b.net_a_payer) - pas.total;
   const superBrut = parseFloat(b.brut) + totalPat;
 
   const cotSalLines = cots
@@ -482,8 +567,8 @@ function renderMobile(b) {
 
       <!-- PAS -->
       <div class="mob-row pas-row">
-        <span class="mob-lbl">Prélèvement à la source (${(tauxPas * 100).toFixed(1)} %)</span>
-        <span class="mob-val c-purple">− ${fmt(montPas)}</span>
+        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
+        <span class="mob-val c-purple">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
       </div>
 
       <!-- Net à payer -->
@@ -712,12 +797,3 @@ document.getElementById("d-calc").addEventListener("click", () => calculate("des
 document.getElementById("m-calc").addEventListener("click", () => calculate("mobile"));
 document.getElementById("a-calc").addEventListener("click", calculerAnnee);
 
-// Sync taux PAS entre les deux vues
-document.getElementById("d-pas").addEventListener("input", e => {
-  const m = document.getElementById("m-pas"); if(m) m.value = e.target.value;
-  if (lastBulletin) renderAll(lastBulletin);
-});
-document.getElementById("m-pas").addEventListener("input", e => {
-  const d = document.getElementById("d-pas"); if(d) d.value = e.target.value;
-  if (lastBulletin) renderAll(lastBulletin);
-});

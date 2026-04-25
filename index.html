@@ -462,7 +462,9 @@
       font-style: normal;
       font-weight: normal;
     }
-    td:hover .formula-star { display: inline; }
+    td:hover .formula-star,
+    .sb-cell:hover .formula-star,
+    .pas-row:hover .formula-star { display: inline; }
 
     /* ── Modal formule ───────────────────────────────────────── */
     #fm-modal {
@@ -540,6 +542,37 @@
       white-space: pre-wrap;
       margin: 0;
     }
+
+    /* ── Table tranches PAS ─────────────────────────────────── */
+    .pas-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.5rem;
+    }
+    .pas-tbl th {
+      color: var(--muted);
+      font-size: 0.62rem;
+      font-weight: normal;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.28rem 0;
+      border-bottom: 1px solid var(--border);
+      font-family: inherit;
+    }
+    .pas-tbl th:not(:first-child) { text-align: right; }
+    .pas-tbl td { padding: 0.2rem 0; color: var(--text); }
+    .pas-tbl td:not(:first-child) { text-align: right; }
+    .pas-tbl td:first-child { color: var(--muted); width: 46%; }
+    .pas-tbl tr.pas-zero td { color: var(--dim); }
+    .pas-tbl tfoot tr td {
+      border-top: 1px solid var(--border);
+      padding-top: 0.45rem;
+      font-weight: bold;
+    }
+    .pas-tbl tfoot td:first-child { color: var(--text); }
+    .c-taux  { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -594,8 +627,6 @@
           </select></div>
         <div class="field"><label>DATE DE SIMULATION</label>
           <input type="date" id="d-date" min="2015-01-01" /></div>
-        <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
-          <input type="number" id="d-pas" value="8.0" step="0.5" min="0" max="45" /></div>
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
       </div>
     </div>
@@ -641,8 +672,6 @@
           </div>
           <div class="field" style="grid-column:1/-1"><label>DATE DE SIMULATION</label>
             <input type="date" id="m-date" min="2015-01-01" /></div>
-          <div class="field"><label>TAUX PAS / IMPÔT (%)</label>
-            <input type="number" id="m-pas" value="8.0" step="0.5" /></div>
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
         </div>
       </div>
