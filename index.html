@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Xenna Paye</title>
+  <!-- Détection mobile synchrone — avant tout rendu, évite le flash vue bureau -->
+  <script>
+    document.documentElement.classList.add(
+      window.matchMedia('(max-width: 680px)').matches ? 'init-mobile' : 'init-desktop'
+    );
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -156,6 +162,11 @@
       margin-top: 0.25rem;
     }
     .btn-calc:hover { background: var(--green); color: var(--bg); }
+
+    /* Masquage immédiat vue bureau sur mobile — évite le flash avant DOMContentLoaded */
+    html.init-mobile .view-desktop { display: none !important; }
+    html.init-mobile .view-mobile  { display: block !important; }
+    html.init-mobile .view-bar     { display: none !important; }
 
     /* ── Panneau résultat bureau ── */
     .result-panel { flex: 1; overflow: auto; }
