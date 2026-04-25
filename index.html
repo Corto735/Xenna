@@ -450,9 +450,15 @@
       .view-bar { display: none; }
     }
 
-    /* ── Lien formule f(x) (survol montant) ──────────────────── */
+    /* ── Lien formule f(x) ────────────────────────────────────── */
+    @keyframes fxChar {
+      from { opacity: 0; transform: translateY(-2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     .formula-star {
-      display: none;
+      /* visibility:hidden préserve l'espace — pas de saut du montant */
+      visibility: hidden;
+      pointer-events: none;
       cursor: pointer;
       color: var(--blue);
       font-size: 0.63em;
@@ -466,11 +472,22 @@
       text-decoration-color: color-mix(in srgb, var(--blue) 40%, transparent);
       text-underline-offset: 2px;
     }
-    .formula-star.visited { color: var(--purple); text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent); }
-    .formula-star:hover   { opacity: 0.8; }
+    .formula-star > span { opacity: 0; }
+    .formula-star.visited {
+      color: var(--purple);
+      text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent);
+    }
     td:hover .formula-star,
     .sb-cell:hover .formula-star,
-    .pas-row:hover .formula-star { display: inline; }
+    .pas-row:hover .formula-star {
+      visibility: visible;
+      pointer-events: auto;
+    }
+    td:hover .formula-star > span,
+    .sb-cell:hover .formula-star > span,
+    .pas-row:hover .formula-star > span {
+      animation: fxChar 80ms ease-out forwards;
+    }
 
     /* ── Modal formule ───────────────────────────────────────── */
     #fm-modal {

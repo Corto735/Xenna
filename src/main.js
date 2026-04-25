@@ -182,7 +182,10 @@ const BASE_FORMULES = {
 };
 
 function buildFormulaStar(key) {
-  return `<span class="formula-star" data-fmkey="${key}" onclick="event.stopPropagation();showFormula('${key}')">f(x)</span>`;
+  const spans = ['f','(','x',')']
+    .map((ch, i) => `<span style="animation-delay:${i * 45}ms">${ch}</span>`)
+    .join('');
+  return `<span class="formula-star" data-fmkey="${key}" onclick="event.stopPropagation();showFormula('${key}')">${spans}</span>`;
 }
 
 function buildFormulaContent(c, type) {
