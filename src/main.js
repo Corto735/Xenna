@@ -494,6 +494,53 @@ function renderDesktop(b) {
   el.innerHTML = simBanner + summaryBar + `<div class="tbl-wrap">${tableSal}${tablePat}${tableAlleg}</div>`;
 }
 
+// ─── Accordéon mobile ───────────────────────────────────────────────────────
+// panel : 'why' (explication + loi) | 'how' (formule de calcul)
+window.mobToggle = function(id, panel) {
+  const wrap = document.getElementById('mob-expand-' + id);
+  const why  = document.getElementById('mob-expand-' + id + '-why');
+  const how  = document.getElementById('mob-expand-' + id + '-how');
+  if (!wrap) return;
+  const isOpen = wrap.style.display !== 'none';
+  const cur    = wrap.dataset.panel;
+  if (!isOpen) {
+    wrap.style.display = 'block';
+    wrap.dataset.panel = panel;
+    why.style.display = panel === 'why' ? 'block' : 'none';
+    how.style.display = panel === 'how' ? 'block' : 'none';
+  } else if (cur === panel) {
+    wrap.style.display = 'none';
+  } else {
+    wrap.dataset.panel = panel;
+    why.style.display = panel === 'why' ? 'block' : 'none';
+    how.style.display = panel === 'how' ? 'block' : 'none';
+  }
+};
+
+function buildMobCotRow(c, id, montantHtml, valCls, type) {
+  const formulaHtml = c.code === 'REDUCTION_FILLON'
+    ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
+    : buildFormulaContent(c, type);
+  const whyHtml = `
+    <div class="mob-exp-txt">${esc(c.explication)}</div>
+    ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
+  return `
+    <div>
+      <div class="mob-row">
+        <span class="mob-lbl mob-cot-lbl"
+              title="Explication et référence légale"
+              onclick="mobToggle('${id}','why')">${esc(c.libelle)}</span>
+        <span class="mob-val ${valCls} mob-cot-amt"
+              title="Formule de calcul"
+              onclick="mobToggle('${id}','how')">${montantHtml}</span>
+      </div>
+      <div class="mob-expand" id="mob-expand-${id}" style="display:none">
+        <div id="mob-expand-${id}-why">${whyHtml}</div>
+        <div id="mob-expand-${id}-how" style="display:none">${formulaHtml}</div>
+      </div>
+    </div>`;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // RENDU VUE MOBILE
 // ═════════════════════════════════════════════════════════════════════════════
@@ -511,28 +558,19 @@ function renderMobile(b) {
 
   const cotSalLines = cots
     .filter(c => parseFloat(c.montant_sal) > 0)
-    .map(c => `
-      <div class="mob-row">
-        <span class="mob-lbl">${c.libelle}</span>
-        <span class="mob-val c-red">− ${fmt(c.montant_sal)}</span>
-      </div>`).join("");
+    .map(c => buildMobCotRow(c, `${c.code}_sal`, `− ${fmt(c.montant_sal)}`, 'c-red', 'sal'))
+    .join('');
 
   const cotPatFiltered = cots.filter(c => parseFloat(c.montant_pat) > 0);
   const cotPatLines = cotPatFiltered
-    .map(c => `
-      <div class="mob-row">
-        <span class="mob-lbl">${c.libelle}</span>
-        <span class="mob-val c-orange">+ ${fmt(c.montant_pat)}</span>
-      </div>`).join("");
+    .map(c => buildMobCotRow(c, `${c.code}_pat`, `+ ${fmt(c.montant_pat)}`, 'c-orange', 'pat'))
+    .join('');
   const totalPatBrutMob = cotPatFiltered.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   const cotAllegLines = cots
     .filter(c => c.categorie === "Allègement")
-    .map(c => `
-      <div class="mob-row">
-        <span class="mob-lbl">${c.libelle}</span>
-        <span class="mob-val c-alleg">− ${fmt(Math.abs(parseFloat(c.montant_pat)))}</span>
-      </div>`).join("");
+    .map(c => buildMobCotRow(c, `${c.code}_alleg`, `− ${fmt(Math.abs(parseFloat(c.montant_pat)))}`, 'c-alleg', 'alleg'))
+    .join('');
 
   const totalAlleg = cots
     .filter(c => c.categorie === "Allègement")

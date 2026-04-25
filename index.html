@@ -386,6 +386,51 @@
       margin: 0;
     }
 
+    /* ── Accordéon mobile cotisations ─────────────────────── */
+    .mob-cot-lbl {
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .mob-cot-lbl:hover,
+    .mob-cot-lbl:active { color: var(--blue); }
+
+    .mob-cot-amt {
+      cursor: pointer;
+      transition: opacity 0.12s;
+    }
+    .mob-cot-amt:hover,
+    .mob-cot-amt:active { opacity: 0.7; }
+
+    .mob-expand {
+      background: #030710;
+      border-left: 2px solid var(--border);
+      padding: 0.65rem 0.9rem 0.65rem 0.8rem;
+      border-bottom: 1px solid #0c1520;
+    }
+
+    .mob-exp-txt {
+      font-size: 0.72rem;
+      color: var(--gray);
+      line-height: 1.7;
+      margin-bottom: 0.45rem;
+      white-space: pre-wrap;
+    }
+
+    .mob-exp-loi {
+      font-size: 0.62rem;
+      color: var(--muted);
+      border: 1px solid var(--dim);
+      padding: 0.18rem 0.5rem;
+      display: inline-block;
+      margin-top: 0.15rem;
+    }
+
+    /* formule dans le panneau how — reprend le style fm-calc */
+    .mob-expand .fm-calc { font-size: 0.76rem; }
+    .mob-expand .fm-generic { font-size: 0.72rem; }
+    .mob-expand .fm-base-note { font-size: 0.65rem; }
+    .mob-expand .fm-fillon { font-size: 0.68rem; }
+
     /* ══════════════════════════════
        VUE ANNUELLE
     ══════════════════════════════ */
