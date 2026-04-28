@@ -26,6 +26,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 use xenna_paie_lib::{
     calculs::{generer_annee, generer_bulletin},
     db::{init_db, ContextPaie},
+    forge::forge_router,
     models::{Salarie, Statut},
 };
 
@@ -113,6 +114,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
+        .merge(forge_router())
         .fallback_service(ServeDir::new(&dist))
         .layer(CorsLayer::permissive())
         .with_state(pool);

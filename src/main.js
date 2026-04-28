@@ -60,10 +60,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
+  // Tirage unique à l'arrivée — la paire H/F est fixée pour toute la session
+  window._heroH = _heroRandom(HEROS_H);
+  window._heroF = _heroRandom(HEROS_F);
+  _setNomFields(_heroH.prenom, _heroH.nom);
+  _syncToggleUI('H');
+
   // Détection automatique mobile / bureau — breakpoint identique au media query CSS
   const mq = window.matchMedia("(max-width: 680px)");
   const applyView = e => {
-    if (!document.body.classList.contains("is-annuel"))
+    const body = document.body;
+    if (!body.classList.contains("is-annuel")     &&
+        !body.classList.contains("is-forge")      &&
+        !body.classList.contains("is-apropos")    &&
+        !body.classList.contains("is-gaabrielle"))
       setView(e.matches ? "mobile" : "desktop");
   };
   mq.addEventListener("change", applyView);
@@ -82,13 +92,14 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  document.body.classList.toggle("is-mobile",  v === "mobile");
-  document.body.classList.toggle("is-desktop", v === "desktop");
-  document.body.classList.toggle("is-annuel",  v === "annuel");
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'gaabrielle'].forEach(name =>
+    document.body.classList.toggle('is-' + name, v === name)
+  );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
   document.getElementById("btn-mob") .classList.toggle("active", v === "mobile");
   document.getElementById("btn-ann") .classList.toggle("active", v === "annuel");
-  if (lastBulletin && v !== "annuel") renderAll(lastBulletin);
+  if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
+  if (v === 'forge') forgeInit();
 };
 
 // ── Formatage ────────────────────────────────────────────────────────────────
@@ -190,10 +201,13 @@ const BASE_FORMULES = {
   AGIRC_ARRCO_CEG_T2:   'Fraction du salaire entre 1 PMSS et 8 PMSS  — Tranche 2',
 };
 
-function buildFormulaStar(key) {
+function buildFormulaStar(key, interactive = true) {
   const spans = ['f','(','x',')']
     .map((ch, i) => `<span style="animation-delay:${i * 45}ms">${ch}</span>`)
     .join('');
+  if (!interactive) {
+    return `<span class="formula-star" aria-hidden="true">${spans}</span>`;
+  }
   return `<span class="formula-star" data-fmkey="${key}" onclick="event.stopPropagation();showFormula('${key}')">${spans}</span>`;
 }
 
@@ -282,10 +296,13 @@ window.showFormula = function(key) {
   const entry = _fmStore[key];
   if (!entry) return;
 
+  const fmBody = document.getElementById('fm-body');
+
   if (entry.type === 'pas') {
     document.getElementById('fm-title').textContent = 'Prélèvement à la Source (PAS)';
     document.getElementById('fm-badge').textContent = '── Détail par tranche — barème neutre mensuel DGFIP ─────────';
-    document.getElementById('fm-body').innerHTML = buildPasFormulaContent(entry.netImposable);
+    fmBody.className = 'fm-type-pas';
+    fmBody.innerHTML = buildPasFormulaContent(entry.netImposable);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
     return;
@@ -300,7 +317,8 @@ window.showFormula = function(key) {
       : '── Part patronale ───────────────────────────';
   document.getElementById('fm-title').textContent = c.libelle;
   document.getElementById('fm-badge').textContent = badge;
-  document.getElementById('fm-body').innerHTML = buildFormulaContent(c, type);
+  fmBody.className = `fm-type-${type}`;
+  fmBody.innerHTML = buildFormulaContent(c, type);
   document.getElementById('fm-modal').classList.add('open');
   document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
 };
@@ -386,10 +404,12 @@ function renderDesktop(b) {
 
       const keySal = `${c.code}_sal`;
       const keyPat = `${c.code}_pat`;
-      _fmStore[keySal] = { c, type: 'sal' };
-      _fmStore[keyPat] = { c, type: 'pat' };
-      const starSal = parseFloat(c.montant_sal) > 0 ? buildFormulaStar(keySal) : '';
-      const starPat = parseFloat(c.montant_pat) > 0 ? buildFormulaStar(keyPat) : '';
+      const hasFmSal = parseFloat(c.montant_sal) > 0;
+      const hasFmPat = parseFloat(c.montant_pat) > 0;
+      if (hasFmSal) _fmStore[keySal] = { c, type: 'sal' };
+      if (hasFmPat) _fmStore[keyPat] = { c, type: 'pat' };
+      const starSal = buildFormulaStar(keySal, hasFmSal);
+      const starPat = buildFormulaStar(keyPat, hasFmPat);
 
       return `
         <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
@@ -538,7 +558,7 @@ window.mobToggle = function(id, panel) {
 function buildMobCotRow(c, id, montantHtml, valCls, type) {
   const formulaHtml = c.code === 'REDUCTION_FILLON'
     ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
-    : buildFormulaContent(c, type);
+    : `<div class="fm-type-${type}">${buildFormulaContent(c, type)}</div>`;
   const whyHtml = `
     <div class="mob-exp-txt">${esc(c.explication)}</div>
     ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
@@ -876,4 +896,679 @@ window.syncParam = function(paramName, checked) {
 document.getElementById("d-calc").addEventListener("click", () => calculate("desktop"));
 document.getElementById("m-calc").addEventListener("click", () => calculate("mobile"));
 document.getElementById("a-calc").addEventListener("click", calculerAnnee);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FORGE MÉTIER
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Conventions collectives proposées dans le formulaire (triées alphabétiquement)
+const LISTE_CCN = [
+  { idcc: '1261', libelle: 'Acteurs du lien social et familial (ALISFA)' },
+  { idcc: '2941', libelle: 'Aide, accompagnement, soins et services à domicile' },
+  { idcc: '1747', libelle: 'Activités industrielles de boulangerie et de pâtisserie' },
+  { idcc: '2149', libelle: 'Activités du déchet' },
+  { idcc: '2335', libelle: 'Agences générales d\'assurances' },
+  { idcc: '1686', libelle: 'Audiovisuel, électronique et équipement ménager' },
+  { idcc: '2120', libelle: 'Banque' },
+  { idcc: '3210', libelle: 'Banque Populaire' },
+  { idcc: '0567', libelle: 'Bijouterie, joaillerie, orfèvrerie (obsolète)' },
+  { idcc: '0158', libelle: 'Bois et scieries' },
+  { idcc: '0992', libelle: 'Boucherie' },
+  { idcc: '0843', libelle: 'Boulangerie-pâtisserie artisanales' },
+  { idcc: '1606', libelle: 'Bricolage' },
+  { idcc: '1486', libelle: 'Bureaux d\'études techniques et sociétés de conseils (Syntec)' },
+  { idcc: '0787', libelle: 'Cabinets d\'experts-comptables et de commissaires aux comptes' },
+  { idcc: '2332', libelle: 'Cabinets d\'architectes' },
+  { idcc: '1619', libelle: 'Cabinets dentaires' },
+  { idcc: '2420', libelle: 'Cadres du bâtiment' },
+  { idcc: '3212', libelle: 'Cadres des travaux publics' },
+  { idcc: '1256', libelle: 'Cadres des entreprises de gestion d\'équipements thermiques et de climatisation' },
+  { idcc: '0211', libelle: 'Cadres des industries de carrières et matériaux (obsolète)' },
+  { idcc: '0045', libelle: 'Caoutchouc' },
+  { idcc: '2257', libelle: 'Casinos' },
+  { idcc: '0783', libelle: 'Centres d\'hébergement et de réadaptation sociale' },
+  { idcc: '0953', libelle: 'Charcuterie de détail' },
+  { idcc: '1580', libelle: 'Chaussure' },
+  { idcc: '2060', libelle: 'Chaînes de cafétérias' },
+  { idcc: '1557', libelle: 'Commerce des articles de sports et d\'équipements de loisirs' },
+  { idcc: '2216', libelle: 'Commerce de détail et de gros à prédominance alimentaire' },
+  { idcc: '1505', libelle: 'Commerce de détail alimentaire non spécialisé' },
+  { idcc: '2198', libelle: 'Commerce à distance et E-commerce' },
+  { idcc: '1483', libelle: 'Commerce de détail de l\'habillement' },
+  { idcc: '1487', libelle: 'Commerce de détail de l\'horlogerie-bijouterie' },
+  { idcc: '3237', libelle: 'Commerce de détail alimentaire spécialisé' },
+  { idcc: '1225', libelle: 'Commerce de la Réunion' },
+  { idcc: '0468', libelle: 'Commerce succursaliste de la chaussure' },
+  { idcc: '0573', libelle: 'Commerces de gros' },
+  { idcc: '1517', libelle: 'Commerces de détail non alimentaires (Codena)' },
+  { idcc: '0500', libelle: 'Commerces de gros de l\'habillement, mercerie, chaussure et jouet' },
+  { idcc: '3243', libelle: 'Commerces de quincaillerie, fournitures industrielles, fers, métaux et équipement de la maison' },
+  { idcc: '2596', libelle: 'Coiffure' },
+  { idcc: '1611', libelle: 'Communication écrite directe' },
+  { idcc: '1286', libelle: 'Confiserie, chocolaterie, biscuiterie' },
+  { idcc: '2583', libelle: 'Concessionnaires et exploitants d\'autoroutes ou d\'ouvrages routiers' },
+  { idcc: '3217', libelle: 'Convention collective nationale de la branche ferroviaire' },
+  { idcc: '2272', libelle: 'Convention collective nationale de l\'assainissement et de la maintenance industrielle' },
+  { idcc: '2002', libelle: 'Convention collective interrégionale de la blanchisserie, laverie, location de linge, nettoyage à sec, pressing et teinturerie du 17 novembre 1997' },
+  { idcc: '2247', libelle: 'Courtage d\'assurances et/ou de réassurances' },
+  { idcc: '0303', libelle: 'Couture parisienne et autres métiers de la mode' },
+  { idcc: '0733', libelle: 'Détaillants en chaussures' },
+  { idcc: '1605', libelle: 'Désinfection, désinsectisation, dératisation' },
+  { idcc: '1536', libelle: 'Distributeurs conseils hors domicile' },
+  { idcc: '2372', libelle: 'Distribution directe' },
+  { idcc: '1408', libelle: 'Distribution, Logistique et Services des Energies de Proximité' },
+  { idcc: '2121', libelle: 'Édition' },
+  { idcc: '1518', libelle: 'Education, culture, loisirs et animation agissant pour l\'utilité sociale et environnementale, au service des territoires (ECLAT)' },
+  { idcc: '2609', libelle: 'Employés, techniciens et agents de maîtrise du bâtiment' },
+  { idcc: '2614', libelle: 'Employés, techniciens et agents de maîtrise des travaux publics' },
+  { idcc: '0135', libelle: 'Employés techniciens et agents de maîtrise des industries de carrières et de matériaux (obsolète)' },
+  { idcc: '3218', libelle: 'Enseignement privé non lucratif' },
+  { idcc: '2691', libelle: 'Enseignement privé hors contrat' },
+  { idcc: '3043', libelle: 'Entreprises de propreté' },
+  { idcc: '3127', libelle: 'Entreprises de services à la personne' },
+  { idcc: '1285', libelle: 'Entreprises artistiques et culturelles' },
+  { idcc: '1539', libelle: 'Entreprises du bureau et du numérique - Commerces et services (Eben)' },
+  { idcc: '1412', libelle: 'Entreprises d\'installation sans fabrication de matériel aéraulique, thermique, frigorifique' },
+  { idcc: '2717', libelle: 'Entreprises techniques au service de la création et de l\'évènement' },
+  { idcc: '3032', libelle: 'Esthétique' },
+  { idcc: '0029', libelle: 'Établissements privés d\'hospitalisation, de soins, de cure et de garde à but non lucratif (CCN 51 - FEHAP)' },
+  { idcc: '0413', libelle: 'Établissements et services pour personnes inadaptées et handicapées (CCN 66)' },
+  { idcc: '0405', libelle: 'Établissements médico-sociaux de l\'union intersyndicale des secteurs sanitaires et sociaux (CCN 65)' },
+  { idcc: '0478', libelle: 'Établissements financiers' },
+  { idcc: '0915', libelle: 'Expertises en matière d\'évaluations industrielles et commerciales' },
+  { idcc: '1307', libelle: 'Exploitation cinématographique' },
+  { idcc: '1405', libelle: 'Expédition et exportation de fruits et légumes' },
+  { idcc: '1411', libelle: 'Fabrication de l\'ameublement' },
+  { idcc: '0669', libelle: 'Fabrication mécanique du verre' },
+  { idcc: '1821', libelle: 'Fabrication du verre à la main, semi-automatique et mixte' },
+  { idcc: '1031', libelle: 'Fédération nationale des associations familiales rurales' },
+  { idcc: '1978', libelle: 'Fleuristes, vente et services des animaux familiers' },
+  { idcc: '0200', libelle: 'Froid' },
+  { idcc: '1043', libelle: 'Gardiens d\'immeubles' },
+  { idcc: '2543', libelle: 'Géomètres et experts-fonciers' },
+  { idcc: '2021', libelle: 'Golf' },
+  { idcc: '2156', libelle: 'Grands magasins' },
+  { idcc: '2336', libelle: 'Habitat et du Logement Accompagnés' },
+  { idcc: '1631', libelle: 'Hôtellerie de plein air' },
+  { idcc: '1979', libelle: 'Hôtels, cafés, restaurants (HCR)' },
+  { idcc: '2264', libelle: 'Hospitalisation privée (FHP)' },
+  { idcc: '1921', libelle: 'Huissiers de justice' },
+  { idcc: '0044', libelle: 'Industries chimiques' },
+  { idcc: '1534', libelle: 'Industrie et commerces en gros des viandes' },
+  { idcc: '3233', libelle: 'Industrie de la fabrication des ciments' },
+  { idcc: '2089', libelle: 'Industrie des panneaux à base de bois' },
+  { idcc: '0176', libelle: 'Industrie pharmaceutique' },
+  { idcc: '1388', libelle: 'Industrie du pétrole' },
+  { idcc: '0112', libelle: 'Industrie laitière' },
+  { idcc: '0018', libelle: 'Industrie textile' },
+  { idcc: '3236', libelle: 'Industrie et services nautiques' },
+  { idcc: '3109', libelle: 'Industries alimentaires diverses' },
+  { idcc: '0247', libelle: 'Industries de l\'habillement' },
+  { idcc: '2542', libelle: 'Industries métallurgiques, mécaniques et connexes de l\'Aisne (obsolète)' },
+  { idcc: '3209', libelle: 'Industries métallurgiques, mécaniques et connexes du Doubs (obsolète)' },
+  { idcc: '2003', libelle: 'Industries métallurgiques, électriques et électroniques des Vosges (obsolète)' },
+  { idcc: '2630', libelle: 'Industries métallurgiques des Bouches-du-Rhône et Alpes-de-Haute-Provence (obsolète)' },
+  { idcc: '1396', libelle: 'Industries de produits alimentaires élaborés' },
+  { idcc: '0489', libelle: 'Industries du cartonnage' },
+  { idcc: '0637', libelle: 'Industries et commerce de la récupération' },
+  { idcc: '1938', libelle: 'Industries de la transformation des volailles' },
+  { idcc: '1586', libelle: 'Industries charcutières' },
+  { idcc: '0184', libelle: 'Imprimerie de labeur et industries graphiques' },
+  { idcc: '0043', libelle: 'Import-export et commerce international' },
+  { idcc: '1527', libelle: 'Immobilier' },
+  { idcc: '0650', libelle: 'Ingénieurs et cadres de la métallurgie (obsolète)' },
+  { idcc: '1679', libelle: 'Inspection d\'assurance' },
+  { idcc: '1794', libelle: 'Institutions de retraite complémentaire' },
+  { idcc: '1760', libelle: 'Jardineries et graineteries' },
+  { idcc: '1480', libelle: 'Journalistes' },
+  { idcc: '0959', libelle: 'Laboratoires de biologie médicale extra-hospitaliers' },
+  { idcc: '3013', libelle: 'Librairie' },
+  { idcc: '1404', libelle: 'Machines et matériels agricoles et de travaux publics (SDLM)' },
+  { idcc: '0675', libelle: 'Maisons à succursales de vente au détail d\'habillement' },
+  { idcc: '0538', libelle: 'Manutention ferroviaire' },
+  { idcc: '2528', libelle: 'Maroquinerie' },
+  { idcc: '1589', libelle: 'Mareyeurs-expéditeurs' },
+  { idcc: '2931', libelle: 'Marchés financiers' },
+  { idcc: '3222', libelle: 'Menuiseries charpentes et constructions industrialisées et des portes planes' },
+  { idcc: '0822', libelle: 'Mensuels de la métallurgie de la Savoie (obsolète)' },
+  { idcc: '1387', libelle: 'Mensuels de la métallurgie des Flandres (obsolète)' },
+  { idcc: '0914', libelle: 'Mensuels de la métallurgie de l\'Ain (obsolète)' },
+  { idcc: '1930', libelle: 'Meunerie' },
+  { idcc: '2190', libelle: 'Missions locales et PAIO des maisons de l\'emploi et PLIE' },
+  { idcc: '1499', libelle: 'Miroiterie, transformation et négoce du verre' },
+  { idcc: '0827', libelle: 'Métallurgie des Ardennes (obsolète)' },
+  { idcc: '0863', libelle: 'Métallurgie d\'Ille-et-Vilaine et du Morbihan (obsolète)' },
+  { idcc: '1867', libelle: 'Métallurgie de la Drôme et de l\'Ardèche (obsolète)' },
+  { idcc: '0984', libelle: 'Métallurgie d\'Eure-et-Loir (obsolète)' },
+  { idcc: '2992', libelle: 'Métallurgie d\'Indre-et-Loire (obsolète)' },
+  { idcc: '0898', libelle: 'Métallurgie de l\'Allier (obsolète)' },
+  { idcc: '1572', libelle: 'Métallurgie de la Charente (obsolète)' },
+  { idcc: '1885', libelle: 'Métallurgie de la Côte-d\'Or (obsolète)' },
+  { idcc: '1635', libelle: 'Métallurgie de la Gironde et des Landes (obsolète)' },
+  { idcc: '1578', libelle: 'Métallurgie de la Loire et de l\'arrondissement d\'Yssingeaux (obsolète)' },
+  { idcc: '0828', libelle: 'Métallurgie de la Manche (obsolète)' },
+  { idcc: '0899', libelle: 'Métallurgie de la Marne (obsolète)' },
+  { idcc: '1813', libelle: 'Métallurgie de la région de Maubeuge (obsolète)' },
+  { idcc: '1525', libelle: 'Métallurgie de la région dunkerquoise (obsolète)' },
+  { idcc: '0930', libelle: 'Métallurgie de la Sarthe (obsolète)' },
+  { idcc: '0920', libelle: 'Métallurgie de la Vienne (obsolète)' },
+  { idcc: '3053', libelle: 'Métallurgie de Haute-Saône (obsolète)' },
+  { idcc: '1576', libelle: 'Métallurgie du Cher (obsolète)' },
+  { idcc: '0943', libelle: 'Métallurgie du Calvados (obsolète)' },
+  { idcc: '0860', libelle: 'Métallurgie du Finistère (obsolète)' },
+  { idcc: '2126', libelle: 'Métallurgie du Gard et de la Lozère (obsolète)' },
+  { idcc: '1912', libelle: 'Métallurgie du Haut-Rhin (obsolète)' },
+  { idcc: '0836', libelle: 'Métallurgie de la Haute-Savoie (obsolète)' },
+  { idcc: '0937', libelle: 'Métallurgie de la Haute-Vienne et de la Creuse (obsolète)' },
+  { idcc: '1577', libelle: 'Métallurgie de l\'Hérault, de l\'Aude et des Pyrénées-Orientales (obsolète)' },
+  { idcc: '2221', libelle: 'Métallurgie de l\'Isère et des Hautes-Alpes' },
+  { idcc: '1369', libelle: 'Métallurgie de Loire-Atlantique (obsolète)' },
+  { idcc: '2579', libelle: 'Métallurgie du Loir-et-Cher (obsolète)' },
+  { idcc: '1966', libelle: 'Métallurgie du Loiret (obsolète)' },
+  { idcc: '1902', libelle: 'Métallurgie du Maine-et-Loire (obsolète)' },
+  { idcc: '2266', libelle: 'Métallurgie de la Mayenne (obsolète)' },
+  { idcc: '1365', libelle: 'Métallurgie de Meurthe-et-Moselle (obsolète)' },
+  { idcc: '2755', libelle: 'Industries de la métallurgie de Belfort/Montbéliard (obsolète)' },
+  { idcc: '1059', libelle: 'Métallurgie des Midi-Pyrénées (obsolète)' },
+  { idcc: '0714', libelle: 'Métallurgie de la Moselle (obsolète)' },
+  { idcc: '0948', libelle: 'Métallurgie de l\'Orne (obsolète)' },
+  { idcc: '2700', libelle: 'Métallurgie de l\'Oise (obsolète)' },
+  { idcc: '1472', libelle: 'Métallurgie du Pas-de-Calais (obsolète)' },
+  { idcc: '2615', libelle: 'Métallurgie des Pyrénées-Atlantiques et du Seignanx (obsolète)' },
+  { idcc: '0878', libelle: 'Métallurgie du Rhône (obsolète)' },
+  { idcc: '1604', libelle: 'Métallurgie de Rouen et de Dieppe (obsolète)' },
+  { idcc: '1564', libelle: 'Métallurgie de Saône-et-Loire (obsolète)' },
+  { idcc: '0911', libelle: 'Métallurgie de Seine-et-Marne (obsolète)' },
+  { idcc: '2980', libelle: 'Métallurgie de la Somme (obsolète)' },
+  { idcc: '1592', libelle: 'Métallurgie du Valenciennois et du Cambrésis (obsolète)' },
+  { idcc: '2489', libelle: 'Métallurgie de la Vendée (obsolète)' },
+  { idcc: '1634', libelle: 'Métallurgie des Côtes-d\'Armor (obsolète)' },
+  { idcc: '2630', libelle: 'Métallurgie des Bouches-du-Rhône (obsolète)' },
+  { idcc: '1315', libelle: 'Industries métallurgiques et mécaniques de la Haute-Marne et de la Meuse (obsolète)' },
+  { idcc: '1732', libelle: 'Métallurgie de l\'Yonne (obsolète)' },
+  { idcc: '1560', libelle: 'Métallurgiques des Alpes-Maritimes (obsolète)' },
+  { idcc: '0979', libelle: 'Métallurgiques de l\'arrondissement du Havre (obsolète)' },
+  { idcc: '2128', libelle: 'Mutualité' },
+  { idcc: '1077', libelle: 'Négoce et industrie des produits du sol, engrais et produits connexes' },
+  { idcc: '1880', libelle: 'Négoce de l\'ameublement' },
+  { idcc: '1982', libelle: 'Négoce et prestations de services dans les domaines médico-techniques' },
+  { idcc: '1947', libelle: 'Négoce de bois d\'oeuvre et produits dérivés (obsolète)' },
+  { idcc: '0054', libelle: 'Non-cadres des industries métallurgiques et mécaniques de la région parisienne (obsolète)' },
+  { idcc: '0998', libelle: 'Non-cadres de l\'exploitation d\'équipements thermiques et de génie climatique' },
+  { idcc: '2205', libelle: 'Notaires' },
+  { idcc: '3220', libelle: 'Offices publics de l\'habitat' },
+  { idcc: '3245', libelle: 'Opérateurs de voyages et guides' },
+  { idcc: '1431', libelle: 'Optique-lunetterie de détail' },
+  { idcc: '1316', libelle: 'Organismes de tourisme social et familial' },
+  { idcc: '1909', libelle: 'Organismes de tourisme' },
+  { idcc: '1516', libelle: 'Organismes de formation' },
+  { idcc: '1790', libelle: 'Parcs de loisirs et d\'attractions' },
+  { idcc: '1267', libelle: 'Pâtisserie' },
+  { idcc: '1000', libelle: 'Personnel des cabinets d\'avocats' },
+  { idcc: '1147', libelle: 'Personnel des cabinets médicaux' },
+  { idcc: '0275', libelle: 'Personnel au sol du transport aérien' },
+  { idcc: '2046', libelle: 'Personnel non médical des centres de lutte contre le cancer' },
+  { idcc: '2972', libelle: 'Personnel sédentaire des entreprises de navigation' },
+  { idcc: '1558', libelle: 'Personnel des industries céramiques' },
+  { idcc: '1996', libelle: 'Pharmacie d\'officine' },
+  { idcc: '1504', libelle: 'Poissonnerie' },
+  { idcc: '0759', libelle: 'Pompes funèbres' },
+  { idcc: '2683', libelle: 'Portage de presse' },
+  { idcc: '3017', libelle: 'Ports et Manutention' },
+  { idcc: '3230', libelle: 'Presse (Information spécialisée [ETAM et cadres])' },
+  { idcc: '3242', libelle: 'Presse quotidienne et hebdomadaire en régions' },
+  { idcc: '2098', libelle: 'Prestataires de services du secteur tertiaire' },
+  { idcc: '1351', libelle: 'Prévention et sécurité' },
+  { idcc: '1512', libelle: 'Promotion immobilière' },
+  { idcc: '0292', libelle: 'Plasturgie' },
+  { idcc: '3168', libelle: 'Professions de la photographie' },
+  { idcc: '3244', libelle: 'Professions réglementées auprès des juridictions' },
+  { idcc: '1555', libelle: 'Produits à usage pharmaceutique, parapharmaceutique et vétérinaire' },
+  { idcc: '1513', libelle: 'Production des eaux embouteillées, des boissons rafraîchissantes sans alcool et de bière' },
+  { idcc: '2642', libelle: 'Production audiovisuelle' },
+  { idcc: '3238', libelle: 'Production et transformation des papiers et cartons' },
+  { idcc: '0653', libelle: 'Producteurs salariés de base des services extérieurs de production des sociétés d\'assurances' },
+  { idcc: '0993', libelle: 'Prothèse dentaire' },
+  { idcc: '0086', libelle: 'Publicité' },
+  { idcc: '1621', libelle: 'Répartition pharmaceutique' },
+  { idcc: '0454', libelle: 'Remontées mécaniques et domaines skiables' },
+  { idcc: '1266', libelle: 'Restauration de collectivités' },
+  { idcc: '1501', libelle: 'Restauration rapide' },
+  { idcc: '1413', libelle: 'Salariés permanents des entreprises de travail temporaire' },
+  { idcc: '3216', libelle: 'Salariés du négoce des matériaux de construction' },
+  { idcc: '3219', libelle: 'Salariés en portage salarial' },
+  { idcc: '1875', libelle: 'Salariés des cabinets et cliniques vétérinaires' },
+  { idcc: '0897', libelle: 'Services de prévention et de santé au travail interentreprises' },
+  { idcc: '1090', libelle: 'Services de l\'automobile' },
+  { idcc: '2147', libelle: 'Services d\'eau et d\'assainissement' },
+  { idcc: '2344', libelle: 'Sidérurgie (Nord, Moselle, Meurthe-et-Moselle)' },
+  { idcc: '1672', libelle: 'Sociétés d\'assurances' },
+  { idcc: '1801', libelle: 'Sociétés d\'assistance' },
+  { idcc: '2150', libelle: 'Sociétés anonymes et fondations d\'HLM' },
+  { idcc: '3090', libelle: 'Spectacle vivant (secteur privé)' },
+  { idcc: '2511', libelle: 'Sport' },
+  { idcc: '2728', libelle: 'Sucreries, sucreries-distilleries et raffineries de sucre' },
+  { idcc: '2219', libelle: 'Taxis parisiens salariés' },
+  { idcc: '2148', libelle: 'Télécommunications' },
+  { idcc: '3241', libelle: 'Télédiffusion' },
+  { idcc: '1424', libelle: 'Transports publics' },
+  { idcc: '0016', libelle: 'Transports routiers et activités auxiliaires du transport' },
+  { idcc: '1170', libelle: 'Tuiles et briques (obsolète)' },
+  { idcc: '0087', libelle: 'Ouvriers des industries de carrières et de matériaux (obsolète)' },
+  { idcc: '1702', libelle: 'Ouvriers de travaux publics' },
+  { idcc: '1596', libelle: 'Ouvriers des entreprises du bâtiment de moins de 10 salariés' },
+  { idcc: '1597', libelle: 'Ouvriers des entreprises du bâtiment de plus de 10 salariés' },
+  { idcc: '2389', libelle: 'Ouvriers du bâtiment et des travaux publics région de La Réunion' },
+  { idcc: '2328', libelle: 'Ouvriers du bâtiment et des travaux publics de la Guadeloupe et dépendances' },
+  { idcc: '2564', libelle: 'Vétérinaires praticiens salariés' },
+  { idcc: '0493', libelle: 'Vins, cidres, jus de fruits, sirops, spiritueux et liqueurs de France' },
+].sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'));
+
+// Options HTML précalculées (une seule fois)
+const CCN_OPTIONS = '<option value="">— Choisir une CCN —</option>' +
+  LISTE_CCN.map(c => `<option value="${c.idcc}">${c.idcc} — ${c.libelle}</option>`).join('');
+
+let forgeCache = []; // profils chargés, pour éviter un re-fetch sur clic carte
+
+// ── Navigation interne à la forge ────────────────────────────────────────────
+window.forgeNav = function(etat) {
+  ['liste', 'detail', 'creer'].forEach(e => {
+    document.getElementById('forge-' + e).style.display = e === etat ? 'block' : 'none';
+  });
+};
+
+// ── Chargement de l'annuaire ──────────────────────────────────────────────────
+async function forgeInit() {
+  forgeNav('liste');
+  const cards = document.getElementById('forge-cards');
+  const sub   = document.getElementById('forge-subtitle');
+
+  cards.innerHTML = `<div style="color:var(--muted);font-size:0.75rem;padding:0.5rem 0">chargement…</div>`;
+  try {
+    const r = await fetch('/forge/contributeurs');
+    if (!r.ok) {
+      const body = await r.text();
+      throw new Error(`HTTP ${r.status} — ${body || r.statusText}`);
+    }
+    forgeCache = await r.json();
+    const n = forgeCache.length;
+    sub.textContent = n === 0
+      ? 'aucun contributeur pour l\'instant'
+      : `${n} contributeur${n > 1 ? 's' : ''} · ${forgeCache.reduce((s, p) => s + p.expertises.length, 0)} expertises CCN`;
+    cards.innerHTML = n === 0
+      ? `<div style="color:var(--muted);font-size:0.75rem">Aucun profil encore — sois le premier à rejoindre.</div>`
+      : forgeCache.map(renderCarteForge).join('');
+  } catch(e) {
+    cards.innerHTML = `<div style="color:var(--red);font-size:0.75rem">Erreur : ${esc(errToStr(e))}</div>`;
+  }
+}
+
+// ── Carte annuaire ────────────────────────────────────────────────────────────
+function renderCarteForge(p) {
+  const badges = p.expertises.slice(0, 5).map(e => {
+    const cls = e.niveau === 'Maîtrisée' ? 'm' : e.niveau === 'Pratiquée' ? 'p' : 'c';
+    return `<span class="ccn-badge ${cls}" title="${esc(e.niveau)}">${esc(e.ccn_libelle)}</span>`;
+  }).join('');
+  const plus = p.expertises.length > 5
+    ? `<span class="ccn-badge c">+${p.expertises.length - 5}</span>` : '';
+
+  return `
+    <div class="forge-card" onclick="forgeAfficherProfil('${esc(p.pseudo)}')">
+      <div class="forge-card-pseudo">${esc(p.pseudo)}</div>
+      <div class="forge-card-poste">${esc(p.poste)} <span style="color:var(--dim);font-size:0.6em">${p.poste_est_actuel ? 'actuel' : 'visé'}</span></div>
+      <div class="forge-card-ccn">${badges}${plus}</div>
+      <div class="forge-card-stats">
+        <span><span class="forge-stat-val">${p.votes_received}</span> votes</span>
+        <span><span class="forge-stat-val">${p.topics_count}</span> sujets</span>
+        <span><span class="forge-stat-val">${p.posts_count}</span> réponses</span>
+      </div>
+    </div>`;
+}
+
+// ── Fiche profil ──────────────────────────────────────────────────────────────
+async function forgeAfficherProfil(pseudo) {
+  forgeNav('detail');
+  const el = document.getElementById('forge-profil-content');
+  el.innerHTML = `<div style="color:var(--muted);font-size:0.75rem">chargement…</div>`;
+  try {
+    // Utilise le cache si disponible
+    let p = forgeCache.find(x => x.pseudo.toLowerCase() === pseudo.toLowerCase());
+    if (!p) {
+      const r = await fetch(`/profil/${encodeURIComponent(pseudo)}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status} — ${await r.text() || r.statusText}`);
+      p = await r.json();
+    }
+    el.innerHTML = renderFicheProfil(p);
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);font-size:0.75rem">Erreur : ${esc(errToStr(e))}</div>`;
+  }
+}
+
+function renderFicheProfil(p) {
+  const linkedin = p.linkedin_url
+    ? `<a class="profil-linkedin" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener noreferrer">↗ LinkedIn</a>`
+    : '';
+
+  // Regrouper les CCN par niveau
+  const groupes = [
+    { niveau: 'Maîtrisée', cls: 'm', items: p.expertises.filter(e => e.niveau === 'Maîtrisée') },
+    { niveau: 'Pratiquée', cls: 'p', items: p.expertises.filter(e => e.niveau === 'Pratiquée') },
+    { niveau: 'Connue',    cls: 'c', items: p.expertises.filter(e => e.niveau === 'Connue')    },
+  ].filter(g => g.items.length > 0);
+
+  const lignesCcn = groupes.map(g => `
+    <tr class="profil-ccn-section"><td colspan="3">${esc(g.niveau)}</td></tr>
+    ${g.items.map(e => `
+    <tr>
+      <td class="profil-ccn-idcc">${esc(e.ccn_idcc)}</td>
+      <td>${esc(e.ccn_libelle)}</td>
+      <td><span class="ccn-badge ${g.cls}">${esc(g.niveau)}</span></td>
+    </tr>`).join('')}`).join('');
+
+  const tableCcn = p.expertises.length === 0
+    ? `<div style="color:var(--muted);font-size:0.72rem">Aucune CCN renseignée.</div>`
+    : `<table class="profil-ccn-tbl">${lignesCcn}</table>`;
+
+  const dateCreation = p.created_at ? formatDate(p.created_at.slice(0, 10)) : '—';
+
+  return `
+    <div class="profil-head">
+      <div>
+        <div class="profil-pseudo">${esc(p.pseudo)}</div>
+        <div class="profil-poste">${esc(p.poste)} <span style="color:var(--dim);font-size:0.85em">(${p.poste_est_actuel ? 'poste actuel' : 'poste visé'})</span></div>
+        ${linkedin}
+      </div>
+      <div class="profil-since">membre depuis le ${dateCreation}</div>
+    </div>
+
+    <div class="profil-body">
+      <div class="sect-label">PAIE FRANÇAISE</div>
+      ${p.paie_fr_niveau
+        ? `<span class="ccn-badge ${p.paie_fr_niveau === 'Maîtrisée' ? 'm' : p.paie_fr_niveau === 'Pratiquée' ? 'p' : 'c'}" style="font-size:0.75rem;padding:0.2rem 0.6rem">${esc(p.paie_fr_niveau)}</span>`
+        : `<span style="color:var(--dim);font-size:0.7rem">non renseigné</span>`}
+
+      ${p.pays && p.pays.length > 0 ? `
+      <div class="sect-label" style="margin-top:1rem">PAIE INTERNATIONALE</div>
+      <table class="profil-ccn-tbl">
+        ${[
+            { niveau: 'Maîtrisée', cls: 'm', items: p.pays.filter(x => x.niveau === 'Maîtrisée') },
+            { niveau: 'Pratiquée', cls: 'p', items: p.pays.filter(x => x.niveau === 'Pratiquée') },
+            { niveau: 'Connue',    cls: 'c', items: p.pays.filter(x => x.niveau === 'Connue')    },
+          ].filter(g => g.items.length > 0).map(g => `
+            <tr class="profil-ccn-section"><td colspan="3">${esc(g.niveau)}</td></tr>
+            ${g.items.map(x => `
+            <tr>
+              <td class="profil-ccn-idcc">${esc(x.pays_code)}</td>
+              <td>${esc(x.pays_libelle)}</td>
+              <td><span class="ccn-badge ${g.cls}">${esc(g.niveau)}</span></td>
+            </tr>`).join('')}`).join('')}
+      </table>` : ''}
+
+      <div class="sect-label" style="margin-top:1rem">EXPERTISES CCN</div>
+      ${tableCcn}
+    </div>
+
+    <div class="profil-stats">
+      <div class="profil-stat">
+        <div class="profil-stat-val">${p.votes_received}</div>
+        <div class="profil-stat-lbl">votes reçus</div>
+      </div>
+      <div class="profil-stat">
+        <div class="profil-stat-val">${p.votes_given}</div>
+        <div class="profil-stat-lbl">votes donnés</div>
+      </div>
+      <div class="profil-stat">
+        <div class="profil-stat-val">${p.topics_count}</div>
+        <div class="profil-stat-lbl">sujets</div>
+      </div>
+      <div class="profil-stat">
+        <div class="profil-stat-val">${p.posts_count}</div>
+        <div class="profil-stat-lbl">réponses</div>
+      </div>
+    </div>`;
+}
+
+// ── Toggle poste actuel / visé ────────────────────────────────────────────────
+window.setPosteType = function(estActuel) {
+  document.getElementById('poste_est_actuel_input').value = estActuel ? '1' : '0';
+  document.getElementById('ptog-actuel').className = 'ptog ' + (estActuel  ? 'ptog-on' : 'ptog-off');
+  document.getElementById('ptog-vise')  .className = 'ptog ' + (!estActuel ? 'ptog-on' : 'ptog-off');
+};
+
+// ── Pays frontaliers + Royaume-Uni ────────────────────────────────────────────
+const LISTE_PAYS = [
+  { code: 'BE', libelle: 'Belgique' },
+  { code: 'LU', libelle: 'Luxembourg' },
+  { code: 'DE', libelle: 'Allemagne' },
+  { code: 'CH', libelle: 'Suisse' },
+  { code: 'IT', libelle: 'Italie' },
+  { code: 'MC', libelle: 'Monaco' },
+  { code: 'ES', libelle: 'Espagne' },
+  { code: 'AD', libelle: 'Andorre' },
+  { code: 'GB', libelle: 'Royaume-Uni' },
+];
+const PAYS_OPTIONS = LISTE_PAYS.map(p => `<option value="${p.code}">${esc(p.libelle)}</option>`).join('');
+
+let forgePaysIdx = 0;
+
+window.forgeAjouterPays = function() {
+  const id  = ++forgePaysIdx;
+  const row = document.createElement('div');
+  row.className = 'forge-ccn-row';
+  row.id = 'forge-pays-' + id;
+  row.innerHTML = `
+    <select class="forge-pays-select">${PAYS_OPTIONS}</select>
+    <select class="forge-ccn-niveau">
+      <option value="Connue">Connue</option>
+      <option value="Pratiquée">Pratiquée</option>
+      <option value="Maîtrisée" selected>Maîtrisée</option>
+    </select>
+    <button type="button" class="forge-ccn-del" onclick="forgeSupprPays(${id})" title="Supprimer">×</button>`;
+  document.getElementById('forge-pays-list').appendChild(row);
+};
+
+window.forgeSupprPays = function(id) {
+  document.getElementById('forge-pays-' + id)?.remove();
+};
+
+// ── Formulaire création — gestion des lignes CCN ──────────────────────────────
+let forgeCcnIdx = 0;
+
+window.forgeAjouterCcn = function() {
+  const id  = ++forgeCcnIdx;
+  const row = document.createElement('div');
+  row.className = 'forge-ccn-row';
+  row.id = 'forge-ccn-' + id;
+  row.innerHTML = `
+    <select class="forge-ccn-select">${CCN_OPTIONS}</select>
+    <select class="forge-ccn-niveau">
+      <option value="Connue">Connue</option>
+      <option value="Pratiquée">Pratiquée</option>
+      <option value="Maîtrisée" selected>Maîtrisée</option>
+    </select>
+    <button type="button" class="forge-ccn-del" onclick="forgeSupprCcn(${id})" title="Supprimer">×</button>`;
+  document.getElementById('forge-ccn-list').appendChild(row);
+};
+
+window.forgeSupprCcn = function(id) {
+  document.getElementById('forge-ccn-' + id)?.remove();
+};
+
+// ── Soumission du formulaire de création ──────────────────────────────────────
+window.forgeSoumettre = async function(event) {
+  event.preventDefault();
+  const form   = document.getElementById('forge-form');
+  const errEl  = document.getElementById('forge-form-err');
+  const btnEl  = document.getElementById('forge-submit-btn');
+  errEl.textContent = '';
+
+  // Collecte des pays sélectionnés
+  const pays = [];
+  document.querySelectorAll('[id^="forge-pays-"]').forEach(row => {
+    const code   = row.querySelector('.forge-pays-select')?.value;
+    const niveau = row.querySelector('.forge-ccn-niveau')?.value;
+    const p = LISTE_PAYS.find(x => x.code === code);
+    if (code && p) pays.push({ pays_code: code, pays_libelle: p.libelle, niveau });
+  });
+
+  // Collecte des CCN sélectionnées
+  const expertises = [];
+  document.querySelectorAll('.forge-ccn-row:not([id^="forge-pays-"])').forEach(row => {
+    const idcc   = row.querySelector('.forge-ccn-select').value;
+    const niveau = row.querySelector('.forge-ccn-niveau').value;
+    const ccn    = LISTE_CCN.find(c => c.idcc === idcc);
+    if (idcc && ccn) expertises.push({ ccn_idcc: idcc, ccn_libelle: ccn.libelle, niveau });
+  });
+
+  const payload = {
+    email:            form.querySelector('[name="email"]').value.trim(),
+    pseudo:           form.querySelector('[name="pseudo"]').value.trim(),
+    poste:            form.querySelector('[name="poste"]').value.trim(),
+    linkedin_url:     form.querySelector('[name="linkedin_url"]').value.trim() || null,
+    poste_est_actuel: form.querySelector('[name="poste_est_actuel"]').value !== '0',
+    paie_fr_niveau:   form.querySelector('[name="paie_fr_niveau"]').value || null,
+    pays,
+    expertises,
+  };
+
+  // Validation JS basique
+  if (!payload.email)  { errEl.textContent = 'Email requis.'; return; }
+  if (!payload.pseudo) { errEl.textContent = 'Pseudo requis.'; return; }
+  if (!payload.poste)  { errEl.textContent = 'Poste requis.'; return; }
+
+  btnEl.disabled = true;
+  btnEl.textContent = '[ envoi… ]';
+
+  try {
+    const r = await fetch('/forge/profil', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status} — ${await r.text() || r.statusText}`);
+    const profil = await r.json();
+
+    // Ajouter en tête du cache et afficher la fiche
+    forgeCache.unshift(profil);
+    form.reset();
+    document.getElementById('forge-pays-list').innerHTML = '';
+    document.getElementById('forge-ccn-list').innerHTML  = '';
+    forgePaysIdx = 0;
+    forgeCcnIdx  = 0;
+    forgeAfficherProfil(profil.pseudo);
+  } catch(e) {
+    errEl.textContent = errToStr(e);
+    btnEl.disabled = false;
+    btnEl.textContent = '[ Rejoindre la Forge ]';
+  }
+};
+
+// ── Toggle H / F — écart salarial moyen ──────────────────────────────────────
+//
+// Easter egg pédagogique : basculer sur F applique −15 % sur le brut,
+// reflet de l'écart salarial moyen constaté entre femmes et hommes.
+// Les noms par défaut sont des héros de fantasy d'auteurs européens.
+// Dès qu'un nom est saisi manuellement, le toggle n'a plus d'effet.
+
+const HEROS_H = [
+  { prenom: 'Geralt',   nom: 'de Riv' },          // Sapkowski (polonais)
+  { prenom: 'Sam',      nom: 'Vimes' },            // Pratchett (britannique)
+  { prenom: 'Elric',    nom: 'de Melniboné' },     // Moorcock (britannique)
+  { prenom: 'Druss',    nom: 'la Légende' },       // Gemmell (britannique)
+  { prenom: 'Logen',    nom: 'Neuf-Doigts' },      // Abercrombie (britannique)
+  { prenom: 'Aragorn',  nom: 'Grands-Pas' },       // Tolkien (britannique)
+  { prenom: 'Jon',      nom: 'Shannow' },          // Gemmell (britannique)
+  { prenom: 'Salim',    nom: 'Dhibi' },            // Bottero (français)
+  { prenom: 'Bayaz',    nom: 'le Magi' },          // Abercrombie (britannique)
+  { prenom: 'Merlin',   nom: "l'Enchanteur" },     // tradition arthurienne européenne
+];
+
+const HEROS_F = [
+  { prenom: 'Lyra',     nom: 'Belacqua' },         // Pullman (britannique)
+  { prenom: 'Hermione', nom: 'Granger' },           // Rowling (britannique)
+  { prenom: 'Eowyn',    nom: 'du Rohan' },          // Tolkien (britannique)
+  { prenom: 'Ellana',   nom: 'Caldin' },            // Bottero (français)
+  { prenom: 'Ferro',    nom: 'Maljinn' },           // Abercrombie (britannique)
+  { prenom: 'Magrat',   nom: 'Garlick' },           // Pratchett (britannique)
+  { prenom: 'Ewilan',   nom: "Gil'Sayan" },         // Bottero (français)
+  { prenom: 'Sigarni',  nom: 'la Guerrière' },      // Gemmell (britannique)
+  { prenom: 'Rikke',    nom: 'la Nord' },           // Abercrombie (britannique)
+  { prenom: 'Tanaquil', nom: 'la Magicienne' },     // Tanith Lee (britannique)
+];
+
+let _genre     = 'H';
+let _defPrenom = '';
+let _defNom    = '';
+
+function _heroRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function _setNomFields(prenom, nom) {
+  ['d-prenom', 'm-prenom'].forEach(id => { const el = document.getElementById(id); if (el) el.value = prenom; });
+  ['d-nom',    'm-nom'   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = nom;    });
+  _defPrenom = prenom;
+  _defNom    = nom;
+}
+
+function _nomEstDefaut() {
+  const p = document.getElementById('d-prenom');
+  const n = document.getElementById('d-nom');
+  return p && n && p.value === _defPrenom && n.value === _defNom;
+}
+
+function _syncToggleUI(genre) {
+  const onH = genre === 'H';
+  ['d-hf-h', 'm-hf-h'].forEach(id => {
+    document.getElementById(id)?.classList.toggle('ptog-on',  onH);
+    document.getElementById(id)?.classList.toggle('ptog-off', !onH);
+  });
+  ['d-hf-f', 'm-hf-f'].forEach(id => {
+    document.getElementById(id)?.classList.toggle('ptog-on',  !onH);
+    document.getElementById(id)?.classList.toggle('ptog-off', onH);
+  });
+  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+    el.style.display = onH ? 'none' : 'inline';
+  });
+}
+
+window.setGenre = function(genre) {
+  if (genre === _genre) return;
+  if (!_nomEstDefaut()) return; // nom personnalisé → pas d'effet
+
+  const hero    = genre === 'F' ? window._heroF : window._heroH;
+  _setNomFields(hero.prenom, hero.nom);
+
+  const facteur = genre === 'F' ? 0.85 : (1 / 0.85);
+  ['d-brut', 'm-brut'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = Math.round(parseFloat(el.value) * facteur);
+  });
+
+  _genre = genre;
+  _syncToggleUI(genre);
+};
+
+// ── Burger menu ───────────────────────────────────────────────────────────────
+const burgerBtn  = document.getElementById('burger-btn');
+const burgerMenu = document.getElementById('burger-menu');
+
+function openBurger()  {
+  burgerBtn.classList.add('open');
+  burgerMenu.classList.add('open');
+}
+window.closeBurger = function() {
+  burgerBtn.classList.remove('open');
+  burgerMenu.classList.remove('open');
+};
+
+burgerBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  burgerMenu.classList.contains('open') ? closeBurger() : openBurger();
+});
+
+// Ferme le menu sur clic en dehors
+document.addEventListener('click', () => closeBurger());
+// Empêche la fermeture immédiate sur clic à l'intérieur du menu
+burgerMenu.addEventListener('click', e => e.stopPropagation());
 

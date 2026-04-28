@@ -230,7 +230,7 @@
       padding: 0.35rem 0.9rem;
       font-size: 0.62rem;
       font-weight: bold;
-      color: var(--yellow);
+      color: #ffd700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       border-bottom: 1px solid var(--border);
@@ -283,7 +283,7 @@
       align-items: flex-start;
       background: #050810;
     }
-    .expl-txt  { font-size: 0.73rem; color: var(--gray); line-height: 1.6; flex: 1; }
+    .expl-txt  { font-size: 0.73rem; color: #fef3a3; line-height: 1.6; flex: 1; }
     .expl-ref  {
       font-size: 0.65rem;
       color: var(--muted);
@@ -368,7 +368,7 @@
     .mob-row.section .mob-lbl {
       font-size: 0.62rem;
       font-weight: bold;
-      color: var(--yellow);
+      color: #ffd700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
@@ -438,7 +438,7 @@
 
     .mob-exp-txt {
       font-size: 0.72rem;
-      color: var(--gray);
+      color: #fef3a3;
       line-height: 1.7;
       margin-bottom: 0.45rem;
       white-space: pre-wrap;
@@ -615,12 +615,21 @@
     }
     .fm-base-note {
       font-size: 0.68rem;
-      color: var(--muted);
-      border-left: 2px solid var(--dim);
+      color: var(--blue);
+      border-left: 2px solid var(--blue);
       padding: 0.28rem 0.6rem;
       margin-bottom: 0.85rem;
       line-height: 1.5;
     }
+    /* Couleurs contextuelles — correspondance avec la cotisation cliquée */
+    .fm-type-sal   .fm-generic, .fm-type-sal   .fm-base-note { color: var(--red);    }
+    .fm-type-sal   .fm-base-note { border-left-color: var(--red);    }
+    .fm-type-pat   .fm-generic, .fm-type-pat   .fm-base-note { color: var(--orange); }
+    .fm-type-pat   .fm-base-note { border-left-color: var(--orange); }
+    .fm-type-alleg .fm-generic, .fm-type-alleg .fm-base-note { color: #4ade80;       }
+    .fm-type-alleg .fm-base-note { border-left-color: #4ade80;       }
+    .fm-type-pas   .fm-generic, .fm-type-pas   .fm-base-note { color: var(--purple); }
+    .fm-type-pas   .fm-base-note { border-left-color: var(--purple); }
     .fm-calc { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
     .fm-calc td { padding: 0.2rem 0; vertical-align: baseline; }
     .fm-calc td:first-child { color: var(--muted); width: 52%; }
@@ -726,6 +735,468 @@
     }
     .pas-tbl tfoot td:first-child { color: var(--text); }
     .c-taux  { color: var(--muted); }
+
+    /* ══════════════════════════════
+       BURGER MENU
+    ══════════════════════════════ */
+    .burger-wrap {
+      margin-left: auto;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .burger-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      cursor: pointer;
+      padding: 0.38rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s;
+    }
+    .burger-btn:hover,
+    .burger-btn.open { border-color: var(--blue); }
+    .burger-btn span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: var(--muted);
+      transition: background 0.15s;
+    }
+    .burger-btn:hover span,
+    .burger-btn.open span { background: var(--blue); }
+
+    .burger-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      min-width: 210px;
+      z-index: 200;
+      flex-direction: column;
+    }
+    .burger-menu.open { display: flex; }
+    .burger-item {
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.6rem 1rem;
+      text-align: left;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.12s, color 0.12s;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+    .burger-item:last-child { border-bottom: none; }
+    .burger-item:hover { background: var(--bg3); color: var(--blue); }
+    .burger-item-icon { font-size: 1rem; line-height: 1; margin-top: 0.05rem; flex-shrink: 0; }
+    .burger-item-sub {
+      display: block;
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+      letter-spacing: 0.03em;
+      font-weight: normal;
+    }
+
+    /* ══════════════════════════════
+       VUES FORGE & À PROPOS
+    ══════════════════════════════ */
+    .view-forge,
+    .view-apropos,
+    .view-gaabrielle { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+
+    body.is-forge .view-desktop,
+    body.is-forge .view-mobile,
+    body.is-forge .view-annuel    { display: none !important; }
+    body.is-forge .view-bar       { display: none !important; }
+    body.is-forge .view-forge     { display: block; }
+
+    body.is-apropos .view-desktop,
+    body.is-apropos .view-mobile,
+    body.is-apropos .view-annuel  { display: none !important; }
+    body.is-apropos .view-bar     { display: none !important; }
+    body.is-apropos .view-apropos { display: block; }
+
+    body.is-gaabrielle .view-desktop,
+    body.is-gaabrielle .view-mobile,
+    body.is-gaabrielle .view-annuel    { display: none !important; }
+    body.is-gaabrielle .view-bar       { display: none !important; }
+    body.is-gaabrielle .view-gaabrielle { display: block; }
+
+    /* Boutons de navigation des vues secondaires */
+    .page-exit,
+    .page-nav {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 1.1rem;
+      line-height: 1;
+      width: 1.8rem;
+      height: 1.8rem;
+      padding: 0;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .page-exit:hover,
+    .page-nav:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* × Fermer — dans la barre header sur desktop, fixé en bas à droite sur mobile */
+    .page-exit {
+      display: none; /* masqué hors vues secondaires */
+    }
+    body.is-forge     .page-exit,
+    body.is-apropos   .page-exit,
+    body.is-gaabrielle .page-exit { display: flex; }
+
+    @media (max-width: 680px) {
+      body.is-forge     .page-exit,
+      body.is-apropos   .page-exit,
+      body.is-gaabrielle .page-exit {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 150;
+      }
+    }
+
+    /* Étiquettes de section */
+    .sect-label {
+      font-size: 0.62rem;
+      font-weight: bold;
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.85rem;
+    }
+    .sect-label::before { content: '── '; }
+
+    /* ── À PROPOS : en-tête ── */
+    .about-head {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .about-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--blue);
+      letter-spacing: 0.12em;
+    }
+    .about-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-top: 0.4rem;
+      line-height: 1.7;
+    }
+
+    /* ── Grille stack technique ── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.65rem;
+      margin-bottom: 1.75rem;
+    }
+    .stack-card {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      padding: 0.85rem 1rem;
+    }
+    .stack-name    { font-size: 0.9rem; font-weight: bold; color: var(--blue); letter-spacing: 0.05em; }
+    .stack-version { font-size: 0.62rem; color: var(--muted); margin: 0.08rem 0 0.55rem; letter-spacing: 0.03em; }
+    .stack-why     { font-size: 0.6rem; font-weight: bold; color: var(--yellow); text-transform: uppercase;
+                     letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+    .stack-why::before { content: '· '; }
+    .stack-body    { font-size: 0.71rem; color: var(--gray); line-height: 1.65; }
+    .stack-body strong { color: var(--text); }
+    .stack-body code   { color: var(--orange); font-family: inherit; }
+
+    /* ── Principes ── */
+    .principles {
+      border-left: 2px solid var(--blue);
+      background: var(--bg3);
+      padding: 0.75rem 1rem;
+      font-size: 0.72rem;
+      color: var(--gray);
+      line-height: 1.9;
+      margin-bottom: 1.75rem;
+    }
+    .principles strong { color: var(--text); }
+
+    /* ── Encadré GPL ── */
+    .gpl-box {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      background: var(--bg3);
+      padding: 1rem 1.1rem;
+      font-size: 0.72rem;
+      color: var(--gray);
+      line-height: 1.9;
+      margin-bottom: 1.75rem;
+    }
+    .gpl-box strong { color: var(--text); }
+    .gpl-box em { color: var(--green); font-style: normal; font-weight: bold; }
+    .gpl-libertes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem 1.5rem;
+      margin: 0.65rem 0 0.85rem;
+      font-size: 0.69rem;
+      color: var(--muted);
+    }
+    .gpl-libertes span::before { content: '✓ '; color: var(--green); }
+    @media (max-width: 480px) { .gpl-libertes { grid-template-columns: 1fr; } }
+
+    /* ── Encadré "attention" (danger/note) ── */
+    .warn-box {
+      border: 1px solid var(--dim);
+      border-left: 3px solid var(--yellow);
+      background: var(--bg3);
+      padding: 0.75rem 1rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-top: 0.65rem;
+      margin-bottom: 1.75rem;
+    }
+    .warn-box strong { color: #ffd700; }
+
+    /* ── Crédit IA — toujours visible ── */
+    .ai-credit {
+      position: fixed;
+      bottom: 0.25rem;
+      right: 0.5rem;
+      font-size: 0.52rem;
+      color: rgba(255,255,255,0.18);
+      letter-spacing: 0.05em;
+      z-index: 50;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ══════════════════════════════
+       FORGE — ANNUAIRE
+    ══════════════════════════════ */
+    .forge-topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .forge-topbar-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    .forge-subtitle { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; letter-spacing: 0.04em; }
+    .forge-join-btn {
+      background: none;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: bold;
+      padding: 0.3rem 0.75rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+    }
+    .forge-join-btn:hover { background: var(--green); color: var(--bg); }
+
+    .forge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.65rem;
+    }
+    .forge-card {
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      padding: 1rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .forge-card:hover { border-color: var(--blue); background: #0a1020; }
+    .forge-card-pseudo { font-size: 0.88rem; font-weight: bold; color: var(--white); letter-spacing: 0.04em; }
+    .forge-card-poste  { font-size: 0.68rem; color: var(--muted); margin: 0.2rem 0 0.65rem; }
+    .forge-card-ccn    { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.7rem; min-height: 1.4rem; }
+    .forge-card-stats  { display: flex; gap: 1.1rem; font-size: 0.64rem; color: var(--muted); }
+    .forge-stat-val    { color: var(--text); font-weight: bold; }
+
+    /* Badges niveau CCN */
+    .ccn-badge {
+      font-size: 0.6rem;
+      padding: 0.12rem 0.38rem;
+      border: 1px solid;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .ccn-badge.m { color: var(--green);  border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+    .ccn-badge.p { color: var(--blue);   border-color: color-mix(in srgb, var(--blue)  50%, transparent); }
+    .ccn-badge.c { color: var(--muted);  border-color: var(--dim); }
+
+    /* ══════════════════════════════
+       FORGE — FICHE PROFIL
+    ══════════════════════════════ */
+    .profil-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .profil-pseudo  { font-size: 1.15rem; font-weight: bold; color: var(--white); letter-spacing: 0.06em; }
+    .profil-poste   { font-size: 0.72rem; color: var(--muted); margin: 0.25rem 0 0.5rem; }
+    .profil-linkedin {
+      font-size: 0.68rem;
+      color: var(--blue);
+      text-decoration: none;
+      border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
+      padding: 0.15rem 0.45rem;
+      display: inline-block;
+      transition: border-color 0.15s;
+    }
+    .profil-linkedin:hover { border-color: var(--blue); }
+    .profil-since { font-size: 0.62rem; color: var(--dim); align-self: flex-start; flex-shrink: 0; }
+
+    .profil-body   { margin-bottom: 1.5rem; }
+    .profil-ccn-tbl { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .profil-ccn-tbl td { padding: 0.28rem 0.5rem 0.28rem 0; border-bottom: 1px solid #0c1520; }
+    .profil-ccn-tbl td:last-child { text-align: right; }
+    .profil-ccn-idcc { color: var(--muted); width: 80px; font-variant-numeric: tabular-nums; }
+    .profil-ccn-section td {
+      background: var(--bg3);
+      color: var(--yellow);
+      font-size: 0.6rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .profil-stats {
+      display: flex;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .profil-stat {
+      flex: 1;
+      padding: 0.6rem 0.9rem;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+    .profil-stat:last-child { border-right: none; }
+    .profil-stat-val { font-size: 1.1rem; font-weight: bold; color: var(--blue); font-variant-numeric: tabular-nums; }
+    .profil-stat-lbl { font-size: 0.6rem; color: var(--muted); margin-top: 0.1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ══════════════════════════════
+       FORGE — FORMULAIRE CRÉATION
+    ══════════════════════════════ */
+    .forge-form { max-width: 620px; }
+    .forge-form-section { margin-bottom: 1.25rem; }
+    .forge-form .field { margin-bottom: 0.6rem; }
+
+    .forge-ccn-row {
+      display: grid;
+      grid-template-columns: 1fr 110px 28px;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+      align-items: center;
+    }
+    .forge-ccn-row input,
+    .forge-ccn-row select {
+      background: var(--bg);
+      border: 1px solid var(--dim);
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 0.28rem 0.45rem;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    .forge-ccn-row input:focus,
+    .forge-ccn-row select:focus { outline: none; border-color: var(--blue); }
+    .forge-ccn-row select option { background: var(--bg2); }
+    .forge-ccn-del {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      height: 100%;
+      transition: all 0.12s;
+    }
+    .forge-ccn-del:hover { border-color: var(--red); color: var(--red); }
+
+    .forge-add-ccn {
+      background: none;
+      border: 1px dashed var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+      margin-top: 0.3rem;
+    }
+    .forge-add-ccn:hover { border-color: var(--blue); color: var(--blue); border-style: solid; }
+    .forge-form-err { color: var(--red); font-size: 0.72rem; min-height: 1.2rem; margin-bottom: 0.4rem; }
+
+    /* Texte d'intro de l'annuaire */
+    .forge-intro {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    /* Toggle actuel / visé */
+    .poste-toggle { display: flex; }
+    .ptog {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.68rem;
+      padding: 0.22rem 0.65rem;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.12s;
+    }
+    .ptog:first-child { border-right: none; }
+    .ptog.ptog-on {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: var(--bg);
+      font-weight: bold;
+    }
+    .ptog.ptog-off { }
+
+    .genre-ecart-hint {
+      font-size: 0.57rem;
+      color: var(--dim);
+      letter-spacing: 0.04em;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -734,8 +1205,39 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.0</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.1</div>
     </div>
+
+    <!-- Burger menu -->
+    <div class="burger-wrap">
+      <button class="burger-btn" id="burger-btn" aria-label="Menu" title="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="burger-menu" id="burger-menu" aria-label="Navigation principale">
+        <button class="burger-item" onclick="setView('desktop'); closeBurger()">
+          <span class="burger-item-icon">⊹</span>
+          Xenna <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
+        </button>
+        <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
+          <span class="burger-item-icon">◍</span>
+          Gaabrielle <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">RH</span>
+        </button>
+        <button class="burger-item" onclick="setView('forge'); closeBurger()">
+          <span class="burger-item-icon">⚒</span>
+          La Forge
+        </button>
+        <button class="burger-item" onclick="setView('apropos'); closeBurger()">
+          <span class="burger-item-icon">◎</span>
+          À propos
+        </button>
+      </nav>
+    </div>
+
+    <!-- Bouton × retour — visible uniquement dans les vues secondaires -->
+    <button class="page-exit" onclick="setView('desktop')" title="Retour au simulateur">×</button>
+
   </div>
 
   <!-- ══ BARRE DE VUE ══ -->
@@ -755,12 +1257,19 @@
     <div class="form-panel">
       <div class="fp-title">SAISIE SALARIÉ</div>
       <div class="fp-body">
+        <div class="field" style="flex-direction:row;align-items:center;gap:0.6rem;flex-wrap:wrap">
+          <div class="poste-toggle">
+            <button type="button" class="ptog ptog-on"  id="d-hf-h" onclick="setGenre('H')">H</button>
+            <button type="button" class="ptog ptog-off" id="d-hf-f" onclick="setGenre('F')">F</button>
+          </div>
+          <span class="genre-ecart-hint" style="display:none">// −15 % · écart salarial moyen F/H</span>
+        </div>
         <div class="field"><label>PRÉNOM</label>
-          <input type="text" id="d-prenom" value="Marie" /></div>
+          <input type="text" id="d-prenom" value="" /></div>
         <div class="field"><label>NOM</label>
-          <input type="text" id="d-nom" value="Dupont" /></div>
+          <input type="text" id="d-nom" value="" /></div>
         <div class="field"><label>SALAIRE BRUT (€)</label>
-          <input type="number" id="d-brut" value="3500.00" step="50" min="1766.96" /></div>
+          <input type="number" id="d-brut" value="2100.00" step="50" min="1766.96" /></div>
         <div class="field"><label>STATUT</label>
           <select id="d-statut">
             <option value="non_cadre">Non-cadre</option>
@@ -811,12 +1320,19 @@
         <div class="mob-form-head">SAISIE</div>
         <div class="mob-form-body">
           <div class="mob-grid">
+            <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;grid-column:1/-1;flex-wrap:wrap">
+              <div class="poste-toggle">
+                <button type="button" class="ptog ptog-on"  id="m-hf-h" onclick="setGenre('H')">H</button>
+                <button type="button" class="ptog ptog-off" id="m-hf-f" onclick="setGenre('F')">F</button>
+              </div>
+              <span class="genre-ecart-hint" style="display:none">// −15 % · écart F/H</span>
+            </div>
             <div class="field"><label>PRÉNOM</label>
-              <input type="text" id="m-prenom" value="Marie" /></div>
+              <input type="text" id="m-prenom" value="" /></div>
             <div class="field"><label>NOM</label>
-              <input type="text" id="m-nom" value="Dupont" /></div>
+              <input type="text" id="m-nom" value="" /></div>
             <div class="field"><label>BRUT (€)</label>
-              <input type="number" id="m-brut" value="3500" step="50" /></div>
+              <input type="number" id="m-brut" value="2100" step="50" /></div>
             <div class="field"><label>STATUT</label>
               <select id="m-statut">
                 <option value="non_cadre">Non-cadre</option>
@@ -879,6 +1395,446 @@
 
   </div>
 
+  <!-- ════════════════════════════════
+       VUE FORGE MÉTIER
+  ════════════════════════════════ -->
+  <div class="view-forge">
+
+    <!-- ── Annuaire ── -->
+    <div id="forge-liste">
+      <div class="forge-topbar">
+        <div>
+          <div class="sect-label">LA FORGE MÉTIER</div>
+          <div class="forge-subtitle" id="forge-subtitle">chargement…</div>
+        </div>
+        <div class="forge-topbar-actions">
+          <button class="forge-join-btn" onclick="forgeNav('creer')">+ Rejoindre</button>
+        </div>
+      </div>
+      <p class="forge-intro">La Forge est l'espace communautaire de Xenna Paie réservé aux contributeurs.</p>
+      <div id="forge-cards" class="forge-grid"></div>
+    </div>
+
+    <!-- ── Fiche profil ── -->
+    <div id="forge-detail" style="display:none">
+      <div class="forge-topbar" style="margin-bottom:1.5rem">
+        <button class="page-nav" onclick="forgeNav('liste')" title="Retour à l'annuaire">←</button>
+      </div>
+      <div id="forge-profil-content"></div>
+    </div>
+
+    <!-- ── Formulaire création ── -->
+    <div id="forge-creer" style="display:none">
+      <div class="forge-topbar" style="margin-bottom:1.25rem">
+        <button class="page-nav" onclick="forgeNav('liste')" title="Retour à l'annuaire">←</button>
+      </div>
+      <div class="sect-label">REJOINDRE LA FORGE</div>
+      <form id="forge-form" onsubmit="forgeSoumettre(event)" class="forge-form" novalidate>
+
+        <div class="forge-form-section">
+          <div class="field">
+            <label>EMAIL <span style="color:var(--muted);font-size:0.6em">(non visible publiquement)</span></label>
+            <input type="email" name="email" required autocomplete="email" placeholder="prenom.nom@cabinet.fr" />
+          </div>
+          <div class="field">
+            <label>PSEUDO PUBLIC</label>
+            <input type="text" name="pseudo" required maxlength="40" placeholder="MonPseudo" />
+          </div>
+          <div class="field">
+            <label>POSTE</label>
+            <div class="poste-toggle">
+              <button type="button" class="ptog ptog-on"  id="ptog-actuel" onclick="setPosteType(true)">ACTUEL</button>
+              <button type="button" class="ptog ptog-off" id="ptog-vise"   onclick="setPosteType(false)">VISÉ</button>
+            </div>
+            <input type="text"   name="poste" required maxlength="80" placeholder="Gestionnaire paie, DRH, Consultant…" style="margin-top:0.3rem" />
+            <input type="hidden" name="poste_est_actuel" id="poste_est_actuel_input" value="1" />
+          </div>
+          <div class="field">
+            <label>PROFIL LINKEDIN <span style="color:var(--dim);font-size:0.6em">(optionnel)</span></label>
+            <input type="url" name="linkedin_url" placeholder="https://linkedin.com/in/…" />
+          </div>
+        </div>
+
+        <div class="forge-form-section">
+          <div class="sect-label">PAIE FRANÇAISE</div>
+          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
+            Ton niveau de connaissance du droit social et de la paie en France.
+          </div>
+          <div class="field">
+            <select name="paie_fr_niveau">
+              <option value="">— non renseigné —</option>
+              <option value="Connue">Connue</option>
+              <option value="Pratiquée">Pratiquée</option>
+              <option value="Maîtrisée">Maîtrisée</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="forge-form-section">
+          <div class="sect-label">PAIE INTERNATIONALE</div>
+          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
+            Pays frontaliers + Royaume-Uni : ajoute ceux dont tu connais la paie.
+          </div>
+          <div id="forge-pays-list"></div>
+          <button type="button" class="forge-add-ccn" onclick="forgeAjouterPays()">+ Ajouter un pays</button>
+        </div>
+
+        <div class="forge-form-section">
+          <div class="sect-label">EXPERTISES CCN</div>
+          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
+            Renseigne les conventions collectives que tu pratiques avec ton niveau de maîtrise.<br>
+            Code IDCC disponible sur <span style="color:var(--blue)">legifrance.gouv.fr</span>.
+          </div>
+          <div id="forge-ccn-list"></div>
+          <button type="button" class="forge-add-ccn" onclick="forgeAjouterCcn()">+ Ajouter une CCN</button>
+        </div>
+
+        <div class="forge-form-err" id="forge-form-err"></div>
+        <button type="submit" id="forge-submit-btn" class="btn-calc">[ Rejoindre la Forge ]</button>
+
+      </form>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE À PROPOS
+  ════════════════════════════════ -->
+  <div class="view-apropos">
+    <div class="about-head">
+      <div class="about-title">XENNA PAIE</div>
+      <div class="about-sub">
+        Un simulateur de bulletin de paie français — pédagogique, citoyen, open source.<br>
+        Chaque cotisation est expliquée, datée, et rattachée à son texte de loi.<br>
+        Transparent. Citoyen. Vérifiable.
+      </div>
+    </div>
+
+    <!-- ── Stack technique ── -->
+    <div class="sect-label">COMMENT C'EST CONSTRUIT</div>
+    <div class="stack-grid">
+
+      <div class="stack-card">
+        <div class="stack-name">Rust</div>
+        <div class="stack-version">Langage système · édition 2021</div>
+        <div class="stack-why">Fiable par construction</div>
+        <div class="stack-body">
+          Rust rend <strong>impossible la compilation de toute une classe de bugs</strong> :
+          pointeurs nuls, accès mémoire hors-limites, conflits d'accès concurrents.
+          Pas de ramasse-miettes = zéro pause aléatoire.
+          Un bulletin complet se calcule en quelques microsecondes.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">rust_decimal</div>
+        <div class="stack-version">Arithmétique décimale exacte</div>
+        <div class="stack-why">Les centimes comptent</div>
+        <div class="stack-body">
+          En virgule flottante IEEE 754, <code>0.1 + 0.2 ≠ 0.3</code>.
+          Sur des cotisations à quatre décimales, ces erreurs s'accumulent ligne après ligne.<br>
+          <strong>Tous les montants sont en <code>Decimal</code> exact.</strong>
+          Les taux sont stockés en texte en base — jamais convertis en nombre flottant.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">SQLite</div>
+        <div class="stack-version">Base embarquée · migrations versionnées</div>
+        <div class="stack-why">La base voyage avec l'app</div>
+        <div class="stack-body">
+          Aucun serveur à installer. Les taux, SMIC et plafonds sont versionnés par date :
+          <strong>chaque simulation est reproductible depuis 2015</strong>.
+          Des triggers empêchent les chevauchements de périodes à l'écriture.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Tauri 2</div>
+        <div class="stack-version">Application desktop · macOS / Windows / Linux</div>
+        <div class="stack-why">5 MB au lieu de 200 MB</div>
+        <div class="stack-body">
+          Electron embarque un navigateur complet dans chaque app.
+          Tauri utilise <strong>la WebView native du système d'exploitation</strong>.<br>
+          Le même moteur Rust alimente l'app desktop et le site web — zéro code dupliqué.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Axum</div>
+        <div class="stack-version">Serveur HTTP · déploiement Railway</div>
+        <div class="stack-why">Le moteur ignore qu'il est sur le web</div>
+        <div class="stack-body">
+          Le moteur de calcul est une <strong>bibliothèque pure</strong> sans dépendance au transport.
+          Axum est juste un adaptateur : il prend une requête HTTP, appelle la lib, retourne le JSON.<br>
+          <code>POST /api/calculer_bulletin</code> — déjà disponible.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Vanilla JS</div>
+        <div class="stack-version">ES Modules · Vite · zéro framework UI</div>
+        <div class="stack-why">L'intelligence est dans le backend</div>
+        <div class="stack-body">
+          Le JavaScript n'est que de la présentation — pas de React, pas de Vue.
+          <strong>Bundle &lt; 15 KB.</strong> Lisible par n'importe quel développeur.
+          Pas de breaking change de framework à gérer dans dix ans.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Principes ── -->
+    <div class="sect-label">PRINCIPES</div>
+    <div class="principles">
+      · <strong>Zéro constante hardcodée</strong> : tous les taux, plafonds et paramètres Fillon
+        sont en base de données, chargés selon la date de simulation.<br>
+      · <strong>Chaque cotisation cite son texte</strong> : ANI, LFSS, décret —
+        avec les partenaires sociaux signataires quand ils existent.<br>
+      · <strong>Fillon annualisé avec régularisation mensuelle</strong> —
+        conforme à la méthode légale de régularisation progressive.<br>
+      · <strong>Le moteur est une bibliothèque pure</strong> : aucune dépendance à Tauri ni à Axum.
+        Il peut tourner en CLI, en WASM, sur mobile — sans modification.
+    </div>
+
+    <!-- ── Évolutions ── -->
+    <div class="sect-label">CE QUE CE PROJET PEUT DEVENIR</div>
+    <div class="stack-grid">
+
+      <div class="stack-card">
+        <div class="stack-name">API publique</div>
+        <div class="stack-version">POST /api/calculer_bulletin — déjà actif</div>
+        <div class="stack-why">Interopérabilité</div>
+        <div class="stack-body">
+          Le moteur est déjà exposé via HTTP. La prochaine étape : documentation publique,
+          versioning sémantique, SDKs.<br>
+          N'importe quel <strong>SIRH, outil RH ou script</strong> pourrait calculer un bulletin
+          sans embarquer son propre moteur — en appelant simplement une route.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Codes DSN</div>
+        <div class="stack-version">Nomenclature NEODES · déjà en base</div>
+        <div class="stack-why">Interopérabilité déclarative</div>
+        <div class="stack-body">
+          Chaque cotisation est déjà associée à son <strong>code S21.G00</strong>.
+          La prochaine étape : générer un bloc DSN valide depuis un bulletin simulé,
+          pour une intégration directe dans les outils de déclaration sociale.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Tests de non-régression</div>
+        <div class="stack-version">Zéro suite de tests automatisés aujourd'hui</div>
+        <div class="stack-why">Fiabilité</div>
+        <div class="stack-body">
+          Chaque évolution de SMIC, de taux AGIRC-ARRCO ou de barème Fillon
+          doit être testée sur des <strong>bulletins de référence connus</strong>.
+          L'objectif : valider chaque migration de taux par comparaison avec des bulletins réels.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Cas complexes</div>
+        <div class="stack-version">Aujourd'hui : CDI temps plein, entrée 1er du mois</div>
+        <div class="stack-why">Robustesse</div>
+        <div class="stack-body">
+          Temps partiel, <strong>entrées/sorties en cours de mois</strong>, absences non rémunérées,
+          congé maternité, CDD, mois atypiques.<br>
+          Chaque cas exige une règle de prorata et un traitement Fillon spécifique.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Conventions collectives</div>
+        <div class="stack-version">Aujourd'hui : droit commun + Alsace-Moselle</div>
+        <div class="stack-why">Adaptabilité</div>
+        <div class="stack-body">
+          Chaque CCN peut imposer des taux de prévoyance, de mutuelle ou des cotisations propres.
+          <strong>L'architecture base de données est prête</strong> à accueillir des jeux de taux
+          par convention — la structure est là, les données restent à alimenter.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Données personnelles</div>
+        <div class="stack-version">Aujourd'hui : aucune donnée nominative stockée</div>
+        <div class="stack-why">Sécurité</div>
+        <div class="stack-body">
+          Xenna ne connaît que Prénom, Nom, Brut — jamais de NIR, jamais de données de santé.
+          Un futur module nominatif exigerait <strong>authentification, chiffrement au repos</strong>
+          et conformité RGPD complète.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Licence GPL-3.0 ── -->
+    <div class="sect-label">LICENCE GPL-3.0 — LE CODE QUI SE PROPAGE</div>
+    <div class="gpl-box">
+      <div style="margin-bottom:0.7rem">
+        La GPL (General Public License v3) est une licence <em>copyleft</em> — l'inverse du copyright.
+        Au lieu de restreindre l'usage, elle <strong>impose le partage</strong>.
+      </div>
+
+      <div style="font-size:0.67rem;font-weight:bold;color:var(--text);letter-spacing:0.06em;margin-bottom:0.3rem">
+        LES 4 LIBERTÉS GARANTIES
+      </div>
+      <div class="gpl-libertes">
+        <span>Utiliser pour n'importe quel usage</span>
+        <span>Étudier le code source librement</span>
+        <span>Redistribuer des copies</span>
+        <span>Modifier et redistribuer les modifications</span>
+      </div>
+
+      <div style="margin-bottom:0.7rem">
+        <strong>La clause virale.</strong> Si tu intègres du code GPL dans ton projet
+        et que tu distribues le résultat, <em>ton projet entier doit aussi devenir GPL</em>.
+        C'est ce qu'on appelle la "contamination" — ou plus précisément, le copyleft fort.
+      </div>
+
+      <div style="margin-bottom:0.7rem">
+        <strong>Ce que ça protège.</strong> Quiconque distribue une version modifiée
+        doit en publier le code source sous GPL-3.0.
+        Le partage est une condition d'entrée — pas une option.
+      </div>
+
+      <div>
+        <strong>Ce que ça permet.</strong> Tout gestionnaire de paie peut lire le code,
+        comprendre chaque calcul, adapter le moteur à sa convention collective,
+        le faire tourner en local. La connaissance est libre.
+        La seule contrepartie : ne pas la fermer derrière une porte en sortant.
+      </div>
+    </div>
+
+    <div class="warn-box">
+      <strong>// En pratique</strong><br>
+      Utiliser Xenna Paie pour apprendre, tester, comprendre — libre et sans contrainte.
+      Intégrer le code dans un logiciel distribué à des tiers déclenche les obligations GPL-3.0.
+    </div>
+
+    <!-- ── Modèle économique ── -->
+    <div class="sect-label">MODÈLE ÉCONOMIQUE</div>
+    <div class="principles">
+      Le moteur de calcul open source <strong>restera libre</strong>.
+      Maintenir les données légales, héberger le service et développer des fonctionnalités avancées
+      a un coût réel. <strong>Certains modules seront à terme distribués sous licence commerciale</strong> —
+      une pratique courante dans l'écosystème open source appelée <em style="color:var(--blue);font-style:normal">double licence</em> ou <em style="color:var(--blue);font-style:normal">open core</em>.
+    </div>
+
+    <div class="sect-label">LES GRANDES FAMILLES DE LICENCES</div>
+    <div class="stack-grid">
+
+      <div class="stack-card">
+        <div class="stack-name">MIT · Apache 2.0</div>
+        <div class="stack-version">Permissif — liberté totale</div>
+        <div class="stack-why">Usage</div>
+        <div class="stack-body">
+          Fais ce que tu veux : utilise, modifie, revends, ferme le code.
+          La seule obligation est de conserver la mention de copyright d'origine.<br>
+          <strong>Exemples :</strong> React, VS Code, Kubernetes, Swift.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">LGPL</div>
+        <div class="stack-version">Copyleft faible — bibliothèques</div>
+        <div class="stack-why">Usage</div>
+        <div class="stack-body">
+          Conçu pour les bibliothèques : tu peux l'utiliser dans un logiciel propriétaire
+          via liaison dynamique sans ouvrir ton propre code.<br>
+          <strong>Exemples :</strong> Qt, FFmpeg, GNU libc.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">AGPL-3.0</div>
+        <div class="stack-version">Copyleft réseau — SaaS inclus</div>
+        <div class="stack-why">Usage</div>
+        <div class="stack-body">
+          Extension de la GPL : si tu <strong>offres le logiciel comme service en ligne</strong>,
+          tu dois quand même publier ton code source. Ferme la porte de l'hébergement cloud opaque.<br>
+          <strong>Exemples :</strong> Nextcloud, Mastodon.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">BSL · SSPL</div>
+        <div class="stack-version">Source visible, commercialisation restreinte</div>
+        <div class="stack-why">Usage</div>
+        <div class="stack-body">
+          Le code est lisible mais la commercialisation est restreinte pendant N années,
+          après quoi il bascule en open source.<br>
+          La SSPL couvre même les couches d'infrastructure qui hébergent le logiciel.<br>
+          <strong>Exemples :</strong> MariaDB, HashiCorp Vault, MongoDB v4+.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Double licence</div>
+        <div class="stack-version">GPL + licence commerciale en parallèle</div>
+        <div class="stack-why">Modèle</div>
+        <div class="stack-body">
+          Le même code est distribué sous deux licences simultanées : GPL pour la communauté,
+          licence commerciale pour ceux qui veulent intégrer sans obligations copyleft.<br>
+          <strong>Exemples :</strong> Qt, MySQL, Ghostscript.
+        </div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-name">Open Core</div>
+        <div class="stack-version">Noyau libre + modules commerciaux</div>
+        <div class="stack-why">Modèle</div>
+        <div class="stack-body">
+          Le cœur du produit est open source. Les fonctionnalités avancées
+          (haute disponibilité, intégrations entreprise, support dédié) sont vendues séparément.<br>
+          <strong>Exemples :</strong> GitLab, Elastic, Keycloak.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Accès gratuit ── -->
+    <div class="sect-label">QUI ACCÈDE GRATUITEMENT</div>
+    <div class="gpl-box" style="border-left-color:var(--blue)">
+      <div style="margin-bottom:0.75rem">
+        Xenna Paie et Gaabrielle RH seront <strong>gratuits à vie</strong> pour :
+      </div>
+      <div class="gpl-libertes" style="margin-bottom:0.85rem">
+        <span>Étudiants et apprentis <span style="color:var(--dim)">(justificatif)</span></span>
+        <span>Associations loi 1901 <span style="color:var(--dim)">(justificatif)</span></span>
+      </div>
+      <div>
+        Tout <strong>contributeur sérieux au projet</strong> — code, données légales, retours terrain —
+        bénéficiera d'un accès à vie à Xenna Paie <em>et</em> Gaabrielle RH,
+        dans la limite de <strong>500 bulletins simulés par mois</strong>.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE GAABRIELLE (RH)
+  ════════════════════════════════ -->
+  <div class="view-gaabrielle">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1.5rem;padding:3rem 1rem">
+      <div style="text-align:center;max-width:440px">
+        <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em;margin-bottom:0.75rem">
+          que ferait Xena sans Gabrielle ?
+        </div>
+        <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em;margin-bottom:2rem">
+          // MODULE RH — EN CONSTRUCTION
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
+          Gestion des congés · Absences · Entrées / sorties<br>
+          Contrats · DPAE · Attestations<br>
+          <span style="color:var(--dim)">— bientôt —</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Modal formule mathématique ── -->
   <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">
     <div id="fm-box">
@@ -892,5 +1848,6 @@
   </div>
 
   <script type="module" src="/src/main.js"></script>
+  <div class="ai-credit">// claude-sonnet-4-6</div>
 </body>
 </html>
