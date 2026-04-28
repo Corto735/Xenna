@@ -283,7 +283,7 @@ async fn handle_voter(
 
 pub fn forge_router() -> Router<Db> {
     Router::new()
-        .route("/profil/:pseudo",      get(get_profil))
+        .route("/profil/{pseudo}",      get(get_profil))
         .route("/forge/contributeurs", get(liste_contributeurs))
         .route("/forge/profil",        post(creer_profil))
         .route("/forge/voter",         post(handle_voter))
