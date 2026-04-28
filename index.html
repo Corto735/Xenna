@@ -1429,7 +1429,13 @@
         <button class="page-nav" onclick="forgeNav('liste')" title="Retour à l'annuaire">←</button>
       </div>
       <div class="sect-label">REJOINDRE LA FORGE</div>
+
+      <div style="border:1px solid var(--dim);border-left:3px solid var(--blue);background:var(--bg3);padding:0.75rem 1rem;font-size:0.72rem;color:var(--muted);letter-spacing:0.06em;margin-bottom:1.25rem">
+        // OUVERTURE DES INSCRIPTIONS &nbsp;──&nbsp; <strong style="color:var(--text)">PROCHAINEMENT</strong>
+      </div>
+
       <form id="forge-form" onsubmit="forgeSoumettre(event)" class="forge-form" novalidate>
+      <fieldset disabled style="border:none;padding:0;margin:0;opacity:0.4;pointer-events:none">
 
         <div class="forge-form-section">
           <div class="field">
@@ -1492,6 +1498,7 @@
         <div class="forge-form-err" id="forge-form-err"></div>
         <button type="submit" id="forge-submit-btn" class="btn-calc">[ Rejoindre la Forge ]</button>
 
+      </fieldset>
       </form>
     </div>
 
