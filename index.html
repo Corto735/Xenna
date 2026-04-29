@@ -820,7 +820,8 @@
     ══════════════════════════════ */
     .view-forge,
     .view-apropos,
-    .view-gaabrielle { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    .view-gaabrielle,
+    .view-hercule { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
 
     body.is-forge .view-desktop,
     body.is-forge .view-mobile,
@@ -839,6 +840,12 @@
     body.is-gaabrielle .view-annuel    { display: none !important; }
     body.is-gaabrielle .view-bar       { display: none !important; }
     body.is-gaabrielle .view-gaabrielle { display: block; }
+
+    body.is-hercule .view-desktop,
+    body.is-hercule .view-mobile,
+    body.is-hercule .view-annuel    { display: none !important; }
+    body.is-hercule .view-bar       { display: none !important; }
+    body.is-hercule .view-hercule   { display: block; }
 
     /* Boutons de navigation des vues secondaires */
     .page-exit,
@@ -866,14 +873,16 @@
     .page-exit {
       display: none; /* masqué hors vues secondaires */
     }
-    body.is-forge     .page-exit,
-    body.is-apropos   .page-exit,
-    body.is-gaabrielle .page-exit { display: flex; }
+    body.is-forge      .page-exit,
+    body.is-apropos    .page-exit,
+    body.is-gaabrielle .page-exit,
+    body.is-hercule    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
-      body.is-forge     .page-exit,
-      body.is-apropos   .page-exit,
-      body.is-gaabrielle .page-exit {
+      body.is-forge      .page-exit,
+      body.is-apropos    .page-exit,
+      body.is-gaabrielle .page-exit,
+      body.is-hercule    .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -1232,6 +1241,10 @@
         <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
           <span class="burger-item-icon">/</span>
           Gaabrielle <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">RH</span>
+        </button>
+        <button class="burger-item" onclick="setView('hercule'); closeBurger()">
+          <span class="burger-item-icon">□</span>
+          Hercuule <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Compta</span>
         </button>
         <button class="burger-item" onclick="setView('forge'); closeBurger()">
           <span class="burger-item-icon">⬡</span>
@@ -1845,6 +1858,27 @@
         <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
           Gestion des congés · Absences · Entrées / sorties<br>
           Contrats · DPAE · Attestations<br>
+          <span style="color:var(--dim)">— bientôt —</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE HERCULE (COMPTA)
+  ════════════════════════════════ -->
+  <div class="view-hercule">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1.5rem;padding:3rem 1rem">
+      <div style="text-align:center;max-width:440px">
+        <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em;margin-bottom:0.75rem">
+          les travaux comptables d'Hercuule
+        </div>
+        <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em;margin-bottom:2rem">
+          // MODULE COMPTABILITÉ — EN CONSTRUCTION
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
+          Grand livre · Journal · Balance<br>
+          Rapprochement bancaire · Clôture<br>
           <span style="color:var(--dim)">— bientôt —</span>
         </div>
       </div>

@@ -85,7 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!body.classList.contains("is-annuel")     &&
         !body.classList.contains("is-forge")      &&
         !body.classList.contains("is-apropos")    &&
-        !body.classList.contains("is-gaabrielle"))
+        !body.classList.contains("is-gaabrielle") &&
+        !body.classList.contains("is-hercule"))
       setView(e.matches ? "mobile" : "desktop");
   };
   mq.addEventListener("change", applyView);
@@ -104,7 +105,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'gaabrielle'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'gaabrielle', 'hercule'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
