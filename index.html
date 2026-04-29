@@ -37,7 +37,7 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      font-size: 13px;
+      font-size: 15px;
       line-height: 1.4;
     }
 
@@ -207,6 +207,13 @@
       border-color: var(--blue);
       font-weight: bold;
     }
+    @keyframes flash67 {
+      0%   { background: transparent; color: inherit; outline: none; }
+      15%  { background: #f5c842; color: #000; outline: 2px solid #f5c842; }
+      85%  { background: #f5c842; color: #000; outline: 2px solid #f5c842; }
+      100% { background: transparent; color: inherit; outline: none; }
+    }
+    .flash-67 { animation: flash67 0.45s ease forwards; border-radius: 2px; }
 
     /* Mode noir & blanc zébré */
     body.bw-mode {
@@ -576,8 +583,24 @@
       font-size: 0.9rem;
       border-top: 2px solid var(--blue);
     }
-    .mob-lbl { color: var(--gray); }
-    .mob-val { font-size: inherit; }
+    /* Zébrures cotisations salariales (rouge / fond) */
+    .mob-stripe-sal-a .mob-row { background: var(--bg);  }
+    .mob-stripe-sal-b .mob-row { background: #2a0d0d;    }
+    /* Zébrures cotisations patronales (orange / fond) */
+    .mob-stripe-pat-a .mob-row { background: var(--bg);  }
+    .mob-stripe-pat-b .mob-row { background: #2a1800;    }
+    /* Zébrures allègements (vert / fond) */
+    .mob-stripe-alleg-a .mob-row { background: var(--bg); }
+    .mob-stripe-alleg-b .mob-row { background: #0d2a14;   }
+
+    .mob-lbl { color: var(--gray); flex: 1; padding-right: 0.5rem; }
+    .mob-val {
+      font-size: inherit;
+      white-space: nowrap;
+      text-align: right;
+      min-width: 7rem;
+      font-variant-numeric: tabular-nums;
+    }
     .mob-val.c-gray   { color: var(--gray);   }
     .mob-val.c-green  { color: var(--green);  }
     .mob-val.c-red    { color: var(--red);    }
@@ -1484,6 +1507,7 @@
     <button class="a11y-float-btn" id="a11y-hv-btn"   onclick="toggleHVMode()" title="Mode malvoyant">◉ HV</button>
     <button class="a11y-float-btn" id="a11y-dys-btn"  onclick="toggleDyslexia()" title="Police dyslexie">A dys</button>
     <button class="a11y-float-btn" id="a11y-bw-btn"   onclick="toggleBWMode()" title="Mode N&B">◑ N/B</button>
+    <button class="a11y-float-btn" id="a11y-67-btn"   onclick="scan67()" title="Scanner les paires 67">6 7</button>
   </div>
 
   <!-- ════════════════════════════════

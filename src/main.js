@@ -156,6 +156,28 @@ window.toggleDyslexia = function() {
   localStorage.setItem('xenna-dys', active ? '1' : '');
 };
 
+window.scan67 = function() {
+  const selectors = '.mob-val, .sb-val, .ascii-tbl td, .fm-val, .fm-result td';
+  const found = Array.from(document.querySelectorAll(selectors))
+    .filter(el => /67/.test(el.textContent.replace(/[\s ]/g, '')) && el.offsetParent !== null);
+
+  if (found.length === 0) return;
+
+  const btn = document.getElementById('a11y-67-btn');
+  btn.classList.add('active');
+
+  found.forEach((el, i) => {
+    setTimeout(() => {
+      el.classList.remove('flash-67');
+      void el.offsetWidth; // force reflow pour relancer l'animation
+      el.classList.add('flash-67');
+      el.addEventListener('animationend', () => el.classList.remove('flash-67'), { once: true });
+    }, i * 500);
+  });
+
+  setTimeout(() => btn.classList.remove('active'), found.length * 500 + 200);
+};
+
 window.toggleBWMode = function() {
   const active = document.body.classList.toggle('bw-mode');
   document.getElementById('bw-switch')?.classList.toggle('on', active);
@@ -638,15 +660,16 @@ window.mobToggle = function(id, panel) {
   }
 };
 
-function buildMobCotRow(c, id, montantHtml, valCls, type) {
+function buildMobCotRow(c, id, montantHtml, valCls, type, idx = 0) {
   const formulaHtml = c.code === 'REDUCTION_FILLON'
     ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
     : `<div class="fm-type-${type}">${buildFormulaContent(c, type)}</div>`;
   const whyHtml = `
     <div class="mob-exp-txt">${esc(c.explication)}</div>
     ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
+  const stripeCls = `mob-stripe-${type}-${idx % 2 === 0 ? 'a' : 'b'}`;
   return `
-    <div>
+    <div class="${stripeCls}">
       <div class="mob-row">
         <span class="mob-lbl mob-cot-lbl"
               title="Explication et référence légale"
@@ -679,18 +702,18 @@ function renderMobile(b) {
 
   const cotSalLines = cots
     .filter(c => parseFloat(c.montant_sal) > 0)
-    .map(c => buildMobCotRow(c, `${c.code}_sal`, `− ${fmt(c.montant_sal)}`, 'c-red', 'sal'))
+    .map((c, i) => buildMobCotRow(c, `${c.code}_sal`, `− ${fmt(c.montant_sal)}`, 'c-red', 'sal', i))
     .join('');
 
   const cotPatFiltered = cots.filter(c => parseFloat(c.montant_pat) > 0);
   const cotPatLines = cotPatFiltered
-    .map(c => buildMobCotRow(c, `${c.code}_pat`, `+ ${fmt(c.montant_pat)}`, 'c-orange', 'pat'))
+    .map((c, i) => buildMobCotRow(c, `${c.code}_pat`, `+ ${fmt(c.montant_pat)}`, 'c-orange', 'pat', i))
     .join('');
   const totalPatBrutMob = cotPatFiltered.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   const cotAllegLines = cots
     .filter(c => c.categorie === "Allègement")
-    .map(c => buildMobCotRow(c, `${c.code}_alleg`, `− ${fmt(Math.abs(parseFloat(c.montant_pat)))}`, 'c-alleg', 'alleg'))
+    .map((c, i) => buildMobCotRow(c, `${c.code}_alleg`, `− ${fmt(Math.abs(parseFloat(c.montant_pat)))}`, 'c-alleg', 'alleg', i))
     .join('');
 
   const totalAlleg = cots
