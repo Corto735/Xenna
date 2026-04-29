@@ -2,7 +2,7 @@
 name        = "xenna-paie"
 version     = "0.1.1"
 edition     = "2021"
-default-run = "web"
+default-run = "xenna-paie"
 
 [lib]
 name = "xenna_paie_lib"
