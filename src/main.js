@@ -91,7 +91,77 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   mq.addEventListener("change", applyView);
   applyView(mq);
+
+  // Restaure les préférences d'accessibilité
+  if (localStorage.getItem('xenna-hv')) {
+    document.body.classList.add('hv-mode');
+    document.getElementById('hv-switch')?.classList.add('on');
+  }
+  if (localStorage.getItem('xenna-zoom')) {
+    document.body.classList.add('zoom-mode');
+    document.documentElement.style.zoom = '200%';
+    document.getElementById('zoom-switch')?.classList.add('on');
+    document.getElementById('a11y-magnifier')?.classList.add('active');
+  }
+  if (localStorage.getItem('xenna-dys')) {
+    document.body.classList.add('dyslexia-mode');
+    document.getElementById('dyslexia-switch')?.classList.add('on');
+    document.getElementById('a11y-dys-btn')?.classList.add('active');
+  }
+  if (localStorage.getItem('xenna-hv')) {
+    document.getElementById('a11y-hv-btn')?.classList.add('active');
+  }
+  if (localStorage.getItem('xenna-bw')) {
+    document.body.classList.add('bw-mode');
+    document.getElementById('bw-switch')?.classList.add('on');
+    document.getElementById('a11y-bw-btn')?.classList.add('active');
+  }
+
+  // Ferme le panel a11y au clic extérieur
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#a11y-btn') && !e.target.closest('#a11y-panel')) {
+      document.getElementById('a11y-panel')?.classList.remove('open');
+      document.getElementById('a11y-btn')?.classList.remove('open');
+    }
+  });
 });
+
+// ── Accessibilité ────────────────────────────────────────────────────────────
+window.toggleA11yPanel = function() {
+  const panel = document.getElementById('a11y-panel');
+  const btn   = document.getElementById('a11y-btn');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+};
+
+window.toggleHVMode = function() {
+  const active = document.body.classList.toggle('hv-mode');
+  document.getElementById('hv-switch')?.classList.toggle('on', active);
+  document.getElementById('a11y-hv-btn')?.classList.toggle('active', active);
+  localStorage.setItem('xenna-hv', active ? '1' : '');
+};
+
+window.toggleZoom = function() {
+  const active = document.body.classList.toggle('zoom-mode');
+  document.documentElement.style.zoom = active ? '200%' : '';
+  document.getElementById('zoom-switch')?.classList.toggle('on', active);
+  document.getElementById('a11y-magnifier')?.classList.toggle('active', active);
+  localStorage.setItem('xenna-zoom', active ? '1' : '');
+};
+
+window.toggleDyslexia = function() {
+  const active = document.body.classList.toggle('dyslexia-mode');
+  document.getElementById('dyslexia-switch')?.classList.toggle('on', active);
+  document.getElementById('a11y-dys-btn')?.classList.toggle('active', active);
+  localStorage.setItem('xenna-dys', active ? '1' : '');
+};
+
+window.toggleBWMode = function() {
+  const active = document.body.classList.toggle('bw-mode');
+  document.getElementById('bw-switch')?.classList.toggle('on', active);
+  document.getElementById('a11y-bw-btn')?.classList.toggle('active', active);
+  localStorage.setItem('xenna-bw', active ? '1' : '');
+};
 
 // ── Sécurité : neutralise tout HTML dans les entrées utilisateur ─────────────
 function esc(str) {
