@@ -103,11 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('zoom-switch')?.classList.add('on');
     document.getElementById('a11y-magnifier')?.classList.add('active');
   }
-  if (localStorage.getItem('xenna-dys')) {
-    document.body.classList.add('dyslexia-mode');
-    document.getElementById('dyslexia-switch')?.classList.add('on');
-    document.getElementById('a11y-dys-btn')?.classList.add('active');
-  }
+  const savedFont = localStorage.getItem('xenna-font');
+  if (savedFont) setAppFont(savedFont, true);
+
   if (localStorage.getItem('xenna-hv')) {
     document.getElementById('a11y-hv-btn')?.classList.add('active');
   }
@@ -127,6 +125,112 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ── Accessibilité ────────────────────────────────────────────────────────────
+// ── Traduction ────────────────────────────────────────────────────────────────
+let _currentLang = 'fr';
+const _tradCache  = {};     // { 'en': Map<original, translated> }
+const _origTexts  = new Map(); // node → texte original
+
+function _getTranslatableNodes() {
+  const SKIP = 'script,style,input,select,textarea,.mob-val,.sb-val,.fm-val,.a11y-float,.trad-panel,#a11y-panel';
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      const t = n.textContent.trim();
+      if (!t || t.length < 2) return NodeFilter.FILTER_REJECT;
+      if (/^[\d\s,.\-+%€×\/:()[\]]+$/.test(t)) return NodeFilter.FILTER_REJECT;
+      if (n.parentElement?.closest(SKIP)) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
+}
+
+window.toggleTradPanel = function() {
+  const panel = document.getElementById('trad-panel');
+  const btn   = document.getElementById('trad-btn');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+};
+
+window.translateApp = async function(lang) {
+  // Ferme le panel
+  document.getElementById('trad-panel')?.classList.remove('open');
+  document.getElementById('trad-btn')?.classList.remove('open');
+
+  // Marque le bouton actif
+  document.querySelectorAll('.trad-lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.trad-lang-btn[onclick="translateApp('${lang}')"]`)?.classList.add('active');
+
+  // Retour au français : restaure les textes originaux
+  if (lang === 'fr') {
+    _origTexts.forEach((orig, node) => { if (node.isConnected) node.textContent = orig; });
+    document.documentElement.lang = 'fr';
+    _currentLang = 'fr';
+    return;
+  }
+
+  const btn = document.getElementById('trad-btn');
+  btn.classList.add('loading');
+  btn.textContent = '🌐 …';
+
+  const nodes = _getTranslatableNodes();
+
+  // Sauvegarde les originaux (une seule fois)
+  nodes.forEach(n => { if (!_origTexts.has(n)) _origTexts.set(n, n.textContent); });
+
+  // Textes à traduire (originaux français)
+  const texts = nodes.map(n => _origTexts.get(n));
+
+  // Cache par langue
+  if (!_tradCache[lang]) _tradCache[lang] = new Map();
+  const cache = _tradCache[lang];
+
+  const toFetch   = [...new Set(texts)].filter(t => !cache.has(t));
+
+  try {
+    if (toFetch.length > 0) {
+      // MyMemory API — gratuite, open, sans clé, ~1000 mots/jour
+      const CHUNK = 20;
+      for (let i = 0; i < toFetch.length; i += CHUNK) {
+        const chunk = toFetch.slice(i, i + CHUNK);
+        const joined = chunk.join('\n\n');
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(joined)}&langpair=fr|${lang}`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const translated = data.responseData.translatedText.split('\n\n');
+        chunk.forEach((orig, j) => cache.set(orig, translated[j] ?? orig));
+      }
+    }
+
+    // Applique
+    nodes.forEach(n => {
+      const orig = _origTexts.get(n);
+      if (n.isConnected && cache.has(orig)) n.textContent = cache.get(orig);
+    });
+
+    document.documentElement.lang = lang;
+    _currentLang = lang;
+  } catch(e) {
+    console.error('Traduction échouée :', e);
+    btn.textContent = '🌐 ✗';
+    setTimeout(() => { btn.textContent = '🌐 LANGUE'; btn.classList.remove('loading'); }, 2000);
+    return;
+  }
+
+  btn.textContent = '🌐 LANGUE';
+  btn.classList.remove('loading');
+};
+
+// Ferme le panel traduction au clic extérieur
+document.addEventListener('click', e => {
+  if (!e.target.closest('#trad-btn') && !e.target.closest('#trad-panel')) {
+    document.getElementById('trad-panel')?.classList.remove('open');
+    document.getElementById('trad-btn')?.classList.remove('open');
+  }
+});
+
 window.toggleA11yPanel = function() {
   const panel = document.getElementById('a11y-panel');
   const btn   = document.getElementById('a11y-btn');
@@ -149,11 +253,33 @@ window.toggleZoom = function() {
   localStorage.setItem('xenna-zoom', active ? '1' : '');
 };
 
-window.toggleDyslexia = function() {
-  const active = document.body.classList.toggle('dyslexia-mode');
-  document.getElementById('dyslexia-switch')?.classList.toggle('on', active);
-  document.getElementById('a11y-dys-btn')?.classList.toggle('active', active);
-  localStorage.setItem('xenna-dys', active ? '1' : '');
+const _fontCache = new Set();
+window.setAppFont = function(fontName, restore = false) {
+  if (!fontName) {
+    document.body.classList.remove('custom-font');
+    document.documentElement.style.removeProperty('--app-font');
+    localStorage.removeItem('xenna-font');
+    const picker = document.getElementById('font-picker');
+    if (picker) picker.value = '';
+    return;
+  }
+
+  // Charge la police depuis Google Fonts si pas encore chargée
+  const key = fontName.replace(/ /g, '+');
+  if (!_fontCache.has(key)) {
+    const link = document.createElement('link');
+    link.rel  = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${key}&display=swap`;
+    document.head.appendChild(link);
+    _fontCache.add(key);
+  }
+
+  document.documentElement.style.setProperty('--app-font', `'${fontName}', monospace`);
+  document.body.classList.add('custom-font');
+  localStorage.setItem('xenna-font', fontName);
+
+  const picker = document.getElementById('font-picker');
+  if (picker && restore) picker.value = fontName;
 };
 
 window.scan67 = function() {

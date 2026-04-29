@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Xenna Paye</title>
-  <link href="https://fonts.cdnfonts.com/css/opendyslexic" rel="stylesheet">
   <!-- Détection mobile synchrone — avant tout rendu, évite le flash vue bureau -->
   <script>
     document.documentElement.classList.add(
@@ -129,6 +128,51 @@
       gap: 0.7rem;
     }
     .a11y-panel.open { display: flex; }
+
+    /* Bouton traduction */
+    .trad-wrap { position: relative; }
+    .trad-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+    .trad-btn:hover, .trad-btn.open { border-color: var(--blue); color: var(--blue); }
+    .trad-btn.loading { opacity: 0.6; pointer-events: none; }
+    .trad-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.8rem;
+      z-index: 300;
+      flex-direction: column;
+      gap: 0.3rem;
+      min-width: 160px;
+    }
+    .trad-panel.open { display: flex; }
+    .trad-panel-title { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+    .trad-lang-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+      cursor: pointer;
+      text-align: left;
+      letter-spacing: 0.04em;
+      transition: all 0.12s;
+    }
+    .trad-lang-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .trad-lang-btn.active { background: var(--blue); border-color: var(--blue); color: var(--bg); }
     .a11y-panel-title {
       font-size: 0.6rem;
       color: var(--dim);
@@ -239,17 +283,27 @@
     body.bw-mode .btn-calc { background: #000; color: #fff; border-color: #000; }
     body.bw-mode .ptog.ptog-on { background: #000; border-color: #000; color: #fff; }
 
-    /* Mode dyslexie */
-    body.dyslexia-mode,
-    body.dyslexia-mode input,
-    body.dyslexia-mode select,
-    body.dyslexia-mode button,
-    body.dyslexia-mode label,
-    body.dyslexia-mode td,
-    body.dyslexia-mode th,
-    body.dyslexia-mode span,
-    body.dyslexia-mode div { font-family: 'OpenDyslexic', sans-serif !important; }
-    body.dyslexia-mode { line-height: 1.9; letter-spacing: 0.04em; word-spacing: 0.12em; }
+    /* Sélecteur de police */
+    .a11y-font-label {
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      margin-top: 0.3rem;
+    }
+    .a11y-font-select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.3rem 0.4rem;
+      cursor: pointer;
+      margin-top: 0.2rem;
+    }
+    .a11y-font-select:focus { outline: none; border-color: var(--blue); }
+    /* Police personnalisée appliquée */
+    body.custom-font, body.custom-font * { font-family: var(--app-font) !important; }
 
     /* ── Thème haute visibilité (malvoyants) ────────────────────────────── */
     body.hv-mode {
@@ -1475,6 +1529,18 @@
     <button class="btn-view" id="btn-mob"  onclick="setView('mobile')">☰ MOBILE</button>
     <button class="btn-view" id="btn-ann"  onclick="setView('annuel')">▦ SIMULATION ANNUELLE</button>
 
+    <div class="trad-wrap">
+      <button class="trad-btn" id="trad-btn" onclick="toggleTradPanel()" title="Traduction">🌐 LANGUE</button>
+      <div class="trad-panel" id="trad-panel">
+        <div class="trad-panel-title">TRADUIRE EN</div>
+        <button class="trad-lang-btn" onclick="translateApp('fr')">🇫🇷 Français</button>
+        <button class="trad-lang-btn" onclick="translateApp('en')">🇬🇧 English</button>
+        <button class="trad-lang-btn" onclick="translateApp('de')">🇩🇪 Deutsch</button>
+        <button class="trad-lang-btn" onclick="translateApp('it')">🇮🇹 Italiano</button>
+        <button class="trad-lang-btn" onclick="translateApp('es')">🇪🇸 Español</button>
+      </div>
+    </div>
+
     <div class="a11y-wrap">
       <button class="a11y-btn" id="a11y-btn" onclick="toggleA11yPanel()" title="Accessibilité">
         ♿ ACCÈS
@@ -1489,10 +1555,18 @@
           <span>Zoom ×2</span>
           <div class="a11y-switch" id="zoom-switch"></div>
         </div>
-        <div class="a11y-row" onclick="toggleDyslexia()">
-          <span>Police dyslexie</span>
-          <div class="a11y-switch" id="dyslexia-switch"></div>
-        </div>
+        <div class="a11y-font-label">POLICE D'ÉCRITURE</div>
+        <select class="a11y-font-select" id="font-picker" onchange="setAppFont(this.value)">
+          <option value="">── Courier New (défaut) ──</option>
+          <option value="IBM Plex Mono">IBM Plex Mono</option>
+          <option value="Fira Code">Fira Code</option>
+          <option value="JetBrains Mono">JetBrains Mono</option>
+          <option value="Space Mono">Space Mono</option>
+          <option value="Share Tech Mono">Share Tech Mono</option>
+          <option value="Source Code Pro">Source Code Pro</option>
+          <option value="VT323">VT323 — terminal 80s</option>
+          <option value="Press Start 2P">Press Start 2P — pixel</option>
+        </select>
         <div class="a11y-row" onclick="toggleBWMode()">
           <span>Mode noir &amp; blanc</span>
           <div class="a11y-switch" id="bw-switch"></div>
@@ -1505,7 +1579,6 @@
   <div class="a11y-float">
     <button class="a11y-float-btn" id="a11y-magnifier" onclick="toggleZoom()" title="Zoom ×2">⌕ ×2</button>
     <button class="a11y-float-btn" id="a11y-hv-btn"   onclick="toggleHVMode()" title="Mode malvoyant">◉ HV</button>
-    <button class="a11y-float-btn" id="a11y-dys-btn"  onclick="toggleDyslexia()" title="Police dyslexie">A dys</button>
     <button class="a11y-float-btn" id="a11y-bw-btn"   onclick="toggleBWMode()" title="Mode N&B">◑ N/B</button>
     <button class="a11y-float-btn" id="a11y-67-btn"   onclick="scan67()" title="Scanner les paires 67">6 7</button>
   </div>
