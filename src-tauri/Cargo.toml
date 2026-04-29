@@ -13,7 +13,7 @@ name = "web"
 path = "src/bin/web.rs"
 
 [features]
-default = ["desktop"]
+default = []
 desktop = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build"]
 
 [dependencies]
