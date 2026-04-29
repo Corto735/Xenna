@@ -1547,10 +1547,11 @@ function _syncToggleUI(genre, showHint = false) {
 
 window.setGenre = function(genre) {
   if (genre === _genre) return;
-  if (_nomPersonnalise) return;
 
-  const hero    = genre === 'F' ? window._heroF : window._heroH;
-  _setNomFields(hero.prenom, hero.nom);
+  if (!_nomPersonnalise) {
+    const hero = genre === 'F' ? window._heroF : window._heroH;
+    _setNomFields(hero.prenom, hero.nom);
+  }
 
   const facteur = genre === 'F' ? (1 - _tauxEcart) : (1 / (1 - _tauxEcart));
   ['d-brut', 'm-brut'].forEach(id => {
