@@ -63,12 +63,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // Tirage unique à l'arrivée — la paire H/F et l'écart salarial sont fixés pour la session
   window._heroH = _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
-  _setNomFields(_heroH.prenom, _heroH.nom);
+  _setNomFields(window._heroH.prenom, window._heroH.nom);
   _syncToggleUI('H');
 
-  const _pct = Math.round(_tauxEcart * 100);
+  // Quand l'utilisateur tape manuellement, le toggle est désactivé
+  ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => { _nomPersonnalise = true; });
+  });
+
+  const _pctFH = Math.round(_tauxEcart * 100);
+  const _pctHF = Math.round(_tauxEcart / (1 - _tauxEcart) * 100);
   document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-    el.textContent = el.textContent.replace(/\d+\s*%/, `${_pct} %`);
+    el.dataset.textFh = `// −${_pctFH} % · écart salarial F/H`;
+    el.dataset.textHf = `// +${_pctHF} % · écart salarial H/F`;
   });
 
   // Détection automatique mobile / bureau — breakpoint identique au media query CSS
@@ -1506,9 +1513,8 @@ const HEROS_F = [
 const _ECART_POOL = [17, 16, 16, 15, 15, 15, 14, 14, 14, 13, 13, 11];
 const _tauxEcart  = _ECART_POOL[Math.floor(Math.random() * _ECART_POOL.length)] / 100;
 
-let _genre     = 'H';
-let _defPrenom = '';
-let _defNom    = '';
+let _genre          = 'H';
+let _nomPersonnalise = false;
 
 function _heroRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -1517,17 +1523,10 @@ function _heroRandom(list) {
 function _setNomFields(prenom, nom) {
   ['d-prenom', 'm-prenom'].forEach(id => { const el = document.getElementById(id); if (el) el.value = prenom; });
   ['d-nom',    'm-nom'   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = nom;    });
-  _defPrenom = prenom;
-  _defNom    = nom;
+  _nomPersonnalise = false;
 }
 
-function _nomEstDefaut() {
-  const p = document.getElementById('d-prenom');
-  const n = document.getElementById('d-nom');
-  return p && n && p.value === _defPrenom && n.value === _defNom;
-}
-
-function _syncToggleUI(genre) {
+function _syncToggleUI(genre, showHint = false) {
   const onH = genre === 'H';
   ['d-hf-h', 'm-hf-h'].forEach(id => {
     document.getElementById(id)?.classList.toggle('ptog-on',  onH);
@@ -1537,14 +1536,17 @@ function _syncToggleUI(genre) {
     document.getElementById(id)?.classList.toggle('ptog-on',  !onH);
     document.getElementById(id)?.classList.toggle('ptog-off', onH);
   });
-  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-    el.style.display = onH ? 'none' : 'inline';
-  });
+  if (showHint) {
+    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+      el.textContent = onH ? el.dataset.textHf : el.dataset.textFh;
+      el.style.display = 'inline';
+    });
+  }
 }
 
 window.setGenre = function(genre) {
   if (genre === _genre) return;
-  if (!_nomEstDefaut()) return; // nom personnalisé → pas d'effet
+  if (_nomPersonnalise) return;
 
   const hero    = genre === 'F' ? window._heroF : window._heroH;
   _setNomFields(hero.prenom, hero.nom);
@@ -1556,7 +1558,7 @@ window.setGenre = function(genre) {
   });
 
   _genre = genre;
-  _syncToggleUI(genre);
+  _syncToggleUI(genre, true);
 };
 
 // ── Burger menu ───────────────────────────────────────────────────────────────

@@ -793,12 +793,19 @@
       letter-spacing: 0.05em;
       transition: background 0.12s, color 0.12s;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 0.65rem;
     }
     .burger-item:last-child { border-bottom: none; }
     .burger-item:hover { background: var(--bg3); color: var(--blue); }
-    .burger-item-icon { font-size: 1rem; line-height: 1; margin-top: 0.05rem; flex-shrink: 0; }
+    .burger-item-icon {
+      font-size: 1rem;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 1.1em;
+      text-align: center;
+      display: inline-block;
+    }
     .burger-item-sub {
       display: block;
       font-size: 0.62rem;
@@ -1216,20 +1223,22 @@
         <span></span>
       </button>
       <nav class="burger-menu" id="burger-menu" aria-label="Navigation principale">
-        <button class="burger-item" onclick="setView('desktop'); closeBurger()">
-          <span class="burger-item-icon">⊹</span>
+        <button class="burger-item" style="font-size:0.88rem" onclick="setView('desktop'); closeBurger()">
+          <span class="burger-item-icon" style="display:inline-flex;align-items:center;justify-content:center">
+            <span style="display:block;width:0.8rem;height:0.8rem;border-radius:50%;border:2px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
+          </span>
           Xenna <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
         <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
-          <span class="burger-item-icon">◍</span>
+          <span class="burger-item-icon">/</span>
           Gaabrielle <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">RH</span>
         </button>
         <button class="burger-item" onclick="setView('forge'); closeBurger()">
-          <span class="burger-item-icon">⚒</span>
+          <span class="burger-item-icon">⬡</span>
           La Forge
         </button>
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
-          <span class="burger-item-icon">◎</span>
+          <span class="burger-item-icon">?</span>
           À propos
         </button>
       </nav>
@@ -1262,7 +1271,7 @@
             <button type="button" class="ptog ptog-on"  id="d-hf-h" onclick="setGenre('H')">H</button>
             <button type="button" class="ptog ptog-off" id="d-hf-f" onclick="setGenre('F')">F</button>
           </div>
-          <span class="genre-ecart-hint" style="display:none">// −15 % · écart salarial moyen F/H</span>
+          <span class="genre-ecart-hint" style="display:none"></span>
         </div>
         <div class="field"><label>PRÉNOM</label>
           <input type="text" id="d-prenom" value="" /></div>
@@ -1325,7 +1334,7 @@
                 <button type="button" class="ptog ptog-on"  id="m-hf-h" onclick="setGenre('H')">H</button>
                 <button type="button" class="ptog ptog-off" id="m-hf-f" onclick="setGenre('F')">F</button>
               </div>
-              <span class="genre-ecart-hint" style="display:none">// −15 % · écart F/H</span>
+              <span class="genre-ecart-hint" style="display:none"></span>
             </div>
             <div class="field"><label>PRÉNOM</label>
               <input type="text" id="m-prenom" value="" /></div>
