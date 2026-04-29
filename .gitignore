@@ -1,6 +1,5 @@
 # ── Build artifacts ──────────────────────────────────────────────────────────
 src-tauri/target/
-dist/
 node_modules/
 
 # ── Base de données locale (données personnelles) ────────────────────────────
