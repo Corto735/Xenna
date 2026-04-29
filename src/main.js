@@ -60,11 +60,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
-  // Tirage unique à l'arrivée — la paire H/F est fixée pour toute la session
+  // Tirage unique à l'arrivée — la paire H/F et l'écart salarial sont fixés pour la session
   window._heroH = _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
   _setNomFields(_heroH.prenom, _heroH.nom);
   _syncToggleUI('H');
+
+  const _pct = Math.round(_tauxEcart * 100);
+  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+    el.textContent = el.textContent.replace(/\d+\s*%/, `${_pct} %`);
+  });
 
   // Détection automatique mobile / bureau — breakpoint identique au media query CSS
   const mq = window.matchMedia("(max-width: 680px)");
@@ -1465,8 +1470,8 @@ window.forgeSoumettre = async function(event) {
 
 // ── Toggle H / F — écart salarial moyen ──────────────────────────────────────
 //
-// Easter egg pédagogique : basculer sur F applique −15 % sur le brut,
-// reflet de l'écart salarial moyen constaté entre femmes et hommes.
+// Easter egg pédagogique : basculer sur F applique −X % sur le brut (X tiré aléatoirement
+// parmi 11–17 %, pondéré autour de 14–15 %), reflet de l'écart salarial F/H constaté.
 // Les noms par défaut sont des héros de fantasy d'auteurs européens.
 // Dès qu'un nom est saisi manuellement, le toggle n'a plus d'effet.
 
@@ -1495,6 +1500,11 @@ const HEROS_F = [
   { prenom: 'Rikke',    nom: 'la Nord' },           // Abercrombie (britannique)
   { prenom: 'Tanaquil', nom: 'la Magicienne' },     // Tanith Lee (britannique)
 ];
+
+// Tirage pondéré de l'écart salarial F/H pour la session
+// Distribution : 17→1/12, 16→2/12, 15→3/12, 14→3/12, 13→2/12, 11→1/12
+const _ECART_POOL = [17, 16, 16, 15, 15, 15, 14, 14, 14, 13, 13, 11];
+const _tauxEcart  = _ECART_POOL[Math.floor(Math.random() * _ECART_POOL.length)] / 100;
 
 let _genre     = 'H';
 let _defPrenom = '';
@@ -1539,7 +1549,7 @@ window.setGenre = function(genre) {
   const hero    = genre === 'F' ? window._heroF : window._heroH;
   _setNomFields(hero.prenom, hero.nom);
 
-  const facteur = genre === 'F' ? 0.85 : (1 / 0.85);
+  const facteur = genre === 'F' ? (1 - _tauxEcart) : (1 / (1 - _tauxEcart));
   ['d-brut', 'm-brut'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = Math.round(parseFloat(el.value) * facteur);
