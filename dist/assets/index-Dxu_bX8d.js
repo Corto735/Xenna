@@ -138,7 +138,7 @@
       </tbody>
     </table>`,I=`<div class="sim-period">
     SIMULATION AU <span class="sp-accent">${G(oe())}</span>
-    &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données
+    &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données sans le moindre état d'âme
   </div>`,y=r.reduce((m,E)=>m+parseFloat(E.montant_pat),0),d=r.length===0?"":`
     <div class="tbl-section-head">── ALLÈGEMENTS PATRONAUX ───────────────────────────────────────────</div>
     <table class="ascii-tbl">

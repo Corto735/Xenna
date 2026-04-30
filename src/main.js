@@ -757,7 +757,7 @@ function renderDesktop(b) {
 
   const simBanner = `<div class="sim-period">
     SIMULATION AU <span class="sp-accent">${formatDate(getDatePaie())}</span>
-    &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données
+    &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données sans le moindre état d'âme
   </div>`;
 
   // Section allègements (Fillon, etc.) — montants négatifs affichés en économie
