@@ -1099,6 +1099,7 @@
     ══════════════════════════════ */
     .view-forge,
     .view-apropos,
+    .view-contact,
     .view-gaabrielle,
     .view-hercule { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
 
@@ -1113,6 +1114,12 @@
     body.is-apropos .view-annuel  { display: none !important; }
     body.is-apropos .view-bar     { display: none !important; }
     body.is-apropos .view-apropos { display: block; }
+
+    body.is-contact .view-desktop,
+    body.is-contact .view-mobile,
+    body.is-contact .view-annuel  { display: none !important; }
+    body.is-contact .view-bar     { display: none !important; }
+    body.is-contact .view-contact { display: block; }
 
     body.is-gaabrielle .view-desktop,
     body.is-gaabrielle .view-mobile,
@@ -1154,12 +1161,14 @@
     }
     body.is-forge      .page-exit,
     body.is-apropos    .page-exit,
+    body.is-contact    .page-exit,
     body.is-gaabrielle .page-exit,
     body.is-hercule    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-forge      .page-exit,
       body.is-apropos    .page-exit,
+      body.is-contact    .page-exit,
       body.is-gaabrielle .page-exit,
       body.is-hercule    .page-exit {
         position: fixed;
@@ -1493,7 +1502,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-Dxu_bX8d.js"></script>
+  <script type="module" crossorigin src="/assets/index-E-UY0pGG.js"></script>
 </head>
 <body>
 
@@ -1534,7 +1543,7 @@
           <span class="burger-item-icon">?</span>
           À propos
         </button>
-        <button class="burger-item" onclick="location.href='mailto:cortomal@proton.me'; closeBurger()">
+        <button class="burger-item" onclick="setView('contact'); closeBurger()">
           <span class="burger-item-icon">✉</span>
           Contact
         </button>
@@ -2310,6 +2319,15 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE CONTACT
+  ════════════════════════════════ -->
+  <div class="view-contact" style="display:flex;align-items:center;justify-content:center;min-height:40vh">
+    <div style="border:1px solid var(--border);padding:2.5rem;font-family:inherit;font-size:1rem;color:var(--text);letter-spacing:0.04em;background:var(--bg2);">
+      jnfavari@proton.me
+    </div>
   </div>
 
   <!-- ════════════════════════════════
