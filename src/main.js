@@ -634,6 +634,7 @@ function renderDesktop(b) {
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer = parseFloat(b.net_a_payer) - pas.total;
+  if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
 
   // ── Barre récap ──
   const summaryBar = `
@@ -649,12 +650,9 @@ function renderDesktop(b) {
             <span>Cot. salariales</span>
             <span style="color:var(--red)">− ${fmt(totalSal)}</span>
           </div>
-          ${!skipPas ? `<div class="sb-ded-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-desk')">
-            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-desk-arrow" style="font-size:0.65em;color:var(--muted)">▶</span></span>
-            <span style="color:var(--purple)">− ${fmt(pas.total)}</span>
-          </div>
-          <div id="pas-detail-desk" style="display:none;margin-top:0.3rem">
-            ${buildPasFormulaContent(parseFloat(b.net_imposable))}
+          ${!skipPas ? `<div class="sb-ded-row">
+            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
+            <span style="color:var(--purple)">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
