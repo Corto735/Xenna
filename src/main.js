@@ -811,22 +811,23 @@ function renderDesktop(b) {
 // panel : 'why' (explication + loi) | 'how' (formule de calcul)
 window.mobToggle = function(id, panel) {
   const wrap = document.getElementById('mob-expand-' + id);
-  const why  = document.getElementById('mob-expand-' + id + '-why');
-  const how  = document.getElementById('mob-expand-' + id + '-how');
   if (!wrap) return;
+  const ALL_PANELS = ['why', 'how', 'sal', 'pat'];
   const isOpen = wrap.style.display !== 'none';
   const cur    = wrap.dataset.panel;
+  const show = p => {
+    const el = document.getElementById(`mob-expand-${id}-${p}`);
+    if (el) el.style.display = p === panel ? 'block' : 'none';
+  };
   if (!isOpen) {
     wrap.style.display = 'block';
     wrap.dataset.panel = panel;
-    why.style.display = panel === 'why' ? 'block' : 'none';
-    how.style.display = panel === 'how' ? 'block' : 'none';
+    ALL_PANELS.forEach(show);
   } else if (cur === panel) {
     wrap.style.display = 'none';
   } else {
     wrap.dataset.panel = panel;
-    why.style.display = panel === 'why' ? 'block' : 'none';
-    how.style.display = panel === 'how' ? 'block' : 'none';
+    ALL_PANELS.forEach(show);
   }
 };
 
@@ -881,21 +882,22 @@ function renderMobile(b) {
     const hasSal   = parseFloat(c.montant_sal) > 0;
     const hasPat   = parseFloat(c.montant_pat) > 0;
     const expandId = `${c.code}_u`;
-    const formulaHtml = c.code === 'REDUCTION_FILLON'
-      ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
-      : [
-          hasSal ? `<div class="fm-type-sal">${buildFormulaContent(c, 'sal')}</div>` : '',
-          hasPat ? `<div class="fm-type-pat">${buildFormulaContent(c, 'pat')}</div>` : '',
-        ].join('');
+    const isFillon = c.code === 'REDUCTION_FILLON';
+    const salFormula = hasSal
+      ? (isFillon ? `<pre class="fm-fillon">${esc(c.explication)}</pre>` : `<div class="fm-type-sal">${buildFormulaContent(c, 'sal')}</div>`)
+      : '';
+    const patFormula = hasPat
+      ? (isFillon ? `<pre class="fm-fillon">${esc(c.explication)}</pre>` : `<div class="fm-type-pat">${buildFormulaContent(c, 'pat')}</div>`)
+      : '';
     const whyHtml = `
       <div class="mob-exp-txt">${esc(c.explication)}</div>
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
     const amtsSal = hasSal
-      ? `<span class="mob-val mob-cot-amt" style="color:#ffe033" onclick="mobToggle('${expandId}','how')">− ${fmt(c.montant_sal)}</span>`
+      ? `<span class="mob-val mob-cot-amt" style="color:#ffe033" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
       : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
     const amtsPat = hasPat
-      ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','how')">+ ${fmt(c.montant_pat)}</span>`
+      ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">+ ${fmt(c.montant_pat)}</span>`
       : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
     return `
       <div class="${stripeCls}">
@@ -905,7 +907,8 @@ function renderMobile(b) {
         </div>
         <div class="mob-expand" id="mob-expand-${expandId}" style="display:none">
           <div id="mob-expand-${expandId}-why">${whyHtml}</div>
-          <div id="mob-expand-${expandId}-how" style="display:none">${formulaHtml}</div>
+          ${salFormula ? `<div id="mob-expand-${expandId}-sal" style="display:none">${salFormula}</div>` : ''}
+          ${patFormula ? `<div id="mob-expand-${expandId}-pat" style="display:none">${patFormula}</div>` : ''}
         </div>
       </div>`;
   }).join('');
