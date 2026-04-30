@@ -1014,6 +1014,9 @@ async function calculate(source) {
   const alsaceMoselle  = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
   const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
+  const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
+  const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
+  const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
 
   // ── Validation côté JS ────────────────────────────────────────────────────
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
@@ -1046,6 +1049,9 @@ async function calculate(source) {
         nom, prenom, salaire_brut: brut.toString(), statut,
         alsace_moselle: alsaceMoselle,
         pays: paysEtranger ?? "france",
+        assujetti_is: assujettiIS,
+        canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
+        tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
       },
       datePaie,
     });
@@ -1231,6 +1237,22 @@ window.onTogglePays = function(pays, checked) {
   if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
   const mBrut = document.getElementById('m-brut');
   if (mBrut) { const l = mBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrutM; }
+
+  // Affiche/masque le bloc IS Suisse (et réinitialise si on décoche Suisse)
+  ['d', 'm'].forEach(p => {
+    const isWrap = document.getElementById(`${p}-ch-is-wrap`);
+    if (!isWrap) return;
+    if (isSuisse) {
+      isWrap.style.display = '';
+    } else {
+      isWrap.style.display = 'none';
+      // Réinitialiser les champs IS quand on décoche Suisse
+      const cbIS = document.getElementById(`${p}-assujetti-is`);
+      if (cbIS) cbIS.checked = false;
+      const detail = document.getElementById(`${p}-ch-is-detail`);
+      if (detail) detail.style.display = 'none';
+    }
+  });
 };
 
 // ── Paramètres avancés ───────────────────────────────────────────────────────
@@ -1243,11 +1265,26 @@ window.toggleParams = function(prefix) {
   toggle.classList.toggle('open', !open);
 };
 
-// Synchronise un paramètre checkbox entre les deux formulaires (desktop ↔ mobile)
-window.syncParam = function(paramName, checked) {
+// Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
+// Gère les checkboxes ET les selects (canton, tarif-is).
+window.syncParam = function(paramName, value) {
   ['d', 'm'].forEach(prefix => {
     const el = document.getElementById(`${prefix}-${paramName}`);
-    if (el && el.checked !== checked) el.checked = checked;
+    if (!el) return;
+    if (el.type === 'checkbox') {
+      if (el.checked !== value) el.checked = value;
+    } else {
+      // select ou autre input
+      if (el.value !== value) el.value = value;
+    }
+  });
+};
+
+// Affiche/masque les sélecteurs canton + tarif IS selon la checkbox assujetti-IS
+window.onToggleAssujetti = function(checked) {
+  ['d', 'm'].forEach(p => {
+    const detail = document.getElementById(`${p}-ch-is-detail`);
+    if (detail) detail.style.display = checked ? '' : 'none';
   });
 };
 

@@ -1627,6 +1627,64 @@
             <input type="checkbox" id="d-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
             Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
           </label>
+          <!-- Bloc IS — visible uniquement quand Suisse est coché -->
+          <div class="param-sub" id="d-ch-is-wrap" style="display:none">
+            <label class="param-item">
+              <input type="checkbox" id="d-assujetti-is" onchange="syncParam('assujetti-is', this.checked); onToggleAssujetti(this.checked)" />
+              Assujetti à l'impôt à la source (IS)
+            </label>
+            <div id="d-ch-is-detail" style="display:none">
+              <div class="param-row">
+                <label>Canton</label>
+                <select id="d-canton" onchange="syncParam('canton', this.value)">
+                  <option value="">— Sélectionner —</option>
+                  <option value="AG">AG — Argovie</option>
+                  <option value="AI">AI — Appenzell Rh.-Int.</option>
+                  <option value="AR">AR — Appenzell Rh.-Ext.</option>
+                  <option value="BE">BE — Berne</option>
+                  <option value="BL">BL — Bâle-Campagne</option>
+                  <option value="BS">BS — Bâle-Ville</option>
+                  <option value="FR">FR — Fribourg</option>
+                  <option value="GE">GE — Genève</option>
+                  <option value="GL">GL — Glaris</option>
+                  <option value="GR">GR — Grisons</option>
+                  <option value="JU">JU — Jura</option>
+                  <option value="LU">LU — Lucerne</option>
+                  <option value="NE">NE — Neuchâtel</option>
+                  <option value="NW">NW — Nidwald</option>
+                  <option value="OW">OW — Obwald</option>
+                  <option value="SG">SG — Saint-Gall</option>
+                  <option value="SH">SH — Schaffhouse</option>
+                  <option value="SO">SO — Soleure</option>
+                  <option value="SZ">SZ — Schwyz</option>
+                  <option value="TG">TG — Thurgovie</option>
+                  <option value="TI">TI — Tessin</option>
+                  <option value="UR">UR — Uri</option>
+                  <option value="VD">VD — Vaud</option>
+                  <option value="VS">VS — Valais</option>
+                  <option value="ZG">ZG — Zoug</option>
+                  <option value="ZH">ZH — Zurich</option>
+                </select>
+              </div>
+              <div class="param-row">
+                <label>Tarif IS</label>
+                <select id="d-tarif-is" onchange="syncParam('tarif-is', this.value)">
+                  <option value="A0">A0 — Célibataire, sans enfant</option>
+                  <option value="A1">A1 — Célibataire, 1 enfant</option>
+                  <option value="A2">A2 — Célibataire, 2 enfants ou +</option>
+                  <option value="B0">B0 — Marié·e, 1 revenu, sans enfant</option>
+                  <option value="B1">B1 — Marié·e, 1 revenu, 1 enfant</option>
+                  <option value="B2">B2 — Marié·e, 1 revenu, 2 enfants ou +</option>
+                  <option value="C0">C0 — Marié·e, 2 revenus, sans enfant</option>
+                  <option value="C1">C1 — Marié·e, 2 revenus, 1 enfant</option>
+                  <option value="C2">C2 — Marié·e, 2 revenus, 2 enfants ou +</option>
+                  <option value="H0">H0 — Monoparental·e, sans enfant suppl.</option>
+                  <option value="H1">H1 — Monoparental·e, 1 enfant suppl.</option>
+                  <option value="H2">H2 — Monoparental·e, 2 enfants suppl. ou +</option>
+                </select>
+              </div>
+            </div>
+          </div>
           <label class="param-item">
             <input type="checkbox" id="d-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
             Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
@@ -1699,6 +1757,64 @@
               <input type="checkbox" id="m-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
               Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
             </label>
+            <!-- Bloc IS mobile — visible uniquement quand Suisse est coché -->
+            <div class="param-sub" id="m-ch-is-wrap" style="display:none">
+              <label class="param-item">
+                <input type="checkbox" id="m-assujetti-is" onchange="syncParam('assujetti-is', this.checked); onToggleAssujetti(this.checked)" />
+                Assujetti à l'impôt à la source (IS)
+              </label>
+              <div id="m-ch-is-detail" style="display:none">
+                <div class="param-row">
+                  <label>Canton</label>
+                  <select id="m-canton" onchange="syncParam('canton', this.value)">
+                    <option value="">— Sélectionner —</option>
+                    <option value="AG">AG — Argovie</option>
+                    <option value="AI">AI — Appenzell Rh.-Int.</option>
+                    <option value="AR">AR — Appenzell Rh.-Ext.</option>
+                    <option value="BE">BE — Berne</option>
+                    <option value="BL">BL — Bâle-Campagne</option>
+                    <option value="BS">BS — Bâle-Ville</option>
+                    <option value="FR">FR — Fribourg</option>
+                    <option value="GE">GE — Genève</option>
+                    <option value="GL">GL — Glaris</option>
+                    <option value="GR">GR — Grisons</option>
+                    <option value="JU">JU — Jura</option>
+                    <option value="LU">LU — Lucerne</option>
+                    <option value="NE">NE — Neuchâtel</option>
+                    <option value="NW">NW — Nidwald</option>
+                    <option value="OW">OW — Obwald</option>
+                    <option value="SG">SG — Saint-Gall</option>
+                    <option value="SH">SH — Schaffhouse</option>
+                    <option value="SO">SO — Soleure</option>
+                    <option value="SZ">SZ — Schwyz</option>
+                    <option value="TG">TG — Thurgovie</option>
+                    <option value="TI">TI — Tessin</option>
+                    <option value="UR">UR — Uri</option>
+                    <option value="VD">VD — Vaud</option>
+                    <option value="VS">VS — Valais</option>
+                    <option value="ZG">ZG — Zoug</option>
+                    <option value="ZH">ZH — Zurich</option>
+                  </select>
+                </div>
+                <div class="param-row">
+                  <label>Tarif IS</label>
+                  <select id="m-tarif-is" onchange="syncParam('tarif-is', this.value)">
+                    <option value="A0">A0 — Célibataire, sans enfant</option>
+                    <option value="A1">A1 — Célibataire, 1 enfant</option>
+                    <option value="A2">A2 — Célibataire, 2 enfants ou +</option>
+                    <option value="B0">B0 — Marié·e, 1 revenu, sans enfant</option>
+                    <option value="B1">B1 — Marié·e, 1 revenu, 1 enfant</option>
+                    <option value="B2">B2 — Marié·e, 1 revenu, 2 enfants ou +</option>
+                    <option value="C0">C0 — Marié·e, 2 revenus, sans enfant</option>
+                    <option value="C1">C1 — Marié·e, 2 revenus, 1 enfant</option>
+                    <option value="C2">C2 — Marié·e, 2 revenus, 2 enfants ou +</option>
+                    <option value="H0">H0 — Monoparental·e, sans enfant suppl.</option>
+                    <option value="H1">H1 — Monoparental·e, 1 enfant suppl.</option>
+                    <option value="H2">H2 — Monoparental·e, 2 enfants suppl. ou +</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <label class="param-item">
               <input type="checkbox" id="m-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
               Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>

@@ -28,6 +28,15 @@ pub struct Salarie {
     pub alsace_moselle: bool,
     #[serde(default)]
     pub pays: Pays,
+    /// Code canton suisse à 2 lettres (ex. "GE", "ZH") — utilisé pour l'IS.
+    #[serde(default)]
+    pub canton: Option<String>,
+    /// Code tarif IS ORIS (A0, A1, A2, B0, B1, B2, C0, C1, C2, H0, H1, H2).
+    #[serde(default)]
+    pub tarif_is: Option<String>,
+    /// Vrai si le salarié est soumis à la retenue à la source (IS) suisse.
+    #[serde(default)]
+    pub assujetti_is: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

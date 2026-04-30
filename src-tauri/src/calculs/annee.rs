@@ -51,6 +51,9 @@ pub async fn generer_annee(
             salaire_brut: brut_mois, statut: statut.clone(),
             alsace_moselle: false,
             pays: crate::models::Pays::France,
+            canton: None,
+            tarif_is: None,
+            assujetti_is: false,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 
