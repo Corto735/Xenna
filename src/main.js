@@ -488,6 +488,15 @@ function buildFormulaStar(key, interactive = true) {
   return `<span class="formula-star" data-fmkey="${key}" onclick="event.stopPropagation();showFormula('${key}')">${spans}</span>`;
 }
 
+window.togglePasDetail = function(expandId) {
+  const panel = document.getElementById(expandId);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  const arrow = document.getElementById(expandId + '-arrow');
+  if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+};
+
 function buildFormulaContent(c, type) {
   // Fillon : l'explication contient déjà la formule complète avec valeurs substituées.
   if (c.code === 'REDUCTION_FILLON') {
@@ -625,7 +634,6 @@ function renderDesktop(b) {
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer = parseFloat(b.net_a_payer) - pas.total;
-  if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
 
   // ── Barre récap ──
   const summaryBar = `
@@ -641,9 +649,12 @@ function renderDesktop(b) {
             <span>Cot. salariales</span>
             <span style="color:var(--red)">− ${fmt(totalSal)}</span>
           </div>
-          ${!skipPas ? `<div class="sb-ded-row">
-            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
-            <span style="color:var(--purple)">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
+          ${!skipPas ? `<div class="sb-ded-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-desk')">
+            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-desk-arrow" style="font-size:0.65em;color:var(--muted)">▶</span></span>
+            <span style="color:var(--purple)">− ${fmt(pas.total)}</span>
+          </div>
+          <div id="pas-detail-desk" style="display:none;margin-top:0.3rem">
+            ${buildPasFormulaContent(parseFloat(b.net_imposable))}
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
@@ -940,9 +951,12 @@ function renderMobile(b) {
       </div>` : ''}
 
       <!-- PAS (France seulement) -->
-      ${!skipPas ? `<div class="mob-row pas-row">
-        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
-        <span class="mob-val c-purple">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
+      ${!skipPas ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
+        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-val c-purple">− ${fmt(pas.total)}</span>
+      </div>
+      <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+        ${buildPasFormulaContent(parseFloat(b.net_imposable))}
       </div>` : ''}
 
       <!-- Net à payer -->
