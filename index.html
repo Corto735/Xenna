@@ -638,15 +638,14 @@
       font-size: 0.9rem;
       border-top: 2px solid var(--blue);
     }
-    /* Zébrures cotisations salariales (rouge / fond) */
-    .mob-stripe-sal-a .mob-row { background: var(--bg);  }
-    .mob-stripe-sal-b .mob-row { background: #2a0d0d;    }
-    /* Zébrures cotisations patronales (orange / fond) */
-    .mob-stripe-pat-a .mob-row { background: var(--bg);  }
-    .mob-stripe-pat-b .mob-row { background: #2a1800;    }
-    /* Zébrures allègements (vert / fond) */
+    /* Zébrures neutres — fond alterné gris légèrement plus clair que --bg */
+    .mob-stripe-sal-a .mob-row,
+    .mob-stripe-pat-a .mob-row,
     .mob-stripe-alleg-a .mob-row { background: var(--bg); }
-    .mob-stripe-alleg-b .mob-row { background: #0d2a14;   }
+
+    .mob-stripe-sal-b .mob-row,
+    .mob-stripe-pat-b .mob-row,
+    .mob-stripe-alleg-b .mob-row { background: #13161f; }
 
     .mob-lbl { color: var(--gray); flex: 1; padding-right: 0.5rem; }
     .mob-val {
