@@ -659,12 +659,10 @@ function renderDesktop(b) {
     </div>`;
 
   // ── Table cotisations salariales ──
-  const cotSal      = cots.filter(c => parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0");
-  const cotPat      = cots.filter(c => parseFloat(c.montant_pat) > 0);
+  const cotAll      = cots.filter(c => c.categorie !== "Allègement" &&
+    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
   const cotAlleg    = cots.filter(c => c.categorie === "Allègement");
-  // Brut patronal = somme des lignes affichées (positives seulement, hors Fillon).
-  // totalPat (net) est réservé au super brut dans la barre récap.
-  const totalPatBrut = cotPat.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
+  const totalPatBrut = cotAll.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   function buildRows(list, offset) {
     return list.map((c, i) => {
@@ -726,28 +724,16 @@ function renderDesktop(b) {
       </tr>
     </thead>`;
 
-  const tableSal = `
-    <div class="tbl-section-head">── COTISATIONS SALARIALES ─────────────────────────────────────────</div>
+  const tableAll = `
+    <div class="tbl-section-head">── COTISATIONS ────────────────────────────────────────────────────────────────────</div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
-        ${buildRows(cotSal, 0)}
+        ${buildRows(cotAll, 0)}
         <tr class="tbl-total">
-          <td colspan="3">TOTAL COTISATIONS SALARIALES</td>
+          <td colspan="3">TOTAUX</td>
           <td class="r c-sal">− ${fmt(totalSal)}</td>
-          <td></td><td></td>
-        </tr>
-      </tbody>
-    </table>`;
-
-  const tablePat = `
-    <div class="tbl-section-head">── COTISATIONS PATRONALES ──────────────────────────────────────────</div>
-    <table class="ascii-tbl">
-      ${thead}
-      <tbody>
-        ${buildRows(cotPat, cotSal.length)}
-        <tr class="tbl-total">
-          <td colspan="5">TOTAL COTISATIONS PATRONALES</td>
+          <td></td>
           <td class="r c-pat">+ ${fmt(totalPatBrut)}</td>
         </tr>
       </tbody>
@@ -766,7 +752,7 @@ function renderDesktop(b) {
       ${thead}
       <tbody>
         ${cotAlleg.map((c, i) => {
-          const idx    = cotSal.length + cotPat.length + i;
+          const idx    = cotAll.length + i;
           const catCls = CAT_CLASS[c.categorie] || "cat-alleg";
           const montant = Math.abs(parseFloat(c.montant_pat));
           const keyAlleg = `${c.code}_alleg`;
@@ -800,7 +786,7 @@ function renderDesktop(b) {
       </tbody>
     </table>`;
 
-  el.innerHTML = simBanner + summaryBar + `<div class="tbl-wrap">${tableSal}${tablePat}${tableAlleg}</div>`;
+  el.innerHTML = simBanner + summaryBar + `<div class="tbl-wrap">${tableAll}${tableAlleg}</div>`;
 }
 
 // ─── Accordéon mobile ───────────────────────────────────────────────────────
@@ -867,25 +853,44 @@ function renderMobile(b) {
   const netPayer  = parseFloat(b.net_a_payer) - pas.total;
   const superBrut = parseFloat(b.brut) + totalPat;
 
-  const cotSalLines = cots
-    .filter(c => parseFloat(c.montant_sal) > 0)
-    .map((c, i) => buildMobCotRow(c, `${c.code}_sal`, `− ${fmt(c.montant_sal)}`, 'c-red', 'sal', i))
-    .join('');
+  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" &&
+    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
+  const cotAllegMob  = cots.filter(c => c.categorie === "Allègement");
+  const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
+  const totalAlleg      = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
-  const cotPatFiltered = cots.filter(c => parseFloat(c.montant_pat) > 0);
-  const cotPatLines = cotPatFiltered
-    .map((c, i) => buildMobCotRow(c, `${c.code}_pat`, `+ ${fmt(c.montant_pat)}`, 'c-orange', 'pat', i))
-    .join('');
-  const totalPatBrutMob = cotPatFiltered.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
+  const cotLines = cotAllMob.map((c, i) => {
+    const hasSal   = parseFloat(c.montant_sal) > 0;
+    const hasPat   = parseFloat(c.montant_pat) > 0;
+    const expandId = `${c.code}_u`;
+    const formulaHtml = c.code === 'REDUCTION_FILLON'
+      ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
+      : [
+          hasSal ? `<div class="fm-type-sal">${buildFormulaContent(c, 'sal')}</div>` : '',
+          hasPat ? `<div class="fm-type-pat">${buildFormulaContent(c, 'pat')}</div>` : '',
+        ].join('');
+    const whyHtml = `
+      <div class="mob-exp-txt">${esc(c.explication)}</div>
+      ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
+    const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
+    const amtsSal = hasSal ? `<span class="mob-val c-red mob-cot-amt" onclick="mobToggle('${expandId}','how')">− ${fmt(c.montant_sal)}</span>` : '';
+    const amtsPat = hasPat ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','how')">+ ${fmt(c.montant_pat)}</span>` : '';
+    return `
+      <div class="${stripeCls}">
+        <div class="mob-row">
+          <span class="mob-lbl mob-cot-lbl" onclick="mobToggle('${expandId}','why')">${esc(c.libelle)}</span>
+          <span style="display:flex;flex-direction:column;align-items:flex-end;gap:0.1rem">${amtsSal}${amtsPat}</span>
+        </div>
+        <div class="mob-expand" id="mob-expand-${expandId}" style="display:none">
+          <div id="mob-expand-${expandId}-why">${whyHtml}</div>
+          <div id="mob-expand-${expandId}-how" style="display:none">${formulaHtml}</div>
+        </div>
+      </div>`;
+  }).join('');
 
-  const cotAllegLines = cots
-    .filter(c => c.categorie === "Allègement")
+  const cotAllegLines = cotAllegMob
     .map((c, i) => buildMobCotRow(c, `${c.code}_alleg`, `− ${fmt(Math.abs(parseFloat(c.montant_pat)))}`, 'c-alleg', 'alleg', i))
     .join('');
-
-  const totalAlleg = cots
-    .filter(c => c.categorie === "Allègement")
-    .reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   el.innerHTML = `
     <div class="mob-bulletin">
@@ -905,12 +910,16 @@ function renderMobile(b) {
         <span class="mob-val c-gray">${fmt(b.brut)}</span>
       </div>
 
-      <!-- Section cotisations salariales -->
-      <div class="mob-row section"><span class="mob-lbl">── COTISATIONS SALARIALES ──</span><span></span></div>
-      ${cotSalLines}
+      <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
+      <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:1.5rem;font-size:0.62rem;color:var(--muted)"><span>SAL.</span><span>PAT.</span></span></div>
+      ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL retenues salariales</span>
         <span class="mob-val c-red">− ${fmt(totalSal)}</span>
+      </div>
+      <div class="mob-row subtot">
+        <span class="mob-lbl">TOTAL charges patronales</span>
+        <span class="mob-val c-orange">+ ${fmt(totalPatBrutMob)}</span>
       </div>
 
       <!-- Net imposable (France seulement) -->
@@ -929,14 +938,6 @@ function renderMobile(b) {
       <div class="mob-row final-row">
         <span class="mob-lbl">NET À PAYER</span>
         <span class="mob-val c-green">${fmt(netPayer)}</span>
-      </div>
-
-      <!-- Section cotisations patronales -->
-      <div class="mob-row section"><span class="mob-lbl">── COTISATIONS PATRONALES ──</span><span></span></div>
-      ${cotPatLines}
-      <div class="mob-row subtot">
-        <span class="mob-lbl">TOTAL charges patronales brutes</span>
-        <span class="mob-val c-orange">+ ${fmt(totalPatBrutMob)}</span>
       </div>
 
       <!-- Allègements -->
