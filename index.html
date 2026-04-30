@@ -335,6 +335,20 @@
     body.hv-mode .btn-view,
     body.hv-mode .btn-calc { border-width: 2px !important; }
     body.hv-mode .mob-row { border-bottom: 2px solid var(--border); }
+
+    /* Zoom ×2 — mob-row en colonne : libellé en haut, montant(s) en bas à droite */
+    body.zoom-mode .mob-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+      padding: 0.45rem 0.9rem;
+    }
+    body.zoom-mode .mob-row > *:last-child {
+      align-self: flex-end;
+    }
+    body.zoom-mode .mob-row .mob-val {
+      font-size: 0.85rem;
+    }
     body.hv-mode .field input,
     body.hv-mode .field select { padding: 0.5rem 0.6rem; }
 
