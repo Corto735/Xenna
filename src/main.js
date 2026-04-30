@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
   // Tirage unique à l'arrivée — la paire H/F et l'écart salarial sont fixés pour la session
-  window._heroH = _heroRandom(HEROS_H);
+  window._heroH = Math.random() < 0.015 ? { prenom: 'Jean-Noël', nom: 'Favari' } : _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
   _setNomFields(window._heroH.prenom, window._heroH.nom);
   _syncToggleUI('H');
