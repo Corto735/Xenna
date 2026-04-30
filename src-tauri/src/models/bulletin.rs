@@ -8,6 +8,15 @@ pub enum Statut {
     NonCadre,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Pays {
+    #[default]
+    France,
+    Suisse,
+    Luxembourg,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Salarie {
     pub nom:          String,
@@ -17,6 +26,8 @@ pub struct Salarie {
     pub statut:       Statut,
     #[serde(default)]
     pub alsace_moselle: bool,
+    #[serde(default)]
+    pub pays: Pays,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,4 +92,6 @@ pub struct Bulletin {
     pub net_a_payer:   Decimal,
     #[serde(with = "rust_decimal::serde::str")]
     pub cout_total_employeur: Decimal,
+    /// "EUR" pour la France, "CHF" pour la Suisse.
+    pub devise: String,
 }

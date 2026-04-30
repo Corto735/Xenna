@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use sqlx::SqlitePool;
 
 use crate::db::ContextPaie;
@@ -10,7 +11,7 @@ use super::cotisations::fillon_coeff;
 
 const MOIS_FR: [&str; 12] = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre (13e mois)",
 ];
 
 /// Simule 12 bulletins mensuels avec Fillon annualisé et régularisation.
@@ -38,14 +39,18 @@ pub async fn generer_annee(
 
         let ctx = ContextPaie::charger(pool, date).await?;
 
+        // Décembre = salaire de base + 13e mois → brut doublé.
+        let brut_mois = if mois == 12 { brut * dec!(2) } else { brut };
+
         // On génère un bulletin complet pour réutiliser toute la logique de
         // cotisations (SS, AGIRC-ARRCO, etc.) sans la dupliquer ici.
         // Le Fillon inclus dans ce bulletin est le calcul mensuel simple ;
         // on l'extrait séparément pour le remplacer par la version régularisée.
         let dummy = Salarie {
             nom: String::new(), prenom: String::new(),
-            salaire_brut: brut, statut: statut.clone(),
+            salaire_brut: brut_mois, statut: statut.clone(),
             alsace_moselle: false,
+            pays: crate::models::Pays::France,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 
@@ -66,8 +71,11 @@ pub async fn generer_annee(
             .map(|c| c.montant_pat.abs())
             .unwrap_or(Decimal::ZERO);
 
-        // ── Fillon régularisé ────────────────────────────────────────────
-        brut_cumule  += brut;
+        // ── Fillon régularisé (annualisé sur les cumuls réels) ───────────
+        // Le 13e mois de décembre entre dans brut_cumule → le coeff
+        // est recalculé sur la rémunération annuelle totale, comme
+        // l'exige la méthode URSSAF de régularisation annuelle.
+        brut_cumule  += brut_mois;
         smic_cumule  += ctx.smic_mensuel;
 
         let fillon_reg = fillon_regularise_mois(
@@ -78,7 +86,7 @@ pub async fn generer_annee(
         lignes.push(LigneMensuelle {
             mois,
             mois_libelle:     MOIS_FR[(mois - 1) as usize].to_string(),
-            brut,
+            brut:             brut_mois,
             smic:             ctx.smic_mensuel,
             pmss:             ctx.pmss,
             total_sal,
@@ -86,7 +94,7 @@ pub async fn generer_annee(
             fillon_simple,
             fillon_regularise: fillon_reg,
             net_a_payer:      bulletin.net_a_payer,
-            cout_employeur:   (brut + total_pat_brut - fillon_reg).round_dp(2),
+            cout_employeur:   (brut_mois + total_pat_brut - fillon_reg).round_dp(2),
         });
     }
 

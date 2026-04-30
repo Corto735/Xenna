@@ -51,12 +51,15 @@ function errToStr(e) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 
-// ── Initialisation date par défaut = aujourd'hui ─────────────────────────────
-const TODAY = new Date().toISOString().slice(0, 10);
+// ── Date de simulation plafonnée au 31/01/2026 ───────────────────────────────
+// Les données France sont valides jusqu'au 01/01/2026 (PMSS, SMIC, taux Fillon).
+// On bloque la saisie au 31/01/2026 pour éviter toute simulation hors-données.
+const DATE_MAX = '2026-01-31';
+const TODAY    = DATE_MAX;   // alias pour les appels existants
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.value = TODAY; el.max = TODAY; }
+    if (el) { el.value = DATE_MAX; el.max = DATE_MAX; }
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
@@ -333,14 +336,19 @@ window.setView = function (v) {
   if (v === 'forge') forgeInit();
 };
 
+// ── Devise courante (mise à jour à chaque renderAll) ─────────────────────────
+let DEVISE = "EUR";
+
 // ── Formatage ────────────────────────────────────────────────────────────────
 function fmt(val) {
   const n = parseFloat(val);
-  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  const sym = DEVISE === "CHF" ? " CHF" : " €";
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + sym;
 }
 function fmtS(val, sign = false) {
   const n = parseFloat(val);
-  const s = n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  const sym = DEVISE === "CHF" ? " CHF" : " €";
+  const s = n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + sym;
   return sign && n > 0 ? "+" + s : s;
 }
 function fmtPct(val) {
@@ -411,6 +419,17 @@ const CAT_CLASS = {
   "Prévoyance":             "cat-prev",
   "Chômage":                "cat-cho",
   "Allègement":             "cat-alleg",
+  // Suisse
+  "1er pilier":             "cat-ss",
+  "Assurance chômage":      "cat-cho",
+  "Assurance accidents":    "cat-acc",
+  "Prévoyance maladie":     "cat-prev",
+  "Prévoyance (LPP)":       "cat-ret",
+  // Luxembourg
+  "Assurance pension":          "cat-ret",
+  "Assurance maladie":          "cat-ss",
+  "Assurance dépendance":       "cat-prev",
+  "Mutualité des employeurs":   "cat-ss",
 };
 
 // ── Registre formules ────────────────────────────────────────────────────────
@@ -574,11 +593,12 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
+  const skipPas = b.salarie?.pays && b.salarie.pays !== "france";
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const pas      = calculerPas(b.net_imposable);
+  const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer = parseFloat(b.net_a_payer) - pas.total;
-  _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
+  if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
 
   // ── Barre récap ──
   const summaryBar = `
@@ -594,10 +614,10 @@ function renderDesktop(b) {
             <span>Cot. salariales</span>
             <span style="color:var(--red)">− ${fmt(totalSal)}</span>
           </div>
-          <div class="sb-ded-row">
+          ${!skipPas ? `<div class="sb-ded-row">
             <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
             <span style="color:var(--purple)">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
-          </div>
+          </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
             <span style="color:var(--red)">− ${fmt(totalSal + pas.total)}</span>
@@ -820,9 +840,10 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
+  const skipPas = b.salarie?.pays && b.salarie.pays !== "france";
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const pas       = calculerPas(b.net_imposable);
+  const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer  = parseFloat(b.net_a_payer) - pas.total;
   const superBrut = parseFloat(b.brut) + totalPat;
 
@@ -872,17 +893,17 @@ function renderMobile(b) {
         <span class="mob-val c-red">− ${fmt(totalSal)}</span>
       </div>
 
-      <!-- Net imposable -->
-      <div class="mob-row net-row">
+      <!-- Net imposable (France seulement) -->
+      ${!skipPas ? `<div class="mob-row net-row">
         <span class="mob-lbl">NET IMPOSABLE</span>
         <span class="mob-val c-green">${fmt(b.net_imposable)}</span>
-      </div>
+      </div>` : ''}
 
-      <!-- PAS -->
-      <div class="mob-row pas-row">
+      <!-- PAS (France seulement) -->
+      ${!skipPas ? `<div class="mob-row pas-row">
         <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
         <span class="mob-val c-purple">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
-      </div>
+      </div>` : ''}
 
       <!-- Net à payer -->
       <div class="mob-row final-row">
@@ -920,6 +941,7 @@ function renderMobile(b) {
 // RENDU GLOBAL (les deux vues)
 // ═════════════════════════════════════════════════════════════════════════════
 function renderAll(b) {
+  DEVISE = b.devise || "EUR";
   renderDesktop(b);
   renderMobile(b);
 }
@@ -943,7 +965,9 @@ async function calculate(source) {
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
   const date         = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
-  const alsaceMoselle = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
+  const alsaceMoselle  = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
+  const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
+  const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
 
   // ── Validation côté JS ────────────────────────────────────────────────────
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
@@ -966,10 +990,18 @@ async function calculate(source) {
   ["d-prenom","m-prenom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = prenom; });
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
+  // Pays étranger = date figée au 01/01/2026 (pas d'historique pour CH/LU)
+  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg" : null;
+  const datePaie = paysEtranger ? "2026-01-01" : date;
+
   try {
     const bulletin = await api("calculer_bulletin", {
-      salarie: { nom, prenom, salaire_brut: brut.toString(), statut, alsace_moselle: alsaceMoselle },
-      datePaie: date,
+      salarie: {
+        nom, prenom, salaire_brut: brut.toString(), statut,
+        alsace_moselle: alsaceMoselle,
+        pays: paysEtranger ?? "france",
+      },
+      datePaie,
     });
     lastBulletin = bulletin;
     renderAll(bulletin);
@@ -1008,13 +1040,15 @@ function renderAnnuel(sim) {
     </tr></thead>`;
 
   const tbody = rows.map((r, i) => {
-    const smicChange = i > 0 && r.smic !== smics[i - 1];
-    const delta      = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
-    const deltaTxt   = Math.abs(delta) < 0.005
+    const smicChange  = i > 0 && r.smic !== smics[i - 1];
+    const is13e       = r.mois_libelle.includes("13e");
+    const delta       = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
+    const deltaTxt    = Math.abs(delta) < 0.005
       ? `<span style="color:var(--dim)">—</span>`
       : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>`;
+    const rowCls = [smicChange ? "smic-change" : "", is13e ? "treizieme-mois" : ""].filter(Boolean).join(" ");
 
-    return `<tr class="${smicChange ? "smic-change" : ""}">
+    return `<tr class="${rowCls}">
       <td>${r.mois_libelle}</td>
       <td>${fmt(r.smic)}</td>
       <td>${fmt(r.brut)}</td>
@@ -1063,6 +1097,9 @@ function renderAnnuel(sim) {
 
   el.innerHTML = `
     <div class="tbl-section-head">── SIMULATION ANNUELLE ${sim.annee} ────────────────────────────────────</div>
+    <div style="font-size:0.70rem;color:var(--muted);margin-bottom:0.4rem">
+      Décembre inclut un 13e mois (salaire doublé). Brut total = 13 mois. Fillon régularisé sur rémunération annuelle réelle.
+    </div>
     <table class="ann-tbl">
       ${thead}
       <tbody>${tbody}</tbody>
@@ -1105,6 +1142,50 @@ async function calculerAnnee() {
     el.innerHTML = `<div style="padding:1rem;color:var(--red);font-size:0.8rem">ERREUR : ${esc(errToStr(e))}</div>`;
   }
 }
+
+// ── Gestion multi-pays (Suisse / Luxembourg) ─────────────────────────────────
+// Appelé depuis chaque checkbox pays ; gère l'exclusion mutuelle et l'UI commune.
+window.onTogglePays = function(pays, checked) {
+  const AUTRES_PAYS = ['suisse', 'luxembourg'].filter(p => p !== pays);
+
+  // Si on coche un pays, décocher les autres pays étrangers
+  if (checked) {
+    AUTRES_PAYS.forEach(autre => {
+      ['d', 'm'].forEach(p => {
+        const el = document.getElementById(`${p}-${autre}`);
+        if (el && el.checked) { el.checked = false; }
+      });
+    });
+  }
+
+  // L'UI commune (date, AM) dépend de si AU MOINS UN pays étranger est coché
+  const unPaysActif = ['suisse', 'luxembourg'].some(pId =>
+    document.getElementById(`d-${pId}`)?.checked
+  );
+
+  // Masque Alsace-Moselle et bloque la date si un pays étranger est actif
+  ['d', 'm'].forEach(p => {
+    const wrap = document.getElementById(`${p}-alsace-moselle-wrap`);
+    if (wrap) wrap.style.display = unPaysActif ? 'none' : '';
+    const am = document.getElementById(`${p}-alsace-moselle`);
+    if (am && unPaysActif) am.checked = false;
+  });
+  ['d-date', 'm-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = unPaysActif;
+    if (unPaysActif) el.value = '2026-01-01';
+  });
+
+  // Label devise : CHF pour la Suisse, EUR pour tous les autres
+  const isSuisse = document.getElementById('d-suisse')?.checked;
+  const labelBrut = isSuisse ? 'SALAIRE BRUT (CHF)' : 'SALAIRE BRUT (€)';
+  const labelBrutM = isSuisse ? 'BRUT (CHF)' : 'BRUT (€)';
+  const dBrut = document.getElementById('d-brut');
+  if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
+  const mBrut = document.getElementById('m-brut');
+  if (mBrut) { const l = mBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrutM; }
+};
 
 // ── Paramètres avancés ───────────────────────────────────────────────────────
 window.toggleParams = function(prefix) {

@@ -542,6 +542,7 @@
     .cat-prev  { color: #fbbf24; }
     .cat-cho   { color: #fb7185; }
     .cat-alleg { color: #4ade80; }
+    .cat-acc   { color: #f97316; }
 
     /* Montants allègements (vert — économie employeur) */
     .ascii-tbl td.c-alleg { color: #4ade80; }
@@ -756,6 +757,9 @@
     .ann-tbl tr.ann-total td:first-child { color: var(--yellow); }
     /* Ligne avec SMIC différent du mois précédent */
     .ann-tbl tr.smic-change td:nth-child(2) { color: var(--yellow); }
+    /* Décembre avec 13e mois */
+    .ann-tbl tr.treizieme-mois { background: #0d1f0d; }
+    .ann-tbl tr.treizieme-mois td:first-child { color: var(--green); }
     /* Δ régularisation non nul */
     .delta-nonzero { color: var(--blue); }
 
@@ -1619,6 +1623,14 @@
         </button>
         <div class="params-panel" id="d-params" style="display:none">
           <label class="param-item">
+            <input type="checkbox" id="d-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
+            Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
+            Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
+          </label>
+          <label class="param-item" id="d-alsace-moselle-wrap">
             <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
             Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
           </label>
@@ -1683,6 +1695,14 @@
           </button>
           <div class="params-panel" id="m-params" style="display:none;grid-column:1/-1">
             <label class="param-item">
+              <input type="checkbox" id="m-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
+              Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
+              Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
+            </label>
+            <label class="param-item" id="m-alsace-moselle-wrap">
               <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
               Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
             </label>
@@ -1711,7 +1731,7 @@
 
     <div class="ann-form">
       <div class="field"><label>ANNÉE</label>
-        <input type="number" id="a-annee" value="2022" min="2015" max="2025" step="1" style="width:90px" /></div>
+        <input type="number" id="a-annee" value="2026" min="2015" max="2026" step="1" style="width:90px" /></div>
       <div class="field"><label>SALAIRE BRUT MENSUEL (€)</label>
         <input type="number" id="a-brut" value="2500" step="50" min="0" /></div>
       <div class="field"><label>STATUT</label>

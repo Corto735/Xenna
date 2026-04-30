@@ -1,9 +1,17 @@
 use rust_decimal::Decimal;
 use crate::db::ContextPaie;
-use crate::models::{Bulletin, Salarie};
+use crate::models::{Bulletin, Pays, Salarie};
 use super::cotisations::*;
+use super::ch_bulletin::generer_bulletin_ch;
+use super::lu_bulletin::generer_bulletin_lu;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
+    match salarie.pays {
+        Pays::Suisse     => return generer_bulletin_ch(salarie, ctx),
+        Pays::Luxembourg => return generer_bulletin_lu(salarie, ctx),
+        Pays::France     => {}
+    }
+
     let brut = salarie.salaire_brut;
     let mut cotisations = Vec::new();
 
@@ -45,6 +53,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_imposable,
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
+        devise: "EUR".into(),
         salarie,
     }
 }
