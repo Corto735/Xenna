@@ -285,26 +285,46 @@ window.setAppFont = function(fontName, restore = false) {
   if (picker && restore) picker.value = fontName;
 };
 
+const _scan67clicks = [];
 window.scan67 = function() {
+  const now = Date.now();
+  _scan67clicks.push(now);
+  while (_scan67clicks.length && now - _scan67clicks[0] > 1500) _scan67clicks.shift();
+
+  const easterEgg = _scan67clicks.length >= 3;
+  if (easterEgg) _scan67clicks.length = 0;
+
+  const pattern = easterEgg ? /42/ : /67/;
   const selectors = '.mob-val, .sb-val, .ascii-tbl td, .fm-val, .fm-result td';
   const found = Array.from(document.querySelectorAll(selectors))
-    .filter(el => /67/.test(el.textContent.replace(/[\s ]/g, '')) && el.offsetParent !== null);
+    .filter(el => pattern.test(el.textContent.replace(/[\s ]/g, '')) && el.offsetParent !== null);
 
   if (found.length === 0) return;
 
   const btn = document.getElementById('a11y-67-btn');
   btn.classList.add('active');
 
-  found.forEach((el, i) => {
-    setTimeout(() => {
-      el.classList.remove('flash-67');
-      void el.offsetWidth; // force reflow pour relancer l'animation
-      el.classList.add('flash-67');
-      el.addEventListener('animationend', () => el.classList.remove('flash-67'), { once: true });
-    }, i * 500);
-  });
-
-  setTimeout(() => btn.classList.remove('active'), found.length * 500 + 200);
+  if (easterEgg) {
+    const vividColors = ['#ff0055','#ff6600','#ffcc00','#00ff88','#00ccff','#aa00ff','#ff00cc','#39ff14','#ff4444','#44ffff','#ff69b4','#7fff00'];
+    found.forEach((el, i) => {
+      setTimeout(() => {
+        const color = vividColors[Math.floor(Math.random() * vividColors.length)];
+        Object.assign(el.style, { background: color, color: '#000', outline: `2px solid ${color}`, borderRadius: '2px', transition: 'all 0.15s' });
+        setTimeout(() => Object.assign(el.style, { background: '', color: '', outline: '', borderRadius: '' }), 900);
+      }, i * 250);
+    });
+    setTimeout(() => btn.classList.remove('active'), found.length * 250 + 1000);
+  } else {
+    found.forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.remove('flash-67');
+        void el.offsetWidth;
+        el.classList.add('flash-67');
+        el.addEventListener('animationend', () => el.classList.remove('flash-67'), { once: true });
+      }, i * 500);
+    });
+    setTimeout(() => btn.classList.remove('active'), found.length * 500 + 200);
+  }
 };
 
 window.toggleBWMode = function() {
