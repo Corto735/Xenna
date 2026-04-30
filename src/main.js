@@ -880,8 +880,12 @@ function renderMobile(b) {
       <div class="mob-exp-txt">${esc(c.explication)}</div>
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
-    const amtsSal = hasSal ? `<span class="mob-val c-red mob-cot-amt" onclick="mobToggle('${expandId}','how')">− ${fmt(c.montant_sal)}</span>` : '';
-    const amtsPat = hasPat ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','how')">+ ${fmt(c.montant_pat)}</span>` : '';
+    const amtsSal = hasSal
+      ? `<span class="mob-val mob-cot-amt" style="color:#ffe033" onclick="mobToggle('${expandId}','how')">− ${fmt(c.montant_sal)}</span>`
+      : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
+    const amtsPat = hasPat
+      ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','how')">+ ${fmt(c.montant_pat)}</span>`
+      : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
     return `
       <div class="${stripeCls}">
         <div class="mob-row">
