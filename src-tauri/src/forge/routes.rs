@@ -9,6 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 use sqlx::SqlitePool;
+use tracing;
 
 use super::models::{
     CcnExpertise, CcnLevel, ContributorProfile, CreerProfilReq, PaysExpertise, ProfilComplet,
@@ -42,7 +43,8 @@ impl IntoResponse for ForgeError {
             ForgeError::Conflit(msg) => (StatusCode::CONFLICT, msg).into_response(),
             ForgeError::Validation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response(),
             ForgeError::Db(e) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+                tracing::error!("Forge DB error: {:?}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Erreur interne du serveur").into_response()
             }
         }
     }
@@ -155,6 +157,31 @@ async fn creer_profil(
     State(pool): State<Db>,
     Json(req): Json<CreerProfilReq>,
 ) -> Result<(StatusCode, Json<ProfilComplet>), ForgeError> {
+    // Validation des champs
+    let pseudo = req.pseudo.trim();
+    if pseudo.is_empty() || pseudo.len() > 50 {
+        return Err(ForgeError::Validation("Pseudo : 1 à 50 caractères".into()));
+    }
+    if req.poste.len() > 100 {
+        return Err(ForgeError::Validation("Poste : 100 caractères maximum".into()));
+    }
+    if !req.email.contains('@') || req.email.len() > 254 {
+        return Err(ForgeError::Validation("Adresse email invalide".into()));
+    }
+    if req.expertises.len() > 20 {
+        return Err(ForgeError::Validation("Maximum 20 CCN par profil".into()));
+    }
+    if req.pays.len() > 20 {
+        return Err(ForgeError::Validation("Maximum 20 pays par profil".into()));
+    }
+    if let Some(ref url) = req.linkedin_url {
+        if !url.is_empty() && !url.starts_with("https://") && !url.starts_with("http://") {
+            return Err(ForgeError::Validation(
+                "URL LinkedIn invalide (doit commencer par https://)".into(),
+            ));
+        }
+    }
+
     // Validation des niveaux avant toute écriture
     if let Some(ref n) = req.paie_fr_niveau {
         CcnLevel::try_from(n.as_str()).map_err(ForgeError::Validation)?;

@@ -257,6 +257,11 @@ window.toggleZoom = function() {
 };
 
 const _fontCache = new Set();
+const ALLOWED_FONTS = new Set([
+  'IBM Plex Mono', 'Fira Code', 'JetBrains Mono',
+  'Source Code Pro', 'Roboto Mono', 'Inconsolata',
+]);
+
 window.setAppFont = function(fontName, restore = false) {
   if (!fontName) {
     document.body.classList.remove('custom-font');
@@ -266,6 +271,8 @@ window.setAppFont = function(fontName, restore = false) {
     if (picker) picker.value = '';
     return;
   }
+
+  if (!ALLOWED_FONTS.has(fontName)) return;
 
   // Charge la police depuis Google Fonts si pas encore chargée
   const key = fontName.replace(/ /g, '+');
@@ -696,8 +703,8 @@ function renderDesktop(b) {
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
             <div class="expl-box">
-              <div class="expl-txt">▸ ${c.explication}</div>
-              ${c.loi_ref ? `<div class="expl-ref">§ ${c.loi_ref}</div>` : ""}
+              <div class="expl-txt">▸ ${esc(c.explication)}</div>
+              ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
             </div>
           </td>
         </tr>`;
@@ -773,8 +780,8 @@ function renderDesktop(b) {
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
                 <div class="expl-box">
-                  <div class="expl-txt">▸ ${c.explication}</div>
-                  ${c.loi_ref ? `<div class="expl-ref">§ ${c.loi_ref}</div>` : ""}
+                  <div class="expl-txt">▸ ${esc(c.explication)}</div>
+                  ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
                 </div>
               </td>
             </tr>`;

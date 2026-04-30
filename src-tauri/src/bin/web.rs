@@ -1,24 +1,19 @@
 //! Serveur HTTP standalone — Railway / Docker.
 //! Expose les mêmes commandes que Tauri via POST JSON sur /api/{commande}.
-//!
-//! Les routes correspondent exactement aux noms de commandes Tauri :
-//!   POST /api/calculer_bulletin  ←→  tauri::command calculer_bulletin
-//!   POST /api/simuler_annee      ←→  tauri::command simuler_annee
-//!
-//! Le frontend détecte le mode via window.__TAURI__ (absent en web) et bascule
-//! entre invoke() et fetch() de façon transparente (voir src/main.js).
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
+    extract::{Request, State},
+    http::{header, HeaderValue, Method, StatusCode},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
     routing::post,
     Json, Router,
 };
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -30,14 +25,8 @@ use xenna_paie_lib::{
     models::{Salarie, Statut},
 };
 
-// ── State ─────────────────────────────────────────────────────────────────────
 type Db = Arc<SqlitePool>;
 
-// ── Corps de requête ──────────────────────────────────────────────────────────
-// Le JS envoie les champs en camelCase (convention Tauri) → on rename ici.
-// Si la désérialisation échoue (champ manquant, mauvais type), Axum retourne
-// automatiquement un 422 avec le message d'erreur serde en plain text.
-// Ce n'est PAS capturé par ApiError ci-dessous — c'est voulu.
 #[derive(Deserialize)]
 struct BulletinReq {
     salarie: Salarie,
@@ -53,14 +42,35 @@ struct AnneeReq {
     statut: Statut,
 }
 
-// ── Erreur métier (400 Bad Request, corps = texte lisible) ────────────────────
-// Distinct des erreurs de désérialisation JSON (422, gérées par Axum).
 struct ApiError(String);
 
 impl IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
+    fn into_response(self) -> Response {
         (StatusCode::BAD_REQUEST, self.0).into_response()
     }
+}
+
+// ── Middleware : en-têtes de sécurité ─────────────────────────────────────────
+async fn security_headers(req: Request, next: Next) -> Response {
+    let mut res = next.run(req).await;
+    let h = res.headers_mut();
+    h.insert("x-frame-options",        HeaderValue::from_static("DENY"));
+    h.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    h.insert("referrer-policy",        HeaderValue::from_static("strict-origin-when-cross-origin"));
+    h.insert("permissions-policy",     HeaderValue::from_static("geolocation=(), camera=(), microphone=()"));
+    h.insert(
+        "content-security-policy",
+        HeaderValue::from_static(
+            "default-src 'self'; \
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+             font-src 'self' https://fonts.gstatic.com; \
+             script-src 'self' 'unsafe-inline'; \
+             connect-src 'self' https://api.mymemory.translated.net; \
+             img-src 'self' data:; \
+             frame-ancestors 'none'"
+        ),
+    );
+    res
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -73,7 +83,10 @@ async fn handle_bulletin(
 
     let ctx = ContextPaie::charger(&pool, date)
         .await
-        .map_err(|e| ApiError(e.to_string()))?;
+        .map_err(|e| {
+            tracing::error!("ContextPaie::charger error: {:?}", e);
+            ApiError("Erreur interne du serveur".into())
+        })?;
 
     Ok(Json(generer_bulletin(req.salarie, &ctx)))
 }
@@ -87,9 +100,18 @@ async fn handle_annee(
         .parse()
         .map_err(|_| ApiError(format!("Salaire invalide : '{}'", req.salaire_brut)))?;
 
+    if brut <= Decimal::ZERO || brut > dec!(1_000_000) {
+        return Err(ApiError(
+            "Salaire brut hors limites (0 < salaire ≤ 1 000 000 €)".into(),
+        ));
+    }
+
     let sim = generer_annee(&pool, brut, req.statut, req.annee)
         .await
-        .map_err(|e| ApiError(e.to_string()))?;
+        .map_err(|e| {
+            tracing::error!("generer_annee error: {:?}", e);
+            ApiError("Erreur interne du serveur".into())
+        })?;
 
     Ok(Json(sim))
 }
@@ -97,7 +119,12 @@ async fn handle_annee(
 // ── Main ──────────────────────────────────────────────────────────────────────
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "xenna_paie=info,warn".parse().unwrap()),
+        )
+        .init();
 
     let db_path: PathBuf = std::env::var("DATABASE_PATH")
         .map(PathBuf::from)
@@ -111,12 +138,18 @@ async fn main() {
 
     let dist = std::env::var("DIST_DIR").unwrap_or_else(|_| "../dist".to_string());
 
+    // CORS : autorise seulement l'origine configurée (même serveur en prod)
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE]);
+
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
         .merge(forge_router())
         .fallback_service(ServeDir::new(&dist))
-        .layer(CorsLayer::permissive())
+        .layer(middleware::from_fn(security_headers))
+        .layer(cors)
         .with_state(pool);
 
     let port: u16 = std::env::var("PORT")
