@@ -117,6 +117,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('bw-switch')?.classList.add('on');
     document.getElementById('a11y-bw-btn')?.classList.add('active');
   }
+  if (localStorage.getItem('xenna-dactylo')) {
+    _dactyloMode = true;
+    document.getElementById('dactylo-switch')?.classList.add('on');
+  }
 
   // Ferme le panel a11y au clic extérieur
   document.addEventListener('click', e => {
@@ -340,6 +344,58 @@ window.toggleBWMode = function() {
   document.getElementById('a11y-bw-btn')?.classList.toggle('active', active);
   localStorage.setItem('xenna-bw', active ? '1' : '');
 };
+
+// ── Mode dactylo (desktop uniquement) ────────────────────────────────────────
+let _dactyloMode  = false;
+let _dactyloRunId = 0;
+const _sleep = ms => new Promise(r => setTimeout(r, ms));
+
+window.toggleDactylo = function() {
+  _dactyloMode = !_dactyloMode;
+  document.getElementById('dactylo-switch')?.classList.toggle('on', _dactyloMode);
+  localStorage.setItem('xenna-dactylo', _dactyloMode ? '1' : '');
+};
+
+async function typewriterDesktop() {
+  const id = ++_dactyloRunId;
+  const abort = () => id !== _dactyloRunId;
+
+  const rows = document.querySelectorAll('#res-desktop tr.data-row');
+  if (!rows.length) return;
+
+  // Phase 1 — collecter les cibles et les vider immédiatement
+  const queue = [];
+  for (const row of rows) {
+    // Libelle (dernier span du premier td)
+    const libelleSpan = row.querySelector('td:first-child > span:last-child');
+    if (libelleSpan) {
+      const text = libelleSpan.textContent;
+      libelleSpan.textContent = '';
+      queue.push({ target: libelleSpan, text, ms: 4 });
+    }
+    // Cellules numériques : premier nœud texte de chaque td
+    row.querySelectorAll('td:not(:first-child)').forEach(cell => {
+      const node = [...cell.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+      if (node) {
+        const text = node.textContent;
+        node.textContent = '';
+        queue.push({ target: node, text, ms: 2 });
+      }
+    });
+    queue.push({ pause: 8 });
+  }
+
+  // Phase 2 — animer char par char
+  for (const item of queue) {
+    if (abort()) return;
+    if (item.pause) { await _sleep(item.pause); continue; }
+    for (const char of item.text) {
+      if (abort()) return;
+      item.target.textContent += char;
+      await _sleep(item.ms);
+    }
+  }
+}
 
 // ── Sécurité : neutralise tout HTML dans les entrées utilisateur ─────────────
 function esc(str) {
@@ -629,12 +685,19 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas = b.salarie?.pays && b.salarie.pays !== "france";
+  const skipPas = ['suisse', 'luxembourg'].includes(b.salarie?.pays);
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer = parseFloat(b.net_a_payer) - pas.total;
   if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
+
+  // IS suisse — extrait pour l'afficher séparément dans la barre récap
+  const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;
+  const isChAmt  = isChCot ? parseFloat(isChCot.montant_sal) : 0;
+  const isChTaux = isChCot ? parseFloat(isChCot.taux_sal) : 0;
+  if (isChCot) _fmStore['CH_IS'] = { c: isChCot, type: 'sal' };
+  const totalSalSansIS = totalSal - isChAmt;
 
   // ── Barre récap ──
   const summaryBar = `
@@ -648,11 +711,15 @@ function renderDesktop(b) {
         <div class="sb-ded">
           <div class="sb-ded-row">
             <span>Cot. salariales</span>
-            <span style="color:var(--red)">− ${fmt(totalSal)}</span>
+            <span style="color:var(--red)">− ${fmt(totalSalSansIS)}</span>
           </div>
+          ${isChCot ? `<div class="sb-ded-row">
+            <span>Impôt à la source (${(isChTaux * 100).toFixed(1)} %)</span>
+            <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('CH_IS')">− ${fmt(isChAmt)}${buildFormulaStar('CH_IS')}</span>
+          </div>` : ''}
           ${!skipPas ? `<div class="sb-ded-row">
             <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
-            <span style="color:var(--purple)">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
+            <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('PAS')">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
@@ -705,9 +772,9 @@ function renderDesktop(b) {
           </td>
           <td class="r">${fmt(c.base)}</td>
           <td class="r">${fmtPct(c.taux_sal)}</td>
-          <td class="r ${salCls}">${fmt(c.montant_sal)}${starSal}</td>
+          <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${fmt(c.montant_sal)}${starSal}</td>
           <td class="r">${fmtPct(c.taux_pat)}</td>
-          <td class="r ${patCls}">${fmt(c.montant_pat)}${starPat}</td>
+          <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${fmt(c.montant_pat)}${starPat}</td>
         </tr>
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
@@ -784,7 +851,7 @@ function renderDesktop(b) {
               <td class="r"></td>
               <td class="r"></td>
               <td class="r c-alleg">${fmtPct(Math.abs(parseFloat(c.taux_pat)))}</td>
-              <td class="r c-alleg">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>
+              <td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>
             </tr>
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
@@ -863,14 +930,21 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas = b.salarie?.pays && b.salarie.pays !== "france";
+  const skipPas = ['suisse', 'luxembourg'].includes(b.salarie?.pays);
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
   const netPayer  = parseFloat(b.net_a_payer) - pas.total;
   const superBrut = parseFloat(b.brut) + totalPat;
 
-  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" &&
+  // IS suisse — extrait pour l'afficher en accordéon dédié (comme PAS pour la France)
+  const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;
+  const isChAmt  = isChCot ? parseFloat(isChCot.montant_sal) : 0;
+  const isChTaux = isChCot ? parseFloat(isChCot.taux_sal) : 0;
+  const totalSalSansIS = totalSal - isChAmt;
+
+  // CH_IS retiré de la liste unifiée — affiché séparément ci-dessous
+  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" && c.code !== 'CH_IS' &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
   const cotAllegMob  = cots.filter(c => c.categorie === "Allègement");
   const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -937,21 +1011,32 @@ function renderMobile(b) {
       <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:1.5rem;font-size:0.62rem;color:var(--muted)"><span>SAL.</span><span>PAT.</span></span></div>
       ${cotLines}
       <div class="mob-row subtot">
-        <span class="mob-lbl">TOTAL retenues salariales</span>
-        <span class="mob-val c-red">− ${fmt(totalSal)}</span>
+        <span class="mob-lbl">TOTAL cotisations sociales</span>
+        <span class="mob-val c-red">− ${fmt(totalSalSansIS)}</span>
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
         <span class="mob-val c-orange">+ ${fmt(totalPatBrutMob)}</span>
       </div>
 
-      <!-- Net imposable (France seulement) -->
+      <!-- Impôt à la source suisse — accordéon dédié -->
+      ${isChCot ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('is-detail-mob')">
+        <span class="mob-lbl">Impôt à la source (${(isChTaux * 100).toFixed(1)} %) <span id="is-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-val c-purple">− ${fmt(isChAmt)}</span>
+      </div>
+      <div id="is-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+        <div class="fm-type-sal">${buildFormulaContent(isChCot, 'sal')}</div>
+        <div class="mob-exp-txt" style="margin-top:0.5rem">${esc(isChCot.explication)}</div>
+        ${isChCot.loi_ref ? `<div class="mob-exp-loi">§ ${esc(isChCot.loi_ref)}</div>` : ''}
+      </div>` : ''}
+
+      <!-- Net imposable (France / FPT) -->
       ${!skipPas ? `<div class="mob-row net-row">
         <span class="mob-lbl">NET IMPOSABLE</span>
         <span class="mob-val c-green">${fmt(b.net_imposable)}</span>
       </div>` : ''}
 
-      <!-- PAS (France seulement) -->
+      <!-- PAS (France / FPT) -->
       ${!skipPas ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
         <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(pas.total)}</span>
@@ -991,6 +1076,7 @@ function renderAll(b) {
   DEVISE = b.devise || "EUR";
   renderDesktop(b);
   renderMobile(b);
+  if (_dactyloMode) typewriterDesktop();
 }
 
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
@@ -1015,6 +1101,7 @@ async function calculate(source) {
   const alsaceMoselle  = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
   const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
+  const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
@@ -1041,6 +1128,7 @@ async function calculate(source) {
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
   // Pays étranger = date figée au 01/01/2026 (pas d'historique pour CH/LU)
+  // FPT = France, date libre, historique dès le 01/01/2016
   const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg" : null;
   const datePaie = paysEtranger ? "2026-01-01" : date;
 
@@ -1049,7 +1137,7 @@ async function calculate(source) {
       salarie: {
         nom, prenom, salaire_brut: brut.toString(), statut,
         alsace_moselle: alsaceMoselle,
-        pays: paysEtranger ?? "france",
+        pays: paysEtranger ?? (isFPT ? "fonction_publique" : "france"),
         assujetti_is: assujettiIS,
         canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
         tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
@@ -1196,12 +1284,16 @@ async function calculerAnnee() {
   }
 }
 
-// ── Gestion multi-pays (Suisse / Luxembourg) ─────────────────────────────────
+// ── Gestion multi-pays (Suisse / Luxembourg / FPT) ───────────────────────────
 // Appelé depuis chaque checkbox pays ; gère l'exclusion mutuelle et l'UI commune.
+// FPT est France (EUR, date libre, Alsace-Moselle compatible).
+// Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const AUTRES_PAYS = ['suisse', 'luxembourg'].filter(p => p !== pays);
+  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt'];
+  const PAYS_ETR     = ['suisse', 'luxembourg'];
+  const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
-  // Si on coche un pays, décocher les autres pays étrangers
+  // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
   if (checked) {
     AUTRES_PAYS.forEach(autre => {
       ['d', 'm'].forEach(p => {
@@ -1211,8 +1303,8 @@ window.onTogglePays = function(pays, checked) {
     });
   }
 
-  // L'UI commune (date, AM) dépend de si AU MOINS UN pays étranger est coché
-  const unPaysActif = ['suisse', 'luxembourg'].some(pId =>
+  // Date et Alsace-Moselle : bloqués uniquement si un pays ÉTRANGER est coché
+  const unPaysActif = PAYS_ETR.some(pId =>
     document.getElementById(`d-${pId}`)?.checked
   );
 

@@ -226,7 +226,7 @@
     }
     .a11y-float-btn {
       background: var(--bg2);
-      border: 1px solid var(--border);
+      border: 1px solid #ffe066;
       border-right: none;
       border-bottom: none;
       color: var(--muted);
@@ -245,7 +245,7 @@
       opacity: 0.2;
       border-radius: 4px;
     }
-    .a11y-float-btn:last-child { border-bottom: 1px solid var(--border); }
+    .a11y-float-btn:last-child { border-bottom: 1px solid #ffe066; }
     .a11y-float-btn:hover { color: var(--blue); border-color: var(--blue); opacity: 1; }
     .a11y-float-btn.active {
       background: var(--blue);
@@ -808,7 +808,6 @@
       to   { opacity: 1; transform: translateY(0); }
     }
     .formula-star {
-      /* visibility:hidden préserve l'espace — pas de saut du montant */
       visibility: hidden;
       pointer-events: none;
       cursor: pointer;
@@ -824,21 +823,14 @@
       text-decoration-color: color-mix(in srgb, var(--blue) 40%, transparent);
       text-underline-offset: 2px;
     }
-    .formula-star > span { opacity: 0; }
     .formula-star.visited {
       color: var(--purple);
       text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent);
     }
+    /* Apparaît au survol de la valeur (td ou span.fm-val) — desktop uniquement */
     td:hover .formula-star,
-    .sb-cell:hover .formula-star,
-    .pas-row:hover .formula-star {
+    .fm-val:hover .formula-star {
       visibility: visible;
-      pointer-events: auto;
-    }
-    td:hover .formula-star > span,
-    .sb-cell:hover .formula-star > span,
-    .pas-row:hover .formula-star > span {
-      animation: fxChar 80ms ease-out forwards;
     }
 
     /* ── Modal formule ───────────────────────────────────────── */
@@ -1152,8 +1144,15 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    .page-exit:hover,
     .page-nav:hover { border-color: var(--blue); color: var(--blue); }
+    .page-exit {
+      border-color: #c0392b;
+      color: #c0392b;
+    }
+    .page-exit:hover {
+      border-color: #e05555;
+      color: #e05555;
+    }
 
     /* × Fermer — dans la barre header sur desktop, fixé en bas à droite sur mobile */
     .page-exit {
@@ -1599,6 +1598,10 @@
           <span>Mode noir &amp; blanc</span>
           <div class="a11y-switch" id="bw-switch"></div>
         </div>
+        <div class="a11y-row" onclick="toggleDactylo()">
+          <span>Mode dactylo</span>
+          <div class="a11y-switch" id="dactylo-switch"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1712,6 +1715,10 @@
             <input type="checkbox" id="d-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
             Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
           </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+            FPT<span class="param-badge">titulaire · dès 2016</span>
+          </label>
           <label class="param-item" id="d-alsace-moselle-wrap">
             <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
             Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
@@ -1737,6 +1744,7 @@
     </div>
 
   </div><!-- /view-desktop -->
+  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
 
   <!-- ════════════════════════════════
        VUE MOBILE
@@ -1842,6 +1850,10 @@
               <input type="checkbox" id="m-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
               Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
             </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+              FPT<span class="param-badge">titulaire · dès 2016</span>
+            </label>
             <label class="param-item" id="m-alsace-moselle-wrap">
               <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
               Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
@@ -1863,6 +1875,7 @@
 
     </div>
   </div><!-- /view-mobile -->
+  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
 
   <!-- ════════════════════════════════
        VUE ANNUELLE
@@ -2319,9 +2332,11 @@
   <!-- ════════════════════════════════
        VUE CONTACT
   ════════════════════════════════ -->
-  <div class="view-contact" style="display:flex;align-items:center;justify-content:center;min-height:40vh">
-    <div style="border:1px solid var(--border);padding:2.5rem;font-family:inherit;font-size:1rem;color:var(--text);letter-spacing:0.04em;background:var(--bg2);">
-      jnfavari@proton.me
+  <div class="view-contact">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:40vh">
+      <div style="border:1px solid var(--border);padding:2.5rem;font-family:inherit;font-size:1rem;color:var(--text);letter-spacing:0.04em;background:var(--bg2);">
+        jnfavari@proton.me
+      </div>
     </div>
   </div>
 

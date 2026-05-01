@@ -15,6 +15,9 @@ pub enum Pays {
     France,
     Suisse,
     Luxembourg,
+    /// Agents titulaires de la Fonction Publique Territoriale (FPT).
+    /// Données historiques disponibles depuis le 01/01/2016.
+    FonctionPublique,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

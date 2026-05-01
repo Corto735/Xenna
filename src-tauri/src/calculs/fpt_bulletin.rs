@@ -1,30 +1,26 @@
 use rust_decimal::Decimal;
 use crate::db::ContextPaie;
-use crate::models::{Bulletin, Pays, Salarie};
-use super::cotisations::*;
-use super::ch_bulletin::generer_bulletin_ch;
-use super::lu_bulletin::generer_bulletin_lu;
-use super::fpt_bulletin::generer_bulletin_fpt;
+use crate::models::{Bulletin, Salarie};
+use super::cotisations::{ss_maladie, famille, accident_travail, csg_contributions, maladie_alsace_moselle};
+use super::fpt_cotisations::fpt_cnracl;
 
-pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
-    match salarie.pays {
-        Pays::Suisse            => return generer_bulletin_ch(salarie, ctx),
-        Pays::Luxembourg        => return generer_bulletin_lu(salarie, ctx),
-        Pays::FonctionPublique  => return generer_bulletin_fpt(salarie, ctx),
-        Pays::France            => {}
-    }
-
+/// Bulletin pour les agents titulaires de la Fonction Publique Territoriale (FPT).
+///
+/// Différences vs secteur privé (France) :
+///   - CNRACL remplace SS_VIEILLESSE + AGIRC-ARRCO
+///   - Pas de cotisation chômage (titulaires : emploi garanti)
+///   - Pas de réduction Fillon (employeurs publics exclus du dispositif)
+///   - Maladie, famille, AT/MP, CSG/CRDS : mêmes règles
+///   - Alsace-Moselle compatible (agents des 3 départements)
+pub fn generer_bulletin_fpt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
     let mut cotisations = Vec::new();
 
     cotisations.push(ss_maladie(brut, ctx));
-    cotisations.push(ss_vieillesse_plafonnee(brut, ctx));
-    cotisations.push(ss_vieillesse_deplafonnee(brut, ctx));
+    cotisations.push(fpt_cnracl(brut, ctx));
     cotisations.push(famille(brut, ctx));
     cotisations.push(accident_travail(brut, ctx));
-    cotisations.push(chomage(brut, ctx));
     cotisations.extend(csg_contributions(brut, ctx));
-    cotisations.extend(retraite_complementaire(brut, &salarie.statut, ctx));
 
     if salarie.alsace_moselle {
         if let Some(am) = maladie_alsace_moselle(brut, ctx) {
@@ -32,15 +28,9 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         }
     }
 
-    if let Some(fillon) = reduction_fillon(brut, ctx) {
-        cotisations.push(fillon);
-    }
-
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
 
-    // Net imposable = brut - cotisations salariales
-    // (la CSG non déductible et la CRDS sont dans total_sal mais ne réduisent pas le net imposable)
     let csg_non_ded_et_crds: Decimal = cotisations.iter()
         .filter(|c| c.code == "CSG_NON_DEDUCTIBLE" || c.code == "CRDS")
         .map(|c| c.montant_sal)
