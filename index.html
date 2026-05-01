@@ -220,10 +220,13 @@
       right: 0;
       top: 50%;
       transform: translateY(-50%);
-      display: flex;
+      display: none;
       flex-direction: column;
       z-index: 400;
     }
+    body.is-desktop .a11y-float,
+    body.is-mobile  .a11y-float,
+    body.is-annuel  .a11y-float { display: flex; }
     .a11y-float-btn {
       background: var(--bg2);
       border: 1px solid #ffe066;
@@ -270,20 +273,22 @@
     }
     /* Zébrures mobile */
     body.bw-mode .mob-row:nth-child(odd)  { background: #ffffff !important; }
-    body.bw-mode .mob-row:nth-child(even) { background: #000000 !important; }
+    body.bw-mode .mob-row:nth-child(even) { background: #3a3a3a !important; }
     body.bw-mode .mob-row:nth-child(odd)  * { color: #000000 !important; }
     body.bw-mode .mob-row:nth-child(even) * { color: #ffffff !important; }
     /* Zébrures desktop (tableau ascii) */
     body.bw-mode .ascii-tbl tr:nth-child(odd)  td { background: #ffffff; color: #000000 !important; }
-    body.bw-mode .ascii-tbl tr:nth-child(even) td { background: #000000; color: #ffffff !important; }
+    body.bw-mode .ascii-tbl tr:nth-child(even) td { background: #3a3a3a; color: #ffffff !important; }
     /* Neutralise les couleurs restantes */
     body.bw-mode .c-red, body.bw-mode .c-orange,
     body.bw-mode .c-green, body.bw-mode .c-purple,
     body.bw-mode .c-blue, body.bw-mode .c-alleg { color: inherit !important; }
     body.bw-mode .sb-val, body.bw-mode .mob-val  { color: inherit !important; }
     body.bw-mode .summary-bar .sb-cell { background: #f2f2f2; border-color: #000; }
-    body.bw-mode .btn-calc { background: #000; color: #fff; border-color: #000; }
-    body.bw-mode .ptog.ptog-on { background: #000; border-color: #000; color: #fff; }
+    body.bw-mode .btn-calc { background: #3a3a3a; color: #fff; border-color: #3a3a3a; }
+    body.bw-mode .ptog.ptog-on { background: #3a3a3a; border-color: #3a3a3a; color: #fff; }
+    /* Valeurs dans les champs de saisie — toujours en noir */
+    body.bw-mode input, body.bw-mode select { color: #000000 !important; }
 
     /* Sélecteur de police */
     .a11y-font-label {
@@ -322,7 +327,7 @@
       --green:  #66ff66;
       --purple: #cc99ff;
       --gray:   #dddddd;
-      font-size: 1.15rem;
+      font-size: 1.25rem;
     }
     body.hv-mode *:focus-visible {
       outline: 3px solid #ffff00 !important;

@@ -356,36 +356,55 @@ window.toggleDactylo = function() {
   localStorage.setItem('xenna-dactylo', _dactyloMode ? '1' : '');
 };
 
-async function typewriterDesktop() {
+async function typewriterDesktop(b) {
   const id = ++_dactyloRunId;
   const abort = () => id !== _dactyloRunId;
 
-  const rows = document.querySelectorAll('#res-desktop tr.data-row');
+  const container = document.getElementById('res-desktop');
+  const rows = container.querySelectorAll('tr.data-row');
   if (!rows.length) return;
 
-  // Phase 1 — collecter les cibles et les vider immédiatement
+  // Easter egg ë — vitesse ×2, flash néon aléatoire, flammes sur les totaux
+  const nomComplet = ((b?.salarie?.prenom || '') + (b?.salarie?.nom || '')).toLowerCase();
+  const ee = nomComplet.includes('ë');
+  const msL = ee ? 2 : 4;
+  const msV = ee ? 1 : 2;
+  const NEONS = ['#ff00ff','#00ffff','#ff0066','#66ff00','#ff6600','#0066ff','#ff00cc','#00ff99','#ffff00','#ff3399'];
+  const flashColor = () => ee ? NEONS[Math.floor(Math.random() * NEONS.length)] : '#ffe066';
+
+  // Phase 1 — masquer la ligne TOTAUX
+  const totalRow = container.querySelector('tr.tbl-total');
+  let totalSalCell = null, totalPatCell = null;
+  let totalSalText = '', totalPatText = '';
+  if (totalRow) {
+    const cells = totalRow.querySelectorAll('td');
+    totalSalCell = cells[1];
+    totalPatCell = cells[3];
+    if (totalSalCell) { totalSalText = totalSalCell.textContent; totalSalCell.textContent = ''; }
+    if (totalPatCell) { totalPatText = totalPatCell.textContent; totalPatCell.textContent = ''; }
+  }
+
+  // Phase 2 — collecter et vider les cibles
   const queue = [];
   for (const row of rows) {
-    // Libelle (dernier span du premier td)
     const libelleSpan = row.querySelector('td:first-child > span:last-child');
     if (libelleSpan) {
       const text = libelleSpan.textContent;
       libelleSpan.textContent = '';
-      queue.push({ target: libelleSpan, text, ms: 4 });
+      queue.push({ target: libelleSpan, text, ms: msL });
     }
-    // Cellules numériques : premier nœud texte de chaque td
     row.querySelectorAll('td:not(:first-child)').forEach(cell => {
       const node = [...cell.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
       if (node) {
         const text = node.textContent;
         node.textContent = '';
-        queue.push({ target: node, text, ms: 2 });
+        queue.push({ target: node, text, ms: msV });
       }
     });
-    queue.push({ pause: 8 });
+    queue.push({ pause: ee ? 4 : 8 });
   }
 
-  // Phase 2 — animer char par char
+  // Phase 3 — frappe char par char
   for (const item of queue) {
     if (abort()) return;
     if (item.pause) { await _sleep(item.pause); continue; }
@@ -395,6 +414,99 @@ async function typewriterDesktop() {
       await _sleep(item.ms);
     }
   }
+
+  if (abort()) return;
+  await _sleep(80);
+
+  // Phase 4 — scan salarial
+  for (const row of rows) {
+    if (abort()) return;
+    const cell = row.querySelectorAll('td')[3];
+    if (cell?.classList.contains('c-sal')) {
+      const c = flashColor();
+      cell.style.background = c;
+      cell.style.color = '#000';
+      await _sleep(ee ? 65 : 110);
+      cell.style.background = '';
+      cell.style.color = '';
+      await _sleep(ee ? 10 : 20);
+    }
+  }
+
+  if (totalSalCell) {
+    if (ee) { totalSalCell.style.fontWeight = 'bold'; totalSalCell.style.fontSize = '1.05em'; }
+    for (const char of totalSalText) {
+      if (abort()) return;
+      totalSalCell.textContent += char;
+      await _sleep(msV);
+    }
+    if (ee) spawnFlames(totalSalCell);
+  }
+
+  if (abort()) return;
+  await _sleep(80);
+
+  // Phase 5 — scan patronal
+  for (const row of rows) {
+    if (abort()) return;
+    const cell = row.querySelectorAll('td')[5];
+    if (cell?.classList.contains('c-pat')) {
+      const c = flashColor();
+      cell.style.background = c;
+      cell.style.color = '#000';
+      await _sleep(ee ? 65 : 110);
+      cell.style.background = '';
+      cell.style.color = '';
+      await _sleep(ee ? 10 : 20);
+    }
+  }
+
+  if (totalPatCell) {
+    if (ee) { totalPatCell.style.fontWeight = 'bold'; totalPatCell.style.fontSize = '1.05em'; }
+    for (const char of totalPatText) {
+      if (abort()) return;
+      totalPatCell.textContent += char;
+      await _sleep(msV);
+    }
+    if (ee) spawnFlames(totalPatCell);
+  }
+}
+
+let _flameStyleInjected = false;
+function ensureFlameStyle() {
+  if (_flameStyleInjected) return;
+  _flameStyleInjected = true;
+  const s = document.createElement('style');
+  s.textContent = '@keyframes flameRise{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-42px) scale(0);opacity:0}}';
+  document.head.appendChild(s);
+}
+
+function spawnFlames(cell) {
+  ensureFlameStyle();
+  const rect = cell.getBoundingClientRect();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;overflow:visible;'
+    + `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
+  document.body.appendChild(wrap);
+
+  const FIRE = ['#ff8800','#ffdd00','#ff5500','#ffaa00','#ff3300','#ffcc00','#ff6600'];
+  const iv = setInterval(() => {
+    const p = document.createElement('div');
+    const sz = Math.floor(Math.random() * 3) + 1;
+    const dur = (0.5 + Math.random() * 1.2).toFixed(2);
+    p.style.cssText = `position:absolute;pointer-events:none;`
+      + `left:${(Math.random() * rect.width).toFixed(1)}px;bottom:0;`
+      + `width:${sz}px;height:${sz}px;`
+      + `background:${FIRE[Math.floor(Math.random() * FIRE.length)]};`
+      + `animation:flameRise ${dur}s ease-out forwards`;
+    wrap.appendChild(p);
+    setTimeout(() => p.remove(), parseFloat(dur) * 1000 + 50);
+  }, 35);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    setTimeout(() => wrap.remove(), 1400);
+  }, 3000);
 }
 
 // ── Sécurité : neutralise tout HTML dans les entrées utilisateur ─────────────
@@ -771,10 +883,10 @@ function renderDesktop(b) {
             <span>${c.libelle}</span>
           </td>
           <td class="r">${fmt(c.base)}</td>
-          <td class="r">${fmtPct(c.taux_sal)}</td>
-          <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${fmt(c.montant_sal)}${starSal}</td>
-          <td class="r">${fmtPct(c.taux_pat)}</td>
-          <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${fmt(c.montant_pat)}${starPat}</td>
+          <td class="r">${parseFloat(c.taux_sal) > 0 ? '− ' : ''}${fmtPct(c.taux_sal)}</td>
+          <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${hasFmSal ? '− ' : ''}${fmt(c.montant_sal)}${starSal}</td>
+          <td class="r">${parseFloat(c.taux_pat) > 0 ? '− ' : ''}${fmtPct(c.taux_pat)}</td>
+          <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${hasFmPat ? '− ' : ''}${fmt(c.montant_pat)}${starPat}</td>
         </tr>
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
@@ -815,9 +927,9 @@ function renderDesktop(b) {
         ${buildRows(cotAll, 0)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
-          <td class="r c-sal">− ${fmt(totalSal)}</td>
+          <td class="r c-sal">= − ${fmt(totalSal)}</td>
           <td></td>
-          <td class="r c-pat">+ ${fmt(totalPatBrut)}</td>
+          <td class="r c-pat">= − ${fmt(totalPatBrut)}</td>
         </tr>
       </tbody>
     </table>`;
@@ -969,7 +1081,7 @@ function renderMobile(b) {
       ? `<span class="mob-val mob-cot-amt" style="color:#ffe033" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
       : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
     const amtsPat = hasPat
-      ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">+ ${fmt(c.montant_pat)}</span>`
+      ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">− ${fmt(c.montant_pat)}</span>`
       : `<span class="mob-val c-dim">0 ${DEVISE === 'CHF' ? 'CHF' : '€'}</span>`;
     return `
       <div class="${stripeCls}">
@@ -1016,7 +1128,7 @@ function renderMobile(b) {
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
-        <span class="mob-val c-orange">+ ${fmt(totalPatBrutMob)}</span>
+        <span class="mob-val c-orange">− ${fmt(totalPatBrutMob)}</span>
       </div>
 
       <!-- Impôt à la source suisse — accordéon dédié -->
@@ -1076,7 +1188,7 @@ function renderAll(b) {
   DEVISE = b.devise || "EUR";
   renderDesktop(b);
   renderMobile(b);
-  if (_dactyloMode) typewriterDesktop();
+  if (_dactyloMode) typewriterDesktop(b);
 }
 
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
