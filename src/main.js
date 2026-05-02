@@ -645,6 +645,15 @@ const CAT_CLASS = {
   "Bonus IRPEF":                "cat-alleg",
   "Imposta":                    "cat-csg",
   "Imposta regionale":          "cat-csg",
+  // Canada / Québec
+  "Retraite fédérale":          "cat-ret",
+  "Retraite Québec":            "cat-ret",
+  "Chômage fédéral":            "cat-cho",
+  "Parentalité Québec":         "cat-ss",
+  "Santé Québec":               "cat-ss",
+  "Impôt fédéral":              "cat-csg",
+  "Impôt provincial":           "cat-csg",
+  "Autres":                     "cat-prev",
 };
 
 // ── Registre formules ────────────────────────────────────────────────────────
@@ -817,7 +826,7 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1082,7 +1091,7 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1285,6 +1294,8 @@ async function calculate(source) {
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
+  const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
+  const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
@@ -1312,8 +1323,9 @@ async function calculate(source) {
 
   // Pays étranger = date figée (pas d'historique pour CH/LU/IT avant 2015-2026)
   // FPT = France, date libre, historique dès le 01/01/2016
-  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg" : isItalie ? "italia" : null;
-  const datePaie = (isSuisse || isLuxembourg) ? "2026-01-01" : isItalie ? "2026-01-01" : date;
+  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg"
+    : isItalie ? "italia" : isCanada ? "canada" : isQuebec ? "quebec" : null;
+  const datePaie = paysEtranger ? "2026-01-01" : date;
 
   try {
     const bulletin = await api("calculer_bulletin", {
@@ -1474,8 +1486,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie'];
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie'];
+  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie', 'canada', 'quebec'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'canada', 'quebec'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -1507,10 +1519,11 @@ window.onTogglePays = function(pays, checked) {
     if (unPaysActif) el.value = '2026-01-01';
   });
 
-  // Label devise : CHF pour la Suisse, EUR pour tous les autres
-  const isSuisse = document.getElementById('d-suisse')?.checked;
-  const labelBrut = isSuisse ? 'SALAIRE BRUT (CHF)' : 'SALAIRE BRUT (€)';
-  const labelBrutM = isSuisse ? 'BRUT (CHF)' : 'BRUT (€)';
+  // Label devise : CHF (Suisse), CAD (Canada/Québec), EUR (autres)
+  const isSuisse  = document.getElementById('d-suisse')?.checked;
+  const isCA = document.getElementById('d-canada')?.checked || document.getElementById('d-quebec')?.checked;
+  const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : 'SALAIRE BRUT (€)';
+  const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : 'BRUT (€)';
   const dBrut = document.getElementById('d-brut');
   if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
   const mBrut = document.getElementById('m-brut');
