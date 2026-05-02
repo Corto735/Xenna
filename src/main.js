@@ -1,3 +1,5 @@
+import { STATIC_DICT } from './lang.js';
+
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
 // Architecture duale : la même UI tourne à la fois dans l'app Tauri (desktop)
@@ -203,11 +205,21 @@ window.translateApp = async function(lang) {
   if (!_tradCache[lang]) _tradCache[lang] = new Map();
   const cache = _tradCache[lang];
 
+  // Dictionnaire statique — pré-remplit le cache sans appel réseau
+  const staticLang = STATIC_DICT[lang] || {};
+  texts.forEach(orig => {
+    const trimmed = orig.trim();
+    if (staticLang[trimmed] !== undefined && !cache.has(orig)) {
+      cache.set(orig, staticLang[trimmed]);
+    }
+  });
+
   const toFetch   = [...new Set(texts)].filter(t => !cache.has(t));
 
   try {
     if (toFetch.length > 0) {
       // MyMemory API — gratuite, open, sans clé, ~1000 mots/jour
+      // Utilisée uniquement pour les chaînes absentes du dictionnaire statique.
       const CHUNK = 20;
       for (let i = 0; i < toFetch.length; i += CHUNK) {
         const chunk = toFetch.slice(i, i + CHUNK);
