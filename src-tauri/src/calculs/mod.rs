@@ -11,6 +11,11 @@ pub mod fpt_bulletin;
 pub mod it_cotisations;
 pub mod it_irpef;
 pub mod it_bulletin;
+pub mod ca_cotisations;
+pub mod qc_cotisations;
+pub mod ca_impot;
+pub mod ca_bulletin;
+pub mod qc_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

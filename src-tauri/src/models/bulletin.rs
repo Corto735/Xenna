@@ -21,6 +21,12 @@ pub enum Pays {
     /// Salariés du secteur privé italien (INPS + INAIL + IRPEF).
     /// Données disponibles depuis le 01/01/2015.
     Italia,
+    /// Salariés canadiens hors Québec (RPC, AE, impôt fédéral + Ontario par défaut).
+    /// Données disponibles depuis le 01/01/2019.
+    Canada,
+    /// Salariés québécois (RRQ remplace RPC, AE réduit, RQAP, FSS, impôt fédéral + QC).
+    /// Données disponibles depuis le 01/01/2019.
+    Quebec,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
