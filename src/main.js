@@ -817,7 +817,8 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas = ['suisse', 'luxembourg'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia'].includes(b.salarie?.pays);
+  const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
@@ -829,7 +830,18 @@ function renderDesktop(b) {
   const isChAmt  = isChCot ? parseFloat(isChCot.montant_sal) : 0;
   const isChTaux = isChCot ? parseFloat(isChCot.taux_sal) : 0;
   if (isChCot) _fmStore['CH_IS'] = { c: isChCot, type: 'sal' };
-  const totalSalSansIS = totalSal - isChAmt;
+
+  // IRPEF italienne — extraite pour la barre récap (comme IS suisse)
+  const itIrpefCot  = isItalie ? cots.find(c => c.code === 'IT_IRPEF') : null;
+  const itIrpefAmt  = itIrpefCot ? parseFloat(itIrpefCot.montant_sal) : 0;
+  const itIrpefTaux = itIrpefCot ? parseFloat(itIrpefCot.taux_sal) : 0;
+  // Bonus cuneo (montant négatif = avantage salarié)
+  const itBonusCot  = isItalie ? cots.find(c => c.code === 'IT_BONUS_CUNEO') : null;
+  const itBonusAmt  = itBonusCot ? parseFloat(itBonusCot.montant_sal) : 0;
+
+  // Total sal affiché hors IS suisse et hors IRPEF/bonus italien
+  const totalSalSansIS    = totalSal - isChAmt;
+  const totalSalCotSeules = totalSal - isChAmt - itIrpefAmt - itBonusAmt;
 
   // ── Barre récap ──
   const summaryBar = `
@@ -843,11 +855,19 @@ function renderDesktop(b) {
         <div class="sb-ded">
           <div class="sb-ded-row">
             <span>Cot. salariales</span>
-            <span style="color:var(--red)">− ${fmt(totalSalSansIS)}</span>
+            <span style="color:var(--red)">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
           </div>
           ${isChCot ? `<div class="sb-ded-row">
             <span>Impôt à la source (${(isChTaux * 100).toFixed(1)} %)</span>
             <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('CH_IS')">− ${fmt(isChAmt)}${buildFormulaStar('CH_IS')}</span>
+          </div>` : ''}
+          ${itIrpefCot ? `<div class="sb-ded-row">
+            <span>IRPEF (${(itIrpefTaux * 100).toFixed(1)} % eff.)</span>
+            <span style="color:var(--purple)">− ${fmt(itIrpefAmt)}</span>
+          </div>` : ''}
+          ${itBonusCot ? `<div class="sb-ded-row">
+            <span>Bonus cuneo fiscale</span>
+            <span style="color:var(--green)">+ ${fmt(Math.abs(itBonusAmt))}</span>
           </div>` : ''}
           ${!skipPas ? `<div class="sb-ded-row">
             <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
@@ -1062,7 +1082,8 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas = ['suisse', 'luxembourg'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia'].includes(b.salarie?.pays);
+  const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
@@ -1073,10 +1094,19 @@ function renderMobile(b) {
   const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;
   const isChAmt  = isChCot ? parseFloat(isChCot.montant_sal) : 0;
   const isChTaux = isChCot ? parseFloat(isChCot.taux_sal) : 0;
-  const totalSalSansIS = totalSal - isChAmt;
 
-  // CH_IS retiré de la liste unifiée — affiché séparément ci-dessous
-  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" && c.code !== 'CH_IS' &&
+  // IRPEF italienne — extraite pour accordéon dédié
+  const itIrpefCotMob = isItalieMob ? cots.find(c => c.code === 'IT_IRPEF') : null;
+  const itIrpefAmtMob = itIrpefCotMob ? parseFloat(itIrpefCotMob.montant_sal) : 0;
+  const itIrpefTauxMob = itIrpefCotMob ? parseFloat(itIrpefCotMob.taux_sal) : 0;
+  const itBonusCotMob = isItalieMob ? cots.find(c => c.code === 'IT_BONUS_CUNEO') : null;
+  const itBonusAmtMob = itBonusCotMob ? parseFloat(itBonusCotMob.montant_sal) : 0;
+
+  const totalSalSansIS = totalSal - isChAmt - itIrpefAmtMob - itBonusAmtMob;
+
+  // CH_IS, IT_IRPEF, IT_BONUS_CUNEO retirés de la liste — affichés séparément
+  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" && c.code !== 'CH_IS'
+    && c.code !== 'IT_IRPEF' && c.code !== 'IT_BONUS_CUNEO' &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
   const cotAllegMob  = cots.filter(c => c.categorie === "Allègement");
   const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1175,6 +1205,26 @@ function renderMobile(b) {
       </div>
       <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.4rem 0.6rem 0.2rem">
         ${buildPasFormulaContent(parseFloat(b.net_imposable))}
+      </div>` : ''}
+
+      <!-- IRPEF italienne -->
+      ${itIrpefCotMob ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('irpef-detail-mob')">
+        <span class="mob-lbl">IRPEF (${(itIrpefTauxMob * 100).toFixed(1)} % eff.) <span id="irpef-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-val c-purple">− ${fmt(itIrpefAmtMob)}</span>
+      </div>
+      <div id="irpef-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+        <div class="mob-exp-txt">${esc(itIrpefCotMob.explication)}</div>
+        ${itIrpefCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itIrpefCotMob.loi_ref)}</div>` : ''}
+      </div>` : ''}
+
+      <!-- Bonus cuneo fiscale -->
+      ${itBonusCotMob ? `<div class="mob-row" style="cursor:pointer" onclick="togglePasDetail('bonus-cuneo-mob')">
+        <span class="mob-lbl">Bonus cuneo fiscale <span id="bonus-cuneo-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-val c-green">+ ${fmt(Math.abs(itBonusAmtMob))}</span>
+      </div>
+      <div id="bonus-cuneo-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+        <div class="mob-exp-txt">${esc(itBonusCotMob.explication)}</div>
+        ${itBonusCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itBonusCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
 
       <!-- Net à payer -->
