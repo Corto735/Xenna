@@ -89,7 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
         !body.classList.contains("is-forge")      &&
         !body.classList.contains("is-apropos")    &&
         !body.classList.contains("is-gaabrielle") &&
-        !body.classList.contains("is-hercule"))
+        !body.classList.contains("is-hercule")    &&
+        !body.classList.contains("is-quizz"))
       setView(e.matches ? "mobile" : "desktop");
   };
   mq.addEventListener("change", applyView);
@@ -521,7 +522,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -529,6 +530,7 @@ window.setView = function (v) {
   document.getElementById("btn-ann") .classList.toggle("active", v === "annuel");
   if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
   if (v === 'forge') forgeInit();
+  if (v === 'quizz') quizzInit();
 };
 
 // ── Devise courante (mise à jour à chaque renderAll) ─────────────────────────
@@ -2173,4 +2175,215 @@ burgerBtn.addEventListener('click', e => {
 document.addEventListener('click', () => closeBurger());
 // Empêche la fermeture immédiate sur clic à l'intérieur du menu
 burgerMenu.addEventListener('click', e => e.stopPropagation());
+
+// ── Quizz Paie ────────────────────────────────────────────────────────────────
+const QUIZZ_DATA = [
+  { id:  1, q: "Quel est le taux global de la CSG sur les revenus d'activité ?",
+    rep: "9,2 %",          mr: ["9,4 %", "9,6 %", "9,8 %"],                              src: "CSS, art. L136-8" },
+  { id:  2, q: "Quelle part de la CSG est déductible de l'impôt sur le revenu ?",
+    rep: "6,8 %",          mr: ["8,4 %", "7,4 %", "8,2 %"],                              src: "CGI, art. 154 quinquies" },
+  { id:  3, q: "Quelle part de la CSG est non déductible ?",
+    rep: "2,4 %",          mr: ["3,2 %", "2,8 %", "3,0 %"],                              src: "CGI, art. 154 quinquies" },
+  { id:  4, q: "Quel est le taux de la CRDS ?",
+    rep: "0,5 %",          mr: ["0,4 %", "0,37 %", "0,45 %"],                            src: "Ordonnance n°96-50 du 24/01/1996" },
+  { id:  5, q: "Sur quelle base se calcule la CSG/CRDS ?",
+    rep: "98,25 % du brut", mr: ["97,25 % du brut", "98,75 % du brut", "99,25 % du brut"], src: "CSS, art. L136-2" },
+  { id:  6, q: "Quel est le PMSS mensuel 2024 ?",
+    rep: "3 864 €",        mr: ["3 666 €", "3 925 €", "3 428 €"],                        src: "Arrêté du 19/12/2023" },
+  { id:  7, q: "Quel est le PMSS annuel 2024 ?",
+    rep: "46 368 €",       mr: ["43 992 €", "46 836 €", "47 004 €"],                     src: "Arrêté du 19/12/2023" },
+  { id:  8, q: "Quel est le nombre de jours de carence avant versement des IJSS maladie ?",
+    rep: "3 jours",        mr: ["1 jour", "7 jours", "5 jours"],                         src: "CSS, art. R323-1" },
+  { id:  9, q: "Quel est le taux de base des IJSS maladie ?",
+    rep: "50 %",           mr: ["60 %", "66,66 %", "45 %"],                              src: "CSS, art. R323-4" },
+  { id: 10, q: "Quelle est la période de référence retenue pour calculer les IJSS ?",
+    rep: "3 mois",         mr: ["6 mois", "12 mois", "1 mois"],                          src: "CSS, art. R323-4" },
+  { id: 11, q: "Quel est le plafond des IJSS maladie ?",
+    rep: "1,8 SMIC",       mr: ["1,5 SMIC", "2 SMIC", "1,6 SMIC"],                      src: "CSS, art. R323-4" },
+  { id: 12, q: "Quel est le taux de la cotisation vieillesse plafonnée salarié ?",
+    rep: "6,90 %",         mr: ["6,70 %", "7,10 %", "6,60 %"],                          src: "CSS, art. D242-4" },
+  { id: 13, q: "Quel est le taux de la cotisation vieillesse déplafonnée salarié ?",
+    rep: "0,40 %",         mr: ["0,30 %", "0,50 %", "0,45 %"],                          src: "CSS, art. D242-4" },
+  { id: 14, q: "Quel est le taux de la cotisation vieillesse plafonnée employeur ?",
+    rep: "8,55 %",         mr: ["8,45 %", "8,75 %", "8,20 %"],                          src: "CSS, art. D242-4" },
+  { id: 15, q: "Quel est le taux normal des allocations familiales ?",
+    rep: "5,25 %",         mr: ["5,40 %", "4,90 %", "5,10 %"],                          src: "CSS, art. L241-6" },
+  { id: 16, q: "En dessous de quel seuil (en SMIC) s'applique le taux réduit des allocations familiales ?",
+    rep: "3,5 SMIC",       mr: ["3 SMIC", "2,5 SMIC", "4 SMIC"],                        src: "CSS, art. L241-6-1" },
+  { id: 17, q: "Quel est le taux réduit des allocations familiales ?",
+    rep: "3,45 %",         mr: ["3,25 %", "3,75 %", "3,60 %"],                          src: "CSS, art. D241-3-2" },
+  { id: 18, q: "Quel est le taux de la contribution solidarité autonomie (CSA) ?",
+    rep: "0,30 %",         mr: ["0,10 %", "0,50 %", "0,25 %"],                          src: "CASF, art. L14-10-4" },
+  { id: 19, q: "Quel est le taux du FNAL pour les entreprises de moins de 50 salariés ?",
+    rep: "0,10 %",         mr: ["0,30 %", "0,20 %", "0,50 %"],                          src: "CSS, art. L834-1" },
+  { id: 20, q: "Quel est le taux du FNAL pour les entreprises d'au moins 50 salariés ?",
+    rep: "0,50 %",         mr: ["0,30 %", "0,10 %", "0,40 %"],                          src: "CSS, art. L834-1" },
+  { id: 21, q: "Comment est déterminé le taux AT/MP ?",
+    rep: "Variable",       mr: ["Fixé à 0,70 % pour tous", "Forfait de 2 % du brut", "Fixé légalement à 1 %"], src: "CSS, art. L242-5" },
+  { id: 22, q: "Quel est le SMIC mensuel brut 2024 (base 35h) ?",
+    rep: "1 766,92 €",     mr: ["1 709,28 €", "1 801,80 €", "1 747,20 €"],              src: "Décret n°2023-1216" },
+  { id: 23, q: "Quelle est la durée mensuelle de travail pour 35h hebdomadaires ?",
+    rep: "151,67 h",       mr: ["152,25 h", "150,50 h", "153,33 h"],                    src: "Code du travail, art. L3121-27" },
+  { id: 24, q: "Quel est le taux de majoration pour les 8 premières heures supplémentaires ?",
+    rep: "25 %",           mr: ["10 %", "20 %", "30 %"],                                src: "Code du travail, art. L3121-36" },
+  { id: 25, q: "Quel est le taux de majoration pour les heures supplémentaires au-delà des 8 premières ?",
+    rep: "50 %",           mr: ["25 %", "40 %", "75 %"],                                src: "Code du travail, art. L3121-36" },
+  { id: 26, q: "Quel est le plafond annuel d'exonération fiscale et sociale sur les heures supplémentaires ?",
+    rep: "7 500 €",        mr: ["5 000 €", "7 000 €", "8 000 €"],                       src: "CGI, art. 81 quater" },
+  { id: 27, q: "La réduction générale de cotisations patronales est-elle fixe ou variable ?",
+    rep: "Variable",       mr: ["Fixée à 16 % du brut", "Plafonnée à 26 % pour tous", "Identique quel que soit l'effectif"], src: "CSS, art. L241-13" },
+  { id: 28, q: "Quel est le taux maximum de la réduction Fillon ?",
+    rep: "~32 %",          mr: ["~26 %", "~28 %", "~35 %"],                             src: "CSS, art. D241-7" },
+  { id: 29, q: "Quel est le taux de cotisation chômage à la charge du salarié ?",
+    rep: "0 %",            mr: ["2,40 %", "0,95 %", "1,20 %"],                          src: "Loi n°2018-771" },
+  { id: 30, q: "Quel est le taux de cotisation chômage à la charge de l'employeur ?",
+    rep: "4,05 %",         mr: ["3,45 %", "4,40 %", "3,90 %"],                          src: "Convention Unédic" },
+];
+
+let _qzCurrent  = null;
+let _qzTimer    = null;
+let _qzStart    = 0;
+let _qzOk       = 0;
+let _qzTotal    = 0;
+let _qzLastId   = -1;
+let _qzAnswered = false;
+
+function _qzNorm(s) {
+  return String(s).toLowerCase()
+    .replace(/\s+/g, '').replace(/,/g, '.').replace(/[€%°~]/g, '').trim();
+}
+function _qzMatch(correct, input) {
+  if (!input.trim()) return false;
+  const nc = _qzNorm(correct), nu = _qzNorm(input);
+  if (nc === nu) return true;
+  const fc = parseFloat(nc), fu = parseFloat(nu);
+  return !isNaN(fc) && !isNaN(fu) && Math.abs(fc - fu) < 0.001;
+}
+function _qzShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function _qzFmt(ms) {
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function _qzStopTimer() {
+  if (_qzTimer) { clearInterval(_qzTimer); _qzTimer = null; }
+  return Date.now() - _qzStart;
+}
+
+function _qzLoadQuestion(q) {
+  _qzCurrent  = q;
+  _qzAnswered = false;
+
+  document.getElementById('qz-num').textContent    = 'Q.' + String(q.id).padStart(2, '0');
+  document.getElementById('qz-q').textContent      = q.q;
+  document.getElementById('qz-clock').textContent  = '0.0s';
+  document.getElementById('qz-input').value        = '';
+  document.getElementById('qz-input').disabled     = false;
+  document.getElementById('qz-result').style.display = 'none';
+  document.getElementById('qz-saisie').style.opacity = '1';
+  const cb = document.getElementById('qz-carre-cb');
+  cb.checked = false;
+  document.getElementById('qz-carre').style.display   = 'none';
+  document.getElementById('qz-carre').style.opacity   = '1';
+
+  // Carré : 4 choix mélangés
+  const choices = _qzShuffle([q.rep, ...q.mr]);
+  const zone = document.getElementById('qz-choix');
+  zone.innerHTML = '';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'qz-choice';
+    btn.textContent = c;
+    btn.onclick = () => quizzChoix(c);
+    zone.appendChild(btn);
+  });
+
+  // Timer
+  if (_qzTimer) clearInterval(_qzTimer);
+  _qzStart = Date.now();
+  _qzTimer = setInterval(() => {
+    if (!_qzAnswered)
+      document.getElementById('qz-clock').textContent = _qzFmt(Date.now() - _qzStart);
+  }, 100);
+
+  document.getElementById('qz-input').focus();
+}
+
+function _qzShowResult(isCorrect, elapsed, via) {
+  _qzAnswered = true;
+  _qzStopTimer();
+  _qzTotal++;
+  if (isCorrect) _qzOk++;
+
+  document.getElementById('qz-score').textContent = _qzOk + ' / ' + _qzTotal;
+
+  const verdict = document.getElementById('qz-verdict');
+  verdict.textContent = isCorrect ? '✓ JUSTE' : '✗ FAUX';
+  verdict.className   = 'qz-verdict ' + (isCorrect ? 'ok' : 'ko');
+
+  const ansLine = document.getElementById('qz-ans-line');
+  if (isCorrect) {
+    ansLine.innerHTML = 'Bonne réponse : <strong>' + _qzCurrent.rep + '</strong>';
+  } else {
+    ansLine.innerHTML = 'Réponse correcte : <strong>' + _qzCurrent.rep + '</strong>';
+  }
+
+  document.getElementById('qz-time-line').textContent = '⏱ ' + _qzFmt(elapsed) + ' (' + via + ')';
+  document.getElementById('qz-src-line').textContent  = _qzCurrent.src;
+  document.getElementById('qz-result').style.display  = 'block';
+
+  // Désactive la saisie
+  document.getElementById('qz-input').disabled = true;
+  document.getElementById('qz-saisie').style.opacity = '0.4';
+
+  // Colore les boutons carré (bonne réponse en vert, le reste grisé)
+  document.querySelectorAll('.qz-choice').forEach(btn => {
+    btn.disabled = true;
+    if (btn.textContent === _qzCurrent.rep) btn.classList.add('qz-correct');
+  });
+}
+
+function quizzValider() {
+  if (_qzAnswered) return;
+  const val = document.getElementById('qz-input').value;
+  const elapsed = Date.now() - _qzStart;
+  const ok = _qzMatch(_qzCurrent.rep, val);
+  document.querySelectorAll('.qz-choice').forEach(btn => {
+    btn.disabled = true;
+    if (btn.textContent === _qzCurrent.rep) btn.classList.add('qz-correct');
+  });
+  _qzShowResult(ok, elapsed, 'saisie');
+}
+
+function quizzChoix(choice) {
+  if (_qzAnswered) return;
+  const elapsed = Date.now() - _qzStart;
+  const ok = (choice === _qzCurrent.rep);
+  document.querySelectorAll('.qz-choice').forEach(btn => {
+    btn.disabled = true;
+    if (btn.textContent === _qzCurrent.rep)      btn.classList.add('qz-correct');
+    else if (btn.textContent === choice && !ok)  btn.classList.add('qz-wrong');
+  });
+  _qzShowResult(ok, elapsed, 'carré');
+}
+
+function quizzNext() {
+  const pool = QUIZZ_DATA.filter(q => q.id !== _qzLastId);
+  const next = pool[Math.floor(Math.random() * pool.length)];
+  _qzLastId = next.id;
+  _qzLoadQuestion(next);
+}
+
+function quizzInit() { quizzNext(); }
+
+// Exposition pour les onclick HTML
+window.quizzValider = quizzValider;
+window.quizzChoix   = quizzChoix;
+window.quizzNext    = quizzNext;
 

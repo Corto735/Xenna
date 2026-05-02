@@ -1098,7 +1098,8 @@
     .view-apropos,
     .view-contact,
     .view-gaabrielle,
-    .view-hercule { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    .view-hercule,
+    .view-quizz { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
 
     body.is-forge .view-desktop,
     body.is-forge .view-mobile,
@@ -1129,6 +1130,79 @@
     body.is-hercule .view-annuel    { display: none !important; }
     body.is-hercule .view-bar       { display: none !important; }
     body.is-hercule .view-hercule   { display: block; }
+
+    body.is-quizz .view-desktop,
+    body.is-quizz .view-mobile,
+    body.is-quizz .view-annuel    { display: none !important; }
+    body.is-quizz .view-bar       { display: none !important; }
+    body.is-quizz .view-quizz     { display: block; }
+
+    /* ── Quiz paie ── */
+    .qz-wrap { max-width: 640px; margin: 0 auto; }
+    .qz-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .qz-score { font-size: 0.68rem; color: var(--yellow); letter-spacing: 0.08em; }
+    .qz-card {
+      border: 1px solid var(--border); background: var(--bg2);
+      padding: 1.5rem; margin-bottom: 1.25rem; position: relative;
+    }
+    .qz-num  { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.7rem; }
+    .qz-q    { font-size: 0.95rem; color: var(--white); line-height: 1.65; }
+    .qz-clock {
+      position: absolute; top: 0.7rem; right: 0.9rem;
+      font-size: 0.75rem; color: var(--blue); letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .qz-saisie { display: flex; gap: 0.65rem; margin-bottom: 1.25rem; align-items: stretch; }
+    .qz-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); font-family: inherit; font-size: 0.9rem;
+      padding: 0.55rem 0.85rem; outline: none; letter-spacing: 0.04em;
+    }
+    .qz-input:focus { border-color: var(--blue); }
+    .qz-btn {
+      background: none; border: 1px solid var(--blue); color: var(--blue);
+      font-family: inherit; font-size: 0.7rem; padding: 0.5rem 1rem;
+      cursor: pointer; letter-spacing: 0.1em; transition: all 0.15s; white-space: nowrap;
+    }
+    .qz-btn:hover { background: var(--blue); color: var(--bg); }
+    .qz-btn-next { margin-top: 0.5rem; }
+    .qz-carre-label {
+      font-size: 0.58rem; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.65rem;
+    }
+    .qz-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem; }
+    .qz-choice {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); font-family: inherit; font-size: 0.8rem;
+      padding: 0.8rem 0.9rem; cursor: pointer; text-align: left;
+      transition: all 0.15s; letter-spacing: 0.02em; line-height: 1.4;
+    }
+    .qz-choice:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    .qz-choice.qz-correct { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.06); }
+    .qz-choice.qz-wrong   { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.06); }
+    .qz-choice:disabled   { cursor: default; }
+    .qz-result { display: none; margin-top: 1rem; }
+    .qz-verdict { font-size: 1.15rem; font-weight: bold; margin-bottom: 0.6rem; letter-spacing: 0.05em; }
+    .qz-verdict.ok  { color: var(--green); }
+    .qz-verdict.ko  { color: var(--red); }
+    .qz-ans-line { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .qz-ans-line strong { color: var(--green); }
+    .qz-time-line { font-size: 0.7rem; color: var(--yellow); margin-bottom: 0.35rem; }
+    .qz-src-line {
+      font-size: 0.63rem; color: var(--dim);
+      border-left: 2px solid var(--border);
+      padding-left: 0.7rem; margin: 0.7rem 0 1.1rem; letter-spacing: 0.04em;
+    }
+    .qz-carre-toggle {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em;
+      cursor: pointer; user-select: none;
+    }
+    .qz-carre-toggle input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
+    .qz-carre-toggle:hover span { color: var(--blue); }
+    @media (max-width: 480px) { .qz-choix { grid-template-columns: 1fr; } }
 
     /* Boutons de navigation des vues secondaires */
     .page-exit,
@@ -1167,14 +1241,16 @@
     body.is-apropos    .page-exit,
     body.is-contact    .page-exit,
     body.is-gaabrielle .page-exit,
-    body.is-hercule    .page-exit { display: flex; }
+    body.is-hercule    .page-exit,
+    body.is-quizz      .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-forge      .page-exit,
       body.is-apropos    .page-exit,
       body.is-contact    .page-exit,
       body.is-gaabrielle .page-exit,
-      body.is-hercule    .page-exit {
+      body.is-hercule    .page-exit,
+      body.is-quizz      .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -1545,6 +1621,10 @@
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
           <span class="burger-item-icon">?</span>
           À propos
+        </button>
+        <button class="burger-item" onclick="setView('quizz'); closeBurger()">
+          <span class="burger-item-icon">✦</span>
+          Quizz <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
       </nav>
     </div>
@@ -2383,6 +2463,54 @@
           Rapprochement bancaire · Clôture<br>
           <span style="color:var(--dim)">— bientôt —</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE QUIZZ PAIE
+  ════════════════════════════════ -->
+  <div class="view-quizz">
+    <div class="qz-wrap">
+      <div class="qz-head">
+        <span class="sect-label" style="margin:0">QUIZZ PAIE</span>
+        <span class="qz-score" id="qz-score">0 / 0</span>
+      </div>
+
+      <!-- Carte question -->
+      <div class="qz-card" id="qz-card">
+        <div class="qz-num" id="qz-num">Q.01</div>
+        <div class="qz-q"   id="qz-q">…</div>
+        <div class="qz-clock" id="qz-clock">0.0s</div>
+      </div>
+
+      <!-- Étape 1 : saisie libre -->
+      <div class="qz-saisie" id="qz-saisie">
+        <input id="qz-input" class="qz-input" type="text"
+               placeholder="votre réponse…" autocomplete="off"
+               onkeydown="if(event.key==='Enter')quizzValider()" />
+        <button class="qz-btn" onclick="quizzValider()">VALIDER</button>
+      </div>
+
+      <!-- Étape 2 : carré (4 choix) — masqué par défaut -->
+      <div style="margin-bottom:0.75rem">
+        <label class="qz-carre-toggle">
+          <input type="checkbox" id="qz-carre-cb" onchange="document.getElementById('qz-carre').style.display=this.checked?'block':'none'" />
+          <span>mode carré</span>
+        </label>
+      </div>
+      <div id="qz-carre" style="display:none">
+        <div class="qz-carre-label">// 1 bonne réponse parmi 4</div>
+        <div class="qz-choix" id="qz-choix"></div>
+      </div>
+
+      <!-- Résultat -->
+      <div class="qz-result" id="qz-result">
+        <div class="qz-verdict" id="qz-verdict"></div>
+        <div class="qz-ans-line" id="qz-ans-line"></div>
+        <div class="qz-time-line" id="qz-time-line"></div>
+        <div class="qz-src-line" id="qz-src-line"></div>
+        <button class="qz-btn qz-btn-next" onclick="quizzNext()">▶ NOUVELLE QUESTION</button>
       </div>
     </div>
   </div>
