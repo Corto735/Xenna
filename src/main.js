@@ -2249,13 +2249,17 @@ const QUIZZ_DATA = [
     rep: "4,05 %",         mr: ["3,45 %", "4,40 %", "3,90 %"],                          src: "Convention Unédic" },
 ];
 
-let _qzCurrent  = null;
-let _qzTimer    = null;
-let _qzStart    = 0;
-let _qzOk       = 0;
-let _qzTotal    = 0;
-let _qzLastId   = -1;
-let _qzAnswered = false;
+let _qzCurrent    = null;
+let _qzTimer      = null;
+let _qzStart      = 0;
+let _qzOk         = 0;
+let _qzTotal      = 0;
+let _qzLastId     = -1;
+let _qzAnswered   = false;
+let _qzFiftyTimer = null;
+let _qzFiftyReady = false;
+let _qzFiftyUsed  = false;
+let _qzFiftyCount = 0;
 
 function _qzNorm(s) {
   return String(s).toLowerCase()
@@ -2298,8 +2302,21 @@ function _qzLoadQuestion(q) {
   document.getElementById('qz-saisie').style.opacity = '1';
   const cb = document.getElementById('qz-carre-cb');
   cb.checked = false;
-  document.getElementById('qz-carre').style.display   = 'none';
-  document.getElementById('qz-carre').style.opacity   = '1';
+  document.getElementById('qz-carre').style.display  = 'none';
+  document.getElementById('qz-carre').style.opacity  = '1';
+  document.getElementById('qz-fifty').style.display  = 'none';
+
+  // 50/50 : reset + timer 8s
+  if (_qzFiftyTimer) clearTimeout(_qzFiftyTimer);
+  _qzFiftyReady = false;
+  _qzFiftyUsed  = false;
+  _qzFiftyTimer = setTimeout(() => {
+    _qzFiftyReady = true;
+    if (!_qzAnswered && !_qzFiftyUsed &&
+        document.getElementById('qz-carre').style.display !== 'none') {
+      document.getElementById('qz-fifty').style.display = 'inline-flex';
+    }
+  }, 8000);
 
   // Carré : 4 choix mélangés
   const choices = _qzShuffle([q.rep, ...q.mr]);
@@ -2330,7 +2347,10 @@ function _qzShowResult(isCorrect, elapsed, via) {
   _qzTotal++;
   if (isCorrect) _qzOk++;
 
-  document.getElementById('qz-score').textContent = _qzOk + ' / ' + _qzTotal;
+  if (_qzFiftyTimer) { clearTimeout(_qzFiftyTimer); _qzFiftyTimer = null; }
+  document.getElementById('qz-fifty').style.display = 'none';
+  const scoreSuffix = _qzFiftyCount > 0 ? ' · ½ ×' + _qzFiftyCount : '';
+  document.getElementById('qz-score').textContent = _qzOk + ' / ' + _qzTotal + scoreSuffix;
 
   const verdict = document.getElementById('qz-verdict');
   verdict.textContent = isCorrect ? '✓ JUSTE' : '✗ FAUX';
@@ -2343,7 +2363,8 @@ function _qzShowResult(isCorrect, elapsed, via) {
     ansLine.innerHTML = 'Réponse correcte : <strong>' + _qzCurrent.rep + '</strong>';
   }
 
-  document.getElementById('qz-time-line').textContent = '⏱ ' + _qzFmt(elapsed) + ' (' + via + ')';
+  const fiftyTag = _qzFiftyUsed ? ' · ½' : '';
+  document.getElementById('qz-time-line').textContent = '⏱ ' + _qzFmt(elapsed) + ' (' + via + fiftyTag + ')';
   document.getElementById('qz-src-line').textContent  = _qzCurrent.src;
   document.getElementById('qz-result').style.display  = 'block';
 
@@ -2356,6 +2377,30 @@ function _qzShowResult(isCorrect, elapsed, via) {
     btn.disabled = true;
     if (btn.textContent === _qzCurrent.rep) btn.classList.add('qz-correct');
   });
+}
+
+function quizzToggleCarre(cb) {
+  document.getElementById('qz-carre').style.display = cb.checked ? 'block' : 'none';
+  if (cb.checked && _qzFiftyReady && !_qzAnswered && !_qzFiftyUsed)
+    document.getElementById('qz-fifty').style.display = 'inline-flex';
+}
+
+function quizzFiftyFifty() {
+  if (_qzFiftyUsed || _qzAnswered) return;
+  _qzFiftyUsed = true;
+  _qzFiftyCount++;
+  document.getElementById('qz-fifty').style.display = 'none';
+
+  const allBtns  = Array.from(document.querySelectorAll('.qz-choice'));
+  const wrongBtns = allBtns.filter(b => b.textContent !== _qzCurrent.rep);
+  _qzShuffle(wrongBtns).slice(0, 2).forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.12';
+    btn.style.pointerEvents = 'none';
+  });
+
+  const s = _qzFiftyCount > 0 ? ' · ½ ×' + _qzFiftyCount : '';
+  document.getElementById('qz-score').textContent = _qzOk + ' / ' + _qzTotal + s;
 }
 
 function quizzValider() {
@@ -2392,7 +2437,9 @@ function quizzNext() {
 function quizzInit() { quizzNext(); }
 
 // Exposition pour les onclick HTML
-window.quizzValider = quizzValider;
-window.quizzChoix   = quizzChoix;
-window.quizzNext    = quizzNext;
+window.quizzValider    = quizzValider;
+window.quizzChoix      = quizzChoix;
+window.quizzNext       = quizzNext;
+window.quizzToggleCarre = quizzToggleCarre;
+window.quizzFiftyFifty = quizzFiftyFifty;
 

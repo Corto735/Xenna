@@ -1209,6 +1209,17 @@
     }
     .qz-carre-toggle input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
     .qz-carre-toggle:hover span { color: var(--blue); }
+    .qz-fifty-btn {
+      background: none; border: 1px solid var(--yellow); color: var(--yellow);
+      font-family: inherit; font-size: 0.62rem; padding: 0.22rem 0.55rem;
+      cursor: pointer; letter-spacing: 0.08em; transition: all 0.15s;
+      animation: qz-fifty-pop 0.25s ease-out;
+    }
+    .qz-fifty-btn:hover { background: var(--yellow); color: var(--bg); }
+    @keyframes qz-fifty-pop {
+      from { opacity: 0; transform: scale(0.75); }
+      to   { opacity: 1; transform: scale(1); }
+    }
     @media (max-width: 480px) { .qz-choix { grid-template-columns: 1fr; } }
 
     /* Boutons de navigation des vues secondaires */
@@ -2502,12 +2513,15 @@
       <!-- Étape 2 : carré (4 choix) — masqué par défaut -->
       <div style="margin-bottom:0.75rem">
         <label class="qz-carre-toggle">
-          <input type="checkbox" id="qz-carre-cb" onchange="document.getElementById('qz-carre').style.display=this.checked?'block':'none'" />
+          <input type="checkbox" id="qz-carre-cb" onchange="quizzToggleCarre(this)" />
           <span>mode carré</span>
         </label>
       </div>
       <div id="qz-carre" style="display:none">
-        <div class="qz-carre-label">// 1 bonne réponse parmi 4</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
+          <span class="qz-carre-label" style="margin:0">// 1 bonne réponse parmi 4</span>
+          <button id="qz-fifty" class="qz-fifty-btn" style="display:none" onclick="quizzFiftyFifty()">½ 50/50</button>
+        </div>
         <div class="qz-choix" id="qz-choix"></div>
       </div>
 
