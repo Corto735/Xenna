@@ -1600,7 +1600,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-Bh7HzaHt.js"></script>
+  <script type="module" crossorigin src="/assets/index-Fphyv7BK.js"></script>
 </head>
 <body>
 
@@ -1829,8 +1829,24 @@
           </label>
           <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-            Canada — Ontario<span class="param-badge">🇨🇦 CAD · dès 2019</span>
+            Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>
           </label>
+          <div id="d-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+            <select id="d-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <option value="ON">Ontario (ON)</option>
+              <option value="AB">Alberta (AB)</option>
+              <option value="BC">Colombie-Britannique (BC)</option>
+              <option value="MB">Manitoba (MB)</option>
+              <option value="NB">Nouveau-Brunswick (NB)</option>
+              <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
+              <option value="NS">Nouvelle-Écosse (NS)</option>
+              <option value="NT">Territoires du Nord-Ouest (NT)</option>
+              <option value="NU">Nunavut (NU)</option>
+              <option value="PE">Île-du-Prince-Édouard (PE)</option>
+              <option value="SK">Saskatchewan (SK)</option>
+              <option value="YT">Yukon (YT)</option>
+            </select>
+          </div>
           <label class="param-item">
             <input type="checkbox" id="d-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
             Québec (RRQ + RQAP)<span class="param-badge">🇨🇦🔵 CAD · dès 2019</span>
@@ -1976,8 +1992,24 @@
             </label>
             <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-              Canada — Ontario<span class="param-badge">🇨🇦 CAD · dès 2019</span>
+              Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>
             </label>
+            <div id="m-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+              <select id="m-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="ON">Ontario (ON)</option>
+                <option value="AB">Alberta (AB)</option>
+                <option value="BC">Colombie-Britannique (BC)</option>
+                <option value="MB">Manitoba (MB)</option>
+                <option value="NB">Nouveau-Brunswick (NB)</option>
+                <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
+                <option value="NS">Nouvelle-Écosse (NS)</option>
+                <option value="NT">Territoires du Nord-Ouest (NT)</option>
+                <option value="NU">Nunavut (NU)</option>
+                <option value="PE">Île-du-Prince-Édouard (PE)</option>
+                <option value="SK">Saskatchewan (SK)</option>
+                <option value="YT">Yukon (YT)</option>
+              </select>
+            </div>
             <label class="param-item">
               <input type="checkbox" id="m-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
               Québec (RRQ + RQAP)<span class="param-badge">🇨🇦🔵 CAD · dès 2019</span>

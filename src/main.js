@@ -1296,6 +1296,7 @@ async function calculate(source) {
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
   const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
   const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
+  const caProvince     = document.getElementById(isM ? "m-ca-province" : "d-ca-province")?.value || "ON";
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
@@ -1338,6 +1339,7 @@ async function calculate(source) {
         tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
         regione: null,
         contratto_termine: false,
+        province: isCanada ? caProvince : null,
       },
       datePaie,
     });
@@ -1543,6 +1545,13 @@ window.onTogglePays = function(pays, checked) {
       const detail = document.getElementById(`${p}-ch-is-detail`);
       if (detail) detail.style.display = 'none';
     }
+  });
+
+  // Affiche/masque le sélecteur de province Canada
+  const isCanadaChecked = document.getElementById('d-canada')?.checked;
+  ['d', 'm'].forEach(p => {
+    const wrap = document.getElementById(`${p}-ca-province-wrap`);
+    if (wrap) wrap.style.display = isCanadaChecked ? '' : 'none';
   });
 };
 

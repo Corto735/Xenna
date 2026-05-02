@@ -239,3 +239,165 @@ pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation 
         loi_ref: Some("RLRQ, ch. I-3, art. 750 — Formulaire TP-1015.3 — Relevé 1 (RL-1)".into()),
     }
 }
+
+// ── Impôt provincial — toutes provinces/territoires (hors Québec) ─────────────
+//
+// Taux 2024 (Lois provinciales sur l'impôt sur le revenu).
+// Indexés annuellement — valeurs à vérifier chaque année.
+// Source : ARC T1 Guide, feuillets T4 et formulaires TD1 provinciaux.
+
+fn impot_prov_brackets(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) -> Decimal {
+    let mut impot = Decimal::ZERO;
+    let mut prev  = Decimal::ZERO;
+    for (i, &seuil) in seuils.iter().enumerate() {
+        if revenu <= prev { break; }
+        let taxable = revenu.min(seuil) - prev;
+        impot += taxable * taux[i];
+        prev = seuil;
+        if revenu <= seuil { break; }
+    }
+    impot
+}
+
+pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> LigneCotisation {
+    if province == "ON" {
+        return ca_impot_ontario(brut, ctx);
+    }
+
+    let annee      = ctx.date_paie.year();
+    let revenu_ann = brut * dec!(12);
+
+    let (impot_brut, bpa_credit, nom, loi, tranches_desc) = match province {
+
+        "AB" => {
+            let s = [dec!(148269), dec!(177922), dec!(237230), dec!(355845), dec!(9999999)];
+            let t = [dec!(0.10),   dec!(0.12),   dec!(0.13),   dec!(0.14),   dec!(0.15)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(21003) * dec!(0.10)).round_dp(2),
+             "Alberta", "Alberta Personal Income Tax Act, SA 1999 c A-33.5",
+             "10/12/13/14/15 %. MPB 21 003 CAD.")
+        },
+        "BC" => {
+            let s = [dec!(45654), dec!(91310), dec!(104835), dec!(127299), dec!(172602), dec!(240716), dec!(9999999)];
+            let t = [dec!(0.0506), dec!(0.077), dec!(0.105),  dec!(0.1229), dec!(0.147),  dec!(0.168),  dec!(0.205)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(11981) * dec!(0.0506)).round_dp(2),
+             "Colombie-Britannique", "Income Tax Act (B.C.), RSBC 1996 c 215",
+             "5,06/7,70/10,50/12,29/14,70/16,80/20,50 %. MPB 11 981 CAD.")
+        },
+        "MB" => {
+            let s = [dec!(36842), dec!(79625), dec!(9999999)];
+            let t = [dec!(0.108),  dec!(0.1275), dec!(0.174)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(15780) * dec!(0.108)).round_dp(2),
+             "Manitoba", "Income Tax Act (Manitoba), CCSM c I10",
+             "10,80/12,75/17,40 %. MPB 15 780 CAD.")
+        },
+        "NB" => {
+            let s = [dec!(49958), dec!(99916), dec!(185064), dec!(9999999)];
+            let t = [dec!(0.094),  dec!(0.1482), dec!(0.1652), dec!(0.1784)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(12458) * dec!(0.094)).round_dp(2),
+             "Nouveau-Brunswick", "Loi de l'impôt sur le revenu (N.-B.), LRN-B 2000 c I-2.2",
+             "9,40/14,82/16,52/17,84 %. MPB 12 458 CAD.")
+        },
+        "NL" => {
+            let s = [dec!(43198), dec!(86395), dec!(154244), dec!(215943), dec!(275870), dec!(551739), dec!(9999999)];
+            let t = [dec!(0.087), dec!(0.145), dec!(0.158), dec!(0.178), dec!(0.198), dec!(0.208), dec!(0.213)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(10818) * dec!(0.087)).round_dp(2),
+             "Terre-Neuve-et-Labrador", "Income Tax Act, 2000 (N.L.), SNL2000 c I-1.1",
+             "8,70/14,50/15,80/17,80/19,80/20,80/21,30 %. MPB 10 818 CAD.")
+        },
+        "NS" => {
+            let s = [dec!(29590), dec!(59180), dec!(93000), dec!(150000), dec!(9999999)];
+            let t = [dec!(0.0879), dec!(0.1495), dec!(0.1667), dec!(0.175), dec!(0.21)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(8481) * dec!(0.0879)).round_dp(2),
+             "Nouvelle-Écosse", "Income Tax Act (Nova Scotia), RSNS 1989 c 217",
+             "8,79/14,95/16,67/17,50/21,00 %. MPB 8 481 CAD.")
+        },
+        "NT" => {
+            let s = [dec!(50597), dec!(101198), dec!(164525), dec!(9999999)];
+            let t = [dec!(0.059),  dec!(0.086),  dec!(0.122),  dec!(0.1405)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(16593) * dec!(0.059)).round_dp(2),
+             "Territoires du Nord-Ouest", "Income Tax Act (Northwest Territories), RSNWT 1988 c I-3",
+             "5,90/8,60/12,20/14,05 %. MPB 16 593 CAD.")
+        },
+        "NU" => {
+            let s = [dec!(53268), dec!(106537), dec!(173205), dec!(9999999)];
+            let t = [dec!(0.04),  dec!(0.07),   dec!(0.09),   dec!(0.115)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(17925) * dec!(0.04)).round_dp(2),
+             "Nunavut", "Income Tax Act (Nunavut), RSNWT 1988 c I-3 (adapté)",
+             "4,00/7,00/9,00/11,50 %. MPB 17 925 CAD. Taux les plus bas au Canada.")
+        },
+        "PE" => {
+            let s = [dec!(32656), dec!(64313), dec!(105000), dec!(140000), dec!(9999999)];
+            let t = [dec!(0.0965), dec!(0.1363), dec!(0.1665), dec!(0.18), dec!(0.1875)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(12000) * dec!(0.0965)).round_dp(2),
+             "Île-du-Prince-Édouard", "Income Tax Act (P.E.I.), RSPEI 1988 c I-1",
+             "9,65/13,63/16,65/18,00/18,75 %. MPB 12 000 CAD.")
+        },
+        "SK" => {
+            let s = [dec!(49720), dec!(142058), dec!(9999999)];
+            let t = [dec!(0.105),  dec!(0.125),  dec!(0.145)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(17661) * dec!(0.105)).round_dp(2),
+             "Saskatchewan", "The Income Tax Act, 2000 (Saskatchewan), SS 2000 c I-2.01",
+             "10,50/12,50/14,50 %. MPB 17 661 CAD.")
+        },
+        "YT" => {
+            let s = [dec!(55867), dec!(111733), dec!(154906), dec!(500000), dec!(9999999)];
+            let t = [dec!(0.064), dec!(0.09),  dec!(0.109), dec!(0.128), dec!(0.15)];
+            (impot_prov_brackets(revenu_ann, &s, &t),
+             (dec!(15705) * dec!(0.064)).round_dp(2),
+             "Yukon", "Income Tax Act (Yukon), RSY 2002 c 118",
+             "6,40/9,00/10,90/12,80/15,00 %. MPB 15 705 CAD (= fédéral).")
+        },
+        _ => return ca_impot_ontario(brut, ctx),  // fallback Ontario
+    };
+
+    let impot_net  = (impot_brut - bpa_credit).max(Decimal::ZERO);
+    let impot_mens = (impot_net / dec!(12)).round_dp(2);
+    let taux_eff   = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
+
+    LigneCotisation {
+        code:        format!("{province}_IMPOT_PROV"),
+        libelle:     format!("Impôt provincial {nom} — retenue {annee}"),
+        base:        brut,
+        taux_sal:    taux_eff,
+        montant_sal: impot_mens,
+        taux_pat:    Decimal::ZERO,
+        montant_pat: Decimal::ZERO,
+        categorie:   "Impôt provincial".into(),
+        explication: format!(
+            "Retenue mensuelle d'impôt provincial — {nom}.\n\
+            Barème {annee} : {tranches_desc}\n\
+            \n\
+            [ Calcul ]\n\
+            Revenu annuel estimé  : {revenu:.2} CAD\n\
+            Impôt brut annuel     : {ib:.2} CAD\n\
+            Crédit MPB            : − {bpa:.2} CAD\n\
+            Impôt net annuel      : {inet:.2} CAD\n\
+            Retenue mensuelle     : {mens:.2} CAD (÷ 12)\n\
+            Taux effectif         : {teff:.2} %\n\
+            \n\
+            Retenu conjointement avec l'impôt fédéral par l'employeur (sostituto d'imposta). \
+            Régularisation via déclaration T1 annuelle (ARC) et, si applicable, \
+            déclaration provinciale complémentaire.",
+            nom      = nom,
+            annee    = annee,
+            tranches_desc = tranches_desc,
+            revenu   = revenu_ann,
+            ib       = impot_brut,
+            bpa      = bpa_credit,
+            inet     = impot_net,
+            mens     = impot_mens,
+            teff     = taux_eff * dec!(100),
+        ),
+        loi_ref: Some(loi.into()),
+    }
+}

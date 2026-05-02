@@ -57,6 +57,11 @@ pub struct Salarie {
     /// Déclenche la majoration NASpI CDD (+1,40 % patronal).
     #[serde(default)]
     pub contratto_termine: bool,
+    /// Code province canadienne à 2 lettres (ex. "AB", "BC", "ON").
+    /// Détermine l'impôt provincial pour Pays::Canada.
+    /// Non utilisé pour Pays::Quebec (régime distinct).
+    #[serde(default)]
+    pub province: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

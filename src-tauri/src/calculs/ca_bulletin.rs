@@ -18,8 +18,9 @@ pub fn generer_bulletin_ca(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     cotisations.push(ca_ae(brut, ctx));
 
     // ── Impôts à la source ───────────────────────────────────
+    let province = salarie.province.as_deref().unwrap_or("ON");
     cotisations.push(ca_impot_federal(brut, ctx));
-    cotisations.push(ca_impot_ontario(brut, ctx));
+    cotisations.push(ca_impot_provincial(brut, province, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();

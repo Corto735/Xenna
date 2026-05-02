@@ -56,6 +56,7 @@ pub async fn generer_annee(
             assujetti_is: false,
             regione: None,
             contratto_termine: false,
+            province: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 
