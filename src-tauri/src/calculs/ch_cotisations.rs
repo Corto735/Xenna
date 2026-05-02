@@ -1,31 +1,65 @@
+use chrono::Datelike;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-// ── Plafonds suisses en vigueur au 01/01/2026 ────────────────────────────────
-//
-// AC / AANP / AAP : plafond légal LACI/LAA = CHF 148 200/an = CHF 12 350/mois
+// ── Plafond LACI/LAA : stable depuis 2014 ────────────────────────────────────
+// CHF 148 200/an = CHF 12 350/mois
 const CH_PLAFOND_MENSUEL: Decimal = dec!(12350);
 
-// LPP — valeurs OPP 2 entrées en vigueur le 01/01/2025 (OFAS, revalorisées)
-//   Seuil d'entrée  : CHF 22 680/an ÷ 12 = CHF 1 890/mois
-//   Déduction coord : CHF 27 225/an ÷ 12 = CHF 2 268,75/mois
-//   Salaire coord min : CHF 3 780/an ÷ 12 = CHF 315/mois
-//   Salaire coord max : CHF 64 260/an ÷ 12 = CHF 5 355/mois
-const CH_LPP_SEUIL_ENTREE:   Decimal = dec!(1890);
-const CH_LPP_DEDUCTION_COORD: Decimal = dec!(2268.75);
-const CH_LPP_COORD_MIN:       Decimal = dec!(315);
-const CH_LPP_COORD_MAX:       Decimal = dec!(5355);
+// ── LPP — plafonds OPP 2, revalorisés tous les 2 ans par le CF ───────────────
+// Source : OFAS, RS 831.441.1 (OPP 2), art. 2 et 8.
+// Valeurs en CHF/mois (= annuel ÷ 12).
 
-/// Calcule le salaire coordonné LPP mensuel.
-/// Retourne 0 si le salaire est inférieur au seuil d'entrée.
-fn lpp_salaire_coordonne(brut: Decimal) -> Decimal {
-    if brut < CH_LPP_SEUIL_ENTREE {
+fn lpp_seuil_entree(ctx: &ContextPaie) -> Decimal {
+    match ctx.date_paie.year() {
+        i32::MIN..=2018 => dec!(1762.50),  // 21 150 CHF/an
+        2019 | 2020     => dec!(1777.50),  // 21 330 CHF/an
+        2021 | 2022     => dec!(1792.50),  // 21 510 CHF/an
+        2023 | 2024     => dec!(1837.50),  // 22 050 CHF/an
+        _               => dec!(1890.00),  // 22 680 CHF/an (2025+)
+    }
+}
+
+fn lpp_deduction_coord(ctx: &ContextPaie) -> Decimal {
+    match ctx.date_paie.year() {
+        i32::MIN..=2018 => dec!(2047.50),  // 24 570 CHF/an
+        2019 | 2020     => dec!(2073.75),  // 24 885 CHF/an
+        2021 | 2022     => dec!(2091.25),  // 25 095 CHF/an
+        2023 | 2024     => dec!(2143.75),  // 25 725 CHF/an
+        _               => dec!(2268.75),  // 27 225 CHF/an (2025+)
+    }
+}
+
+fn lpp_coord_min(ctx: &ContextPaie) -> Decimal {
+    match ctx.date_paie.year() {
+        i32::MIN..=2018 => dec!(293.75),   //  3 525 CHF/an
+        2019 | 2020     => dec!(296.25),   //  3 555 CHF/an
+        2021 | 2022     => dec!(298.75),   //  3 585 CHF/an
+        2023 | 2024     => dec!(306.25),   //  3 675 CHF/an
+        _               => dec!(315.00),   //  3 780 CHF/an (2025+)
+    }
+}
+
+fn lpp_coord_max(ctx: &ContextPaie) -> Decimal {
+    match ctx.date_paie.year() {
+        i32::MIN..=2018 => dec!(4961.25),  // 59 535 CHF/an
+        2019 | 2020     => dec!(4998.75),  // 59 985 CHF/an
+        2021 | 2022     => dec!(5036.25),  // 60 435 CHF/an
+        2023 | 2024     => dec!(5162.50),  // 61 950 CHF/an
+        _               => dec!(5355.00),  // 64 260 CHF/an (2025+)
+    }
+}
+
+/// Salaire coordonné LPP mensuel selon les plafonds OPP 2 de l'année.
+fn lpp_salaire_coordonne(brut: Decimal, ctx: &ContextPaie) -> Decimal {
+    let seuil = lpp_seuil_entree(ctx);
+    if brut < seuil {
         return Decimal::ZERO;
     }
-    let coord_brut = brut - CH_LPP_DEDUCTION_COORD;
-    coord_brut.max(CH_LPP_COORD_MIN).min(CH_LPP_COORD_MAX)
+    let coord_brut = brut - lpp_deduction_coord(ctx);
+    coord_brut.max(lpp_coord_min(ctx)).min(lpp_coord_max(ctx))
 }
 
 // ── Cotisations 1er pilier ────────────────────────────────────────────────────
@@ -218,7 +252,7 @@ pub fn ch_ijm(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // ── Prévoyance professionnelle (LPP) ─────────────────────────────────────────
 
 pub fn ch_lpp(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let coord = lpp_salaire_coordonne(brut);
+    let coord = lpp_salaire_coordonne(brut, ctx);
     let ts = ctx.taux_sal("CH_LPP");
     let tp = ctx.taux_pat("CH_LPP");
     LigneCotisation {
@@ -237,11 +271,11 @@ pub fn ch_lpp(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Obligatoire pour les salariés dont le salaire annuel dépasse CHF 22 680 \
             (seuil d'entrée 2025, OPP 2 art. 2). \
             \n\n\
-            [ Calcul du salaire coordonné ]\n\
+            [ Calcul du salaire coordonné {annee} ]\n\
             Salaire coordonné = max(CHF {coord_min}, brut − déduction de coordination)\n\
               = max(CHF {coord_min}, {brut} − CHF {coord_ded})\n\
               = CHF {coord}\n\
-            Plafonné à CHF {coord_max}/mois (CHF 64 260/an).\n\
+            Plafonné à CHF {coord_max}/mois.\n\
             \n\
             Taux affiché : minimum légal pour la tranche d'âge 35-44 ans (art. 16 LPP) :\n\
               25-34 ans →  7 % total (3,50 % chacun)\n\
@@ -251,11 +285,12 @@ pub fn ch_lpp(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             \n\
             Les cotisations LPP sont déductibles du revenu imposable (employé et employeur). \
             Les fonds sont gérés en capitalisation individuelle, pas en répartition.",
-            coord_min  = CH_LPP_COORD_MIN,
-            coord_ded  = CH_LPP_DEDUCTION_COORD,
+            annee      = ctx.date_paie.year(),
+            coord_min  = lpp_coord_min(ctx),
+            coord_ded  = lpp_deduction_coord(ctx),
             brut       = brut,
             coord      = coord,
-            coord_max  = CH_LPP_COORD_MAX,
+            coord_max  = lpp_coord_max(ctx),
         ),
         loi_ref: Some("Art. 7 et 16 LPP (RS 831.40) — OPP 2 (RS 831.441.1)".into()),
     }
