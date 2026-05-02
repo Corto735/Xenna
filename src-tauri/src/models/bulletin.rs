@@ -18,6 +18,9 @@ pub enum Pays {
     /// Agents titulaires de la Fonction Publique Territoriale (FPT).
     /// Données historiques disponibles depuis le 01/01/2016.
     FonctionPublique,
+    /// Salariés du secteur privé italien (INPS + INAIL + IRPEF).
+    /// Données disponibles depuis le 01/01/2015.
+    Italia,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +43,14 @@ pub struct Salarie {
     /// Vrai si le salarié est soumis à la retenue à la source (IS) suisse.
     #[serde(default)]
     pub assujetti_is: bool,
+    /// Code région italienne à 2 lettres (ex. "LO" Lombardia, "LA" Lazio).
+    /// Utilisé pour le calcul de l'addizionale regionale IRPEF.
+    #[serde(default)]
+    pub regione: Option<String>,
+    /// Vrai pour les contrats à durée déterminée italiens (contratto a tempo determinato).
+    /// Déclenche la majoration NASpI CDD (+1,40 % patronal).
+    #[serde(default)]
+    pub contratto_termine: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

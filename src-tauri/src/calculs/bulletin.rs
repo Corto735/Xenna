@@ -5,12 +5,14 @@ use super::cotisations::*;
 use super::ch_bulletin::generer_bulletin_ch;
 use super::lu_bulletin::generer_bulletin_lu;
 use super::fpt_bulletin::generer_bulletin_fpt;
+use super::it_bulletin::generer_bulletin_it;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     match salarie.pays {
         Pays::Suisse            => return generer_bulletin_ch(salarie, ctx),
         Pays::Luxembourg        => return generer_bulletin_lu(salarie, ctx),
         Pays::FonctionPublique  => return generer_bulletin_fpt(salarie, ctx),
+        Pays::Italia            => return generer_bulletin_it(salarie, ctx),
         Pays::France            => {}
     }
 
