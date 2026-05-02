@@ -123,6 +123,15 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('dactylo-switch')?.classList.add('on');
   }
 
+  // Animation wakeup des boutons flottants
+  const _wakeupColors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#f06595'];
+  const _shuffled = [..._wakeupColors].sort(() => Math.random() - 0.5);
+  document.querySelectorAll('.a11y-float-btn').forEach((btn, i) => {
+    btn.style.setProperty('--wakeup-color', _shuffled[i % _shuffled.length]);
+    btn.classList.add('wakeup');
+    btn.addEventListener('animationend', () => btn.classList.remove('wakeup'), { once: true });
+  });
+
   // Ferme le panel a11y au clic extérieur
   document.addEventListener('click', e => {
     if (!e.target.closest('#a11y-btn') && !e.target.closest('#a11y-panel')) {
