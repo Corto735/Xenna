@@ -636,6 +636,15 @@ const CAT_CLASS = {
   "Assurance maladie":          "cat-ss",
   "Assurance dépendance":       "cat-prev",
   "Mutualité des employeurs":   "cat-ss",
+  // Italie
+  "Previdenza sociale":         "cat-ss",
+  "Disoccupazione":             "cat-cho",
+  "Assicurazione infortuni":    "cat-acc",
+  "Fine rapporto":              "cat-prev",
+  "Allegement":                 "cat-alleg",
+  "Bonus IRPEF":                "cat-alleg",
+  "Imposta":                    "cat-csg",
+  "Imposta regionale":          "cat-csg",
 };
 
 // ── Registre formules ────────────────────────────────────────────────────────
@@ -1225,6 +1234,7 @@ async function calculate(source) {
   const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
+  const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
@@ -1250,10 +1260,10 @@ async function calculate(source) {
   ["d-prenom","m-prenom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = prenom; });
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
-  // Pays étranger = date figée au 01/01/2026 (pas d'historique pour CH/LU)
+  // Pays étranger = date figée (pas d'historique pour CH/LU/IT avant 2015-2026)
   // FPT = France, date libre, historique dès le 01/01/2016
-  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg" : null;
-  const datePaie = paysEtranger ? "2026-01-01" : date;
+  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg" : isItalie ? "italia" : null;
+  const datePaie = (isSuisse || isLuxembourg) ? "2026-01-01" : isItalie ? "2026-01-01" : date;
 
   try {
     const bulletin = await api("calculer_bulletin", {
@@ -1264,6 +1274,8 @@ async function calculate(source) {
         assujetti_is: assujettiIS,
         canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
         tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
+        regione: null,
+        contratto_termine: false,
       },
       datePaie,
     });
@@ -1412,8 +1424,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt'];
-  const PAYS_ETR     = ['suisse', 'luxembourg'];
+  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
