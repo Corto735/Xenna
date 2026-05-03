@@ -575,8 +575,9 @@ window.setView = function (v) {
   document.getElementById("btn-mob") .classList.toggle("active", v === "mobile");
   document.getElementById("btn-ann") .classList.toggle("active", v === "annuel");
   if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
-  if (v === 'forge') forgeInit();
-  if (v === 'quizz') quizzInit();
+  if (v === 'forge')       forgeInit();
+  if (v === 'quizz')      quizzInit();
+  if (v === 'gaabrielle') gaabInit();
 };
 
 // ── Devise courante (mise à jour à chaque renderAll) ─────────────────────────
@@ -1216,7 +1217,7 @@ function renderMobile(b) {
       </div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
-      <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:1.5rem;font-size:0.62rem;color:var(--muted)"><span>SAL.</span><span>PAT.</span></span></div>
+      <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:0.75rem"><span class="mob-badge mob-badge-sal">Sal.</span><span class="mob-badge mob-badge-pat">Pat.</span></span></div>
       ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL cotisations sociales</span>
@@ -2306,6 +2307,79 @@ document.addEventListener('click', () => closeBurger());
 // Empêche la fermeture immédiate sur clic à l'intérieur du menu
 burgerMenu.addEventListener('click', e => e.stopPropagation());
 
+// ── Gaabrielle RH ─────────────────────────────────────────────────────────────
+const GAAB_EMPLOYES = [
+  { mat:'XN-001', nom:'Vasseur',   prenom:'Zoé',         embauche:'2019-03-15', ageEmb:{a:27,m:4, j:12}, poste:'Coordinatrice des Émotions Synthétiques',                    bh:18.50, etp:80  },
+  { mat:'XN-002', nom:'Nakamura',  prenom:'Théo',        embauche:'2021-07-01', ageEmb:{a:34,m:2, j:8 }, poste:'Synapse-Wrangler Principal',                                  bh:24.00, etp:100 },
+  { mat:'XN-003', nom:'Diallo',    prenom:'Amara',       embauche:'2018-11-20', ageEmb:{a:29,m:7, j:3 }, poste:"Ingénieure en Obsolescence Programmée des Rêves",             bh:21.75, etp:80  },
+  { mat:'XN-004', nom:'Ferretti',  prenom:'Luca',        embauche:'2022-01-10', ageEmb:{a:42,m:0, j:22}, poste:'Archiviste des Souvenirs Non-Contractuels',                   bh:35.00, etp:100 },
+  { mat:'XN-005', nom:'Bouchard',  prenom:'Inès',        embauche:'2020-06-08', ageEmb:{a:23,m:11,j:17}, poste:"Développeuse de Protocoles d'Amour Algorithmique",           bh:16.50, etp:80  },
+  { mat:'XN-006', nom:'Khoury',    prenom:'Rayan',       embauche:'2017-09-04', ageEmb:{a:38,m:5, j:29}, poste:'Calibrateur de Biais Existentiels',                          bh:28.90, etp:100 },
+  { mat:'XN-007', nom:'Osei',      prenom:'Clémentine',  embauche:'2023-02-28', ageEmb:{a:31,m:1, j:5 }, poste:'Responsable de la Continuité de la Conscience Distribuée',   bh:19.25, etp:100 },
+  { mat:'XN-008', nom:'Svensson',  prenom:'Matteo',      embauche:'2019-12-16', ageEmb:{a:55,m:8, j:14}, poste:'Tisserand de Réalités Alternatives',                         bh:42.00, etp:100 },
+  { mat:'XN-009', nom:'Reyes',     prenom:'Djamila',     embauche:'2021-04-19', ageEmb:{a:26,m:3, j:0 }, poste:'Évaluatrice de l\'Âme Numérique — Grade III',                bh:17.80, etp:100 },
+  { mat:'XN-010', nom:'Trousseau', prenom:'Éric',        embauche:'2016-08-22', ageEmb:{a:48,m:10,j:9 }, poste:'Consultant en Déshumanisation Douce',                        bh:52.00, etp:100 },
+];
+
+function _gaabSalStr(bh, type) {
+  const bm = bh * 151.67;
+  const nm = bm * 0.79;
+  const nh = nm / 151.67;
+  const h = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  switch (type) {
+    case 'bh': return h(bh)  + ' €/h';
+    case 'bm': return h(bm)  + ' €';
+    case 'nm': return h(nm)  + ' €';
+    case 'nh': return h(nh)  + ' €/h';
+  }
+}
+
+let _gaabInited = false;
+
+function gaabInit() {
+  if (_gaabInited) return;
+  _gaabInited = true;
+
+  // Initiales avec tooltip CSS
+  const initDiv = document.getElementById('gaab-initiales');
+  if (initDiv) {
+    initDiv.innerHTML = GAAB_EMPLOYES.map((e, i) => {
+      const init = e.prenom[0] + '.' + e.nom[0];
+      const sep  = i > 0 ? '<span class="gaab-sep"> ; </span>' : '';
+      return sep + `<span class="gaab-init" data-name="${e.prenom} ${e.nom}">${init}</span>`;
+    }).join('');
+  }
+
+  // Tableau
+  const tbody = document.getElementById('gaab-tbody');
+  if (tbody) {
+    tbody.innerHTML = GAAB_EMPLOYES.map(e => {
+      const { a, m, j } = e.ageEmb;
+      const age    = `${a} a ${m} m ${j} j`;
+      const etpCls = e.etp < 100 ? 'style="color:var(--yellow)"' : 'style="color:var(--dim)"';
+      return `<tr>
+        <td class="gaab-mat">${e.mat}</td>
+        <td>${e.nom}</td>
+        <td>${e.prenom}</td>
+        <td>${e.embauche}</td>
+        <td class="gaab-age">${age}</td>
+        <td class="gaab-poste">${e.poste}</td>
+        <td class="gaab-etp" ${etpCls}>${e.etp} %</td>
+        <td class="gaab-sal" data-bh="${e.bh}">${_gaabSalStr(e.bh, 'bh')}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function gaabUpdateSal() {
+  const type = document.getElementById('gaab-saltype')?.value || 'bh';
+  document.querySelectorAll('.gaab-sal').forEach(cell => {
+    cell.textContent = _gaabSalStr(parseFloat(cell.dataset.bh), type);
+  });
+}
+
+window.gaabUpdateSal = gaabUpdateSal;
+
 // ── Quizz Paie ────────────────────────────────────────────────────────────────
 const QUIZZ_DATA = [
   // ── France (régime général) ───────────────────────────────────────────────
@@ -2819,7 +2893,7 @@ function _qzLoadQuestion(q) {
         document.getElementById('qz-carre').style.display !== 'none') {
       document.getElementById('qz-fifty').style.display = 'inline-flex';
     }
-  }, 8000);
+  }, 15000);
 
   // Carré : 4 choix mélangés
   const choices = _qzShuffle([q.rep, ...q.mr]);

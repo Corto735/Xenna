@@ -683,6 +683,9 @@
       min-width: 7rem;
       font-variant-numeric: tabular-nums;
     }
+    .mob-badge { display:inline-block; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.6rem; font-weight:600; color:#000; letter-spacing:0.06em; }
+    .mob-badge-sal { background: var(--yellow); }
+    .mob-badge-pat { background: var(--orange); }
     .mob-val.c-gray   { color: var(--gray);   }
     .mob-val.c-green  { color: var(--green);  }
     .mob-val.c-red    { color: var(--red);    }
@@ -1238,6 +1241,44 @@
     }
     .qz-start-btn:hover { background: var(--yellow); color: var(--bg); }
 
+    /* ── Gaabrielle RH ── */
+    .gaab-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    .gaab-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
+    .gaab-initiales { display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem; margin-bottom: 2rem; font-size: 0.72rem; letter-spacing: 0.08em; }
+    .gaab-init {
+      position: relative; color: var(--blue); cursor: default;
+      padding: 0.15rem 0.1rem; transition: color 0.12s;
+    }
+    .gaab-init:hover { color: var(--white); }
+    .gaab-init::after {
+      content: attr(data-name);
+      position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--white); padding: 0.25rem 0.6rem; font-size: 0.66rem;
+      white-space: nowrap; border-radius: 3px; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s; z-index: 10;
+    }
+    .gaab-init:hover::after { opacity: 1; }
+    .gaab-sep { color: var(--dim); user-select: none; }
+    .gaab-th-sel {
+      background: transparent; border: none; color: var(--dim);
+      font: 0.58rem/1 var(--font-mono, monospace); letter-spacing: 0.12em;
+      text-transform: uppercase; cursor: pointer; outline: none; padding: 0;
+    }
+    .gaab-th-sel:hover, .gaab-th-sel:focus { color: var(--blue); }
+    .gaab-etp { text-align: center; white-space: nowrap; }
+    .gaab-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+    .gaab-table th {
+      text-align: left; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--dim); border-bottom: 1px solid var(--border); padding: 0.5rem 0.6rem 0.4rem;
+    }
+    .gaab-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: top; }
+    .gaab-table tr:hover td { background: rgba(255,255,255,0.025); }
+    .gaab-mat { color: var(--dim); font-size: 0.62rem; letter-spacing: 0.06em; white-space: nowrap; }
+    .gaab-age { color: var(--muted); white-space: nowrap; }
+    .gaab-poste { color: var(--purple); font-style: italic; }
+    .gaab-sal { color: var(--yellow); white-space: nowrap; text-align: right; }
+
     /* Boutons de navigation des vues secondaires */
     .page-exit,
     .page-nav {
@@ -1616,7 +1657,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-DniOAWPX.js"></script>
+  <script type="module" crossorigin src="/assets/index-CQgpHqa-.js"></script>
 </head>
 <body>
 
@@ -1691,7 +1732,7 @@
 
     <div class="a11y-wrap">
       <button class="a11y-btn" id="a11y-btn" onclick="toggleA11yPanel()" title="Accessibilité">
-        ♿ ACCÈS
+        AFFICHAGE INCLUSIF
       </button>
       <div class="a11y-panel" id="a11y-panel">
         <div class="a11y-panel-title">ACCESSIBILITÉ</div>
@@ -2521,19 +2562,36 @@
        VUE GAABRIELLE (RH)
   ════════════════════════════════ -->
   <div class="view-gaabrielle">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1.5rem;padding:3rem 1rem">
-      <div style="text-align:center;max-width:440px">
-        <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em;margin-bottom:0.75rem">
-          que ferait Xena sans Gabrielle ?
-        </div>
-        <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em;margin-bottom:2rem">
-          // MODULE RH — EN CONSTRUCTION
-        </div>
-        <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
-          Gestion des congés · Absences · Entrées / sorties<br>
-          Contrats · DPAE · Attestations<br>
-          <span style="color:var(--dim)">— bientôt —</span>
-        </div>
+    <div class="gaab-wrap">
+      <div class="gaab-section-lbl">// Gaabrielle — Module RH · Personnel</div>
+
+      <!-- Initiales cliquables -->
+      <div class="gaab-initiales" id="gaab-initiales"></div>
+
+      <!-- Tableau personnel -->
+      <div style="overflow-x:auto">
+        <table class="gaab-table">
+          <thead>
+            <tr>
+              <th>Matricule</th>
+              <th>Nom</th>
+              <th>Prénom</th>
+              <th>Date d'embauche</th>
+              <th>Âge à l'embauche</th>
+              <th>Poste</th>
+              <th>ETP</th>
+              <th style="text-align:right">
+                <select id="gaab-saltype" class="gaab-th-sel" onchange="gaabUpdateSal()">
+                  <option value="bh">Rémunération — Brut horaire</option>
+                  <option value="bm">Rémunération — Brut mensuel</option>
+                  <option value="nm">Rémunération — Net mensuel</option>
+                  <option value="nh">Rémunération — Net horaire</option>
+                </select>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="gaab-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
