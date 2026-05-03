@@ -1221,6 +1221,22 @@
       to   { opacity: 1; transform: scale(1); }
     }
     @media (max-width: 480px) { .qz-choix { grid-template-columns: 1fr; } }
+    .qz-pays-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.1rem; }
+    .qz-pays-btn {
+      font: 0.62rem/1 var(--font-mono, monospace); letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.3rem 0.65rem; border: 1px solid var(--border); background: transparent;
+      color: var(--muted); border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    }
+    .qz-pays-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .qz-pays-btn.on { border-color: var(--yellow); color: var(--yellow); background: rgba(255,224,102,0.06); }
+    .qz-pays-bar.locked { pointer-events: none; opacity: 0.3; }
+    .qz-start-wrap { display: flex; justify-content: center; padding: 2.5rem 0 1rem; }
+    .qz-start-btn {
+      font: 1rem/1 var(--font-mono, monospace); letter-spacing: 0.18em; text-transform: uppercase;
+      padding: 0.9rem 3.2rem; border: 1px solid var(--yellow); background: transparent;
+      color: var(--yellow); border-radius: 4px; cursor: pointer; transition: all 0.18s;
+    }
+    .qz-start-btn:hover { background: var(--yellow); color: var(--bg); }
 
     /* Boutons de navigation des vues secondaires */
     .page-exit,
@@ -2552,44 +2568,65 @@
         <span class="qz-score" id="qz-score">0 / 0</span>
       </div>
 
-      <!-- Carte question -->
-      <div class="qz-card" id="qz-card">
-        <div class="qz-num" id="qz-num">Q.01</div>
-        <div class="qz-q"   id="qz-q">…</div>
-        <div class="qz-clock" id="qz-clock">0.0s</div>
+      <!-- Sélecteur de pays -->
+      <div class="qz-pays-bar">
+        <button class="qz-pays-btn on" data-pays="fr"  onclick="quizzSetPays('fr')">🇫🇷 France</button>
+        <button class="qz-pays-btn"    data-pays="fpt" onclick="quizzSetPays('fpt')">🏛 FPT</button>
+        <button class="qz-pays-btn"    data-pays="ch"  onclick="quizzSetPays('ch')">🇨🇭 Suisse</button>
+        <button class="qz-pays-btn"    data-pays="lu"  onclick="quizzSetPays('lu')">🇱🇺 Luxembourg</button>
+        <button class="qz-pays-btn"    data-pays="it"  onclick="quizzSetPays('it')">🇮🇹 Italie</button>
+        <button class="qz-pays-btn"    data-pays="ca"  onclick="quizzSetPays('ca')">🇨🇦 Canada</button>
+        <button class="qz-pays-btn"    data-pays="qc"  onclick="quizzSetPays('qc')">🍁 Québec</button>
       </div>
 
-      <!-- Étape 1 : saisie libre -->
-      <div class="qz-saisie" id="qz-saisie">
-        <input id="qz-input" class="qz-input" type="text"
-               placeholder="votre réponse…" autocomplete="off"
-               onkeydown="if(event.key==='Enter')quizzValider()" />
-        <button class="qz-btn" onclick="quizzValider()">VALIDER</button>
+      <!-- Bouton démarrer (localisé) -->
+      <div class="qz-start-wrap" id="qz-start-wrap">
+        <button class="qz-start-btn" id="qz-start-btn" onclick="quizzStart()">Démarrer</button>
       </div>
 
-      <!-- Étape 2 : carré (4 choix) — masqué par défaut -->
-      <div style="margin-bottom:0.75rem">
-        <label class="qz-carre-toggle">
-          <input type="checkbox" id="qz-carre-cb" onchange="quizzToggleCarre(this)" />
-          <span>mode carré</span>
-        </label>
-      </div>
-      <div id="qz-carre" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
-          <span class="qz-carre-label" style="margin:0">// 1 bonne réponse parmi 4</span>
-          <button id="qz-fifty" class="qz-fifty-btn" style="display:none" onclick="quizzFiftyFifty()">½ 50/50</button>
+      <!-- Zone de jeu (cachée jusqu'au démarrage) -->
+      <div id="qz-play" style="display:none">
+
+        <!-- Carte question -->
+        <div class="qz-card" id="qz-card">
+          <div class="qz-num" id="qz-num">Q.01</div>
+          <div class="qz-q"   id="qz-q">…</div>
+          <div class="qz-clock" id="qz-clock">0.0s</div>
         </div>
-        <div class="qz-choix" id="qz-choix"></div>
-      </div>
 
-      <!-- Résultat -->
-      <div class="qz-result" id="qz-result">
-        <div class="qz-verdict" id="qz-verdict"></div>
-        <div class="qz-ans-line" id="qz-ans-line"></div>
-        <div class="qz-time-line" id="qz-time-line"></div>
-        <div class="qz-src-line" id="qz-src-line"></div>
-        <button class="qz-btn qz-btn-next" onclick="quizzNext()">▶ NOUVELLE QUESTION</button>
-      </div>
+        <!-- Étape 1 : saisie libre -->
+        <div class="qz-saisie" id="qz-saisie">
+          <input id="qz-input" class="qz-input" type="text"
+                 placeholder="votre réponse…" autocomplete="off"
+                 onkeydown="if(event.key==='Enter')quizzValider()" />
+          <button class="qz-btn" onclick="quizzValider()">VALIDER</button>
+        </div>
+
+        <!-- Étape 2 : carré (4 choix) — masqué par défaut -->
+        <div style="margin-bottom:0.75rem">
+          <label class="qz-carre-toggle">
+            <input type="checkbox" id="qz-carre-cb" onchange="quizzToggleCarre(this)" />
+            <span>mode carré</span>
+          </label>
+        </div>
+        <div id="qz-carre" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
+            <span class="qz-carre-label" style="margin:0">// 1 bonne réponse parmi 4</span>
+            <button id="qz-fifty" class="qz-fifty-btn" style="display:none" onclick="quizzFiftyFifty()">½ 50/50</button>
+          </div>
+          <div class="qz-choix" id="qz-choix"></div>
+        </div>
+
+        <!-- Résultat -->
+        <div class="qz-result" id="qz-result">
+          <div class="qz-verdict" id="qz-verdict"></div>
+          <div class="qz-ans-line" id="qz-ans-line"></div>
+          <div class="qz-time-line" id="qz-time-line"></div>
+          <div class="qz-src-line" id="qz-src-line"></div>
+          <button class="qz-btn qz-btn-next" onclick="quizzNext()">▶ NOUVELLE QUESTION</button>
+        </div>
+
+      </div><!-- /qz-play -->
     </div>
   </div>
 
