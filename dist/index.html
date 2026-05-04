@@ -683,9 +683,9 @@
       min-width: 7rem;
       font-variant-numeric: tabular-nums;
     }
-    .mob-badge { display:inline-block; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.6rem; font-weight:600; color:#000; letter-spacing:0.06em; }
-    .mob-badge-sal { background: var(--yellow); }
-    .mob-badge-pat { background: var(--orange); }
+    .mob-badge { display:inline-block; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.6rem; font-weight:600; letter-spacing:0.06em; background: transparent; }
+    .mob-badge-sal { color: var(--yellow); border: 1.5px solid var(--yellow); }
+    .mob-badge-pat { color: var(--orange); border: 1.5px solid var(--orange); }
     .mob-val.c-gray   { color: var(--gray);   }
     .mob-val.c-green  { color: var(--green);  }
     .mob-val.c-red    { color: var(--red);    }
@@ -1147,6 +1147,34 @@
     body.is-quizz .view-bar       { display: none !important; }
     body.is-quizz .view-quizz     { display: block; }
 
+    /* ── Étude écart H/F ── */
+    .view-ecart { display: none; padding: 1.5rem; max-width: 1200px; margin: 0 auto 3rem; }
+
+    body.is-ecart .view-desktop,
+    body.is-ecart .view-mobile,
+    body.is-ecart .view-annuel  { display: none !important; }
+    body.is-ecart .view-bar     { display: none !important; }
+    body.is-ecart .view-ecart   { display: block; }
+
+    .ecart-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.8rem; }
+    .ecart-group-lbl {
+      font-size: 0.58rem; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase;
+      margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1.2rem;
+    }
+    .ecart-table { width: 100%; border-collapse: collapse; font-size: 0.67rem; }
+    .ecart-table th {
+      padding: 0.4rem 0.6rem; text-align: left; font-size: 0.58rem; color: var(--blue);
+      letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .ecart-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: top; line-height: 1.5; }
+    .ecart-table tr:hover td { background: rgba(255,255,255,0.025); }
+    .ecart-val  { color: var(--yellow); white-space: nowrap; }
+    .ecart-val2 { color: var(--text);   white-space: nowrap; }
+    .ecart-dim  { color: var(--muted);  font-size: 0.62rem; }
+    .ecart-pos  { color: var(--green);  white-space: nowrap; }
+    .ecart-sep td { background: var(--bg3) !important; color: var(--blue); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.35rem 0.6rem; }
+    .ecart-note { font-size: 0.62rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.7; padding: 0.5rem 0.1rem; border-top: 1px solid rgba(255,255,255,0.06); }
+
     /* ── Quiz paie ── */
     .qz-wrap { max-width: 640px; margin: 0 auto; }
     .qz-head {
@@ -1317,7 +1345,8 @@
     body.is-contact    .page-exit,
     body.is-gaabrielle .page-exit,
     body.is-hercule    .page-exit,
-    body.is-quizz      .page-exit { display: flex; }
+    body.is-quizz      .page-exit,
+    body.is-ecart      .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-forge      .page-exit,
@@ -1325,7 +1354,8 @@
       body.is-contact    .page-exit,
       body.is-gaabrielle .page-exit,
       body.is-hercule    .page-exit,
-      body.is-quizz      .page-exit {
+      body.is-quizz      .page-exit,
+      body.is-ecart      .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -1657,7 +1687,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-CQgpHqa-.js"></script>
+  <script type="module" crossorigin src="/assets/index-v-LLSZqM.js"></script>
 </head>
 <body>
 
@@ -1701,6 +1731,10 @@
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
           Quizz <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
+        </button>
+        <button class="burger-item" onclick="setView('ecart'); closeBurger()">
+          <span class="burger-item-icon">≠</span>
+          Pourquoi un écart H/F ?
         </button>
       </nav>
     </div>
@@ -2688,6 +2722,451 @@
       </div><!-- /qz-play -->
     </div>
   </div>
+
+  <!-- ════════════════════════════════
+       VUE ÉCART SALARIAL H/F
+  ════════════════════════════════ -->
+  <div class="view-ecart">
+
+    <div class="ecart-section-lbl">// Étude · Écarts salariaux H/F · France · Suisse · Luxembourg · Italie · Canada · 2022–2025</div>
+
+    <!-- ── Repères méthodologiques ── -->
+    <div class="ecart-group-lbl">Repères méthodologiques — les 4 mesures qui coexistent</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Mesure</th><th>Définition</th><th>Usage typique</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="ecart-val2">Écart brut non ajusté<br><span class="ecart-dim">Eurostat GPG / unadjusted</span></td>
+            <td>Différence de salaire horaire moyen brut H/F, tous postes confondus</td>
+            <td class="ecart-dim">Comparaison internationale standardisée (SES)</td>
+          </tr>
+          <tr>
+            <td class="ecart-val2">Écart en EQTP / annuel</td>
+            <td>Intègre le volume de travail (temps partiel, absences) — mesure l'écart de revenu total</td>
+            <td class="ecart-dim">Bilan social, DSN, rapports HCREP (France)</td>
+          </tr>
+          <tr>
+            <td class="ecart-val2">Écart résiduel (ajusté)</td>
+            <td>À caractéristiques comparables : poste, secteur, ancienneté, niveau de diplôme</td>
+            <td class="ecart-dim">Analyse de la discrimination salariale stricto sensu</td>
+          </tr>
+          <tr>
+            <td class="ecart-val2">Écart à poste identique</td>
+            <td>Même emploi, même établissement — mesure la plus restrictive</td>
+            <td class="ecart-dim">Index Egapro (France), Logib (Suisse)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Tableau comparatif 5 pays ── -->
+    <div class="ecart-group-lbl">Comparatif 5 pays — vue d'ensemble</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr>
+            <th>Pays</th>
+            <th>Écart brut horaire<br>(mesure principale)</th>
+            <th>Écart revenu annuel<br>(global)</th>
+            <th>Écart résiduel<br>(inexpliqué)</th>
+            <th>Cadres</th>
+            <th>Tendance</th>
+            <th>Année réf.</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🇫🇷 France</td>
+            <td><span class="ecart-val">14,0 %</span><br><span class="ecart-dim">EQTP secteur privé</span></td>
+            <td><span class="ecart-val">21,8 %</span></td>
+            <td><span class="ecart-val">3,6 %</span><br><span class="ecart-dim">même poste/étab.</span></td>
+            <td><span class="ecart-val">14,8 %</span></td>
+            <td class="ecart-dim">−0,4 pt en 2024<br>(ralentissement)</td>
+            <td class="ecart-dim">2024</td>
+            <td class="ecart-dim">INSEE Focus n°377 / DSN</td>
+          </tr>
+          <tr>
+            <td>🇨🇭 Suisse</td>
+            <td><span class="ecart-val">8,4 %</span> <span class="ecart-dim">médian 2024</span><br><span class="ecart-dim">16,2 % moyen 2022</span></td>
+            <td><span class="ecart-val">~12 %</span><br><span class="ecart-dim">temps plein</span></td>
+            <td><span class="ecart-val">8,4 pp</span><br><span class="ecart-dim">52 % du total</span></td>
+            <td><span class="ecart-val">14 %</span></td>
+            <td class="ecart-dim">−3,1 pts depuis 2018<br>(médiane)</td>
+            <td class="ecart-dim">2022–2024</td>
+            <td class="ecart-dim">OFS / Enquête LSE</td>
+          </tr>
+          <tr>
+            <td>🇱🇺 Luxembourg</td>
+            <td><span class="ecart-pos">−0,8 %</span><br><span class="ecart-dim">seul pays UE négatif ¹</span></td>
+            <td class="ecart-dim">Positif pour les hommes<br>(revenus annuels)</td>
+            <td class="ecart-dim">n.p.</td>
+            <td class="ecart-dim">n.d.</td>
+            <td class="ecart-dim">Stable,<br>tendance négative</td>
+            <td class="ecart-dim">2024</td>
+            <td class="ecart-dim">STATEC / Eurostat SES</td>
+          </tr>
+          <tr>
+            <td>🇮🇹 Italie</td>
+            <td><span class="ecart-val">5,6 %</span> <span class="ecart-dim">ISTAT SES 2022</span><br><span class="ecart-dim">2,2 % Eurostat 2023 ²</span></td>
+            <td><span class="ecart-val">&gt; 20 %</span><br><span class="ecart-dim">estimé, annuel</span></td>
+            <td class="ecart-dim">n.p.</td>
+            <td><span class="ecart-val">30,8 %</span></td>
+            <td class="ecart-dim">En réduction</td>
+            <td class="ecart-dim">2022–2023</td>
+            <td class="ecart-dim">ISTAT SES 2022 / Eurostat</td>
+          </tr>
+          <tr>
+            <td>🇨🇦 Canada</td>
+            <td><span class="ecart-val">12,2 %</span><br><span class="ecart-dim">25–54 ans, horaire</span></td>
+            <td><span class="ecart-val">~20 %</span><br><span class="ecart-dim">revenus annuels estimés</span></td>
+            <td class="ecart-dim">n.p.</td>
+            <td class="ecart-dim">n.d.</td>
+            <td class="ecart-dim">−4,2 pts depuis 2006</td>
+            <td class="ecart-dim">2024</td>
+            <td class="ecart-dim">Statistique Canada, EPA</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      ¹ Luxembourg : l'écart horaire négatif signifie que les femmes gagnent en moyenne 0,8 % de plus à l'heure — mais les revenus annuels restent favorables aux hommes (temps partiel féminin + hauts salaires financiers masculins).<br>
+      ² Italie : le GPG horaire très faible est un artefact d'« effet de sélection » — voir tableau Italie ci-dessous.
+    </div>
+
+    <!-- ── France ── -->
+    <div class="ecart-group-lbl">🇫🇷 France — données DSN / DADS · INSEE Focus n°377 · 2024</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ecart-sep"><td colspan="3">Écart global</td></tr>
+          <tr>
+            <td>Écart de revenu salarial annuel — global</td>
+            <td><span class="ecart-val">21,8 %</span></td>
+            <td class="ecart-dim">F : 22 060 € / H : 28 220 €</td>
+          </tr>
+          <tr>
+            <td><span class="ecart-dim">dont :</span> écart de volume de travail</td>
+            <td><span class="ecart-val2">9,1 %</span></td>
+            <td class="ecart-dim">F : 0,71 EQTP / H : 0,78 EQTP</td>
+          </tr>
+          <tr>
+            <td><span class="ecart-dim">dont :</span> écart de salaire en EQTP</td>
+            <td><span class="ecart-val">14,0 %</span></td>
+            <td class="ecart-dim">F : 31 200 € / H : 36 270 €</td>
+          </tr>
+          <tr>
+            <td>Écart à poste comparable (même emploi, même étab.)</td>
+            <td><span class="ecart-val">3,6 %</span></td>
+            <td class="ecart-dim">Mesure la plus stricte — résiduel inexpliqué</td>
+          </tr>
+          <tr class="ecart-sep"><td colspan="3">Par catégorie socioprofessionnelle (EQTP)</td></tr>
+          <tr><td>Employés</td><td><span class="ecart-val2">1,9 %</span></td><td class="ecart-dim">Le plus faible</td></tr>
+          <tr><td>Professions intermédiaires</td><td><span class="ecart-val2">~7 %</span></td><td class="ecart-dim">Fourchette estimée</td></tr>
+          <tr><td>Cadres</td><td><span class="ecart-val">14,8 %</span></td><td class="ecart-dim">Le plus élevé par catégorie</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Par tranche d'âge (EQTP)</td></tr>
+          <tr><td>Moins de 25 ans</td><td><span class="ecart-val2">3,2 %</span></td><td class="ecart-dim">Le plus faible — entrée sur le marché</td></tr>
+          <tr><td>60 ans et +</td><td><span class="ecart-val">24,1 %</span></td><td class="ecart-dim">Le plus élevé — effet des carrières différenciées</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Par secteur (EQTP)</td></tr>
+          <tr><td>Construction</td><td><span class="ecart-pos">−2,0 %</span></td><td class="ecart-dim">Femmes mieux payées (rareté dans le secteur)</td></tr>
+          <tr><td>Services mixtes (finance, conseil)</td><td><span class="ecart-val">22,7 %</span></td><td class="ecart-dim">Le plus élevé par secteur</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Fonction publique et plafond de verre</td></tr>
+          <tr>
+            <td>Fonction publique — ministères</td>
+            <td><span class="ecart-val">10,6 %</span></td>
+            <td class="ecart-dim">442 € bruts / mois de moins pour les femmes</td>
+          </tr>
+          <tr>
+            <td>Femmes parmi les 1 % postes les mieux rémunérés</td>
+            <td><span class="ecart-val2">24 %</span></td>
+            <td class="ecart-dim">Contre 42 % de la masse salariale EQTP totale</td>
+          </tr>
+          <tr>
+            <td>Index Egapro moyen 2024</td>
+            <td><span class="ecart-val2">85 / 100</span></td>
+            <td class="ecart-dim">Obligatoire &gt; 50 sal. depuis loi 05/09/2018 — ne mesure pas l'écart total</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Source : INSEE Focus n°377 (2024) · Enquête DADS/DSN · Rapport HCREP-INSEE mars 2025 · DGAFP 2024.<br>
+      La DSN (Déclaration Sociale Nominative) fournit depuis 2018 des données exhaustives (~26 M salariés), remplaçant les enquêtes DADS. Granularité inédite par établissement, convention collective, tranche d'âge.
+    </div>
+
+    <!-- ── Suisse ── -->
+    <div class="ecart-group-lbl">🇨🇭 Suisse — OFS · Enquête sur la structure des salaires (LSE) · 2022–2024</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ecart-sep"><td colspan="3">Mesures officielles OFS</td></tr>
+          <tr>
+            <td>Écart médian brut (LSE 2024)</td>
+            <td><span class="ecart-val">8,4 %</span></td>
+            <td class="ecart-dim">Mesure préférée par l'OFS pour les tendances récentes</td>
+          </tr>
+          <tr>
+            <td>Écart moyen brut total (LSE 2022)</td>
+            <td><span class="ecart-val">16,2 %</span></td>
+            <td class="ecart-dim">Inclut davantage l'effet des hauts salaires masculins</td>
+          </tr>
+          <tr>
+            <td><span class="ecart-dim">dont :</span> part expliquée (facteurs structurels)</td>
+            <td><span class="ecart-val2">~7,8 pp</span> <span class="ecart-dim">(48 %)</span></td>
+            <td class="ecart-dim">Éducation, poste, secteur, ancienneté</td>
+          </tr>
+          <tr>
+            <td><span class="ecart-dim">dont :</span> part inexpliquée (résiduelle)</td>
+            <td><span class="ecart-val">8,4 pp</span> <span class="ecart-dim">(52 %)</span></td>
+            <td class="ecart-dim">Directement attribuable au genre</td>
+          </tr>
+          <tr class="ecart-sep"><td colspan="3">Par catégorie</td></tr>
+          <tr><td>Postes de direction</td><td><span class="ecart-val">14 %</span></td><td class="ecart-dim">En défaveur des femmes</td></tr>
+          <tr>
+            <td>Salaire médian temps plein (2024)</td>
+            <td class="ecart-val2">H : ~90 800 CHF/an<br>F : ~80 000 CHF/an</td>
+            <td class="ecart-dim">Écart ~12 %</td>
+          </tr>
+          <tr>
+            <td>Bonus annuels (moyenne)</td>
+            <td class="ecart-val2">H : 15 000 CHF<br>F : &lt; 7 500 CHF</td>
+            <td class="ecart-dim">Écart &gt; 50 % sur la part variable</td>
+          </tr>
+          <tr><td>Femmes parmi salariés &lt; 4 500 CHF/mois</td><td><span class="ecart-val">~65 %</span></td><td class="ecart-dim">Surreprésentation dans les bas salaires</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Évolution GPG médian</td></tr>
+          <tr>
+            <td>Tendance 2018 → 2024</td>
+            <td class="ecart-val2">11,5 % → 9,5 % → <span class="ecart-val">8,4 %</span></td>
+            <td class="ecart-dim">−3,1 pts en 6 ans</td>
+          </tr>
+          <tr>
+            <td>Obligation légale</td>
+            <td class="ecart-val2">Logib obligatoire &gt; 100 sal.</td>
+            <td class="ecart-dim">Contrôle externe tous les 4 ans jusqu'en 2032 · Loi sur l'égalité révisée 2020</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Source : OFS, Enquête suisse sur la structure des salaires (LSE) 2022 (résultats 2024) · Equal Salary Foundation 2024.
+    </div>
+
+    <!-- ── Luxembourg ── -->
+    <div class="ecart-group-lbl">🇱🇺 Luxembourg — STATEC · Eurostat SES · 2024</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th><th>Commentaire</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Écart brut horaire Eurostat (unadjusted GPG) 2024</td>
+            <td><span class="ecart-pos">−0,8 %</span></td>
+            <td class="ecart-dim">Les femmes gagnent en moyenne 0,8 % de plus à l'heure</td>
+          </tr>
+          <tr>
+            <td>Écart brut horaire Eurostat 2023</td>
+            <td><span class="ecart-pos">−0,9 %</span></td>
+            <td class="ecart-dim">Seul pays UE avec GPG négatif — tendance stable</td>
+          </tr>
+          <tr>
+            <td>Revenus annuels (intégrant le volume)</td>
+            <td class="ecart-val2">Positif pour les hommes</td>
+            <td class="ecart-dim">L'écart horaire négatif est annulé par le temps partiel féminin</td>
+          </tr>
+          <tr class="ecart-sep"><td colspan="3">Facteurs structurels expliquant la singularité</td></tr>
+          <tr>
+            <td>Secteur financier (banques, fonds)</td>
+            <td class="ecart-dim">Très masculin, hauts salaires</td>
+            <td class="ecart-dim">Tire la moyenne horaire masculine à la hausse en valeur absolue, mais crée un effet de distorsion</td>
+          </tr>
+          <tr>
+            <td>Secteur public / ONG internationales</td>
+            <td class="ecart-dim">Fort employeur de femmes qualifiées</td>
+            <td class="ecart-dim">Salaires compétitifs et normés — tire la moyenne féminine vers le haut</td>
+          </tr>
+          <tr>
+            <td>Part de frontaliers</td>
+            <td class="ecart-val2">~48 % des salariés</td>
+            <td class="ecart-dim">Sex-ratio variable selon le secteur d'activité</td>
+          </tr>
+          <tr>
+            <td>Directive UE 2023/970 (transparence salariale)</td>
+            <td class="ecart-val2">Transposition en cours</td>
+            <td class="ecart-dim">Délai d'application : juin 2026</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Source : STATEC, Note STN 08/2024 · Eurostat (indicateur sdg_05_20).<br>
+      Le GPG négatif ne signifie pas l'absence de discriminations — il reflète une structure sectorielle particulière. L'écart résiduel ajusté n'est pas publié séparément par STATEC.
+    </div>
+
+    <!-- ── Italie ── -->
+    <div class="ecart-group-lbl">🇮🇹 Italie — ISTAT SES 2022 (pub. fév. 2025) · Eurostat</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ecart-sep"><td colspan="3">Écart horaire brut</td></tr>
+          <tr>
+            <td>Écart horaire brut — ISTAT SES 2022</td>
+            <td><span class="ecart-val">5,6 %</span></td>
+            <td class="ecart-dim">F : 15,9 €/h · H : 16,8 €/h</td>
+          </tr>
+          <tr>
+            <td>Écart horaire brut — Eurostat 2023 (estimé)</td>
+            <td><span class="ecart-val">2,2 %</span></td>
+            <td class="ecart-dim">Estimation annuelle entre deux enquêtes SES</td>
+          </tr>
+          <tr>
+            <td>Différentiel d'heures travaillées (F vs H)</td>
+            <td><span class="ecart-val">−15,1 %</span></td>
+            <td class="ecart-dim">Temps partiel très répandu — l'écart annuel réel est bien supérieur à l'écart horaire</td>
+          </tr>
+          <tr class="ecart-sep"><td colspan="3">Par catégorie professionnelle (ISTAT SES 2022)</td></tr>
+          <tr><td>Managers (dirigeants)</td><td><span class="ecart-val">30,8 %</span></td><td class="ecart-dim">H : 49,8 €/h · F : 34,5 €/h</td></tr>
+          <tr><td>Services aux entreprises</td><td><span class="ecart-val">14,1 %</span></td><td class="ecart-dim">Secteur le plus inégalitaire</td></tr>
+          <tr><td>Industrie hors construction</td><td><span class="ecart-val2">13,2 %</span></td><td></td></tr>
+          <tr class="ecart-sep"><td colspan="3">Par niveau de diplôme (ISTAT SES 2022)</td></tr>
+          <tr><td>Diplôme supérieur (université +)</td><td><span class="ecart-val">16,6 %</span></td><td class="ecart-dim">Plus éduquées ≠ mieux rémunérées à égalité</td></tr>
+          <tr><td>Secondaire ou moins</td><td><span class="ecart-val2">15,2 %</span></td><td></td></tr>
+          <tr class="ecart-sep"><td colspan="3">Contexte structurel</td></tr>
+          <tr><td>Taux d'activité féminin</td><td><span class="ecart-val2">~55 %</span></td><td class="ecart-dim">Parmi les plus bas d'Europe — source de l'effet de sélection</td></tr>
+          <tr>
+            <td>Obligation légale</td>
+            <td class="ecart-val2">Rapport biennal &gt; 50 sal.</td>
+            <td class="ecart-dim">Loi n°162/2021 · Certification parità di genere (UNI PDR 125:2022)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Source : ISTAT, Structure of Earnings in Italy — SES 2022, publié février 2025 · Eurostat (estimations 2023).<br>
+      <strong style="color:var(--text)">Effet de sélection</strong> : Le GPG horaire de 2–5 % est trompeur. Le faible taux d'activité féminin (~55 %) produit une sélection positive : les femmes qui travaillent sont surreprésentées parmi les diplômées et qualifiées, comprimant mécaniquement l'écart horaire moyen. L'écart réel sur les revenus annuels (inactivité + temps partiel) est estimé à 24–30 % selon les sources.
+    </div>
+
+    <!-- ── Canada ── -->
+    <div class="ecart-group-lbl">🇨🇦 Canada — Statistique Canada · Enquête sur la population active (EPA) · 2024</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Indicateur</th><th>Valeur</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ecart-sep"><td colspan="3">Écart global 2024</td></tr>
+          <tr>
+            <td>Écart horaire brut — global (tous âges)</td>
+            <td><span class="ecart-val">~12,6 %</span></td>
+            <td class="ecart-dim">F : 32,77 $/h · H : 37,50 $/h</td>
+          </tr>
+          <tr>
+            <td>Ratio synthétique</td>
+            <td><span class="ecart-val">87 ¢ pour $1</span></td>
+            <td class="ecart-dim">Femmes 25–54 ans, tous emplois</td>
+          </tr>
+          <tr class="ecart-sep"><td colspan="3">Par groupe d'âge (2024)</td></tr>
+          <tr><td>15–24 ans</td><td><span class="ecart-val2">5,9 %</span></td><td class="ecart-dim">F : 20,58 $/h · H : 21,88 $/h — écart minimal</td></tr>
+          <tr><td>25–54 ans</td><td><span class="ecart-val">12,2 %</span></td><td class="ecart-dim">F : 35,33 $/h · H : 40,22 $/h — groupe d'âge principal</td></tr>
+          <tr><td>55 ans et +</td><td><span class="ecart-val">16,6 %</span></td><td class="ecart-dim">F : 33,15 $/h · H : 39,73 $/h — écart maximal</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Par niveau d'éducation (2024)</td></tr>
+          <tr><td>Secondaire ou moins</td><td><span class="ecart-val2">16,9 %</span></td><td class="ecart-dim">F : 25,69 $/h · H : 30,91 $/h</td></tr>
+          <tr><td>Post-secondaire &lt; baccalauréat</td><td><span class="ecart-val">18,3 %</span></td><td class="ecart-dim">F : 30,78 $/h · H : 37,68 $/h — le plus élevé</td></tr>
+          <tr><td>Baccalauréat ou plus</td><td><span class="ecart-val2">13,9 %</span></td><td class="ecart-dim">F : 41,55 $/h · H : 48,26 $/h</td></tr>
+          <tr class="ecart-sep"><td colspan="3">Évolution et cadre légal</td></tr>
+          <tr>
+            <td>Amélioration depuis 2006</td>
+            <td class="ecart-val2">+21,3 % (F) vs +15,9 % (H)</td>
+            <td class="ecart-dim">Convergence salariale progressive — −4,2 pts sur le groupe 25–54 ans</td>
+          </tr>
+          <tr>
+            <td>Loi sur l'équité salariale fédérale</td>
+            <td class="ecart-val2">Depuis 2021</td>
+            <td class="ecart-dim">Obligatoire &gt; 10 sal. fédéraux — Québec : Loi sur l'équité salariale depuis 1996</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Source : Statistique Canada, Enquête sur la population active 2024, catalogue 14-28-0001.
+    </div>
+
+    <!-- ── Sources ── -->
+    <div class="ecart-group-lbl">Sources officielles</div>
+    <div style="overflow-x:auto">
+      <table class="ecart-table">
+        <thead>
+          <tr><th>Pays</th><th>Organisme</th><th>Publication</th><th>Données</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🇫🇷 France</td>
+            <td class="ecart-val2">INSEE</td>
+            <td>Focus n°377 — Écart de salaire entre femmes et hommes en 2024</td>
+            <td class="ecart-dim">2024</td>
+          </tr>
+          <tr>
+            <td>🇫🇷 France</td>
+            <td class="ecart-val2">HCREP / INSEE</td>
+            <td>Les inégalités salariales entre les femmes et les hommes dans le privé — mars 2025</td>
+            <td class="ecart-dim">2025</td>
+          </tr>
+          <tr>
+            <td>🇫🇷 France</td>
+            <td class="ecart-val2">DGAFP</td>
+            <td>Écarts de rémunération brute fonctionnaires dans les ministères en 2024</td>
+            <td class="ecart-dim">2024</td>
+          </tr>
+          <tr>
+            <td>🇨🇭 Suisse</td>
+            <td class="ecart-val2">OFS</td>
+            <td>Enquête sur la structure des salaires (LSE / ESS) — résultats 2022 et 2024</td>
+            <td class="ecart-dim">2022–2024</td>
+          </tr>
+          <tr>
+            <td>🇱🇺 Luxembourg</td>
+            <td class="ecart-val2">STATEC</td>
+            <td>Note de conjoncture STN 08/2024 — Gender Pay Gap</td>
+            <td class="ecart-dim">2024</td>
+          </tr>
+          <tr>
+            <td>🇱🇺 Luxembourg</td>
+            <td class="ecart-val2">Eurostat</td>
+            <td>Gender pay gap statistics (indicateur sdg_05_20) — données provisoires 2024</td>
+            <td class="ecart-dim">2024 (prov.)</td>
+          </tr>
+          <tr>
+            <td>🇮🇹 Italie</td>
+            <td class="ecart-val2">ISTAT</td>
+            <td>Structure of Earnings in Italy — SES 2022 (rapport publié février 2025)</td>
+            <td class="ecart-dim">2022 / pub. 2025</td>
+          </tr>
+          <tr>
+            <td>🇨🇦 Canada</td>
+            <td class="ecart-val2">Statistique Canada</td>
+            <td>Rémunération moyenne — Enquête sur la population active 2024, cat. 14-28-0001</td>
+            <td class="ecart-dim">2024</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ecart-note">
+      Les données Eurostat (SES) sont quadriennales — la dernière enquête de référence est 2022 ; les chiffres 2023–2024 d'Eurostat sont des estimations balisées sur cette base. Les prochaines données SES définitives seront publiées en décembre 2026. La France bénéficie d'une antériorité unique grâce à la DSN (données exhaustives annuelles, ~26 M salariés).
+    </div>
+
+  </div><!-- /view-ecart -->
 
   <!-- ── Modal formule mathématique ── -->
   <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">

@@ -53,10 +53,7 @@ function errToStr(e) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 
-// ── Date de simulation plafonnée au 31/01/2026 ───────────────────────────────
-// Les données France sont valides jusqu'au 01/01/2026 (PMSS, SMIC, taux Fillon).
-// On bloque la saisie au 31/01/2026 pour éviter toute simulation hors-données.
-const DATE_MAX = '2026-01-31';
+const DATE_MAX = '2026-12-31';
 const TODAY    = DATE_MAX;   // alias pour les appels existants
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
@@ -65,23 +62,43 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
-  // Tirage unique à l'arrivée — la paire H/F et l'écart salarial sont fixés pour la session
+  // Tirage unique à l'arrivée — héros + genre initial (H : 49 %, F : 51 %)
   window._heroH = Math.random() < 0.015 ? { prenom: 'Jean-Noël', nom: 'Favari' } : _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
-  _setNomFields(window._heroH.prenom, window._heroH.nom);
-  _syncToggleUI('H');
+
+  if (Math.random() < 0.51) {
+    // Préselection F — écart tiré une fois, mémorisé pour toute la session
+    _ecartActif = _drawEcartPct();
+    _ecartTire  = true;
+    _genre      = 'F';
+    _setNomFields(window._heroF.prenom, window._heroF.nom);
+    const _e0 = _ecartActif / 100;
+    const _a0 = Math.abs(_ecartActif);
+    const _b0 = Math.abs(Math.round(_e0 / (1 + _e0) * 100));
+    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+      if (_ecartActif < 0) {
+        el.dataset.textFh = `// −${_a0} % · écart salarial F/H`;
+        el.dataset.textHf = `// +${_b0} % · écart salarial H/F`;
+      } else if (_ecartActif > 0) {
+        el.dataset.textFh = `// +${_a0} % · avantage F/H`;
+        el.dataset.textHf = `// −${_b0} % · avantage F/H`;
+      } else {
+        el.dataset.textFh = `// ± 0 % · parité salariale`;
+        el.dataset.textHf = `// ± 0 % · parité salariale`;
+      }
+    });
+    _syncToggleUI('F', true);
+  } else {
+    _setNomFields(window._heroH.prenom, window._heroH.nom);
+    _syncToggleUI('H');
+  }
 
   // Quand l'utilisateur tape manuellement, le toggle est désactivé
   ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => { _nomPersonnalise = true; });
   });
 
-  const _pctFH = Math.round(_tauxEcart * 100);
-  const _pctHF = Math.round(_tauxEcart / (1 - _tauxEcart) * 100);
-  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-    el.dataset.textFh = `// −${_pctFH} % · écart salarial F/H`;
-    el.dataset.textHf = `// +${_pctHF} % · écart salarial H/F`;
-  });
+  // Les hints sont initialisés au premier basculement (pays inconnu à l'init)
 
   // Détection automatique mobile / bureau — breakpoint identique au media query CSS
   const mq = window.matchMedia("(max-width: 680px)");
@@ -92,7 +109,8 @@ document.addEventListener("DOMContentLoaded", () => {
         !body.classList.contains("is-apropos")    &&
         !body.classList.contains("is-gaabrielle") &&
         !body.classList.contains("is-hercule")    &&
-        !body.classList.contains("is-quizz"))
+        !body.classList.contains("is-quizz")      &&
+        !body.classList.contains("is-ecart"))
       setView(e.matches ? "mobile" : "desktop");
   };
   mq.addEventListener("change", applyView);
@@ -568,7 +586,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'ecart'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -1211,17 +1229,17 @@ function renderMobile(b) {
       </div>
 
       <!-- Brut -->
-      <div class="mob-row" style="margin-top:0.15rem">
+      <div class="mob-row final-row">
         <span class="mob-lbl">Salaire de base brut</span>
-        <span class="mob-val c-gray">${fmt(b.brut)}</span>
+        <span class="mob-val c-green">${fmt(b.brut)}</span>
       </div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
       <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:0.75rem"><span class="mob-badge mob-badge-sal">Sal.</span><span class="mob-badge mob-badge-pat">Pat.</span></span></div>
       ${cotLines}
       <div class="mob-row subtot">
-        <span class="mob-lbl">TOTAL cotisations sociales</span>
-        <span class="mob-val c-red">− ${fmt(totalSalSansIS)}</span>
+        <span class="mob-lbl">TOTAL cotisations salariales</span>
+        <span class="mob-val c-yellow">− ${fmt(totalSalSansIS)}</span>
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
@@ -1360,11 +1378,9 @@ async function calculate(source) {
   ["d-prenom","m-prenom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = prenom; });
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
-  // Pays étranger = date figée (pas d'historique pour CH/LU/IT avant 2015-2026)
-  // FPT = France, date libre, historique dès le 01/01/2016
   const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg"
     : isItalie ? "italia" : isCanada ? "canada" : isQuebec ? "quebec" : null;
-  const datePaie = paysEtranger ? "2026-01-01" : date;
+  const datePaie = date;
 
   try {
     const bulletin = await api("calculer_bulletin", {
@@ -1555,8 +1571,7 @@ window.onTogglePays = function(pays, checked) {
   ['d-date', 'm-date'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.disabled = unPaysActif;
-    if (unPaysActif) el.value = '2026-01-01';
+    el.disabled = false;
   });
 
   // Label devise : CHF (Suisse), CAD (Canada/Québec), EUR (autres)
@@ -1591,6 +1606,9 @@ window.onTogglePays = function(pays, checked) {
     const wrap = document.getElementById(`${p}-ca-province-wrap`);
     if (wrap) wrap.style.display = isCanadaChecked ? '' : 'none';
   });
+
+  // Nouveau pays → prochain basculement H/F tire depuis le bon pool
+  _ecartTire = false;
 };
 
 // ── Paramètres avancés ───────────────────────────────────────────────────────
@@ -2230,10 +2248,33 @@ const HEROS_F = [
   { prenom: 'Tanaquil', nom: 'la Magicienne' },     // Tanith Lee (britannique)
 ];
 
-// Tirage pondéré de l'écart salarial F/H pour la session
-// Distribution : 17→1/12, 16→2/12, 15→3/12, 14→3/12, 13→2/12, 11→1/12
-const _ECART_POOL = [17, 16, 16, 15, 15, 15, 14, 14, 14, 13, 13, 11];
-const _tauxEcart  = _ECART_POOL[Math.floor(Math.random() * _ECART_POOL.length)] / 100;
+// Pools par pays — valeurs signées en % : négatif = F gagne moins, positif = F gagne plus
+// Sources : INSEE Focus 377 (FR 2024), OFS LSE (CH 2024), STATEC/Eurostat (LU 2024),
+//           ISTAT SES 2022 / Eurostat 2023 (IT), Statistique Canada EPA 2024 (CA/QC)
+const ECART_POOLS = {
+  france:     [-4, -9, -13, -17, -22],
+  suisse:     [-8, -10, -12, -14, -16],
+  luxembourg: [+1, +1,  +1,   0,  -1],
+  italie:     [-2, -4,  -4,  -6],
+  canada:     [-6, -10, -12, -14, -17],
+  quebec:     [-6, -10, -12, -14, -17],
+};
+
+function _getActivePays() {
+  for (const p of ['suisse', 'luxembourg', 'italie', 'canada', 'quebec']) {
+    if (document.getElementById('d-' + p)?.checked) return p;
+    if (document.getElementById('m-' + p)?.checked) return p;
+  }
+  return 'france';
+}
+
+function _drawEcartPct() {
+  const pool = ECART_POOLS[_getActivePays()];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+let _ecartActif = 0;    // mémorise l'écart appliqué H→F pour le retour F→H
+let _ecartTire  = false; // tirage unique pour toute la session
 
 let _genre          = 'H';
 let _nomPersonnalise = false;
@@ -2274,7 +2315,27 @@ window.setGenre = function(genre) {
     _setNomFields(hero.prenom, hero.nom);
   }
 
-  const facteur = genre === 'F' ? (1 - _tauxEcart) : (1 / (1 - _tauxEcart));
+  // Premier passage H→F : tirage unique pour toute la session
+  if (genre === 'F' && !_ecartTire) { _ecartActif = _drawEcartPct(); _ecartTire = true; }
+  const e = _ecartActif / 100; // valeur signée
+  const facteur = genre === 'F' ? (1 + e) : (1 / (1 + e));
+
+  // Hint : texte adapté selon le sens de l'écart
+  const abs = Math.abs(_ecartActif);
+  const absHF = Math.abs(Math.round(e / (1 + e) * 100));
+  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+    if (_ecartActif < 0) {
+      el.dataset.textFh = `// −${abs} % · écart salarial F/H`;
+      el.dataset.textHf = `// +${absHF} % · écart salarial H/F`;
+    } else if (_ecartActif > 0) {
+      el.dataset.textFh = `// +${abs} % · avantage F/H`;
+      el.dataset.textHf = `// −${absHF} % · avantage F/H`;
+    } else {
+      el.dataset.textFh = `// ± 0 % · parité salariale`;
+      el.dataset.textHf = `// ± 0 % · parité salariale`;
+    }
+  });
+
   ['d-brut', 'm-brut'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = Math.round(parseFloat(el.value) * facteur);
