@@ -1114,8 +1114,25 @@
     .view-apropos,
     .view-contact,
     .view-gaabrielle,
-    .view-hercule,
-    .view-quizz { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    .view-quizz   { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    .view-hercule { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto 3rem; }
+
+    /* ── Hercule Compta ── */
+    .herc-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 4rem; }
+    .herc-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.8rem; }
+    .herc-group-lbl { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }
+    .herc-info { font-size: 0.68rem; color: var(--muted); margin-bottom: 1.2rem; letter-spacing: 0.04em; }
+    .herc-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+    .herc-table th { padding: 0.4rem 0.6rem; text-align: left; font-size: 0.58rem; color: var(--blue); letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .herc-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: middle; }
+    .herc-table tr:hover td { background: rgba(255,255,255,0.025); }
+    .herc-table td:nth-child(3), .herc-table td:nth-child(4) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .herc-d  { color: var(--blue);   }
+    .herc-c  { color: var(--yellow); }
+    .herc-num { color: var(--dim); font-size: 0.62rem; letter-spacing: 0.06em; }
+    .herc-total td { background: var(--bg3) !important; color: var(--white); font-size: 0.62rem; letter-spacing: 0.08em; }
+    .herc-equilibre { font-size: 0.6rem; color: var(--green); margin-top: 0.4rem; letter-spacing: 0.06em; }
+    .herc-gate-msg { font-size: 0.65rem; color: var(--blue); letter-spacing: 0.08em; margin-top: 1rem; }
 
     body.is-forge .view-desktop,
     body.is-forge .view-mobile,
@@ -2657,18 +2674,52 @@
        VUE HERCULE (COMPTA)
   ════════════════════════════════ -->
   <div class="view-hercule">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1.5rem;padding:3rem 1rem">
-      <div style="text-align:center;max-width:440px">
-        <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em;margin-bottom:0.75rem">
-          ... et sans Hercule
+    <div class="herc-wrap">
+      <div class="herc-section-lbl">// Hercuule — Module Comptabilité · Journal de paie · Plan comptable</div>
+
+      <!-- Écran de garde -->
+      <div id="herc-gate">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;gap:1.5rem;padding:2rem 1rem;text-align:center">
+          <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em">... et sans Hercule</div>
+          <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em">// MODULE COMPTABILITÉ — APERÇU</div>
+          <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
+            Grand livre · Journal · Balance<br>
+            Rapprochement bancaire · Clôture
+          </div>
+          <div class="herc-gate-msg" id="herc-gate-msg">
+            Calculez d'abord un bulletin France ou FPT pour accéder au journal de paie.
+          </div>
         </div>
-        <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em;margin-bottom:2rem">
-          // MODULE COMPTABILITÉ — EN CONSTRUCTION
+      </div>
+
+      <!-- Contenu comptable -->
+      <div id="herc-content" style="display:none">
+        <div class="herc-info" id="herc-bulletin-info"></div>
+
+        <div class="herc-group-lbl">Écriture 1 — Constatation de la rémunération</div>
+        <div style="overflow-x:auto">
+          <table class="herc-table" id="herc-jnl-1">
+            <thead><tr><th>Sens</th><th>Compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
-        <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
-          Grand livre · Journal · Balance<br>
-          Rapprochement bancaire · Clôture<br>
-          <span style="color:var(--dim)">— bientôt —</span>
+        <div class="herc-equilibre" id="herc-eq-1"></div>
+
+        <div class="herc-group-lbl">Écriture 2 — Charges patronales</div>
+        <div style="overflow-x:auto">
+          <table class="herc-table" id="herc-jnl-2">
+            <thead><tr><th>Sens</th><th>Compte</th><th>Libellé</th><th>Débit</th><th>Crédit</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="herc-equilibre" id="herc-eq-2"></div>
+
+        <div class="herc-group-lbl">Plan comptable — comptes mobilisés</div>
+        <div style="overflow-x:auto">
+          <table class="herc-table" id="herc-pca">
+            <thead><tr><th>Compte</th><th>Libellé PCG</th><th>Débit</th><th>Crédit</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -3207,12 +3258,12 @@
       Xenna est un projet open source et libre. Si il vous est utile,<br>
       vous pouvez soutenir son développement sur Tipeee.
     </div>
-    <a href="https://fr.tipeee.com/xenna-paye/" target="_blank" rel="noopener"
-       style="display:inline-block;font-size:0.68rem;letter-spacing:0.1em;color:var(--blue);border:1px solid var(--blue);padding:0.4rem 0.9rem;text-decoration:none"
+    <button onclick="openExternal('https://fr.tipeee.com/xenna-paye')"
+       style="display:inline-block;font-size:0.68rem;letter-spacing:0.1em;color:var(--blue);border:1px solid var(--blue);padding:0.4rem 0.9rem;background:none;cursor:pointer;font-family:inherit"
        onmouseover="this.style.background='var(--blue)';this.style.color='var(--bg3)'"
        onmouseout="this.style.background='';this.style.color='var(--blue)'">
-      ♥ &nbsp;fr.tipeee.com/xenna-paye/
-    </a>
+      ♥ &nbsp;fr.tipeee.com/xenna-paye
+    </button>
   </div><!-- /view-mecenat -->
 
   <!-- ── Modal formule mathématique ── -->

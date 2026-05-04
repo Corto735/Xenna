@@ -50,6 +50,16 @@ function errToStr(e) {
   try { return JSON.stringify(e, null, 2); } catch { return String(e); }
 }
 
+// ── Ouverture URL externe (Tauri shell ou window.open en web) ────────────────
+window.openExternal = async function(url) {
+  if (window.__TAURI__) {
+    const { open } = await import('@tauri-apps/plugin-shell');
+    await open(url);
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+};
+
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 
@@ -93,9 +103,12 @@ document.addEventListener("DOMContentLoaded", () => {
     _syncToggleUI('H');
   }
 
-  // Quand l'utilisateur tape manuellement, le toggle est désactivé
+  // Déverrouillage JNF si tiré à l'arrivée
+  _checkJNF();
+
+  // Quand l'utilisateur tape manuellement, le toggle est désactivé + check JNF
   ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => { _nomPersonnalise = true; });
+    document.getElementById(id)?.addEventListener('input', () => { _nomPersonnalise = true; _checkJNF(); });
   });
 
   // Les hints sont initialisés au premier basculement (pays inconnu à l'init)
@@ -597,6 +610,7 @@ window.setView = function (v) {
   if (v === 'forge')       forgeInit();
   if (v === 'quizz')      quizzInit();
   if (v === 'gaabrielle') gaabInit();
+  if (v === 'hercule')    herculeInit();
   if (v === 'apropos')    _mecenatStart();
 };
 
@@ -609,6 +623,16 @@ function _mecenatStart() {
     const el = document.getElementById('burger-mecenat');
     if (el) el.style.display = '';
   }, 15_000);
+}
+
+// Déverrouillage immédiat si Jean-Noël Favari est dans les champs nom/prénom
+function _checkJNF() {
+  const p = (document.getElementById('d-prenom')?.value || document.getElementById('m-prenom')?.value || '').trim().toLowerCase();
+  const n = (document.getElementById('d-nom')?.value    || document.getElementById('m-nom')?.value    || '').trim().toLowerCase();
+  if (p === 'jean-noël' && n === 'favari') {
+    const el = document.getElementById('burger-mecenat');
+    if (el) el.style.display = '';
+  }
 }
 
 // ── Devise courante (mise à jour à chaque renderAll) ─────────────────────────
@@ -2379,6 +2403,125 @@ window.setGenre = function(genre) {
   _genre = genre;
   _syncToggleUI(genre, true);
 };
+
+// ── Hercule Compta ────────────────────────────────────────────────────────────
+function herculeInit() {
+  const gate    = document.getElementById('herc-gate');
+  const content = document.getElementById('herc-content');
+  const isFR    = lastBulletin && ['france', 'fonction_publique'].includes(lastBulletin.salarie?.pays);
+
+  if (!isFR) {
+    if (gate)    gate.style.display    = '';
+    if (content) content.style.display = 'none';
+    return;
+  }
+  if (gate)    gate.style.display    = 'none';
+  if (content) content.style.display = '';
+
+  const b    = lastBulletin;
+  const cots = b.cotisations;
+  const brut = parseFloat(b.brut);
+  const net  = parseFloat(b.net_a_payer);
+  const pas  = calculerPas(parseFloat(b.net_imposable)).total;
+
+  // ── Agrégation par code ───────────────────────────────────────────────────
+  const SS   = ['SS_MALADIE','SS_VIEILLESSE_PLAF','SS_VIEILLESSE_DEPLAF','FAMILLE','AT_MP','ALSACE_MOSELLE_MALADIE'];
+  const CSG  = ['CSG_DEDUCTIBLE','CSG_NON_DEDUCTIBLE','CRDS'];
+  const PREV = ['PREVOYANCE_CADRE_MIN'];
+  const RCC  = ['AGIRC_ARRCO_T1','AGIRC_ARRCO_T2','AGIRC_ARRCO_CEG_T1'];
+
+  const sumSal = codes => cots.filter(c => codes.includes(c.code)).reduce((a,c) => a + Math.abs(parseFloat(c.montant_sal)), 0);
+  const sumPat = codes => cots.filter(c => codes.includes(c.code)).reduce((a,c) => a + Math.abs(parseFloat(c.montant_pat)), 0);
+  const sumCode = (code, field) => { const c = cots.find(x => x.code === code); return c ? Math.abs(parseFloat(c[field])) : 0; };
+
+  const ss431_sal   = sumSal(SS);
+  const csg4378_sal = sumSal(CSG);
+  const cho4379_sal = sumCode('CHOMAGE', 'montant_sal');
+  const rcc437_sal  = sumSal([...RCC, ...PREV]);
+
+  const ss431_pat   = sumPat(SS);
+  const cho4379_pat = sumCode('CHOMAGE', 'montant_pat');
+  const rcc437_pat  = sumPat(RCC);
+  const prev6452    = sumPat(PREV);
+  const fillon6419  = sumCode('REDUCTION_FILLON', 'montant_pat');
+  const urssaf6451  = ss431_pat - fillon6419;   // net Fillon
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const fmtE = v => v > 0.005 ? v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €' : '—';
+  const row = (sens, num, lib, d, c) =>
+    `<tr><td class="${sens==='D'?'herc-d':'herc-c'}">${sens}</td><td><span class="herc-num">${num}</span></td><td>${lib}</td><td>${fmtE(d)}</td><td>${fmtE(c)}</td></tr>`;
+  const rowTotal = (label, d, c) =>
+    `<tr class="herc-total"><td colspan="3">${label}</td><td>${fmtE(d)}</td><td>${fmtE(c)}</td></tr>`;
+
+  // ── Info bulletin ─────────────────────────────────────────────────────────
+  const info = document.getElementById('herc-bulletin-info');
+  if (info) info.innerHTML = `Bulletin de <strong>${b.salarie.prenom} ${b.salarie.nom}</strong> · Brut ${fmtE(brut)} · ${b.salarie.alsace_moselle ? 'Alsace-Moselle · ' : ''}${b.salarie.statut === 'cadre' ? 'Cadre' : 'Non-cadre'}`;
+
+  // ── Écriture 1 : Constatation de la rémunération ──────────────────────────
+  const totalRetenues = ss431_sal + csg4378_sal + cho4379_sal + rcc437_sal + pas;
+  const tbody1 = [
+    row('D', '641', 'Rémunérations du personnel',                brut, 0),
+    row('C', '421', 'Personnel — Rémunérations dues',             0, net),
+    ss431_sal   > 0.005 ? row('C', '431', 'Sécurité sociale (part salariale)',           0, ss431_sal)   : '',
+    csg4378_sal > 0.005 ? row('C', '4378','CSG · CRDS',                                  0, csg4378_sal) : '',
+    cho4379_sal > 0.005 ? row('C', '4379','Assurance chômage (part salariale)',           0, cho4379_sal) : '',
+    rcc437_sal  > 0.005 ? row('C', '437', 'Retraite complémentaire · Prévoyance (sal.)', 0, rcc437_sal)  : '',
+    pas         > 0.005 ? row('C', '444', 'État — Prélèvement à la source',              0, pas)         : '',
+    rowTotal('TOTAL', brut, net + totalRetenues),
+  ].join('');
+  document.querySelector('#herc-jnl-1 tbody').innerHTML = tbody1;
+  const diff1 = Math.abs(brut - (net + totalRetenues));
+  document.getElementById('herc-eq-1').textContent =
+    diff1 < 0.02 ? '∑ Débit = ∑ Crédit ✓' : `Δ = ${fmtE(diff1)} (écart d'arrondi)`;
+
+  // ── Écriture 2 : Charges patronales ──────────────────────────────────────
+  const debit2  = urssaf6451 + prev6452 + rcc437_pat + cho4379_pat;
+  const credit2 = ss431_pat + rcc437_pat + prev6452 + cho4379_pat - fillon6419;
+  const tbody2 = [
+    urssaf6451  > 0.005 ? row('D', '6451','Cotisations URSSAF (net réduction Fillon)',        urssaf6451,  0) : '',
+    prev6452    > 0.005 ? row('D', '6452','Cotisations prévoyance (part patronale)',           prev6452,    0) : '',
+    rcc437_pat  > 0.005 ? row('D', '6453','Cotisations retraite complémentaire (pat.)',        rcc437_pat,  0) : '',
+    cho4379_pat > 0.005 ? row('D', '6454','Cotisations France Travail (part patronale)',       cho4379_pat, 0) : '',
+    fillon6419  > 0.005 ? row('C', '6419','Remboursement réduction Fillon',                   0, fillon6419)  : '',
+    ss431_pat   > 0.005 ? row('C', '431', 'Sécurité sociale (part patronale)',                0, ss431_pat)   : '',
+    rcc437_pat  > 0.005 ? row('C', '437', 'Retraite complémentaire · Prévoyance (pat.)',      0, rcc437_pat + prev6452) : '',
+    cho4379_pat > 0.005 ? row('C', '4379','Assurance chômage (part patronale)',               0, cho4379_pat) : '',
+    rowTotal('TOTAL', debit2, credit2),
+  ].join('');
+  document.querySelector('#herc-jnl-2 tbody').innerHTML = tbody2;
+  const diff2 = Math.abs(debit2 - credit2);
+  document.getElementById('herc-eq-2').textContent =
+    diff2 < 0.02 ? '∑ Débit = ∑ Crédit ✓' : `Δ = ${fmtE(diff2)} (écart d'arrondi)`;
+
+  // ── Plan comptable — tous comptes classés par numéro ─────────────────────
+  const pca = [
+    { num:'421',  lib:'Personnel — Rémunérations dues',               d:0,         c:net },
+    { num:'431',  lib:'Sécurité sociale',                             d:0,         c:ss431_sal + ss431_pat },
+    { num:'437',  lib:'Retraite complémentaire · Prévoyance',         d:0,         c:rcc437_sal + rcc437_pat + prev6452 },
+    { num:'4378', lib:'CSG · CRDS',                                   d:0,         c:csg4378_sal },
+    { num:'4379', lib:'Assurance chômage',                            d:0,         c:cho4379_sal + cho4379_pat },
+    pas > 0.005 ?
+    { num:'444',  lib:'État — Prélèvement à la source',               d:0,         c:pas } : null,
+    { num:'641',  lib:'Rémunérations du personnel',                   d:brut,      c:0 },
+    urssaf6451 > 0.005 ?
+    { num:'6419', lib:'Remboursement réduction Fillon',               d:0,         c:fillon6419 } : null,
+    urssaf6451 > 0.005 ?
+    { num:'6451', lib:'Cotisations URSSAF (net Fillon)',              d:urssaf6451,c:0 } : null,
+    prev6452 > 0.005 ?
+    { num:'6452', lib:'Cotisations prévoyance',                       d:prev6452,  c:0 } : null,
+    rcc437_pat > 0.005 ?
+    { num:'6453', lib:'Cotisations retraite complémentaire',          d:rcc437_pat,c:0 } : null,
+    cho4379_pat > 0.005 ?
+    { num:'6454', lib:'Cotisations France Travail',                   d:cho4379_pat,c:0}: null,
+  ].filter(Boolean);
+
+  const totalD = pca.reduce((a,x) => a+x.d, 0);
+  const totalC = pca.reduce((a,x) => a+x.c, 0);
+  document.querySelector('#herc-pca tbody').innerHTML = [
+    ...pca.map(x => `<tr><td><span class="herc-num">${x.num}</span></td><td>${x.lib}</td><td>${fmtE(x.d)}</td><td>${fmtE(x.c)}</td></tr>`),
+    `<tr class="herc-total"><td colspan="2">TOTAL</td><td>${fmtE(totalD)}</td><td>${fmtE(totalC)}</td></tr>`,
+  ].join('');
+}
 
 // ── Burger menu ───────────────────────────────────────────────────────────────
 const burgerBtn  = document.getElementById('burger-btn');
