@@ -110,7 +110,8 @@ document.addEventListener("DOMContentLoaded", () => {
         !body.classList.contains("is-gaabrielle") &&
         !body.classList.contains("is-hercule")    &&
         !body.classList.contains("is-quizz")      &&
-        !body.classList.contains("is-ecart"))
+        !body.classList.contains("is-ecart")      &&
+        !body.classList.contains("is-mecenat"))
       setView(e.matches ? "mobile" : "desktop");
   };
   mq.addEventListener("change", applyView);
@@ -586,7 +587,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'ecart'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'ecart', 'mecenat'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -596,7 +597,19 @@ window.setView = function (v) {
   if (v === 'forge')       forgeInit();
   if (v === 'quizz')      quizzInit();
   if (v === 'gaabrielle') gaabInit();
+  if (v === 'apropos')    _mecenatStart();
 };
+
+// ── Mécénat — déverrouillage silencieux 15 s après le premier passage sur À propos ──
+let _mecenatUnlocked = false;
+function _mecenatStart() {
+  if (_mecenatUnlocked) return;
+  _mecenatUnlocked = true;
+  setTimeout(() => {
+    const el = document.getElementById('burger-mecenat');
+    if (el) el.style.display = '';
+  }, 15_000);
+}
 
 // ── Devise courante (mise à jour à chaque renderAll) ─────────────────────────
 let DEVISE = "EUR";
@@ -860,6 +873,20 @@ window.showFormula = function(key) {
   fmBody.innerHTML = buildFormulaContent(c, type);
   document.getElementById('fm-modal').classList.add('open');
   document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+};
+
+window.openCommentFillon = function() {
+  document.getElementById('fm-title').textContent = '± 0,01 € · Note';
+  document.getElementById('fm-badge').textContent = '';
+  document.getElementById('fm-body').innerHTML = `<div style="font-size:0.77rem;line-height:2;color:var(--text);font-style:italic;max-width:500px">
+    Je le laisse parce que ça me fait un peu marrer.<br>
+    Je me demande si quelqu'un leur a déjà envoyé des centimes en guise de protestation
+    face à l'absurdité du calcul incroyable de la réduction Fillon…<br>
+    et pour au final favoriser l'emploi au plus proche possible des minimas sociaux...<br>
+    non sans une pointe de zèle ironique… je ne sais pas…
+    <div style="margin-top:1.2rem;font-size:0.63rem;color:var(--dim);font-style:normal;letter-spacing:0.08em">[2026/05/04] [JNF]</div>
+  </div>`;
+  document.getElementById('fm-modal').classList.add('open');
 };
 
 window.closeFmModal = function() {
@@ -1433,13 +1460,21 @@ function renderAnnuel(sim) {
       <th>COÛT EMPL.</th>
     </tr></thead>`;
 
+  // Tirage unique : un seul (i) parmi toutes les lignes ±0,01
+  const _centIdx = rows.reduce((acc, r, i) => {
+    if (parseFloat(Math.abs(parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple)).toFixed(2)) === 0.01) acc.push(i);
+    return acc;
+  }, []);
+  const _centElu = _centIdx.length ? _centIdx[Math.floor(Math.random() * _centIdx.length)] : -1;
+
   const tbody = rows.map((r, i) => {
     const smicChange  = i > 0 && r.smic !== smics[i - 1];
     const is13e       = r.mois_libelle.includes("13e");
     const delta       = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
+    const infoBtn     = i === _centElu ? ` <button class="delta-info-btn" onclick="openCommentFillon()" title="Note JNF">(i)</button>` : '';
     const deltaTxt    = Math.abs(delta) < 0.005
       ? `<span style="color:var(--dim)">—</span>`
-      : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>`;
+      : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>${infoBtn}`;
     const rowCls = [smicChange ? "smic-change" : "", is13e ? "treizieme-mois" : ""].filter(Boolean).join(" ");
 
     return `<tr class="${rowCls}">
@@ -2370,16 +2405,46 @@ burgerMenu.addEventListener('click', e => e.stopPropagation());
 
 // ── Gaabrielle RH ─────────────────────────────────────────────────────────────
 const GAAB_EMPLOYES = [
-  { mat:'XN-001', nom:'Vasseur',   prenom:'Zoé',         embauche:'2019-03-15', ageEmb:{a:27,m:4, j:12}, poste:'Coordinatrice des Émotions Synthétiques',                    bh:18.50, etp:80  },
-  { mat:'XN-002', nom:'Nakamura',  prenom:'Théo',        embauche:'2021-07-01', ageEmb:{a:34,m:2, j:8 }, poste:'Synapse-Wrangler Principal',                                  bh:24.00, etp:100 },
-  { mat:'XN-003', nom:'Diallo',    prenom:'Amara',       embauche:'2018-11-20', ageEmb:{a:29,m:7, j:3 }, poste:"Ingénieure en Obsolescence Programmée des Rêves",             bh:21.75, etp:80  },
-  { mat:'XN-004', nom:'Ferretti',  prenom:'Luca',        embauche:'2022-01-10', ageEmb:{a:42,m:0, j:22}, poste:'Archiviste des Souvenirs Non-Contractuels',                   bh:35.00, etp:100 },
-  { mat:'XN-005', nom:'Bouchard',  prenom:'Inès',        embauche:'2020-06-08', ageEmb:{a:23,m:11,j:17}, poste:"Développeuse de Protocoles d'Amour Algorithmique",           bh:16.50, etp:80  },
-  { mat:'XN-006', nom:'Khoury',    prenom:'Rayan',       embauche:'2017-09-04', ageEmb:{a:38,m:5, j:29}, poste:'Calibrateur de Biais Existentiels',                          bh:28.90, etp:100 },
-  { mat:'XN-007', nom:'Osei',      prenom:'Clémentine',  embauche:'2023-02-28', ageEmb:{a:31,m:1, j:5 }, poste:'Responsable de la Continuité de la Conscience Distribuée',   bh:19.25, etp:100 },
-  { mat:'XN-008', nom:'Svensson',  prenom:'Matteo',      embauche:'2019-12-16', ageEmb:{a:55,m:8, j:14}, poste:'Tisserand de Réalités Alternatives',                         bh:42.00, etp:100 },
-  { mat:'XN-009', nom:'Reyes',     prenom:'Djamila',     embauche:'2021-04-19', ageEmb:{a:26,m:3, j:0 }, poste:'Évaluatrice de l\'Âme Numérique — Grade III',                bh:17.80, etp:100 },
-  { mat:'XN-010', nom:'Trousseau', prenom:'Éric',        embauche:'2016-08-22', ageEmb:{a:48,m:10,j:9 }, poste:'Consultant en Déshumanisation Douce',                        bh:52.00, etp:100 },
+  // ── H ──
+  { mat:'XN-001', nom:'de Riv',        prenom:'Geralt',   embauche:'2016-04-11', ageEmb:{a:38,m:2, j:7 }, poste:'Chasseur de Bugs Mutants — Résilience Maximale',                 bh:44.00, etp:100 },
+  // ── F ──
+  { mat:'XN-002', nom:'Belacqua',      prenom:'Lyra',     embauche:'2023-09-01', ageEmb:{a:22,m:0, j:14}, poste:'Cartographe des Mondes Parallèles Contractuels',                bh:16.50, etp:80  },
+  // ── H ──
+  { mat:'XN-003', nom:'Vimes',         prenom:'Sam',      embauche:'2017-02-20', ageEmb:{a:45,m:6, j:3 }, poste:'Commissaire aux Anomalies Comportementales',                    bh:38.50, etp:100 },
+  // ── F ──
+  { mat:'XN-004', nom:'Granger',       prenom:'Hermione', embauche:'2020-09-01', ageEmb:{a:28,m:0, j:0 }, poste:'Directrice des Procédures Magiques et de la Conformité',        bh:31.00, etp:100 },
+  // ── H ──
+  { mat:'XN-005', nom:'de Melniboné',  prenom:'Elric',    embauche:'2018-06-15', ageEmb:{a:33,m:3, j:19}, poste:'Canalisateur des Flux d\'Entropie Numérique',                   bh:51.00, etp:100 },
+  // ── F ──
+  { mat:'XN-006', nom:'du Rohan',      prenom:'Eowyn',    embauche:'2019-11-03', ageEmb:{a:31,m:7, j:22}, poste:'Cheffe de Projet Déconstruction des Obstacles Genrés',          bh:24.50, etp:100 },
+  // ── H ──
+  { mat:'XN-007', nom:'la Légende',    prenom:'Druss',    embauche:'2014-08-30', ageEmb:{a:52,m:1, j:8 }, poste:'Directeur des Opérations Physiques Irréversibles',              bh:48.00, etp:100 },
+  // ── F ──
+  { mat:'XN-008', nom:'Caldin',        prenom:'Ellana',   embauche:'2021-03-08', ageEmb:{a:26,m:9, j:15}, poste:'Analyste en Trajectoires Inconventionnelles',                   bh:19.75, etp:80  },
+  // ── H ──
+  { mat:'XN-009', nom:'Neuf-Doigts',   prenom:'Logen',    embauche:'2020-01-13', ageEmb:{a:37,m:4, j:27}, poste:'Expert en Gestion de Crises Légèrement Incontrôlables',         bh:29.00, etp:100 },
+  // ── F ──
+  { mat:'XN-010', nom:'Maljinn',       prenom:'Ferro',    embauche:'2022-05-16', ageEmb:{a:29,m:11,j:4 }, poste:'Responsable de la Désintégration des Processus Obsolètes',      bh:21.50, etp:100 },
+  // ── H ──
+  { mat:'XN-011', nom:'Grands-Pas',    prenom:'Aragorn',  embauche:'2015-07-22', ageEmb:{a:41,m:0, j:11}, poste:'Directeur Général des Transitions de Paradigme',                bh:58.00, etp:100 },
+  // ── F ──
+  { mat:'XN-012', nom:'Garlick',       prenom:'Magrat',   embauche:'2018-04-01', ageEmb:{a:34,m:5, j:17}, poste:'Consultante en Phytothérapie Algorithmique',                    bh:20.00, etp:80  },
+  // ── H ──
+  { mat:'XN-013', nom:'Shannow',       prenom:'Jon',      embauche:'2019-06-09', ageEmb:{a:44,m:8, j:2 }, poste:'Pisteur de Tendances Post-Apocalyptiques',                      bh:33.75, etp:100 },
+  // ── F ──
+  { mat:'XN-014', nom:"Gil'Sayan",     prenom:'Ewilan',   embauche:'2024-02-19', ageEmb:{a:21,m:3, j:6 }, poste:'Ingénieure en Dessin de Réalités Augmentées',                   bh:15.50, etp:80  },
+  // ── H ──
+  { mat:'XN-015', nom:'Dhibi',         prenom:'Salim',    embauche:'2021-10-04', ageEmb:{a:30,m:2, j:29}, poste:'Archiviste des Compétences Émergentes Non-Homologuées',         bh:26.50, etp:100 },
+  // ── F ──
+  { mat:'XN-016', nom:'la Guerrière',  prenom:'Sigarni',  embauche:'2013-11-18', ageEmb:{a:48,m:6, j:0 }, poste:'Directrice des Restructurations Stratégiques',                  bh:38.00, etp:100 },
+  // ── H ──
+  { mat:'XN-017', nom:'le Magi',       prenom:'Bayaz',    embauche:'2011-03-01', ageEmb:{a:61,m:0, j:0 }, poste:'Conseiller Exécutif en Manipulation des Lois Fondamentales',    bh:62.00, etp:100 },
+  // ── F ──
+  { mat:'XN-018', nom:'la Nord',       prenom:'Rikke',    embauche:'2022-08-22', ageEmb:{a:27,m:5, j:9 }, poste:'Prévisionniste des Déviations Sociales Involontaires',          bh:22.25, etp:100 },
+  // ── H ──
+  { mat:'XN-019', nom:"l'Enchanteur",  prenom:'Merlin',   embauche:'2009-05-12', ageEmb:{a:67,m:3, j:21}, poste:'Président du Conseil des Visions à Long Terme',                 bh:55.00, etp:100 },
+  // ── F ──
+  { mat:'XN-020', nom:'la Magicienne', prenom:'Tanaquil', embauche:'2017-09-25', ageEmb:{a:36,m:1, j:13}, poste:'Architecte des Sortilèges Organisationnels',                    bh:27.50, etp:80  },
 ];
 
 function _gaabSalStr(bh, type) {
@@ -2432,14 +2497,42 @@ function gaabInit() {
   }
 }
 
-function gaabUpdateSal() {
-  const type = document.getElementById('gaab-saltype')?.value || 'bh';
+let _gaabSalTimer = null;
+let _gaabSalTick  = 0;
+
+function _gaabHideSal() {
+  clearInterval(_gaabSalTimer);
+  _gaabSalTimer = null;
+  document.getElementById('gaab-table')?.classList.remove('gaab-sal-visible');
+  const sel = document.getElementById('gaab-saltype');
+  if (sel) sel.value = '';
+  const cd = document.getElementById('gaab-countdown');
+  if (cd) cd.textContent = '';
+}
+
+window.gaabUpdateSal = function() {
+  const type = document.getElementById('gaab-saltype')?.value;
+  if (!type) { _gaabHideSal(); return; }
+
+  // Mise à jour des cellules
   document.querySelectorAll('.gaab-sal').forEach(cell => {
     cell.textContent = _gaabSalStr(parseFloat(cell.dataset.bh), type);
   });
-}
 
-window.gaabUpdateSal = gaabUpdateSal;
+  // Affichage de la colonne
+  document.getElementById('gaab-table')?.classList.add('gaab-sal-visible');
+
+  // (Re)démarrage du countdown
+  clearInterval(_gaabSalTimer);
+  _gaabSalTick = 10;
+  const cd = document.getElementById('gaab-countdown');
+  if (cd) cd.textContent = _gaabSalTick;
+  _gaabSalTimer = setInterval(() => {
+    _gaabSalTick--;
+    if (cd) cd.textContent = _gaabSalTick > 0 ? _gaabSalTick : '';
+    if (_gaabSalTick <= 0) _gaabHideSal();
+  }, 1000);
+};
 
 // ── Quizz Paie ────────────────────────────────────────────────────────────────
 const QUIZZ_DATA = [

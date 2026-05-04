@@ -792,6 +792,12 @@
     .ann-tbl tr.treizieme-mois td:first-child { color: var(--green); }
     /* Δ régularisation non nul */
     .delta-nonzero { color: var(--blue); }
+    .delta-info-btn {
+      background: none; border: none; color: var(--dim); cursor: pointer;
+      font: 0.6rem/1 var(--font-mono, monospace); padding: 0 0.1rem;
+      vertical-align: middle; letter-spacing: 0; margin-left: 0.2rem;
+    }
+    .delta-info-btn:hover { color: var(--blue); }
 
     /* Champ date — force le mode sombre sur le picker navigateur */
     .field input[type="date"] { color-scheme: dark; }
@@ -1147,6 +1153,14 @@
     body.is-quizz .view-bar       { display: none !important; }
     body.is-quizz .view-quizz     { display: block; }
 
+    body.is-mecenat .view-desktop,
+    body.is-mecenat .view-mobile,
+    body.is-mecenat .view-annuel  { display: none !important; }
+    body.is-mecenat .view-bar     { display: none !important; }
+    body.is-mecenat .view-mecenat { display: block; }
+
+    .view-mecenat { display: none; padding: 1.5rem; max-width: 560px; margin: 0 auto 3rem; }
+
     /* ── Étude écart H/F ── */
     .view-ecart { display: none; padding: 1.5rem; max-width: 1200px; margin: 0 auto 3rem; }
 
@@ -1294,6 +1308,9 @@
       text-transform: uppercase; cursor: pointer; outline: none; padding: 0;
     }
     .gaab-th-sel:hover, .gaab-th-sel:focus { color: var(--blue); }
+    .gaab-table:not(.gaab-sal-visible) .gaab-sal,
+    .gaab-table:not(.gaab-sal-visible) .gaab-sal-th { display: none; }
+    .gaab-countdown { font-size: 0.58rem; color: var(--yellow); letter-spacing: 0.04em; margin-left: 0.5rem; font-variant-numeric: tabular-nums; opacity: 0.75; }
     .gaab-etp { text-align: center; white-space: nowrap; }
     .gaab-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
     .gaab-table th {
@@ -1346,7 +1363,8 @@
     body.is-gaabrielle .page-exit,
     body.is-hercule    .page-exit,
     body.is-quizz      .page-exit,
-    body.is-ecart      .page-exit { display: flex; }
+    body.is-ecart      .page-exit,
+    body.is-mecenat    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-forge      .page-exit,
@@ -1355,7 +1373,8 @@
       body.is-gaabrielle .page-exit,
       body.is-hercule    .page-exit,
       body.is-quizz      .page-exit,
-      body.is-ecart      .page-exit {
+      body.is-ecart      .page-exit,
+      body.is-mecenat    .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -1687,7 +1706,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-v-LLSZqM.js"></script>
+  <script type="module" crossorigin src="/assets/index-BIX6cJmi.js"></script>
 </head>
 <body>
 
@@ -1735,6 +1754,10 @@
         <button class="burger-item" onclick="setView('ecart'); closeBurger()">
           <span class="burger-item-icon">≠</span>
           Pourquoi un écart H/F ?
+        </button>
+        <button id="burger-mecenat" class="burger-item" style="display:none" onclick="setView('mecenat'); closeBurger()">
+          <span class="burger-item-icon">♥</span>
+          Mécénat
         </button>
       </nav>
     </div>
@@ -2604,7 +2627,7 @@
 
       <!-- Tableau personnel -->
       <div style="overflow-x:auto">
-        <table class="gaab-table">
+        <table class="gaab-table" id="gaab-table">
           <thead>
             <tr>
               <th>Matricule</th>
@@ -2614,13 +2637,14 @@
               <th>Âge à l'embauche</th>
               <th>Poste</th>
               <th>ETP</th>
-              <th style="text-align:right">
+              <th class="gaab-sal-th" style="text-align:right; white-space:nowrap">
                 <select id="gaab-saltype" class="gaab-th-sel" onchange="gaabUpdateSal()">
-                  <option value="bh">Rémunération — Brut horaire</option>
-                  <option value="bm">Rémunération — Brut mensuel</option>
-                  <option value="nm">Rémunération — Net mensuel</option>
-                  <option value="nh">Rémunération — Net horaire</option>
-                </select>
+                  <option value="">Rémunération</option>
+                  <option value="bh">Brut horaire</option>
+                  <option value="bm">Brut mensuel</option>
+                  <option value="nm">Net mensuel</option>
+                  <option value="nh">Net horaire</option>
+                </select><span id="gaab-countdown" class="gaab-countdown"></span>
               </th>
             </tr>
           </thead>
@@ -3167,6 +3191,30 @@
     </div>
 
   </div><!-- /view-ecart -->
+
+  <!-- ════════════════════════════════
+       VUE MÉCÉNAT
+  ════════════════════════════════ -->
+  <div class="view-mecenat">
+    <div style="font-size:0.58rem;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:2rem">
+      // Mécénat · Soutenir Xenna
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;margin-bottom:2.5rem;padding:2rem 0">
+      <span style="display:flex;align-items:center;justify-content:center;width:3.2rem;height:3.2rem;border-radius:50%;border:3px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
+      <span style="font-size:2.8rem;line-height:1;color:var(--dim);font-family:var(--font-mono,monospace)">/</span>
+      <span style="font-size:2.2rem;line-height:1;color:var(--dim);font-family:var(--font-mono,monospace)">□</span>
+    </div>
+    <div style="font-size:0.72rem;color:var(--muted);line-height:2;margin-bottom:1.5rem">
+      Xenna est un projet open source et libre. Si il vous est utile,<br>
+      vous pouvez soutenir son développement sur Tipeee.
+    </div>
+    <a href="https://fr.tipeee.com/xenna-paye/" target="_blank" rel="noopener"
+       style="display:inline-block;font-size:0.68rem;letter-spacing:0.1em;color:var(--blue);border:1px solid var(--blue);padding:0.4rem 0.9rem;text-decoration:none"
+       onmouseover="this.style.background='var(--blue)';this.style.color='var(--bg3)'"
+       onmouseout="this.style.background='';this.style.color='var(--blue)'">
+      ♥ &nbsp;fr.tipeee.com/xenna-paye/
+    </a>
+  </div><!-- /view-mecenat -->
 
   <!-- ── Modal formule mathématique ── -->
   <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">
