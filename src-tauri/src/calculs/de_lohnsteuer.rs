@@ -198,7 +198,7 @@ pub fn lohnsteuer_mensuel(
     lignes.push(LigneCotisation {
         code:        "DE_LOHNSTEUER".into(),
         libelle:     format!("Lohnsteuer — Steuerklasse {sk_libelle}"),
-        base:        brut * dec!(12), // base annuelle affichée
+        base:        brut, // base mensuelle (le calcul est annualisé en interne)
         taux_sal:    if brut > Decimal::ZERO {
             (lst_mensuel / brut).round_dp(4)
         } else {

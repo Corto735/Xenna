@@ -45,18 +45,12 @@ pub fn generer_bulletin_de(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let net_imposable = (brut - cots_sociales_sal).round_dp(2);
     let net_a_payer   = (brut - total_sal).round_dp(2);
 
-    // UV est un coût patronal sans contrepartie salariale directe
-    let uv_pat: Decimal = cotisations.iter()
-        .filter(|c| c.code == "DE_UNFALLVERSICHERUNG")
-        .map(|c| c.montant_pat)
-        .sum();
-
     Bulletin {
         cotisations,
         brut,
         net_imposable,
         net_a_payer,
-        cout_total_employeur: (brut + total_pat - uv_pat + uv_pat).round_dp(2),
+        cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),
         salarie,
     }
