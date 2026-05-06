@@ -57,6 +57,10 @@ pub async fn generer_annee(
             regione: None,
             contratto_termine: false,
             province: None,
+            steuerklasse: None,
+            kinderlos: None,
+            land: None,
+            kirchenmitglied: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 

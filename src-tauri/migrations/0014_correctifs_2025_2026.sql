@@ -15,7 +15,7 @@ SET date_fin = '2025-12-31'
 WHERE code = 'PMSS' AND date_debut = '2025-01-01' AND date_fin IS NULL;
 
 INSERT INTO plafond_reference (code, date_debut, date_fin, valeur, periodicite) VALUES
-    ('PMSS', '2026-01-01', NULL, '4004.00', 'MENSUEL');  -- à confirmer contre arrêté officiel
+    ('PMSS', '2026-01-01', NULL, '4005.00', 'MENSUEL');  -- arrêté du 19/12/2025 (JO du 23/12/2025)
 
 -- ── 2. PASS 2026 ────────────────────────────────────────────────────────────
 UPDATE plafond_reference
@@ -23,7 +23,7 @@ SET date_fin = '2025-12-31'
 WHERE code = 'PASS' AND date_debut = '2025-01-01' AND date_fin IS NULL;
 
 INSERT INTO plafond_reference (code, date_debut, date_fin, valeur, periodicite) VALUES
-    ('PASS', '2026-01-01', NULL, '48048.00', 'ANNUEL');  -- = 12 × 4 004 €
+    ('PASS', '2026-01-01', NULL, '48060.00', 'ANNUEL');  -- = 12 × 4 005 €
 
 -- ── 3. Correction formule Fillon 2019-2025 ──────────────────────────────────
 -- Migration 0005 avait appliqué la formule puissance (seuil=3, tmin, puissance)

@@ -27,6 +27,9 @@ pub enum Pays {
     /// Salariés québécois (RRQ remplace RPC, AE réduit, RQAP, FSS, impôt fédéral + QC).
     /// Données disponibles depuis le 01/01/2019.
     Quebec,
+    /// Salariés du secteur privé allemand (SGB V/VI/III/XI/VII + Lohnsteuer + Kirchensteuer).
+    /// Données disponibles depuis le 01/01/2015.
+    Allemagne,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +65,18 @@ pub struct Salarie {
     /// Non utilisé pour Pays::Quebec (régime distinct).
     #[serde(default)]
     pub province: Option<String>,
+    /// Steuerklasse allemande (1-6). Défaut : 1 (célibataire).
+    #[serde(default)]
+    pub steuerklasse: Option<u8>,
+    /// Vrai si le salarié est sans enfant (>23 ans) → Kinderlosenzuschlag PV actif.
+    #[serde(default)]
+    pub kinderlos: Option<bool>,
+    /// Code Land allemand à 2 lettres (ex. "BY", "BW", "NW"). Kirchensteuer.
+    #[serde(default)]
+    pub land: Option<String>,
+    /// Vrai si membre d'une église → Kirchensteuer prélevée.
+    #[serde(default)]
+    pub kirchenmitglied: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

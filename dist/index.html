@@ -1864,6 +1864,10 @@
             <button type="button" class="ptog ptog-on"  id="d-hf-h" onclick="setGenre('H')">H</button>
             <button type="button" class="ptog ptog-off" id="d-hf-f" onclick="setGenre('F')">F</button>
           </div>
+          <label class="param-item" style="gap:0.4rem">
+            <input type="checkbox" id="d-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
+            simuler un écart salarial
+          </label>
           <span class="genre-ecart-hint" style="display:none"></span>
         </div>
         <div class="field"><label>PRÉNOM</label>
@@ -1960,6 +1964,35 @@
             Italie (regime INPS)<span class="param-badge">🇮🇹 EUR · dès 2015</span>
           </label>
           <label class="param-item">
+            <input type="checkbox" id="d-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
+            Allemagne (Sozialversicherung + Lohnsteuer)<span class="param-badge">🇩🇪 EUR · dès 2015</span>
+          </label>
+          <div id="d-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;flex-direction:column;gap:0.2rem">
+            <label class="param-item">Steuerklasse
+              <select id="d-steuerklasse" onchange="syncParam('steuerklasse', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="1">I — Célibataire</option><option value="2">II — Parent isolé</option>
+                <option value="3">III — Marié·e (revenu élevé)</option><option value="4">IV — Marié·e (revenus égaux)</option>
+                <option value="5">V — Marié·e (revenu faible)</option><option value="6">VI — Second emploi</option>
+              </select>
+            </label>
+            <label class="param-item"><input type="checkbox" id="d-kinderlos" onchange="syncParam('kinderlos', this.checked)" /> Sans enfant (Kinderlosenzuschlag PV)</label>
+            <label class="param-item"><input type="checkbox" id="d-kirchenmitglied" onchange="syncParam('kirchenmitglied', this.checked); toggleDeKircheDetail('d', this.checked)" /> Membre d'une église (Kirchensteuer)</label>
+            <div id="d-de-kirche-detail" style="display:none;padding-left:1.1rem">
+              <label class="param-item">Land
+                <select id="d-land" onchange="syncParam('land', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <option value="BW">Baden-Württemberg (8 %)</option><option value="BY">Bayern (8 %)</option>
+                  <option value="BE">Berlin (9 %)</option><option value="BB">Brandenburg (9 %)</option>
+                  <option value="HB">Bremen (9 %)</option><option value="HH">Hamburg (9 %)</option>
+                  <option value="HE">Hessen (9 %)</option><option value="MV">Mecklenburg-Vorpommern (9 %)</option>
+                  <option value="NI">Niedersachsen (9 %)</option><option value="NW" selected>Nordrhein-Westfalen (9 %)</option>
+                  <option value="RP">Rheinland-Pfalz (9 %)</option><option value="SL">Saarland (9 %)</option>
+                  <option value="SN">Sachsen (9 %)</option><option value="ST">Sachsen-Anhalt (9 %)</option>
+                  <option value="SH">Schleswig-Holstein (9 %)</option><option value="TH">Thüringen (9 %)</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
             Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>
           </label>
@@ -2026,6 +2059,10 @@
                 <button type="button" class="ptog ptog-on"  id="m-hf-h" onclick="setGenre('H')">H</button>
                 <button type="button" class="ptog ptog-off" id="m-hf-f" onclick="setGenre('F')">F</button>
               </div>
+              <label class="param-item" style="gap:0.4rem">
+                <input type="checkbox" id="m-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
+                simuler un écart salarial
+              </label>
               <span class="genre-ecart-hint" style="display:none"></span>
             </div>
             <div class="field"><label>PRÉNOM</label>
@@ -2122,6 +2159,35 @@
               <input type="checkbox" id="m-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
               Italie (regime INPS)<span class="param-badge">🇮🇹 EUR · dès 2015</span>
             </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
+              Allemagne (Sozialversicherung + Lohnsteuer)<span class="param-badge">🇩🇪 EUR · dès 2015</span>
+            </label>
+            <div id="m-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;flex-direction:column;gap:0.2rem">
+              <label class="param-item">Steuerklasse
+                <select id="m-steuerklasse" onchange="syncParam('steuerklasse', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <option value="1">I — Célibataire</option><option value="2">II — Parent isolé</option>
+                  <option value="3">III — Marié·e (revenu élevé)</option><option value="4">IV — Marié·e (revenus égaux)</option>
+                  <option value="5">V — Marié·e (revenu faible)</option><option value="6">VI — Second emploi</option>
+                </select>
+              </label>
+              <label class="param-item"><input type="checkbox" id="m-kinderlos" onchange="syncParam('kinderlos', this.checked)" /> Sans enfant (Kinderlosenzuschlag PV)</label>
+              <label class="param-item"><input type="checkbox" id="m-kirchenmitglied" onchange="syncParam('kirchenmitglied', this.checked); toggleDeKircheDetail('m', this.checked)" /> Membre d'une église (Kirchensteuer)</label>
+              <div id="m-de-kirche-detail" style="display:none;padding-left:1.1rem">
+                <label class="param-item">Land
+                  <select id="m-land" onchange="syncParam('land', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                    <option value="BW">Baden-Württemberg (8 %)</option><option value="BY">Bayern (8 %)</option>
+                    <option value="BE">Berlin (9 %)</option><option value="BB">Brandenburg (9 %)</option>
+                    <option value="HB">Bremen (9 %)</option><option value="HH">Hamburg (9 %)</option>
+                    <option value="HE">Hessen (9 %)</option><option value="MV">Mecklenburg-Vorpommern (9 %)</option>
+                    <option value="NI">Niedersachsen (9 %)</option><option value="NW" selected>Nordrhein-Westfalen (9 %)</option>
+                    <option value="RP">Rheinland-Pfalz (9 %)</option><option value="SL">Saarland (9 %)</option>
+                    <option value="SN">Sachsen (9 %)</option><option value="ST">Sachsen-Anhalt (9 %)</option>
+                    <option value="SH">Schleswig-Holstein (9 %)</option><option value="TH">Thüringen (9 %)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
             <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
               Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>

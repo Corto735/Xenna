@@ -8,6 +8,7 @@ use super::fpt_bulletin::generer_bulletin_fpt;
 use super::it_bulletin::generer_bulletin_it;
 use super::ca_bulletin::generer_bulletin_ca;
 use super::qc_bulletin::generer_bulletin_qc;
+use super::de_bulletin::generer_bulletin_de;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     match salarie.pays {
@@ -17,6 +18,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         Pays::Italia            => return generer_bulletin_it(salarie, ctx),
         Pays::Canada            => return generer_bulletin_ca(salarie, ctx),
         Pays::Quebec            => return generer_bulletin_qc(salarie, ctx),
+        Pays::Allemagne         => return generer_bulletin_de(salarie, ctx),
         Pays::France            => {}
     }
 

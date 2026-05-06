@@ -9,7 +9,11 @@ use crate::models::LigneCotisation;
 /// MGA mensuel (Maximum des gains annuels ouvrant droit à pension).
 pub fn mga_mensuel(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2019 => dec!(4783.33),  // 57 400 / 12
+        i32::MIN..=2015 => dec!(4466.67),  // 53 600 / 12
+        2016            => dec!(4575.00),  // 54 900 / 12
+        2017            => dec!(4608.33),  // 55 300 / 12
+        2018            => dec!(4658.33),  // 55 900 / 12
+        2019            => dec!(4783.33),  // 57 400 / 12
         2020            => dec!(4891.67),  // 58 700
         2021            => dec!(5133.33),  // 61 600
         2022            => dec!(5408.33),  // 64 900
@@ -32,7 +36,11 @@ pub fn mgap2_mensuel(ctx: &ContextPaie) -> Decimal {
 /// MAGA mensuel (Maximum des gains assurables AE).
 pub fn maga_mensuel(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2019 => dec!(4425.00),  // 53 100 / 12
+        i32::MIN..=2015 => dec!(4125.00),  // 49 500 / 12
+        2016            => dec!(4233.33),  // 50 800 / 12
+        2017            => dec!(4275.00),  // 51 300 / 12
+        2018            => dec!(4308.33),  // 51 700 / 12
+        2019            => dec!(4425.00),  // 53 100 / 12
         2020            => dec!(4516.67),  // 54 200
         2021            => dec!(4691.67),  // 56 300
         2022            => dec!(5025.00),  // 60 300

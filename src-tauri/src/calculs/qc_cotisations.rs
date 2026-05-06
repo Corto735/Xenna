@@ -8,7 +8,11 @@ use super::ca_cotisations::{mga_mensuel, mgap2_mensuel, maga_mensuel, EXEMPTION_
 /// MAGA RQAP mensuel (Maximum des gains assurables RQAP — Québec).
 pub fn maga_rqap_mensuel(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2019 => dec!(6375.00),  // 76 500 / 12
+        i32::MIN..=2015 => dec!(5864.58),  // 70 375 / 12
+        2016            => dec!(5958.33),  // 71 500 / 12
+        2017            => dec!(6041.67),  // 72 500 / 12
+        2018            => dec!(6166.67),  // 74 000 / 12
+        2019            => dec!(6375.00),  // 76 500 / 12
         2020            => dec!(6541.67),  // 78 500
         2021            => dec!(6958.33),  // 83 500
         2022            => dec!(7333.33),  // 88 000

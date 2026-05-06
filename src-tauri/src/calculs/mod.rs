@@ -16,6 +16,9 @@ pub mod qc_cotisations;
 pub mod ca_impot;
 pub mod ca_bulletin;
 pub mod qc_bulletin;
+pub mod de_cotisations;
+pub mod de_lohnsteuer;
+pub mod de_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

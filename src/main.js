@@ -63,7 +63,7 @@ window.openExternal = async function(url) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 
-const DATE_MAX = '2026-12-31';
+const DATE_MAX = '2026-01-31';
 const TODAY    = DATE_MAX;   // alias pour les appels existants
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         el.dataset.textHf = `// ± 0 % · parité salariale`;
       }
     });
-    _syncToggleUI('F', true);
+    _syncToggleUI('F', false);
   } else {
     _setNomFields(window._heroH.prenom, window._heroH.nom);
     _syncToggleUI('H');
@@ -933,7 +933,7 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'canada', 'quebec'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1198,7 +1198,7 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'canada', 'quebec'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1395,15 +1395,20 @@ async function calculate(source) {
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
-  const date         = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
+  let date           = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
   const alsaceMoselle  = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
   const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
+  const isAllemagne    = document.getElementById(isM ? "m-allemagne"   : "d-allemagne")?.checked ?? false;
   const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
   const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
   const caProvince     = document.getElementById(isM ? "m-ca-province" : "d-ca-province")?.value || "ON";
+  const steuerklasse   = document.getElementById(isM ? "m-steuerklasse"    : "d-steuerklasse")?.value || "1";
+  const kinderlos      = document.getElementById(isM ? "m-kinderlos"       : "d-kinderlos")?.checked ?? false;
+  const kirchenmitglied= document.getElementById(isM ? "m-kirchenmitglied" : "d-kirchenmitglied")?.checked ?? false;
+  const deLand         = document.getElementById(isM ? "m-land"            : "d-land")?.value || "NW";
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
@@ -1421,6 +1426,10 @@ async function calculate(source) {
     showInputError(`Date invalide : '${date}' (format attendu : YYYY-MM-DD).`);
     return;
   }
+  if (date > DATE_MAX) {
+    date = DATE_MAX;
+    ["d-date", "m-date"].forEach(id => { const e = document.getElementById(id); if (e) e.value = DATE_MAX; });
+  }
 
   // Sync les deux formulaires
   ["d-brut","m-brut"].forEach(id => { const e = document.getElementById(id); if(e) e.value = brut; });
@@ -1430,7 +1439,7 @@ async function calculate(source) {
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
   const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg"
-    : isItalie ? "italia" : isCanada ? "canada" : isQuebec ? "quebec" : null;
+    : isItalie ? "italia" : isAllemagne ? "allemagne" : isCanada ? "canada" : isQuebec ? "quebec" : null;
   const datePaie = date;
 
   try {
@@ -1445,6 +1454,10 @@ async function calculate(source) {
         regione: null,
         contratto_termine: false,
         province: isCanada ? caProvince : null,
+        steuerklasse: isAllemagne ? parseInt(steuerklasse, 10) : null,
+        kinderlos:    isAllemagne ? kinderlos : null,
+        kirchenmitglied: isAllemagne ? kirchenmitglied : null,
+        land:         isAllemagne ? deLand : null,
       },
       datePaie,
     });
@@ -1601,8 +1614,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie', 'canada', 'quebec'];
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'canada', 'quebec'];
+  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie', 'allemagne', 'canada', 'quebec'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'allemagne', 'canada', 'quebec'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -1666,8 +1679,33 @@ window.onTogglePays = function(pays, checked) {
     if (wrap) wrap.style.display = isCanadaChecked ? '' : 'none';
   });
 
+  // Affiche/masque le panneau Allemagne (Steuerklasse, Kinderlos, Kirchensteuer)
+  const isAllemagneChecked = document.getElementById('d-allemagne')?.checked;
+  ['d', 'm'].forEach(p => {
+    const wrap = document.getElementById(`${p}-de-wrap`);
+    if (!wrap) return;
+    wrap.style.display = isAllemagneChecked ? 'flex' : 'none';
+    if (!isAllemagneChecked) {
+      const cbK = document.getElementById(`${p}-kirchenmitglied`);
+      if (cbK) cbK.checked = false;
+      const kirche = document.getElementById(`${p}-de-kirche-detail`);
+      if (kirche) kirche.style.display = 'none';
+    }
+  });
+
   // Nouveau pays → prochain basculement H/F tire depuis le bon pool
   _ecartTire = false;
+};
+
+window.toggleDeKircheDetail = function(prefix, checked) {
+  const detail = document.getElementById(`${prefix}-de-kirche-detail`);
+  if (detail) detail.style.display = checked ? '' : 'none';
+  // Sync l'autre formulaire
+  const other = prefix === 'd' ? 'm' : 'd';
+  const cbOther = document.getElementById(`${other}-kirchenmitglied`);
+  if (cbOther) cbOther.checked = checked;
+  const detailOther = document.getElementById(`${other}-de-kirche-detail`);
+  if (detailOther) detailOther.style.display = checked ? '' : 'none';
 };
 
 // ── Paramètres avancés ───────────────────────────────────────────────────────
@@ -2315,12 +2353,13 @@ const ECART_POOLS = {
   suisse:     [-8, -10, -12, -14, -16],
   luxembourg: [+1, +1,  +1,   0,  -1],
   italie:     [-2, -4,  -4,  -6],
+  allemagne:  [-14, -16, -18, -20, -22],
   canada:     [-6, -10, -12, -14, -17],
   quebec:     [-6, -10, -12, -14, -17],
 };
 
 function _getActivePays() {
-  for (const p of ['suisse', 'luxembourg', 'italie', 'canada', 'quebec']) {
+  for (const p of ['suisse', 'luxembourg', 'italie', 'allemagne', 'canada', 'quebec']) {
     if (document.getElementById('d-' + p)?.checked) return p;
     if (document.getElementById('m-' + p)?.checked) return p;
   }
@@ -2374,34 +2413,47 @@ window.setGenre = function(genre) {
     _setNomFields(hero.prenom, hero.nom);
   }
 
-  // Premier passage H→F : tirage unique pour toute la session
-  if (genre === 'F' && !_ecartTire) { _ecartActif = _drawEcartPct(); _ecartTire = true; }
-  const e = _ecartActif / 100; // valeur signée
-  const facteur = genre === 'F' ? (1 + e) : (1 / (1 + e));
+  const simuleEcart = !!document.getElementById('d-ecart-actif')?.checked
+                   || !!document.getElementById('m-ecart-actif')?.checked;
 
-  // Hint : texte adapté selon le sens de l'écart
-  const abs = Math.abs(_ecartActif);
-  const absHF = Math.abs(Math.round(e / (1 + e) * 100));
-  document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-    if (_ecartActif < 0) {
-      el.dataset.textFh = `// −${abs} % · écart salarial F/H`;
-      el.dataset.textHf = `// +${absHF} % · écart salarial H/F`;
-    } else if (_ecartActif > 0) {
-      el.dataset.textFh = `// +${abs} % · avantage F/H`;
-      el.dataset.textHf = `// −${absHF} % · avantage F/H`;
-    } else {
-      el.dataset.textFh = `// ± 0 % · parité salariale`;
-      el.dataset.textHf = `// ± 0 % · parité salariale`;
-    }
-  });
+  if (simuleEcart) {
+    // Premier passage (quel que soit le sens) : tirage unique dans le pool du pays actif
+    if (!_ecartTire) { _ecartActif = _drawEcartPct(); _ecartTire = true; }
+    const e = _ecartActif / 100;
+    const facteur = genre === 'F' ? (1 + e) : (1 / (1 + e));
 
-  ['d-brut', 'm-brut'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = Math.round(parseFloat(el.value) * facteur);
-  });
+    const abs = Math.abs(_ecartActif);
+    const absHF = Math.abs(Math.round(e / (1 + e) * 100));
+    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
+      if (_ecartActif < 0) {
+        el.dataset.textFh = `// −${abs} % · écart salarial F/H`;
+        el.dataset.textHf = `// +${absHF} % · écart salarial H/F`;
+      } else if (_ecartActif > 0) {
+        el.dataset.textFh = `// +${abs} % · avantage F/H`;
+        el.dataset.textHf = `// −${absHF} % · avantage F/H`;
+      } else {
+        el.dataset.textFh = `// ± 0 % · parité salariale`;
+        el.dataset.textHf = `// ± 0 % · parité salariale`;
+      }
+    });
+
+    ['d-brut', 'm-brut'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = Math.round(parseFloat(el.value) * facteur);
+    });
+  }
 
   _genre = genre;
-  _syncToggleUI(genre, true);
+  _syncToggleUI(genre, simuleEcart);
+};
+
+window.onToggleEcartActif = function(checked) {
+  if (checked) {
+    _syncToggleUI(_genre, true);
+  } else {
+    _ecartTire = false; // prochain recochage → nouveau tirage dans le pool
+    document.querySelectorAll('.genre-ecart-hint').forEach(el => { el.style.display = 'none'; });
+  }
 };
 
 // ── Hercule Compta ────────────────────────────────────────────────────────────

@@ -342,5 +342,38 @@ pub fn esonero_contributivo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCot
         });
     }
 
+    if annee == 2024 {
+        let taux = if reddito_annuo <= dec!(25000) {
+            dec!(0.07)
+        } else if reddito_annuo <= dec!(35000) {
+            dec!(0.06)
+        } else {
+            return None;
+        };
+        let taux_pp = taux * dec!(100);
+        let montant = -(brut * taux).round_dp(2);
+        return Some(LigneCotisation {
+            code:        "IT_ESONERO_2024".into(),
+            libelle:     format!("Esonero contributivo 2024 (−{:.0} % IVS)", taux_pp),
+            base:        brut,
+            taux_sal:    -taux,
+            montant_sal: montant,
+            taux_pat:    Decimal::ZERO,
+            montant_pat: Decimal::ZERO,
+            categorie:   "Allegement".into(),
+            explication: format!(
+                "Réduction de {:.0} points de pourcentage sur la cotisation IVS salarié. \
+                Applicable en 2024 selon le reddito annuel estimé (brut × 12) : \
+                −7 pp si reddito ≤ 25 000 € ; −6 pp si reddito 25 001–35 000 €. \
+                Ici reddito estimé : {:.0} €/an → taux appliqué : {:.0} pp. \
+                L.213/2023 art. 1 cc. 15-17 (Legge di Bilancio 2024).",
+                taux_pp,
+                reddito_annuo,
+                taux_pp,
+            ),
+            loi_ref: Some("L. 213/2023 art. 1 cc. 15-17".into()),
+        });
+    }
+
     None
 }
