@@ -992,6 +992,13 @@
       font-family: inherit;
     }
     .duree-unit { font-size: 0.65rem; color: var(--muted); min-width: 0.8rem; }
+    .btn-apply-brut {
+      display: block; width: 100%; margin-top: 0.45rem;
+      padding: 0.2rem 0.5rem; font-size: 0.65rem; font-family: inherit;
+      text-align: left; background: transparent;
+      border: 1px solid var(--blue); color: var(--blue); cursor: pointer;
+    }
+    .btn-apply-brut:hover { background: var(--blue); color: var(--bg); }
     .etp-sel {
       font-size: 0.72rem;
       padding: 0.15rem 0.3rem;
@@ -1780,7 +1787,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-C153XI9z.js"></script>
+  <script type="module" crossorigin src="/assets/index-DN_t5oVs.js"></script>
 </head>
 <body>
 
@@ -2124,6 +2131,7 @@
             <input type="number" id="d-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('d','mois')" />
             <span class="duree-unit">h</span>
           </div>
+          <button class="btn-apply-brut" id="d-apply-brut" onclick="applyBrut('d')" style="display:none" type="button">↳ Appliquer au brut</button>
         </div>
 
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
@@ -2375,6 +2383,7 @@
               <input type="number" id="m-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('m','mois')" />
               <span class="duree-unit">h</span>
             </div>
+            <button class="btn-apply-brut" id="m-apply-brut" onclick="applyBrut('m')" style="display:none" type="button">↳ Appliquer au brut</button>
           </div>
 
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>

@@ -1825,6 +1825,27 @@ window.onDureeChange = function(prefix, field) {
     if (dst) dst.value = src.value;
   });
   _syncEtpSel(other, parseFloat(etpEl.value));
+
+  ['d', 'm'].forEach(p => {
+    const btn = document.getElementById(`${p}-apply-brut`);
+    if (btn) btn.style.display = '';
+  });
+};
+
+window.applyBrut = function(prefix) {
+  const hMois = parseFloat(document.getElementById(`${prefix}-h-mois`)?.value);
+  if (!hMois || hMois <= 0) return;
+  const factor = hMois / 151.67;
+  ['d-brut', 'm-brut'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const v = parseFloat(el.value);
+    if (!isNaN(v)) el.value = Math.round(v * factor * 100) / 100;
+  });
+  ['d', 'm'].forEach(p => {
+    const btn = document.getElementById(`${p}-apply-brut`);
+    if (btn) btn.style.display = 'none';
+  });
 };
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
