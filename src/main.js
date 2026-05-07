@@ -141,8 +141,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('zoom-switch')?.classList.add('on');
     document.getElementById('a11y-magnifier')?.classList.add('active');
   }
-  const savedFont = localStorage.getItem('xenna-font');
-  if (savedFont) setAppFont(savedFont, true);
+  if (localStorage.getItem('xenna-dyslexia')) {
+    document.body.classList.add('dyslexia-mode');
+    document.getElementById('dyslexia-switch')?.classList.add('on');
+  }
 
   if (localStorage.getItem('xenna-hv')) {
     document.getElementById('a11y-hv-btn')?.classList.add('active');
@@ -314,40 +316,70 @@ window.toggleZoom = function() {
   localStorage.setItem('xenna-zoom', active ? '1' : '');
 };
 
-const _fontCache = new Set();
-const ALLOWED_FONTS = new Set([
-  'IBM Plex Mono', 'Fira Code', 'JetBrains Mono',
-  'Source Code Pro', 'Roboto Mono', 'Inconsolata',
-]);
+// ── Mode dyslexie — coloriage par caractère ───────────────────────────────────
+const DYS_PALETTE = [
+  '#ff6b6b', '#ff9f43', '#ffd43b', '#a9e34b',
+  '#69db7c', '#38d9a9', '#4dabf7', '#748ffc',
+  '#cc5de8', '#f783ac', '#ff8787', '#74c0fc',
+];
 
-window.setAppFont = function(fontName, restore = false) {
-  if (!fontName) {
-    document.body.classList.remove('custom-font');
-    document.documentElement.style.removeProperty('--app-font');
-    localStorage.removeItem('xenna-font');
-    const picker = document.getElementById('font-picker');
-    if (picker) picker.value = '';
-    return;
+let _dysIdx = 0;
+
+function _dysEsc(ch) {
+  if (ch === '&') return '&amp;';
+  if (ch === '<') return '&lt;';
+  if (ch === '>') return '&gt;';
+  if (ch === '"') return '&quot;';
+  return ch;
+}
+
+function _dysWrapTextNode(textNode) {
+  const chars = [...textNode.textContent];
+  let html = '';
+  for (const ch of chars) {
+    if (/\s/.test(ch)) { html += ch; continue; }
+    const color = DYS_PALETTE[_dysIdx++ % DYS_PALETTE.length];
+    html += `<span style="color:${color}">${_dysEsc(ch)}</span>`;
   }
+  const wrapper = document.createElement('span');
+  wrapper.className = 'dys-wrap';
+  wrapper.innerHTML = html;
+  textNode.parentNode.replaceChild(wrapper, textNode);
+}
 
-  if (!ALLOWED_FONTS.has(fontName)) return;
+function applyDyslexiaColors() {
+  if (!document.body.classList.contains('dyslexia-mode')) return;
+  _dysIdx = 0;
+  // Desktop : le libellé est dans le 3e span enfant de td:first-child
+  // Mobile  : le texte est un nœud texte direct dans .mob-lbl
+  const targets = [
+    ...document.querySelectorAll('.ascii-tbl td:first-child > span:last-child'),
+    ...document.querySelectorAll('.mob-lbl'),
+  ];
+  targets.forEach(el => {
+    if (el.querySelector('.dys-wrap')) return;
+    Array.from(el.childNodes)
+      .filter(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+      .forEach(_dysWrapTextNode);
+  });
+}
 
-  // Charge la police depuis Google Fonts si pas encore chargée
-  const key = fontName.replace(/ /g, '+');
-  if (!_fontCache.has(key)) {
-    const link = document.createElement('link');
-    link.rel  = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${key}&display=swap`;
-    document.head.appendChild(link);
-    _fontCache.add(key);
+function removeDyslexiaColors() {
+  document.querySelectorAll('.dys-wrap').forEach(w => {
+    w.replaceWith(document.createTextNode(w.textContent));
+  });
+}
+
+window.toggleDyslexia = function() {
+  const active = document.body.classList.toggle('dyslexia-mode');
+  document.getElementById('dyslexia-switch')?.classList.toggle('on', active);
+  if (active) {
+    applyDyslexiaColors();
+    localStorage.setItem('xenna-dyslexia', '1');
+  } else {
+    removeDyslexiaColors();
+    localStorage.removeItem('xenna-dyslexia');
   }
-
-  document.documentElement.style.setProperty('--app-font', `'${fontName}', monospace`);
-  document.body.classList.add('custom-font');
-  localStorage.setItem('xenna-font', fontName);
-
-  const picker = document.getElementById('font-picker');
-  if (picker && restore) picker.value = fontName;
 };
 
 const _scan67clicks = [];
@@ -1374,7 +1406,11 @@ function renderAll(b) {
   DEVISE = b.devise || "EUR";
   renderDesktop(b);
   renderMobile(b);
-  if (_dactyloMode) typewriterDesktop(b);
+  if (_dactyloMode) {
+    typewriterDesktop(b).then(() => applyDyslexiaColors());
+  } else {
+    applyDyslexiaColors();
+  }
 }
 
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
@@ -1614,7 +1650,7 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['suisse', 'luxembourg', 'fpt', 'italie', 'allemagne', 'canada', 'quebec'];
+  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'allemagne', 'canada', 'quebec'];
   const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'allemagne', 'canada', 'quebec'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
@@ -1693,6 +1729,14 @@ window.onTogglePays = function(pays, checked) {
     }
   });
 
+  // France cochée par défaut si aucun autre régime actif
+  const aucunActif = TOUS_PAYS.filter(p => p !== 'france')
+    .every(p => !document.getElementById(`d-${p}`)?.checked);
+  ['d', 'm'].forEach(p => {
+    const fr = document.getElementById(`${p}-france`);
+    if (fr) fr.checked = aucunActif;
+  });
+
   // Nouveau pays → prochain basculement H/F tire depuis le bon pool
   _ecartTire = false;
 };
@@ -1716,6 +1760,71 @@ window.toggleParams = function(prefix) {
   const open = panel.style.display !== 'none';
   panel.style.display  = open ? 'none' : 'block';
   toggle.classList.toggle('open', !open);
+};
+
+window.toggleDuree = function(prefix) {
+  const panel  = document.getElementById(`${prefix}-duree`);
+  const toggle = document.getElementById(`${prefix}-duree-toggle`);
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  toggle.classList.toggle('open', !open);
+};
+
+// Aligne le <select> fraction sur la valeur ETP calculée (ou "" si hors preset).
+function _syncEtpSel(prefix, etpVal) {
+  const sel = document.getElementById(`${prefix}-etp-sel`);
+  if (!sel) return;
+  const opt = [...sel.options].find(o => o.value !== '' && Math.abs(Number(o.value) - etpVal) < 0.01);
+  sel.value = opt ? opt.value : '';
+}
+
+window.onEtpSelChange = function(prefix) {
+  const sel = document.getElementById(`${prefix}-etp-sel`);
+  const inp = document.getElementById(`${prefix}-etp`);
+  if (sel.value !== '') {
+    inp.value = sel.value;
+    onDureeChange(prefix, 'etp');
+  }
+};
+
+window.onDureeChange = function(prefix, field) {
+  const etpEl  = document.getElementById(`${prefix}-etp`);
+  const semEl  = document.getElementById(`${prefix}-h-semaine`);
+  const moisEl = document.getElementById(`${prefix}-h-mois`);
+  const BASE   = 35;
+  const r2     = v => Math.round(v * 100) / 100;
+
+  let etp  = parseFloat(etpEl.value);
+  let sem  = parseFloat(semEl.value);
+  let mois = parseFloat(moisEl.value);
+
+  if (field === 'etp' && !isNaN(etp)) {
+    sem  = r2(etp / 100 * BASE);
+    mois = r2(sem * 52 / 12);
+    semEl.value  = sem;
+    moisEl.value = mois;
+    _syncEtpSel(prefix, etp);
+  } else if (field === 'semaine' && !isNaN(sem)) {
+    etp  = r2(sem / BASE * 100);
+    mois = r2(sem * 52 / 12);
+    etpEl.value  = etp;
+    moisEl.value = mois;
+    _syncEtpSel(prefix, etp);
+  } else if (field === 'mois' && !isNaN(mois)) {
+    sem  = r2(mois * 12 / 52);
+    etp  = r2(sem / BASE * 100);
+    etpEl.value = etp;
+    semEl.value = sem;
+    _syncEtpSel(prefix, etp);
+  }
+
+  const other = prefix === 'd' ? 'm' : 'd';
+  [['etp', etpEl], ['h-semaine', semEl], ['h-mois', moisEl]].forEach(([id, src]) => {
+    const dst = document.getElementById(`${other}-${id}`);
+    if (dst) dst.value = src.value;
+  });
+  _syncEtpSel(other, parseFloat(etpEl.value));
 };
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
@@ -2547,33 +2656,136 @@ function herculeInit() {
 
   // ── Plan comptable — tous comptes classés par numéro ─────────────────────
   const pca = [
-    { num:'421',  lib:'Personnel — Rémunérations dues',               d:0,         c:net },
-    { num:'431',  lib:'Sécurité sociale',                             d:0,         c:ss431_sal + ss431_pat },
-    { num:'437',  lib:'Retraite complémentaire · Prévoyance',         d:0,         c:rcc437_sal + rcc437_pat + prev6452 },
-    { num:'4378', lib:'CSG · CRDS',                                   d:0,         c:csg4378_sal },
-    { num:'4379', lib:'Assurance chômage',                            d:0,         c:cho4379_sal + cho4379_pat },
+    { num:'421',  lib:'Personnel — Rémunérations dues',          categ:'Passif salarié',      d:0,          c:net },
+    { num:'431',  lib:'Sécurité sociale',                        categ:'Passif social',       d:0,          c:ss431_sal + ss431_pat },
+    { num:'437',  lib:'Retraite complémentaire · Prévoyance',    categ:'Passif social',       d:0,          c:rcc437_sal + rcc437_pat + prev6452 },
+    { num:'4378', lib:'CSG · CRDS',                              categ:'Passif social',       d:0,          c:csg4378_sal },
+    { num:'4379', lib:'Assurance chômage',                       categ:'Passif social',       d:0,          c:cho4379_sal + cho4379_pat },
     pas > 0.005 ?
-    { num:'444',  lib:'État — Prélèvement à la source',               d:0,         c:pas } : null,
-    { num:'641',  lib:'Rémunérations du personnel',                   d:brut,      c:0 },
+    { num:'444',  lib:'État — Prélèvement à la source',          categ:'Impôt retenu',        d:0,          c:pas } : null,
+    { num:'641',  lib:'Rémunérations du personnel',              categ:'Charge salariale',    d:brut,       c:0 },
     urssaf6451 > 0.005 ?
-    { num:'6419', lib:'Remboursement réduction Fillon',               d:0,         c:fillon6419 } : null,
+    { num:'6419', lib:'Remboursement réduction Fillon',          categ:'Allègement',          d:0,          c:fillon6419 } : null,
     urssaf6451 > 0.005 ?
-    { num:'6451', lib:'Cotisations URSSAF (net Fillon)',              d:urssaf6451,c:0 } : null,
+    { num:'6451', lib:'Cotisations URSSAF (net Fillon)',         categ:'Charge patronale',    d:urssaf6451, c:0 } : null,
     prev6452 > 0.005 ?
-    { num:'6452', lib:'Cotisations prévoyance',                       d:prev6452,  c:0 } : null,
+    { num:'6452', lib:'Cotisations prévoyance',                  categ:'Charge patronale',    d:prev6452,   c:0 } : null,
     rcc437_pat > 0.005 ?
-    { num:'6453', lib:'Cotisations retraite complémentaire',          d:rcc437_pat,c:0 } : null,
+    { num:'6453', lib:'Cotisations retraite complémentaire',     categ:'Charge patronale',    d:rcc437_pat, c:0 } : null,
     cho4379_pat > 0.005 ?
-    { num:'6454', lib:'Cotisations France Travail',                   d:cho4379_pat,c:0}: null,
+    { num:'6454', lib:'Cotisations France Travail',              categ:'Charge patronale',    d:cho4379_pat,c:0 } : null,
   ].filter(Boolean);
+
+  pca.sort((a, b) => a.num.localeCompare(b.num, undefined, { numeric: true }));
 
   const totalD = pca.reduce((a,x) => a+x.d, 0);
   const totalC = pca.reduce((a,x) => a+x.c, 0);
-  document.querySelector('#herc-pca tbody').innerHTML = [
-    ...pca.map(x => `<tr><td><span class="herc-num">${x.num}</span></td><td>${x.lib}</td><td>${fmtE(x.d)}</td><td>${fmtE(x.c)}</td></tr>`),
-    `<tr class="herc-total"><td colspan="2">TOTAL</td><td>${fmtE(totalD)}</td><td>${fmtE(totalC)}</td></tr>`,
-  ].join('');
+
+  const PCG_CLASSES = {
+    '4': 'Classe 4 — Comptes de tiers',
+    '6': 'Classe 6 — Charges de personnel',
+  };
+  const RA = 'text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums';
+
+  let lastClasse = '';
+  const pcaRows = [];
+  for (const x of pca) {
+    const cl = x.num[0];
+    if (cl !== lastClasse && PCG_CLASSES[cl]) {
+      pcaRows.push(`<tr class="herc-pca-classe"><td colspan="5">${PCG_CLASSES[cl]}</td></tr>`);
+      lastClasse = cl;
+    }
+    pcaRows.push(`<tr><td><span class="herc-num">${x.num}</span></td><td>${x.lib}</td><td style="color:var(--dim);font-size:0.6rem;text-align:left">${x.categ}</td><td style="${RA}">${fmtE(x.d)}</td><td style="${RA}">${fmtE(x.c)}</td></tr>`);
+  }
+  pcaRows.push(`<tr class="herc-total"><td colspan="3">TOTAL</td><td style="${RA}">${fmtE(totalD)}</td><td style="${RA}">${fmtE(totalC)}</td></tr>`);
+  document.querySelector('#herc-pca tbody').innerHTML = pcaRows.join('');
+
+  // ── Virements par organisme ───────────────────────────────────────────────
+  const VIR_ORGS = [
+    {
+      id: 'urssaf',
+      nom: 'URSSAF',
+      desc: 'Sécurité sociale · CSG · CRDS',
+      categ: ['Sécurité Sociale', 'CSG/CRDS'],
+      reduction: fillon6419,
+      reductionLib: 'Réduction Fillon déduite',
+    },
+    {
+      id: 'agirc',
+      nom: 'AGIRC-ARRCO',
+      desc: 'Retraite complémentaire',
+      categ: ['Retraite complémentaire'],
+      reduction: 0,
+    },
+    {
+      id: 'ft',
+      nom: 'France Travail',
+      desc: 'Assurance chômage',
+      categ: ['Chômage'],
+      reduction: 0,
+    },
+    {
+      id: 'prev',
+      nom: 'Prévoyance',
+      desc: 'Prévoyance collective',
+      categ: ['Prévoyance'],
+      reduction: 0,
+    },
+  ];
+
+  const fmtPct = v => parseFloat(v) === 0 ? '—' : parseFloat(v).toFixed(2).replace('.', ',') + ' %';
+
+  const virCartes = [];
+  for (const org of VIR_ORGS) {
+    const lignes = cots.filter(c => org.categ.includes(c.categorie));
+    const brut_total = lignes.reduce((a, c) => a + Math.abs(parseFloat(c.montant_sal)) + Math.abs(parseFloat(c.montant_pat)), 0);
+    const total = brut_total - org.reduction;
+    if (total <= 0.005) continue;
+
+    const detailRows = lignes.map(c => {
+      const sal = Math.abs(parseFloat(c.montant_sal));
+      const pat = Math.abs(parseFloat(c.montant_pat));
+      const base = parseFloat(c.base);
+      return `<tr>
+        <td>${c.libelle}</td>
+        <td>${fmtE(base)}</td>
+        <td>${fmtPct(c.taux_sal)}</td>
+        <td>${sal > 0.005 ? fmtE(sal) : '—'}</td>
+        <td>${fmtPct(c.taux_pat)}</td>
+        <td>${pat > 0.005 ? fmtE(pat) : '—'}</td>
+        <td>${fmtE(sal + pat)}</td>
+      </tr>`;
+    }).join('');
+
+    const reductionRow = org.reduction > 0.005
+      ? `<tr class="herc-vir-reduc"><td>${org.reductionLib}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>− ${fmtE(org.reduction)}</td></tr>`
+      : '';
+
+    const totalRow = `<tr class="herc-vir-subtot"><td colspan="6">Total virement</td><td>${fmtE(total)}</td></tr>`;
+
+    virCartes.push(`
+      <div class="herc-vir-card" id="herc-vir-${org.id}">
+        <div class="herc-vir-hdr" onclick="hercToggleVir('${org.id}')">
+          <span class="herc-vir-nom">${org.nom}</span>
+          <span class="herc-vir-desc">${org.desc}</span>
+          <span class="herc-vir-amt">${fmtE(total)}</span>
+          <span class="herc-vir-caret">▶</span>
+        </div>
+        <div class="herc-vir-detail">
+          <table class="herc-vir-table">
+            <thead><tr><th>Cotisation</th><th>Base</th><th>Tx sal.</th><th>Mt sal.</th><th>Tx pat.</th><th>Mt pat.</th><th>Total</th></tr></thead>
+            <tbody>${detailRows}${reductionRow}${totalRow}</tbody>
+          </table>
+        </div>
+      </div>`);
+  }
+
+  document.getElementById('herc-virements').innerHTML = virCartes.join('');
 }
+
+window.hercToggleVir = function(id) {
+  document.getElementById('herc-vir-' + id)?.classList.toggle('open');
+};
 
 // ── Burger menu ───────────────────────────────────────────────────────────────
 const burgerBtn  = document.getElementById('burger-btn');

@@ -38,7 +38,10 @@ export const STATIC_DICT = {
     'Cadre':                  'Leitend',
     'DATE DE SIMULATION':     'ABRECHNUNGSDATUM',
     'ANNÉE':                  'JAHR',
-    'PARAMÈTRES':             'PARAMETER',
+    'PAYS/RÉGION':            'LAND/REGION',
+    'DURÉE DE TRAVAIL':       'ARBEITSZEIT',
+    'Heures / semaine':       'Stunden / Woche',
+    'Heures / mois':          'Stunden / Monat',
 
     // Paramètres avancés
     'Assujetti à l\'impôt à la source (IS)': 'Quellensteuer pflichtig (IS)',
@@ -210,7 +213,10 @@ export const STATIC_DICT = {
     'Cadre':                  'Kader',
     'DATE DE SIMULATION':     'BEREKENINGSDATUM',
     'ANNÉE':                  'JAAR',
-    'PARAMÈTRES':             'PARAMETERS',
+    'PAYS/RÉGION':            'LAND/REGIO',
+    'DURÉE DE TRAVAIL':       'ARBEIDSDUUR',
+    'Heures / semaine':       'Uren / week',
+    'Heures / mois':          'Uren / maand',
 
     // Paramètres avancés
     'Assujetti à l\'impôt à la source (IS)': 'Onderworpen aan bedrijfsvoorheffing (IS)',

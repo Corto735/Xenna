@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Xenna Paye</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <!-- Détection mobile synchrone — avant tout rendu, évite le flash vue bureau -->
   <script>
     document.documentElement.classList.add(
@@ -31,12 +34,21 @@
       --white:  #e8f4ff;
     }
 
+    @font-face {
+      font-family: 'OpenDyslexicMono';
+      src: url('https://cdn.jsdelivr.net/npm/opendyslexic/fonts/OpenDyslexicMono-Regular.woff2') format('woff2'),
+           url('https://cdn.jsdelivr.net/npm/opendyslexic/fonts/OpenDyslexicMono-Regular.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
     body {
-      font-family: 'Courier New', 'Consolas', 'Fira Code', monospace;
+      font-family: 'Fira Code', 'Courier New', 'Consolas', monospace;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      font-size: 15px;
+      font-size: 22.5px;
       line-height: 1.4;
     }
 
@@ -296,28 +308,18 @@
     body.bw-mode .ptog.ptog-on { background: #3a3a3a; border-color: #3a3a3a; color: #fff; }
     /* Valeurs dans les champs de saisie — toujours en noir */
     body.bw-mode input, body.bw-mode select { color: #000000 !important; }
+    /* Panneaux d'explication dépliables — fond très clair, texte noir */
+    body.bw-mode .expl-box {
+      background: #f0f0f0 !important;
+      border-left-color: #000 !important;
+    }
+    body.bw-mode .expl-txt { color: #000000 !important; }
+    body.bw-mode .expl-ref { color: #222222 !important; border-color: #555 !important; }
 
-    /* Sélecteur de police */
-    .a11y-font-label {
-      font-size: 0.6rem;
-      color: var(--dim);
-      letter-spacing: 0.1em;
-      margin-top: 0.3rem;
-    }
-    .a11y-font-select {
-      width: 100%;
-      background: var(--bg3);
-      border: 1px solid var(--dim);
-      color: var(--text);
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.3rem 0.4rem;
-      cursor: pointer;
-      margin-top: 0.2rem;
-    }
-    .a11y-font-select:focus { outline: none; border-color: var(--blue); }
-    /* Police personnalisée appliquée */
-    body.custom-font, body.custom-font * { font-family: var(--app-font) !important; }
+    /* ── Mode dyslexie ──────────────────────────────────────────────────── */
+    body.dyslexia-mode,
+    body.dyslexia-mode * { font-family: 'OpenDyslexicMono', 'Fira Code', monospace !important; }
+    body.dyslexia-mode { letter-spacing: 0.07em; line-height: 1.7; word-spacing: 0.14em; }
 
     /* ── Thème haute visibilité (malvoyants) ────────────────────────────── */
     body.hv-mode {
@@ -970,6 +972,35 @@
       padding: 0.45rem 0.6rem;
       margin-bottom: 0.25rem;
     }
+    .duree-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.2rem 0;
+      font-size: 0.68rem;
+      color: var(--text);
+    }
+    .duree-row label { flex: 1; }
+    .duree-row input[type="number"] {
+      width: 4.5rem;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.3rem;
+      background: var(--bg3);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      text-align: right;
+      font-family: inherit;
+    }
+    .duree-unit { font-size: 0.65rem; color: var(--muted); min-width: 0.8rem; }
+    .etp-sel {
+      font-size: 0.72rem;
+      padding: 0.15rem 0.3rem;
+      background: #d4d8ea;
+      color: #1a1c2e;
+      border: 1px solid #8890b0;
+      font-family: inherit;
+      cursor: pointer;
+    }
     .param-item {
       display: flex;
       align-items: center;
@@ -996,6 +1027,8 @@
       margin-left: 0.3rem;
       white-space: nowrap;
     }
+    .param-item .flag-emoji { font-size: 0.9rem; line-height: 1; }
+    .param-item .flag-img   { height: 0.9rem; width: auto; vertical-align: middle; object-fit: contain; }
 
     /* ── Table tranches PAS ─────────────────────────────────── */
     .pas-tbl {
@@ -1133,6 +1166,30 @@
     .herc-total td { background: var(--bg3) !important; color: var(--white); font-size: 0.62rem; letter-spacing: 0.08em; }
     .herc-equilibre { font-size: 0.6rem; color: var(--green); margin-top: 0.4rem; letter-spacing: 0.06em; }
     .herc-gate-msg { font-size: 0.65rem; color: var(--blue); letter-spacing: 0.08em; margin-top: 1rem; }
+    .herc-pca-classe td { background: var(--bg3) !important; color: var(--blue); font-size: 0.58rem;
+      letter-spacing: 0.14em; text-transform: uppercase; padding: 0.35rem 0.6rem; }
+    .herc-vir-card   { border: 1px solid var(--border); border-radius: 3px; margin-bottom: 0.5rem; overflow: hidden; }
+    .herc-vir-hdr    { display: flex; align-items: center; padding: 0.65rem 1rem; cursor: pointer;
+                       background: var(--bg2); gap: 1rem; user-select: none; }
+    .herc-vir-hdr:hover { background: var(--bg3); }
+    .herc-vir-nom    { font-size: 0.68rem; color: var(--text); letter-spacing: 0.06em; flex: 1; min-width: 0; }
+    .herc-vir-desc   { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.04em; white-space: nowrap; }
+    .herc-vir-amt    { font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--green); white-space: nowrap; }
+    .herc-vir-caret  { font-size: 0.65rem; color: var(--dim); transition: transform 0.15s; flex-shrink: 0; }
+    .herc-vir-card.open .herc-vir-caret { transform: rotate(90deg); }
+    .herc-vir-detail { display: none; padding: 0 0.5rem 0.6rem; overflow-x: auto; }
+    .herc-vir-card.open .herc-vir-detail { display: block; }
+    .herc-vir-table  { width: 100%; border-collapse: collapse; font-size: 0.66rem; }
+    .herc-vir-table th { padding: 0.35rem 0.6rem; text-align: left; font-size: 0.56rem; color: var(--blue);
+      letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .herc-vir-table td { padding: 0.35rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text); vertical-align: middle; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .herc-vir-table td:nth-child(n+2) { text-align: right; }
+    .herc-vir-table td:first-child { text-align: left; color: var(--muted); white-space: normal; }
+    .herc-vir-table tr:hover td { background: rgba(255,255,255,0.025); }
+    .herc-vir-reduc td { color: var(--red) !important; font-size: 0.62rem; }
+    .herc-vir-subtot td { background: var(--bg3) !important; color: var(--green); font-size: 0.62rem;
+      letter-spacing: 0.06em; }
 
     body.is-forge .view-desktop,
     body.is-forge .view-mobile,
@@ -1817,18 +1874,10 @@
           <span>Zoom ×2</span>
           <div class="a11y-switch" id="zoom-switch"></div>
         </div>
-        <div class="a11y-font-label">POLICE D'ÉCRITURE</div>
-        <select class="a11y-font-select" id="font-picker" onchange="setAppFont(this.value)">
-          <option value="">── Courier New (défaut) ──</option>
-          <option value="IBM Plex Mono">IBM Plex Mono</option>
-          <option value="Fira Code">Fira Code</option>
-          <option value="JetBrains Mono">JetBrains Mono</option>
-          <option value="Space Mono">Space Mono</option>
-          <option value="Share Tech Mono">Share Tech Mono</option>
-          <option value="Source Code Pro">Source Code Pro</option>
-          <option value="VT323">VT323 — terminal 80s</option>
-          <option value="Press Start 2P">Press Start 2P — pixel</option>
-        </select>
+        <div class="a11y-row" onclick="toggleDyslexia()">
+          <span>Mode dyslexie <span style="font-size:0.6rem;color:var(--dim)">OpenDyslexic · lettres colorées</span></span>
+          <div class="a11y-switch" id="dyslexia-switch"></div>
+        </div>
         <div class="a11y-row" onclick="toggleBWMode()">
           <span>Mode noir &amp; blanc</span>
           <div class="a11y-switch" id="bw-switch"></div>
@@ -1883,14 +1932,26 @@
         <div class="field"><label>DATE DE SIMULATION</label>
           <input type="date" id="d-date" min="2015-01-01" /></div>
 
-        <!-- Paramètres avancés -->
+        <!-- Pays / Régime -->
         <button class="btn-params-toggle" id="d-params-toggle" onclick="toggleParams('d')" type="button">
-          <span class="chevron">▼</span> PARAMÈTRES
+          <span class="chevron">▼</span> PAYS/RÉGION
         </button>
         <div class="params-panel" id="d-params" style="display:none">
           <label class="param-item">
+            <input type="checkbox" id="d-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
+            <span class="flag-emoji">🇫🇷</span> France
+          </label>
+          <label class="param-item" id="d-alsace-moselle-wrap">
+            <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+            <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+            <span class="flag-emoji">🏛️</span> Fonction publique
+          </label>
+          <label class="param-item">
             <input type="checkbox" id="d-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
-            Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
+            <span class="flag-emoji">🇨🇭</span> Suisse
           </label>
           <!-- Bloc IS — visible uniquement quand Suisse est coché -->
           <div class="param-sub" id="d-ch-is-wrap" style="display:none">
@@ -1952,19 +2013,11 @@
           </div>
           <label class="param-item">
             <input type="checkbox" id="d-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
-            Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
-            FPT<span class="param-badge">titulaire · dès 2016</span>
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
-            Italie (regime INPS)<span class="param-badge">🇮🇹 EUR · dès 2015</span>
+            <span class="flag-emoji">🇱🇺</span> Luxembourg
           </label>
           <label class="param-item">
             <input type="checkbox" id="d-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
-            Allemagne (Sozialversicherung + Lohnsteuer)<span class="param-badge">🇩🇪 EUR · dès 2015</span>
+            <span class="flag-emoji">🇩🇪</span> Allemagne
           </label>
           <div id="d-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;display:none;flex-direction:column;gap:0.2rem">
             <label class="param-item">
@@ -2011,8 +2064,12 @@
             </div>
           </div>
           <label class="param-item">
+            <input type="checkbox" id="d-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
+            <span class="flag-emoji">🇮🇹</span> Italie
+          </label>
+          <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-            Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>
+            <span class="flag-emoji">🇨🇦</span> Canada
           </label>
           <div id="d-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
             <select id="d-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
@@ -2032,12 +2089,40 @@
           </div>
           <label class="param-item">
             <input type="checkbox" id="d-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
-            Québec (RRQ + RQAP)<span class="param-badge">🇨🇦🔵 CAD · dès 2019</span>
+            <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
           </label>
-          <label class="param-item" id="d-alsace-moselle-wrap">
-            <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-            Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
-          </label>
+        </div>
+
+        <!-- Durée de travail -->
+        <button class="btn-params-toggle" id="d-duree-toggle" onclick="toggleDuree('d')" type="button">
+          <span class="chevron">▼</span> DURÉE DE TRAVAIL
+        </button>
+        <div class="params-panel" id="d-duree" style="display:none">
+          <div class="duree-row">
+            <label>ETP</label>
+            <select id="d-etp-sel" onchange="onEtpSelChange('d')" class="etp-sel">
+              <option value="100">1</option>
+              <option value="80">4/5</option>
+              <option value="75">3/4</option>
+              <option value="66.67">2/3</option>
+              <option value="60">3/5</option>
+              <option value="50">1/2</option>
+              <option value="33.33">1/3</option>
+              <option value="">—</option>
+            </select>
+            <input type="number" id="d-etp" value="100" min="0" max="200" step="1" oninput="onDureeChange('d','etp')" />
+            <span class="duree-unit">%</span>
+          </div>
+          <div class="duree-row">
+            <label>Heures / semaine</label>
+            <input type="number" id="d-h-semaine" value="35" min="0" step="1" oninput="onDureeChange('d','semaine')" />
+            <span class="duree-unit">h</span>
+          </div>
+          <div class="duree-row">
+            <label>Heures / mois</label>
+            <input type="number" id="d-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('d','mois')" />
+            <span class="duree-unit">h</span>
+          </div>
         </div>
 
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
@@ -2098,14 +2183,26 @@
           <div class="field" style="grid-column:1/-1"><label>DATE DE SIMULATION</label>
             <input type="date" id="m-date" min="2015-01-01" /></div>
 
-          <!-- Paramètres avancés mobile -->
+          <!-- Pays / Régime mobile -->
           <button class="btn-params-toggle" id="m-params-toggle" onclick="toggleParams('m')" type="button" style="grid-column:1/-1">
-            <span class="chevron">▼</span> PARAMÈTRES
+            <span class="chevron">▼</span> PAYS/RÉGION
           </button>
           <div class="params-panel" id="m-params" style="display:none;grid-column:1/-1">
             <label class="param-item">
+              <input type="checkbox" id="m-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
+              <span class="flag-emoji">🇫🇷</span> France
+            </label>
+            <label class="param-item" id="m-alsace-moselle-wrap">
+              <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+              <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+              <span class="flag-emoji">🏛️</span> Fonction publique
+            </label>
+            <label class="param-item">
               <input type="checkbox" id="m-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
-              Suisse (régime fédéral CH)<span class="param-badge">🇨🇭 CHF</span>
+              <span class="flag-emoji">🇨🇭</span> Suisse
             </label>
             <!-- Bloc IS mobile — visible uniquement quand Suisse est coché -->
             <div class="param-sub" id="m-ch-is-wrap" style="display:none">
@@ -2167,19 +2264,11 @@
             </div>
             <label class="param-item">
               <input type="checkbox" id="m-luxembourg" onchange="syncParam('luxembourg', this.checked); onTogglePays('luxembourg', this.checked)" />
-              Luxembourg (régime CCSS)<span class="param-badge">🇱🇺 EUR</span>
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
-              FPT<span class="param-badge">titulaire · dès 2016</span>
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
-              Italie (regime INPS)<span class="param-badge">🇮🇹 EUR · dès 2015</span>
+              <span class="flag-emoji">🇱🇺</span> Luxembourg
             </label>
             <label class="param-item">
               <input type="checkbox" id="m-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
-              Allemagne (Sozialversicherung + Lohnsteuer)<span class="param-badge">🇩🇪 EUR · dès 2015</span>
+              <span class="flag-emoji">🇩🇪</span> Allemagne
             </label>
             <div id="m-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;flex-direction:column;gap:0.2rem">
               <label class="param-item">
@@ -2226,8 +2315,12 @@
               </div>
             </div>
             <label class="param-item">
+              <input type="checkbox" id="m-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
+              <span class="flag-emoji">🇮🇹</span> Italie
+            </label>
+            <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-              Canada<span class="param-badge">🇨🇦 CAD · dès 2019</span>
+              <span class="flag-emoji">🇨🇦</span> Canada
             </label>
             <div id="m-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
               <select id="m-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
@@ -2247,12 +2340,40 @@
             </div>
             <label class="param-item">
               <input type="checkbox" id="m-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
-              Québec (RRQ + RQAP)<span class="param-badge">🇨🇦🔵 CAD · dès 2019</span>
+              <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
             </label>
-            <label class="param-item" id="m-alsace-moselle-wrap">
-              <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-              Alsace-Moselle (droit local)<span class="param-badge">67 · 68 · 57</span>
-            </label>
+          </div>
+
+          <!-- Durée de travail mobile -->
+          <button class="btn-params-toggle" id="m-duree-toggle" onclick="toggleDuree('m')" type="button" style="grid-column:1/-1">
+            <span class="chevron">▼</span> DURÉE DE TRAVAIL
+          </button>
+          <div class="params-panel" id="m-duree" style="display:none;grid-column:1/-1">
+            <div class="duree-row">
+              <label>ETP</label>
+              <select id="m-etp-sel" onchange="onEtpSelChange('m')" class="etp-sel">
+                <option value="100">1</option>
+                <option value="80">4/5</option>
+                <option value="75">3/4</option>
+                <option value="66.67">2/3</option>
+                <option value="60">3/5</option>
+                <option value="50">1/2</option>
+                <option value="33.33">1/3</option>
+                <option value="">—</option>
+              </select>
+              <input type="number" id="m-etp" value="100" min="0" max="200" step="1" oninput="onDureeChange('m','etp')" />
+              <span class="duree-unit">%</span>
+            </div>
+            <div class="duree-row">
+              <label>Heures / semaine</label>
+              <input type="number" id="m-h-semaine" value="35" min="0" step="1" oninput="onDureeChange('m','semaine')" />
+              <span class="duree-unit">h</span>
+            </div>
+            <div class="duree-row">
+              <label>Heures / mois</label>
+              <input type="number" id="m-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('m','mois')" />
+              <span class="duree-unit">h</span>
+            </div>
           </div>
 
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
@@ -2821,10 +2942,13 @@
         <div class="herc-group-lbl">Plan comptable — comptes mobilisés</div>
         <div style="overflow-x:auto">
           <table class="herc-table" id="herc-pca">
-            <thead><tr><th>Compte</th><th>Libellé PCG</th><th>Débit</th><th>Crédit</th></tr></thead>
+            <thead><tr><th>Compte</th><th>Libellé PCG</th><th>Catégorie</th><th>Débit</th><th>Crédit</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
+
+        <div class="herc-group-lbl">Virements — Organismes collecteurs</div>
+        <div id="herc-virements"></div>
       </div>
     </div>
   </div>
