@@ -7,7 +7,7 @@ use axum::{
     extract::{Request, State},
     http::{header, HeaderValue, Method, StatusCode},
     middleware::{self, Next},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::post,
     Json, Router,
 };
@@ -50,6 +50,26 @@ impl IntoResponse for ApiError {
     }
 }
 
+// ── Middleware : redirection HTTP → HTTPS (via X-Forwarded-Proto) ─────────────
+async fn https_redirect(req: Request, next: Next) -> Response {
+    if req.headers()
+        .get("x-forwarded-proto")
+        .and_then(|v| v.to_str().ok())
+        == Some("http")
+    {
+        let host = req.headers()
+            .get("host")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("www.payetonbulletin.fr");
+        let path_query = req.uri().path_and_query()
+            .map(|pq| pq.as_str())
+            .unwrap_or("/");
+        let location = format!("https://{host}{path_query}");
+        return Redirect::permanent(&location).into_response();
+    }
+    next.run(req).await
+}
+
 // ── Middleware : en-têtes de sécurité ─────────────────────────────────────────
 async fn security_headers(req: Request, next: Next) -> Response {
     let mut res = next.run(req).await;
@@ -58,6 +78,7 @@ async fn security_headers(req: Request, next: Next) -> Response {
     h.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
     h.insert("referrer-policy",        HeaderValue::from_static("strict-origin-when-cross-origin"));
     h.insert("permissions-policy",     HeaderValue::from_static("geolocation=(), camera=(), microphone=()"));
+    h.insert("strict-transport-security", HeaderValue::from_static("max-age=63072000; includeSubDomains"));
     h.insert(
         "content-security-policy",
         HeaderValue::from_static(
@@ -150,6 +171,7 @@ async fn main() {
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))
         .layer(cors)
+        .layer(middleware::from_fn(https_redirect))
         .with_state(pool);
 
     let port: u16 = std::env::var("PORT")
