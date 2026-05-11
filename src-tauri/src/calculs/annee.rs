@@ -61,6 +61,7 @@ pub async fn generer_annee(
             kinderlos: None,
             land: None,
             kirchenmitglied: None,
+            region_be: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 

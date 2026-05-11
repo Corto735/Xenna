@@ -111,20 +111,21 @@
     /* ══════════════════════════════
        ACCESSIBILITÉ
     ══════════════════════════════ */
-    .a11y-wrap { margin-left: auto; position: relative; }
+    .a11y-wrap { position: relative; }
     .a11y-btn {
-      background: none;
-      border: 1px solid var(--dim);
-      color: var(--muted);
+      background: var(--blue);
+      border: 1px solid var(--blue);
+      color: #071e38;
       font-family: inherit;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.6rem;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.7rem;
       cursor: pointer;
       letter-spacing: 0.05em;
       transition: all 0.15s;
+      border-radius: 0.3rem;
     }
     .a11y-btn:hover,
-    .a11y-btn.open { border-color: var(--blue); color: var(--blue); }
+    .a11y-btn.open { background: #1aabf0; border-color: #1aabf0; color: #071e38; }
 
     .a11y-panel {
       display: none;
@@ -148,8 +149,8 @@
       border: 1px solid var(--dim);
       color: var(--muted);
       font-family: inherit;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.6rem;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.7rem;
       cursor: pointer;
       letter-spacing: 0.05em;
       transition: all 0.15s;
@@ -1392,6 +1393,60 @@
     .gaab-table:not(.gaab-sal-visible) .gaab-sal,
     .gaab-table:not(.gaab-sal-visible) .gaab-sal-th { display: none; }
     .gaab-countdown { font-size: 0.58rem; color: var(--yellow); letter-spacing: 0.04em; margin-left: 0.5rem; font-variant-numeric: tabular-nums; opacity: 0.75; }
+    .gaab-edit-bar { display: flex; align-items: center; margin-bottom: 0.8rem; }
+    .gaab-edit-toggle {
+      background: none;
+      border: 1px solid var(--blue);
+      color: var(--blue);
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.75rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border-radius: 0.3rem;
+    }
+    .gaab-edit-toggle.active {
+      background: var(--blue);
+      color: #071e38;
+    }
+    .gaab-table.gaab-edit-mode td { cursor: text; }
+    .gaab-table.gaab-edit-mode td:hover { outline: 1px solid rgba(56,189,248,0.3); }
+    .gaab-table.gaab-edit-mode td:focus { outline: 1px solid var(--blue); background: rgba(56,189,248,0.06); }
+
+    .gaab-table-outer { position: relative; }
+    .gaab-sal-reveal-wrap {
+      position: absolute;
+      top: 0.3rem;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+    }
+    .gaab-sal-reveal-btn {
+      background: none;
+      border: 1px solid var(--yellow);
+      color: var(--yellow);
+      font-family: inherit;
+      font-size: 0.85rem;
+      line-height: 1;
+      width: 1.8rem;
+      height: 1.8rem;
+      padding: 0;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .gaab-sal-reveal-btn:hover { background: rgba(251,191,36,0.12); }
+    .gaab-sal-reveal-wrap .gaab-countdown { margin-left: 0; text-align: center; }
     .gaab-etp { text-align: center; white-space: nowrap; }
     .gaab-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
     .gaab-table th {
@@ -1787,7 +1842,7 @@
       font-style: italic;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-DN_t5oVs.js"></script>
+  <script type="module" crossorigin src="/assets/index-BsrTO183.js"></script>
 </head>
 <body>
 
@@ -1853,7 +1908,7 @@
     <span class="view-label">VUE :</span>
     <button class="btn-view active" id="btn-desk" onclick="setView('desktop')">⊞ BUREAU</button>
     <button class="btn-view" id="btn-mob"  onclick="setView('mobile')">☰ MOBILE</button>
-    <button class="btn-view" id="btn-ann"  onclick="setView('annuel')">▦ SIMULATION ANNUELLE</button>
+    <button class="btn-view" id="btn-ann"  onclick="setView('annuel')" style="display:none">▦ SIMULATION ANNUELLE</button>
 
     <div class="trad-wrap">
       <button class="trad-btn" id="trad-btn" onclick="toggleTradPanel()" title="Traduction">🌐 LANGUE</button>
@@ -1870,7 +1925,7 @@
 
     <div class="a11y-wrap">
       <button class="a11y-btn" id="a11y-btn" onclick="toggleA11yPanel()" title="Accessibilité">
-        AFFICHAGE INCLUSIF
+        AFFICHAGE
       </button>
       <div class="a11y-panel" id="a11y-panel">
         <div class="a11y-panel-title">ACCESSIBILITÉ</div>
@@ -1949,14 +2004,16 @@
             <input type="checkbox" id="d-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
             <span class="flag-emoji">🇫🇷</span> France
           </label>
-          <label class="param-item" id="d-alsace-moselle-wrap">
-            <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-            <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
-            <span class="flag-emoji">🏛️</span> Fonction publique
-          </label>
+          <div id="d-france-sub-wrap" style="padding-left:1.1rem;display:flex;flex-direction:column;gap:0.1rem">
+            <label class="param-item" id="d-alsace-moselle-wrap">
+              <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+              <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+              <span class="flag-emoji">🏛️</span> Fonction publique
+            </label>
+          </div>
           <label class="param-item">
             <input type="checkbox" id="d-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
             <span class="flag-emoji">🇨🇭</span> Suisse
@@ -2076,29 +2133,50 @@
             <span class="flag-emoji">🇮🇹</span> Italie
           </label>
           <label class="param-item">
-            <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-            <span class="flag-emoji">🇨🇦</span> Canada
+            <input type="checkbox" id="d-espagne" onchange="syncParam('espagne', this.checked); onTogglePays('espagne', this.checked)" />
+            <span class="flag-emoji">🇪🇸</span> Espagne
           </label>
-          <div id="d-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-            <select id="d-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
-              <option value="ON">Ontario (ON)</option>
-              <option value="AB">Alberta (AB)</option>
-              <option value="BC">Colombie-Britannique (BC)</option>
-              <option value="MB">Manitoba (MB)</option>
-              <option value="NB">Nouveau-Brunswick (NB)</option>
-              <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
-              <option value="NS">Nouvelle-Écosse (NS)</option>
-              <option value="NT">Territoires du Nord-Ouest (NT)</option>
-              <option value="NU">Nunavut (NU)</option>
-              <option value="PE">Île-du-Prince-Édouard (PE)</option>
-              <option value="SK">Saskatchewan (SK)</option>
-              <option value="YT">Yukon (YT)</option>
+          <label class="param-item">
+            <input type="checkbox" id="d-portugal" onchange="syncParam('portugal', this.checked); onTogglePays('portugal', this.checked)" />
+            <span class="flag-emoji">🇵🇹</span> Portugal
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-belgique" onchange="syncParam('belgique', this.checked); onTogglePays('belgique', this.checked)" />
+            <span class="flag-emoji">🇧🇪</span> Belgique
+          </label>
+          <div id="d-be-region-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+            <select id="d-be-region" onchange="syncParam('be-region', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <option value="bruxelles">Bruxelles-Capitale</option>
+              <option value="flandre">Flandres</option>
+              <option value="wallonie">Wallonie</option>
             </select>
           </div>
           <label class="param-item">
-            <input type="checkbox" id="d-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
-            <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
+            <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
+            <span class="flag-emoji">🇨🇦</span> Canada
           </label>
+          <div id="d-ca-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem;flex-direction:column;gap:0.1rem">
+            <div id="d-ca-province-wrap" style="display:none">
+              <select id="d-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="ON">Ontario (ON)</option>
+                <option value="AB">Alberta (AB)</option>
+                <option value="BC">Colombie-Britannique (BC)</option>
+                <option value="MB">Manitoba (MB)</option>
+                <option value="NB">Nouveau-Brunswick (NB)</option>
+                <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
+                <option value="NS">Nouvelle-Écosse (NS)</option>
+                <option value="NT">Territoires du Nord-Ouest (NT)</option>
+                <option value="NU">Nunavut (NU)</option>
+                <option value="PE">Île-du-Prince-Édouard (PE)</option>
+                <option value="SK">Saskatchewan (SK)</option>
+                <option value="YT">Yukon (YT)</option>
+              </select>
+            </div>
+            <label class="param-item">
+              <input type="checkbox" id="d-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
+              <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
+            </label>
+          </div>
         </div>
 
         <!-- Durée de travail -->
@@ -2201,14 +2279,16 @@
               <input type="checkbox" id="m-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
               <span class="flag-emoji">🇫🇷</span> France
             </label>
-            <label class="param-item" id="m-alsace-moselle-wrap">
-              <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-              <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
-              <span class="flag-emoji">🏛️</span> Fonction publique
-            </label>
+            <div id="m-france-sub-wrap" style="padding-left:1.1rem;display:flex;flex-direction:column;gap:0.1rem">
+              <label class="param-item" id="m-alsace-moselle-wrap">
+                <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
+                <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+              </label>
+              <label class="param-item">
+                <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
+                <span class="flag-emoji">🏛️</span> Fonction publique
+              </label>
+            </div>
             <label class="param-item">
               <input type="checkbox" id="m-suisse" onchange="syncParam('suisse', this.checked); onTogglePays('suisse', this.checked)" />
               <span class="flag-emoji">🇨🇭</span> Suisse
@@ -2328,29 +2408,50 @@
               <span class="flag-emoji">🇮🇹</span> Italie
             </label>
             <label class="param-item">
-              <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
-              <span class="flag-emoji">🇨🇦</span> Canada
+              <input type="checkbox" id="m-espagne" onchange="syncParam('espagne', this.checked); onTogglePays('espagne', this.checked)" />
+              <span class="flag-emoji">🇪🇸</span> Espagne
             </label>
-            <div id="m-ca-province-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-              <select id="m-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
-                <option value="ON">Ontario (ON)</option>
-                <option value="AB">Alberta (AB)</option>
-                <option value="BC">Colombie-Britannique (BC)</option>
-                <option value="MB">Manitoba (MB)</option>
-                <option value="NB">Nouveau-Brunswick (NB)</option>
-                <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
-                <option value="NS">Nouvelle-Écosse (NS)</option>
-                <option value="NT">Territoires du Nord-Ouest (NT)</option>
-                <option value="NU">Nunavut (NU)</option>
-                <option value="PE">Île-du-Prince-Édouard (PE)</option>
-                <option value="SK">Saskatchewan (SK)</option>
-                <option value="YT">Yukon (YT)</option>
+            <label class="param-item">
+              <input type="checkbox" id="m-portugal" onchange="syncParam('portugal', this.checked); onTogglePays('portugal', this.checked)" />
+              <span class="flag-emoji">🇵🇹</span> Portugal
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-belgique" onchange="syncParam('belgique', this.checked); onTogglePays('belgique', this.checked)" />
+              <span class="flag-emoji">🇧🇪</span> Belgique
+            </label>
+            <div id="m-be-region-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+              <select id="m-be-region" onchange="syncParam('be-region', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="bruxelles">Bruxelles-Capitale</option>
+                <option value="flandre">Flandres</option>
+                <option value="wallonie">Wallonie</option>
               </select>
             </div>
             <label class="param-item">
-              <input type="checkbox" id="m-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
-              <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
+              <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
+              <span class="flag-emoji">🇨🇦</span> Canada
             </label>
+            <div id="m-ca-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem;flex-direction:column;gap:0.1rem">
+              <div id="m-ca-province-wrap" style="display:none">
+                <select id="m-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <option value="ON">Ontario (ON)</option>
+                  <option value="AB">Alberta (AB)</option>
+                  <option value="BC">Colombie-Britannique (BC)</option>
+                  <option value="MB">Manitoba (MB)</option>
+                  <option value="NB">Nouveau-Brunswick (NB)</option>
+                  <option value="NL">Terre-Neuve-et-Labrador (NL)</option>
+                  <option value="NS">Nouvelle-Écosse (NS)</option>
+                  <option value="NT">Territoires du Nord-Ouest (NT)</option>
+                  <option value="NU">Nunavut (NU)</option>
+                  <option value="PE">Île-du-Prince-Édouard (PE)</option>
+                  <option value="SK">Saskatchewan (SK)</option>
+                  <option value="YT">Yukon (YT)</option>
+                </select>
+              </div>
+              <label class="param-item">
+                <input type="checkbox" id="m-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
+                <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
+              </label>
+            </div>
           </div>
 
           <!-- Durée de travail mobile -->
@@ -2871,13 +2972,25 @@
   ════════════════════════════════ -->
   <div class="view-gaabrielle">
     <div class="gaab-wrap">
-      <div class="gaab-section-lbl">// Gaabrielle — Module RH · Personnel</div>
+      <div class="gaab-section-lbl">Gaabrielle - module de gestion du personnel</div>
 
       <!-- Initiales cliquables -->
       <div class="gaab-initiales" id="gaab-initiales"></div>
 
+      <!-- Toggle édition -->
+      <div class="gaab-edit-bar">
+        <button class="gaab-edit-toggle" id="gaab-edit-toggle" onclick="gaabToggleEdit()" title="Activer / désactiver l'édition">
+          <span id="gaab-lock-icon">🔒</span> Édition
+        </button>
+      </div>
+
       <!-- Tableau personnel -->
-      <div style="overflow-x:auto">
+      <div class="gaab-table-outer">
+        <div class="gaab-sal-reveal-wrap">
+          <button class="gaab-sal-reveal-btn" onclick="gaabRevealSal()" title="Afficher les salaires (10 s, +20 s/clic)">€</button>
+          <span id="gaab-countdown" class="gaab-countdown"></span>
+        </div>
+        <div style="overflow-x:auto; margin-right:2.3rem">
         <table class="gaab-table" id="gaab-table">
           <thead>
             <tr>
@@ -2895,12 +3008,13 @@
                   <option value="bm">Brut mensuel</option>
                   <option value="nm">Net mensuel</option>
                   <option value="nh">Net horaire</option>
-                </select><span id="gaab-countdown" class="gaab-countdown"></span>
+                </select>
               </th>
             </tr>
           </thead>
           <tbody id="gaab-tbody"></tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
@@ -2922,7 +3036,7 @@
             Rapprochement bancaire · Clôture
           </div>
           <div class="herc-gate-msg" id="herc-gate-msg">
-            Calculez d'abord un bulletin France ou FPT pour accéder au journal de paie.
+            Calculez d'abord un bulletin France secteur privé pour accéder au journal de paie.
           </div>
         </div>
       </div>

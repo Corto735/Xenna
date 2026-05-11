@@ -30,6 +30,19 @@ pub enum Pays {
     /// Salariés du secteur privé allemand (SGB V/VI/III/XI/VII + Lohnsteuer + Kirchensteuer).
     /// Données disponibles depuis le 01/01/2015.
     Allemagne,
+    /// Salariés du secteur privé espagnol (régime général, contrato indefinido).
+    /// Cotisations : CC, Desempleo, FOGASA, FP, MEI (depuis 2023).
+    /// Données disponibles depuis le 01/01/2015.
+    Espagne,
+    /// Salariés du secteur privé portugais (regime geral de segurança social).
+    /// Cotisations : SS (TSU), Acidentes de Trabalho, FCT, FGCT, IRS retenção.
+    /// Données disponibles depuis le 01/01/2015.
+    Portugal,
+    /// Salariés du secteur privé belge (régime général ONSS).
+    /// Cotisations : ONSS sal/pat, bonus emploi, réd. structurelle, PP/BV (régional).
+    /// region_be : "wallonie" | "flandre" | "bruxelles".
+    /// Données disponibles depuis le 01/01/2015.
+    Belgique,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,6 +90,10 @@ pub struct Salarie {
     /// Vrai si membre d'une église → Kirchensteuer prélevée.
     #[serde(default)]
     pub kirchenmitglied: Option<bool>,
+    /// Région belge pour le précompte professionnel (PP/BV).
+    /// Valeurs : "wallonie", "flandre", "bruxelles" (défaut : "bruxelles").
+    #[serde(default)]
+    pub region_be: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

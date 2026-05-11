@@ -19,6 +19,14 @@ pub mod qc_bulletin;
 pub mod de_cotisations;
 pub mod de_lohnsteuer;
 pub mod de_bulletin;
+pub mod es_cotizaciones;
+pub mod es_bulletin;
+pub mod pt_contribuicoes;
+pub mod pt_irs;
+pub mod pt_bulletin;
+pub mod be_cotisations;
+pub mod be_pp;
+pub mod be_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

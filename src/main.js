@@ -965,7 +965,7 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1230,7 +1230,7 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1437,6 +1437,10 @@ async function calculate(source) {
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
+  const isEspagne      = document.getElementById(isM ? "m-espagne"     : "d-espagne")?.checked ?? false;
+  const isPortugal     = document.getElementById(isM ? "m-portugal"    : "d-portugal")?.checked ?? false;
+  const isBelgique     = document.getElementById(isM ? "m-belgique"    : "d-belgique")?.checked ?? false;
+  const beRegion       = document.getElementById(isM ? "m-be-region"   : "d-be-region")?.value || "bruxelles";
   const isAllemagne    = document.getElementById(isM ? "m-allemagne"   : "d-allemagne")?.checked ?? false;
   const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
   const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
@@ -1475,7 +1479,8 @@ async function calculate(source) {
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
   const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg"
-    : isItalie ? "italia" : isAllemagne ? "allemagne" : isCanada ? "canada" : isQuebec ? "quebec" : null;
+    : isItalie ? "italia" : isEspagne ? "espagne" : isPortugal ? "portugal"
+    : isBelgique ? "belgique" : isAllemagne ? "allemagne" : isCanada ? "canada" : isQuebec ? "quebec" : null;
   const datePaie = date;
 
   try {
@@ -1494,11 +1499,13 @@ async function calculate(source) {
         kinderlos:    isAllemagne ? kinderlos : null,
         kirchenmitglied: isAllemagne ? kirchenmitglied : null,
         land:         isAllemagne ? deLand : null,
+        region_be:    isBelgique ? beRegion : null,
       },
       datePaie,
     });
     lastBulletin = bulletin;
     renderAll(bulletin);
+    _updateAnnuelBtn();
   } catch (e) {
     // console.error permet de voir l'objet brut dans DevTools (F12 → Console)
     // même quand l'affichage UI est tronqué.
@@ -1650,8 +1657,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'allemagne', 'canada', 'quebec'];
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'allemagne', 'canada', 'quebec'];
+  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -1664,17 +1671,16 @@ window.onTogglePays = function(pays, checked) {
     });
   }
 
-  // Date et Alsace-Moselle : bloqués uniquement si un pays ÉTRANGER est coché
-  const unPaysActif = PAYS_ETR.some(pId =>
-    document.getElementById(`d-${pId}`)?.checked
-  );
-
-  // Masque Alsace-Moselle et bloque la date si un pays étranger est actif
+  // France sous-menu (Alsace-Moselle + FPT) : visible quand France OU FPT est coché
+  const isFranceEco = document.getElementById('d-france')?.checked || document.getElementById('d-fpt')?.checked;
   ['d', 'm'].forEach(p => {
-    const wrap = document.getElementById(`${p}-alsace-moselle-wrap`);
-    if (wrap) wrap.style.display = unPaysActif ? 'none' : '';
-    const am = document.getElementById(`${p}-alsace-moselle`);
-    if (am && unPaysActif) am.checked = false;
+    const subWrap = document.getElementById(`${p}-france-sub-wrap`);
+    if (!subWrap) return;
+    subWrap.style.display = isFranceEco ? '' : 'none';
+    if (!isFranceEco) {
+      const am = document.getElementById(`${p}-alsace-moselle`);
+      if (am) am.checked = false;
+    }
   });
   ['d-date', 'm-date'].forEach(id => {
     const el = document.getElementById(id);
@@ -1708,11 +1714,25 @@ window.onTogglePays = function(pays, checked) {
     }
   });
 
-  // Affiche/masque le sélecteur de province Canada
+  // Canada sous-menu (province + Québec) : visible quand Canada OU Québec est coché
+  const isCanadaEco = document.getElementById('d-canada')?.checked || document.getElementById('d-quebec')?.checked;
+  ['d', 'm'].forEach(p => {
+    const subWrap = document.getElementById(`${p}-ca-sub-wrap`);
+    if (subWrap) subWrap.style.display = isCanadaEco ? 'flex' : 'none';
+  });
+
+  // Province Canada : visible uniquement quand Canada est coché (pas Québec seul)
   const isCanadaChecked = document.getElementById('d-canada')?.checked;
   ['d', 'm'].forEach(p => {
     const wrap = document.getElementById(`${p}-ca-province-wrap`);
     if (wrap) wrap.style.display = isCanadaChecked ? '' : 'none';
+  });
+
+  // Région Belgique : visible quand Belgique est coché
+  const isBelgiqueChecked = document.getElementById('d-belgique')?.checked;
+  ['d', 'm'].forEach(p => {
+    const wrap = document.getElementById(`${p}-be-region-wrap`);
+    if (wrap) wrap.style.display = isBelgiqueChecked ? '' : 'none';
   });
 
   // Affiche/masque le panneau Allemagne (Steuerklasse, Kinderlos, Kirchensteuer)
@@ -2483,13 +2503,16 @@ const ECART_POOLS = {
   suisse:     [-8, -10, -12, -14, -16],
   luxembourg: [+1, +1,  +1,   0,  -1],
   italie:     [-2, -4,  -4,  -6],
+  espagne:    [-6, -10, -13, -16, -19],
+  portugal:   [-8, -11, -13, -15],
+  belgique:   [-6, -9, -11, -13, -15],
   allemagne:  [-14, -16, -18, -20, -22],
   canada:     [-6, -10, -12, -14, -17],
   quebec:     [-6, -10, -12, -14, -17],
 };
 
 function _getActivePays() {
-  for (const p of ['suisse', 'luxembourg', 'italie', 'allemagne', 'canada', 'quebec']) {
+  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec']) {
     if (document.getElementById('d-' + p)?.checked) return p;
     if (document.getElementById('m-' + p)?.checked) return p;
   }
@@ -2586,13 +2609,25 @@ window.onToggleEcartActif = function(checked) {
   }
 };
 
+// ── Annuel — disponible uniquement pour un bulletin France secteur privé ──────
+function _updateAnnuelBtn() {
+  const isFrPriv = lastBulletin?.salarie?.pays === 'france';
+  const btn = document.getElementById('btn-ann');
+  if (btn) btn.style.display = isFrPriv ? '' : 'none';
+  if (!isFrPriv && document.body.classList.contains('is-annuel')) setView('desktop');
+}
+
 // ── Hercule Compta ────────────────────────────────────────────────────────────
 function herculeInit() {
   const gate    = document.getElementById('herc-gate');
   const content = document.getElementById('herc-content');
-  const isFR    = lastBulletin && ['france', 'fonction_publique'].includes(lastBulletin.salarie?.pays);
+  const isFR    = lastBulletin?.salarie?.pays === 'france';
 
   if (!isFR) {
+    const msg = document.getElementById('herc-gate-msg');
+    if (msg) msg.textContent = lastBulletin
+      ? 'Hercule n\'est disponible que pour les bulletins France secteur privé (y compris Alsace-Moselle).'
+      : 'Calculez d\'abord un bulletin France secteur privé pour accéder au journal de paie.';
     if (gate)    gate.style.display    = '';
     if (content) content.style.display = 'none';
     return;
@@ -2925,6 +2960,19 @@ function gaabInit() {
   }
 }
 
+let _gaabEditMode = false;
+window.gaabToggleEdit = function() {
+  _gaabEditMode = !_gaabEditMode;
+  const btn  = document.getElementById('gaab-edit-toggle');
+  const icon = document.getElementById('gaab-lock-icon');
+  btn?.classList.toggle('active', _gaabEditMode);
+  if (icon) icon.textContent = _gaabEditMode ? '🔓' : '🔒';
+  document.getElementById('gaab-table')?.classList.toggle('gaab-edit-mode', _gaabEditMode);
+  document.querySelectorAll('#gaab-tbody td').forEach(td => {
+    td.contentEditable = _gaabEditMode ? 'true' : 'false';
+  });
+};
+
 let _gaabSalTimer = null;
 let _gaabSalTick  = 0;
 
@@ -2938,21 +2986,18 @@ function _gaabHideSal() {
   if (cd) cd.textContent = '';
 }
 
-window.gaabUpdateSal = function() {
+window.gaabUpdateSal = function(ticks) {
   const type = document.getElementById('gaab-saltype')?.value;
   if (!type) { _gaabHideSal(); return; }
 
-  // Mise à jour des cellules
   document.querySelectorAll('.gaab-sal').forEach(cell => {
     cell.textContent = _gaabSalStr(parseFloat(cell.dataset.bh), type);
   });
 
-  // Affichage de la colonne
   document.getElementById('gaab-table')?.classList.add('gaab-sal-visible');
 
-  // (Re)démarrage du countdown
   clearInterval(_gaabSalTimer);
-  _gaabSalTick = 10;
+  _gaabSalTick = ticks ?? 10;
   const cd = document.getElementById('gaab-countdown');
   if (cd) cd.textContent = _gaabSalTick;
   _gaabSalTimer = setInterval(() => {
@@ -2960,6 +3005,18 @@ window.gaabUpdateSal = function() {
     if (cd) cd.textContent = _gaabSalTick > 0 ? _gaabSalTick : '';
     if (_gaabSalTick <= 0) _gaabHideSal();
   }, 1000);
+};
+
+window.gaabRevealSal = function() {
+  const sel = document.getElementById('gaab-saltype');
+  if (sel && !sel.value) sel.value = 'bm';
+  if (_gaabSalTimer) {
+    _gaabSalTick += 20;
+    const cd = document.getElementById('gaab-countdown');
+    if (cd) cd.textContent = _gaabSalTick;
+  } else {
+    gaabUpdateSal(10);
+  }
 };
 
 // ── Quizz Paie ────────────────────────────────────────────────────────────────
