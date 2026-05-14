@@ -632,7 +632,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'ecart', 'mecenat'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
