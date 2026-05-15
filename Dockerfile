@@ -21,6 +21,8 @@ COPY src-tauri/src ./src
 COPY src-tauri/migrations ./migrations
 COPY src-tauri/build.rs ./build.rs
 COPY src-tauri/capabilities ./capabilities
+# Meliinda : copiée à /meliinda pour respecter le path "../meliinda" du Cargo.toml
+COPY meliinda /meliinda
 
 RUN cargo build --release --bin web --no-default-features
 
