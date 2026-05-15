@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meliinda · empreinte de frappe</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:     #0d0d0f;
+    --bg2:    #141417;
+    --bg3:    #1c1c21;
+    --border: rgba(255,255,255,0.08);
+    --text:   #c8c8d4;
+    --white:  #eeeef2;
+    --dim:    #555566;
+    --muted:  #7777aa;
+    --blue:   #5b8dee;
+    --green:  #4ec994;
+    --yellow: #f5c842;
+    --red:    #e05c5c;
+  }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Courier New', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 2rem 1rem;
+  }
+
+  header {
+    width: 100%; max-width: 720px; margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+  }
+  header h1 { font-size: 1.1rem; color: var(--white); letter-spacing: 0.12em; }
+  header p  { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.15em;
+               text-transform: uppercase; margin-top: 0.3rem; }
+
+  .card {
+    width: 100%; max-width: 720px; background: var(--bg2);
+    border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem;
+  }
+
+  .label {
+    font-size: 0.55rem; color: var(--dim); letter-spacing: 0.18em;
+    text-transform: uppercase; margin-bottom: 0.8rem;
+  }
+
+  textarea {
+    width: 100%; min-height: 140px; background: var(--bg3);
+    border: 1px solid var(--border); color: var(--white);
+    font-family: inherit; font-size: 0.9rem; padding: 0.8rem;
+    outline: none; resize: vertical; line-height: 1.7;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--blue); }
+  textarea:disabled { opacity: 0.4; }
+
+  .row { display: flex; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap; }
+
+  button {
+    background: none; border: 1px solid var(--blue); color: var(--blue);
+    font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
+    padding: 0.45rem 1rem; cursor: pointer; transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { background: var(--blue); color: var(--bg); }
+  button:disabled { opacity: 0.35; cursor: default; border-color: var(--dim); color: var(--dim); }
+  button.danger { border-color: var(--red); color: var(--red); }
+  button.danger:hover:not(:disabled) { background: var(--red); color: var(--bg); }
+
+  .stats {
+    font-size: 0.6rem; color: var(--muted); margin-top: 0.6rem;
+    display: flex; gap: 1.5rem; flex-wrap: wrap;
+  }
+  .stats span { display: flex; gap: 0.4rem; align-items: center; }
+  .stats b { color: var(--yellow); }
+
+  /* Zone de replay */
+  #replay-wrap { display: none; }
+  #replay-stage {
+    width: 100%; min-height: 140px; background: var(--bg3);
+    border: 1px solid var(--border); padding: 0.8rem;
+    font-size: 0.9rem; line-height: 1.7; color: var(--white);
+    white-space: pre-wrap; word-break: break-word;
+    position: relative;
+  }
+  .ghost {
+    color: var(--red); text-decoration: line-through;
+    opacity: 0.55; font-style: italic;
+  }
+  .cursor {
+    display: inline-block; width: 2px; height: 1em;
+    background: var(--blue); vertical-align: text-bottom;
+    animation: blink 0.9s step-start infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  #status {
+    font-size: 0.6rem; color: var(--muted); margin-top: 0.5rem;
+    min-height: 1.2em; letter-spacing: 0.05em;
+  }
+  #status.ok  { color: var(--green); }
+  #status.err { color: var(--red); }
+
+  /* Liste des séquences sauvegardées */
+  #seq-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .seq-item {
+    display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0.7rem;
+    background: var(--bg3); border: 1px solid var(--border); cursor: pointer;
+    font-size: 0.68rem; transition: border-color 0.12s;
+  }
+  .seq-item:hover { border-color: var(--blue); }
+  .seq-item .seq-id   { color: var(--dim); font-size: 0.55rem; flex-shrink: 0; }
+  .seq-item .seq-lbl  { color: var(--white); flex: 1; }
+  .seq-item .seq-date { color: var(--muted); font-size: 0.55rem; flex-shrink: 0; }
+
+  input[type=text] {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--white); font-family: inherit; font-size: 0.8rem;
+    padding: 0.4rem 0.7rem; outline: none; flex: 1;
+    transition: border-color 0.15s;
+  }
+  input[type=text]:focus { border-color: var(--blue); }
+  input[type=text]::placeholder { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Meliinda</h1>
+  <p>empreinte de frappe · enregistrement et replay</p>
+</header>
+
+<!-- ENREGISTREMENT -->
+<div class="card">
+  <div class="label">// Enregistrement</div>
+  <textarea id="editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+  <div class="stats">
+    <span>Frappes : <b id="stat-keys">0</b></span>
+    <span>Corrections : <b id="stat-back">0</b></span>
+    <span>Durée : <b id="stat-dur">0s</b></span>
+    <span>Pauses &gt;1s : <b id="stat-pauses">0</b></span>
+  </div>
+  <div class="row">
+    <input type="text" id="label-input" placeholder="Label (optionnel)">
+    <button id="btn-save" disabled>[ Sauvegarder ]</button>
+    <button id="btn-replay" class="danger" disabled>[ Replay ]</button>
+    <button id="btn-reset">[ Réinitialiser ]</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<!-- REPLAY -->
+<div class="card" id="replay-wrap">
+  <div class="label">// Replay · restitution fidèle</div>
+  <div id="replay-stage"><span class="cursor"></span></div>
+  <div class="row">
+    <button id="btn-replay-stop">[ Arrêter ]</button>
+  </div>
+</div>
+
+<!-- BIBLIOTHÈQUE -->
+<div class="card">
+  <div class="label">// Bibliothèque</div>
+  <div id="seq-list"><span style="font-size:0.65rem;color:var(--dim)">Chargement…</span></div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = '';   // même origine
+
+// ── État ──────────────────────────────────────────────────────────────────────
+let events    = [];
+let startTime = null;
+let replayTimers = [];
+
+const editor    = document.getElementById('editor');
+const btnSave   = document.getElementById('btn-save');
+const btnReplay = document.getElementById('btn-replay');
+const btnReset  = document.getElementById('btn-reset');
+const btnStop   = document.getElementById('btn-replay-stop');
+const labelInp  = document.getElementById('label-input');
+const status    = document.getElementById('status');
+const replayWrap  = document.getElementById('replay-wrap');
+const replayStage = document.getElementById('replay-stage');
+
+// ── Capture ───────────────────────────────────────────────────────────────────
+editor.addEventListener('keydown', e => {
+  if (startTime === null) startTime = performance.now();
+  events.push({ key: e.key, t: performance.now() - startTime, type: 'down' });
+  updateStats();
+  btnSave.disabled   = false;
+  btnReplay.disabled = false;
+});
+
+editor.addEventListener('keyup', e => {
+  if (startTime === null) return;
+  events.push({ key: e.key, t: performance.now() - startTime, type: 'up' });
+});
+
+function updateStats() {
+  const downs  = events.filter(e => e.type === 'down');
+  const backs  = downs.filter(e => e.key === 'Backspace').length;
+  const dur    = startTime ? ((performance.now() - startTime) / 1000).toFixed(1) : 0;
+  let pauses   = 0;
+  let prev     = null;
+  for (const e of downs) {
+    if (prev !== null && (e.t - prev) > 1000) pauses++;
+    prev = e.t;
+  }
+  document.getElementById('stat-keys').textContent   = downs.length;
+  document.getElementById('stat-back').textContent   = backs;
+  document.getElementById('stat-dur').textContent    = dur + 's';
+  document.getElementById('stat-pauses').textContent = pauses;
+}
+
+// ── Sauvegarde ────────────────────────────────────────────────────────────────
+btnSave.addEventListener('click', async () => {
+  setStatus('Sauvegarde en cours…', '');
+  try {
+    const res = await fetch(`${API}/api/meliinda/record`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: labelInp.value || null, events }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { id } = await res.json();
+    setStatus(`Sauvegardé · id : ${id}`, 'ok');
+    loadLibrary();
+  } catch (err) {
+    setStatus(`Erreur : ${err.message}`, 'err');
+  }
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+btnReset.addEventListener('click', () => {
+  events = []; startTime = null;
+  editor.value = '';
+  btnSave.disabled = btnReplay.disabled = true;
+  updateStats();
+  setStatus('', '');
+  stopReplay();
+});
+
+// ── Replay ────────────────────────────────────────────────────────────────────
+btnReplay.addEventListener('click', () => startReplay(events));
+btnStop.addEventListener('click', stopReplay);
+
+function startReplay(evts) {
+  stopReplay();
+  replayWrap.style.display = 'block';
+  replayStage.innerHTML = '<span class="cursor"></span>';
+
+  // Reconstitue l'état du buffer à chaque instant (avec les suppressions)
+  const downs = evts.filter(e => e.type === 'down');
+  let buffer  = [];   // [{char, deleted}]
+  let states  = [];   // snapshot du buffer à chaque keydown
+
+  for (const ev of downs) {
+    if (ev.key === 'Backspace') {
+      // Marque le dernier char non supprimé comme supprimé
+      for (let i = buffer.length - 1; i >= 0; i--) {
+        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+      }
+    } else if (ev.key.length === 1 || ev.key === 'Enter') {
+      buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
+    }
+    states.push({ t: ev.t, snapshot: buffer.map(c => ({ ...c })) });
+  }
+
+  for (const { t, snapshot } of states) {
+    const timer = setTimeout(() => renderSnapshot(snapshot), t);
+    replayTimers.push(timer);
+  }
+}
+
+function renderSnapshot(snapshot) {
+  // Regroupe les séquences continues de même état
+  let html = '<span class="cursor"></span>';
+  let i = snapshot.length - 1;
+  // Cherche la limite entre texte actif et suppressions trailing
+  // On affiche : texte actif | suppressions (barrées) | texte actif | …
+  let parts = [];
+  let run = null;
+  for (const c of snapshot) {
+    if (!run || run.deleted !== c.deleted) {
+      run = { deleted: c.deleted, chars: [] };
+      parts.push(run);
+    }
+    run.chars.push(c.char === '\n' ? '↵\n' : c.char);
+  }
+  html = parts.map(p => {
+    const txt = p.chars.join('').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return p.deleted ? `<span class="ghost">${txt}</span>` : txt;
+  }).join('') + '<span class="cursor"></span>';
+  replayStage.innerHTML = html;
+}
+
+function stopReplay() {
+  replayTimers.forEach(clearTimeout);
+  replayTimers = [];
+  replayWrap.style.display = 'none';
+}
+
+// ── Bibliothèque ──────────────────────────────────────────────────────────────
+async function loadLibrary() {
+  const list = document.getElementById('seq-list');
+  try {
+    const res  = await fetch(`${API}/api/meliinda/sequences`);
+    const data = await res.json();
+    if (!data.length) {
+      list.innerHTML = '<span style="font-size:0.65rem;color:var(--dim)">Aucune séquence enregistrée.</span>';
+      return;
+    }
+    list.innerHTML = data.map(s => `
+      <div class="seq-item" data-id="${s.id}">
+        <span class="seq-lbl">${s.label || '(sans label)'}</span>
+        <span class="seq-id">${s.id.slice(0,8)}…</span>
+        <span class="seq-date">${new Date(s.created_at).toLocaleString('fr-FR')}</span>
+      </div>
+    `).join('');
+    list.querySelectorAll('.seq-item').forEach(el => {
+      el.addEventListener('click', () => loadAndReplay(el.dataset.id));
+    });
+  } catch {
+    list.innerHTML = '<span style="font-size:0.65rem;color:var(--red)">Erreur de chargement.</span>';
+  }
+}
+
+async function loadAndReplay(id) {
+  setStatus('Chargement…', '');
+  try {
+    const res = await fetch(`${API}/api/meliinda/sequence/${id}`);
+    if (!res.ok) throw new Error(await res.text());
+    const seq = await res.json();
+    setStatus(`Replay · ${seq.label || id.slice(0,8)}`, 'ok');
+    startReplay(seq.events);
+  } catch (err) {
+    setStatus(`Erreur : ${err.message}`, 'err');
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(msg, cls) {
+  status.textContent  = msg;
+  status.className    = cls;
+}
+
+// Init
+loadLibrary();
+</script>
+</body>
+</html>

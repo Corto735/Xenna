@@ -20,7 +20,7 @@ desktop = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build"]
 tauri            = { version = "2", features = [], optional = true }
 tauri-plugin-shell = { version = "2", optional = true }
 
-meliinda       = { path = "../../Meliinda" }
+meliinda       = { path = "../meliinda" }
 
 axum           = { version = "0.8", features = ["macros"] }
 tokio          = { version = "1",   features = ["full"] }
