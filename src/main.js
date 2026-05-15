@@ -632,7 +632,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'forge', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -644,6 +644,7 @@ window.setView = function (v) {
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
   if (v === 'apropos')    _mecenatStart();
+  if (v === 'meliinda')   meliindaInit();
 };
 
 // ── Mécénat — déverrouillage silencieux 15 s après le premier passage sur À propos ──
@@ -3725,3 +3726,267 @@ window.quizzSetPays     = quizzSetPays;
 window.quizzToggleCarre = quizzToggleCarre;
 window.quizzFiftyFifty  = quizzFiftyFifty;
 
+
+// ── Meliinda ─────────────────────────────────────────────────────────────────
+let _mlInited = false;
+let _mlReplay = null;
+
+function meliindaInit() {
+  if (_mlInited) { mlLoadLibrary(); return; }
+  _mlInited = true;
+
+  let mlEvents    = [];
+  let mlStartTime = null;
+  let mlTimers    = [];
+
+  const editor      = document.getElementById('ml-editor');
+  const btnSave     = document.getElementById('ml-btn-save');
+  const btnReplay   = document.getElementById('ml-btn-replay');
+  const btnNew      = document.getElementById('ml-btn-new');
+  const btnStop     = document.getElementById('ml-btn-stop');
+  const btnExport   = document.getElementById('ml-btn-export');
+  const labelInp    = document.getElementById('ml-label-input');
+  const statusEl    = document.getElementById('ml-status');
+  const replayWrap  = document.getElementById('ml-replay-wrap');
+  const replayStage = document.getElementById('ml-replay-stage');
+
+  // ── Capture ────────────────────────────────────────────────────────────────
+  editor.addEventListener('keydown', e => {
+    if (mlStartTime === null) mlStartTime = performance.now();
+    mlEvents.push({ key: e.key, t: performance.now() - mlStartTime, type: 'down' });
+    mlUpdateStats();
+    btnSave.disabled = btnReplay.disabled = btnExport.disabled = false;
+  });
+
+  editor.addEventListener('keyup', e => {
+    if (mlStartTime === null) return;
+    mlEvents.push({ key: e.key, t: performance.now() - mlStartTime, type: 'up' });
+  });
+
+  function mlUpdateStats() {
+    const downs = mlEvents.filter(e => e.type === 'down');
+    const backs = downs.filter(e => e.key === 'Backspace').length;
+    const dur   = mlStartTime ? ((performance.now() - mlStartTime) / 1000).toFixed(1) : 0;
+    let pauses  = 0, prev = null;
+    for (const e of downs) { if (prev !== null && (e.t - prev) > 1000) pauses++; prev = e.t; }
+    document.getElementById('ml-stat-keys').textContent   = downs.length;
+    document.getElementById('ml-stat-back').textContent   = backs;
+    document.getElementById('ml-stat-dur').textContent    = dur + 's';
+    document.getElementById('ml-stat-pauses').textContent = pauses;
+  }
+
+  // ── Sauvegarde ────────────────────────────────────────────────────────────
+  btnSave.addEventListener('click', async () => {
+    mlSetStatus('Sauvegarde en cours…', '');
+    try {
+      const res = await fetch('/api/meliinda/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: labelInp.value || null, events: mlEvents }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { id } = await res.json();
+      mlSetStatus(`Sauvegardé · id : ${id}`, 'ok');
+      mlLoadLibrary();
+    } catch (err) { mlSetStatus(`Erreur : ${err.message}`, 'err'); }
+  });
+
+  // ── Nouvelle session ───────────────────────────────────────────────────────
+  btnNew.addEventListener('click', () => {
+    mlStopReplay();
+    mlEvents = []; mlStartTime = null;
+    editor.value = ''; labelInp.value = '';
+    btnSave.disabled = btnReplay.disabled = btnExport.disabled = true;
+    mlUpdateStats();
+    mlSetStatus('', '');
+    editor.focus();
+  });
+
+  // ── Replay ────────────────────────────────────────────────────────────────
+  _mlReplay = mlStartReplay;
+  document.getElementById('ml-btn-replay').addEventListener('click', () => mlStartReplay(mlEvents));
+  btnStop.addEventListener('click', mlStopReplay);
+
+  function mlBuildStates(evts) {
+    const downs = evts.filter(e => e.type === 'down');
+    let buffer = [], states = [];
+    for (const ev of downs) {
+      if (ev.key === 'Backspace') {
+        for (let i = buffer.length - 1; i >= 0; i--) {
+          if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+        }
+      } else if (ev.key.length === 1 || ev.key === 'Enter') {
+        buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
+      }
+      states.push({ t: ev.t, snapshot: buffer.map(c => ({ ...c })) });
+    }
+    return states;
+  }
+
+  function mlStartReplay(evts) {
+    mlStopReplay();
+    replayWrap.style.display = 'block';
+    replayStage.innerHTML = '<span class="ml-cursor"></span>';
+    const states = mlBuildStates(evts);
+    for (const { t, snapshot } of states) {
+      mlTimers.push(setTimeout(() => mlRenderSnapshot(snapshot, replayStage), t));
+    }
+  }
+
+  function mlStopReplay() {
+    mlTimers.forEach(clearTimeout); mlTimers = [];
+    replayWrap.style.display = 'none';
+  }
+
+  // ── Export vidéo (canvas + MediaRecorder → .webm) ─────────────────────────
+  btnExport.addEventListener('click', () => mlExportVideo(mlEvents, labelInp.value));
+
+  function mlSetStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = cls; }
+
+  mlLoadLibrary();
+}
+
+function mlRenderSnapshot(snapshot, target) {
+  let parts = [], run = null;
+  for (const c of snapshot) {
+    if (!run || run.deleted !== c.deleted) { run = { deleted: c.deleted, chars: [] }; parts.push(run); }
+    run.chars.push(c.char === '\n' ? '↵\n' : c.char);
+  }
+  target.innerHTML = parts.map(p => {
+    const txt = p.chars.join('').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return p.deleted ? `<span class="ml-ghost">${txt}</span>` : txt;
+  }).join('') + '<span class="ml-cursor"></span>';
+}
+
+function mlExportVideo(evts, label) {
+  if (!evts.length) return;
+  const statusEl = document.getElementById('ml-status');
+  const downs    = evts.filter(e => e.type === 'down');
+  const duration = downs[downs.length - 1].t + 800;
+
+  const W = 720, H = 320, PAD = 24, FONT = 15;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const stream   = canvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+  const chunks   = [];
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = (label || 'meliinda') + '.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = 'Vidéo exportée.'; statusEl.className = 'ok';
+  };
+
+  // Construit les états et dessine frame par frame
+  let buffer = [], frameTimers = [];
+
+  function drawState(snapshot, cursorOn) {
+    ctx.fillStyle = '#141417';
+    ctx.fillRect(0, 0, W, H);
+
+    // label en haut
+    ctx.font = `10px monospace`;
+    ctx.fillStyle = '#555566';
+    ctx.fillText('// Meliinda · empreinte de frappe', PAD, PAD);
+
+    ctx.font = `${FONT}px monospace`;
+    let x = PAD, y = PAD + 28;
+    for (const c of snapshot) {
+      const ch = c.char === '\n' ? '' : c.char;
+      ctx.fillStyle = c.deleted ? '#e05c5c' : '#eeeef2';
+      if (c.deleted) {
+        ctx.fillText(ch, x, y);
+        ctx.fillStyle = '#e05c5c';
+        ctx.fillRect(x, y - FONT * 0.6, ctx.measureText(ch).width, 1);
+      } else {
+        ctx.fillText(ch, x, y);
+      }
+      x += ctx.measureText(ch || ' ').width;
+      if (c.char === '\n' || x > W - PAD * 2) { x = PAD; y += FONT + 6; }
+    }
+    // curseur
+    if (cursorOn) {
+      ctx.fillStyle = '#5b8dee';
+      ctx.fillRect(x, y - FONT, 2, FONT + 2);
+    }
+  }
+
+  // Blink cursor
+  let cursorOn = true;
+  const blinkTimer = setInterval(() => { cursorOn = !cursorOn; }, 450);
+
+  // Planifie chaque frame
+  for (const ev of downs) {
+    if (ev.key === 'Backspace') {
+      for (let i = buffer.length - 1; i >= 0; i--) {
+        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+      }
+    } else if (ev.key.length === 1 || ev.key === 'Enter') {
+      buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
+    }
+    const snap = buffer.map(c => ({ ...c }));
+    frameTimers.push(setTimeout(() => drawState(snap, cursorOn), ev.t));
+  }
+
+  recorder.start();
+  statusEl.textContent = 'Export vidéo en cours…'; statusEl.className = '';
+
+  setTimeout(() => {
+    frameTimers.forEach(clearTimeout);
+    clearInterval(blinkTimer);
+    recorder.stop();
+  }, duration);
+}
+
+async function mlLoadLibrary() {
+  const list = document.getElementById('ml-seq-list');
+  if (!list) return;
+  try {
+    const res  = await fetch('/api/meliinda/sequences');
+    const data = await res.json();
+    if (!data.length) {
+      list.innerHTML = '<span style="font-size:0.65rem;color:var(--dim)">Aucune séquence enregistrée.</span>';
+      return;
+    }
+    list.innerHTML = data.map(s => `
+      <div class="ml-seq-item" data-id="${s.id}">
+        <span class="ml-seq-lbl">${s.label || '(sans label)'}</span>
+        <span class="ml-seq-id">${s.id.slice(0,8)}…</span>
+        <span class="ml-seq-date">${new Date(s.created_at).toLocaleString('fr-FR')}</span>
+        <button class="ml-btn ml-danger ml-del" data-id="${s.id}" style="padding:0.25rem 0.6rem;font-size:0.58rem">✕</button>
+      </div>`).join('');
+    list.querySelectorAll('.ml-seq-item').forEach(el => {
+      el.addEventListener('click', ev => {
+        if (ev.target.classList.contains('ml-del')) return;
+        mlLoadAndReplay(el.dataset.id);
+      });
+    });
+    list.querySelectorAll('.ml-del').forEach(btn =>
+      btn.addEventListener('click', async ev => {
+        ev.stopPropagation();
+        if (!confirm('Supprimer cette séquence ?')) return;
+        await fetch(`/api/meliinda/sequence/${btn.dataset.id}`, { method: 'DELETE' });
+        mlLoadLibrary();
+      })
+    );
+  } catch { list.innerHTML = '<span style="font-size:0.65rem;color:var(--red)">Erreur de chargement.</span>'; }
+}
+
+async function mlLoadAndReplay(id) {
+  const statusEl = document.getElementById('ml-status');
+  statusEl.textContent = 'Chargement…'; statusEl.className = '';
+  try {
+    const res = await fetch(`/api/meliinda/sequence/${id}`);
+    if (!res.ok) throw new Error(await res.text());
+    const seq = await res.json();
+    statusEl.textContent = `Replay · ${seq.label || id.slice(0,8)}`; statusEl.className = 'ok';
+    if (_mlReplay) _mlReplay(seq.events);
+  } catch (err) { statusEl.textContent = `Erreur : ${err.message}`; statusEl.className = 'err'; }
+}

@@ -24,6 +24,7 @@ use xenna_paie_lib::{
     forge::forge_router,
     models::{Salarie, Statut},
 };
+use meliinda::meliinda_router;
 
 type Db = Arc<SqlitePool>;
 
@@ -164,10 +165,15 @@ async fn main() {
         .allow_methods([Method::GET, Method::POST])
         .allow_headers([header::CONTENT_TYPE]);
 
+    let meliinda = meliinda_router(pool.clone())
+        .await
+        .expect("Impossible d'initialiser Meliinda");
+
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
         .merge(forge_router())
+        .merge(meliinda)
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))
         .layer(cors)

@@ -1243,6 +1243,94 @@
 
     .view-mecenat { display: none; padding: 1.5rem; max-width: 560px; margin: 0 auto 3rem; }
 
+    /* ── Meliinda ── */
+    body.is-meliinda .view-desktop,
+    body.is-meliinda .view-mobile,
+    body.is-meliinda .view-annuel { display: none !important; }
+    body.is-meliinda .view-bar    { display: none !important; }
+    body.is-meliinda .view-meliinda { display: flex; }
+
+    .view-meliinda {
+      display: none; flex-direction: column; align-items: center;
+      padding: 2rem 1rem; width: 100%;
+    }
+    .ml-card {
+      width: 100%; max-width: 720px; background: var(--bg2);
+      border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem;
+    }
+    .ml-lbl {
+      font-size: 0.55rem; color: var(--dim); letter-spacing: 0.18em;
+      text-transform: uppercase; margin-bottom: 0.8rem;
+    }
+    .ml-header {
+      width: 100%; max-width: 720px; margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+    }
+    .ml-header h2 { font-size: 1.1rem; color: var(--white); letter-spacing: 0.12em; }
+    .ml-header p  { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.15em;
+                    text-transform: uppercase; margin-top: 0.3rem; }
+    #ml-editor {
+      width: 100%; min-height: 140px; background: var(--bg3);
+      border: 1px solid var(--border); color: var(--white);
+      font-family: inherit; font-size: 0.9rem; padding: 0.8rem;
+      outline: none; resize: vertical; line-height: 1.7;
+      transition: border-color 0.15s;
+    }
+    #ml-editor:focus { border-color: var(--blue); }
+    .ml-stats {
+      font-size: 0.6rem; color: var(--muted); margin-top: 0.6rem;
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .ml-stats span { display: flex; gap: 0.4rem; align-items: center; }
+    .ml-stats b { color: var(--yellow); }
+    .ml-row { display: flex; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap; }
+    #ml-label-input {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--white); font-family: inherit; font-size: 0.8rem;
+      padding: 0.4rem 0.7rem; outline: none; flex: 1;
+      transition: border-color 0.15s;
+    }
+    #ml-label-input:focus { border-color: var(--blue); }
+    #ml-label-input::placeholder { color: var(--dim); }
+    .ml-btn {
+      background: none; border: 1px solid var(--blue); color: var(--blue);
+      font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
+      padding: 0.45rem 1rem; cursor: pointer; transition: all 0.15s;
+    }
+    .ml-btn:hover:not(:disabled) { background: var(--blue); color: var(--bg); }
+    .ml-btn:disabled { opacity: 0.35; cursor: default; border-color: var(--dim); color: var(--dim); }
+    .ml-btn.ml-danger { border-color: var(--red); color: var(--red); }
+    .ml-btn.ml-danger:hover:not(:disabled) { background: var(--red); color: var(--bg); }
+    #ml-status {
+      font-size: 0.6rem; color: var(--muted); margin-top: 0.5rem;
+      min-height: 1.2em; letter-spacing: 0.05em;
+    }
+    #ml-status.ok  { color: var(--green); }
+    #ml-status.err { color: var(--red); }
+    #ml-replay-wrap { display: none; }
+    #ml-replay-stage {
+      width: 100%; min-height: 140px; background: var(--bg3);
+      border: 1px solid var(--border); padding: 0.8rem;
+      font-size: 0.9rem; line-height: 1.7; color: var(--white);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .ml-ghost { color: var(--red); text-decoration: line-through; opacity: 0.55; font-style: italic; }
+    .ml-cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--blue); vertical-align: text-bottom;
+      animation: blink 0.9s step-start infinite;
+    }
+    #ml-seq-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .ml-seq-item {
+      display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0.7rem;
+      background: var(--bg3); border: 1px solid var(--border); cursor: pointer;
+      font-size: 0.68rem; transition: border-color 0.12s;
+    }
+    .ml-seq-item:hover { border-color: var(--blue); }
+    .ml-seq-item .ml-seq-lbl  { color: var(--white); flex: 1; }
+    .ml-seq-item .ml-seq-id   { color: var(--dim); font-size: 0.55rem; flex-shrink: 0; }
+    .ml-seq-item .ml-seq-date { color: var(--muted); font-size: 0.55rem; flex-shrink: 0; }
+
     /* ── Quiz paie ── */
     .qz-wrap { max-width: 640px; margin: 0 auto; }
     .qz-head {
@@ -1821,7 +1909,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.2</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.3</div>
     </div>
 
     <!-- Burger menu -->
@@ -1845,6 +1933,10 @@
         <button class="burger-item" onclick="setView('hercule'); closeBurger()">
           <span class="burger-item-icon">□</span>
           Hercuule <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Compta</span>
+        </button>
+        <button class="burger-item" onclick="setView('meliinda'); closeBurger()">
+          <span class="burger-item-icon">✎</span>
+          Meliinda <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">prototype</span>
         </button>
         <button class="burger-item" onclick="setView('forge'); closeBurger()">
           <span class="burger-item-icon">⬡</span>
@@ -3140,6 +3232,48 @@
       ♥ &nbsp;fr.tipeee.com/xenna-paye
     </button>
   </div><!-- /view-mecenat -->
+
+  <!-- ════════════════════════════════
+       VUE MELIINDA
+  ════════════════════════════════ -->
+  <div class="view-meliinda">
+    <div class="ml-header">
+      <h2>Meliinda</h2>
+      <p>empreinte de frappe · enregistrement et replay</p>
+    </div>
+
+    <div class="ml-card">
+      <div class="ml-lbl">// Enregistrement</div>
+      <textarea id="ml-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+      <div class="ml-stats">
+        <span>Frappes : <b id="ml-stat-keys">0</b></span>
+        <span>Corrections : <b id="ml-stat-back">0</b></span>
+        <span>Durée : <b id="ml-stat-dur">0s</b></span>
+        <span>Pauses &gt;1s : <b id="ml-stat-pauses">0</b></span>
+      </div>
+      <div class="ml-row">
+        <input type="text" id="ml-label-input" placeholder="Label (optionnel)">
+        <button class="ml-btn" id="ml-btn-save" disabled>[ Sauvegarder ]</button>
+        <button class="ml-btn ml-danger" id="ml-btn-replay" disabled>[ Replay ]</button>
+        <button class="ml-btn" id="ml-btn-export" disabled>[ Export vidéo ]</button>
+        <button class="ml-btn" id="ml-btn-new">[ Nouvelle session ]</button>
+      </div>
+      <div id="ml-status"></div>
+    </div>
+
+    <div class="ml-card" id="ml-replay-wrap">
+      <div class="ml-lbl">// Replay · restitution fidèle</div>
+      <div id="ml-replay-stage"><span class="ml-cursor"></span></div>
+      <div class="ml-row">
+        <button class="ml-btn" id="ml-btn-stop">[ Arrêter ]</button>
+      </div>
+    </div>
+
+    <div class="ml-card">
+      <div class="ml-lbl">// Bibliothèque</div>
+      <div id="ml-seq-list"><span style="font-size:0.65rem;color:var(--dim)">Chargement…</span></div>
+    </div>
+  </div><!-- /view-meliinda -->
 
   <!-- ── Modal formule mathématique ── -->
   <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">
