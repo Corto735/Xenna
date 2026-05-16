@@ -317,6 +317,28 @@
     }
     body.bw-mode .expl-txt { color: #000000 !important; }
     body.bw-mode .expl-ref { color: #333333 !important; border-color: #555 !important; }
+    /* Mobile — panneau d'explication (fond #030710, texte #f9a8d4 hardcodés) */
+    body.bw-mode .mob-expand {
+      background: #f4f4f4 !important;
+      border-left-color: #000000 !important;
+      border-bottom-color: #cccccc !important;
+    }
+    body.bw-mode .mob-exp-txt { color: #000000 !important; }
+    body.bw-mode .mob-exp-loi { color: #333333 !important; border-color: #555555 !important; }
+    body.bw-mode .mob-expand .fm-generic,
+    body.bw-mode .mob-expand .fm-base-note,
+    body.bw-mode .mob-expand .fm-fillon { color: #000000 !important; border-left-color: #000000 !important; }
+    body.bw-mode .mob-expand .fm-calc td,
+    body.bw-mode .mob-expand .fm-calc td.c-base,
+    body.bw-mode .mob-expand .fm-calc td.c-taux { color: #000000 !important; }
+    body.bw-mode .mob-expand .fm-calc td.fm-op { color: #555555 !important; opacity: 1 !important; }
+    /* Desktop — couleurs contextuelles fm-type-* (jaune/orange/vert/violet hardcodés) */
+    body.bw-mode .fm-type-sal .fm-generic,   body.bw-mode .fm-type-sal .fm-base-note,
+    body.bw-mode .fm-type-pat .fm-generic,   body.bw-mode .fm-type-pat .fm-base-note,
+    body.bw-mode .fm-type-alleg .fm-generic, body.bw-mode .fm-type-alleg .fm-base-note,
+    body.bw-mode .fm-type-pas .fm-generic,   body.bw-mode .fm-type-pas .fm-base-note {
+      color: #000000 !important; border-left-color: #000000 !important;
+    }
 
     /* ── Mode dyslexie ──────────────────────────────────────────────────── */
     body.dyslexia-mode,
