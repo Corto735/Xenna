@@ -1,6 +1,7 @@
 pub mod calculs;
 pub mod db;
 pub mod forge;
+pub mod quizz;
 pub mod models;
 
 #[cfg(feature = "desktop")]

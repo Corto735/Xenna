@@ -22,6 +22,7 @@ use xenna_paie_lib::{
     calculs::{generer_annee, generer_bulletin},
     db::{init_db, ContextPaie},
     forge::forge_router,
+    quizz::quizz_router,
     models::{Salarie, Statut},
 };
 use meliinda::meliinda_router;
@@ -173,6 +174,7 @@ async fn main() {
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
         .merge(forge_router())
+        .merge(quizz_router())
         .merge(meliinda)
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))

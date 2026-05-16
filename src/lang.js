@@ -183,6 +183,23 @@ export const STATIC_DICT = {
     '⚠ Année invalide.':       '⚠ Ungültiges Jahr.',
     'ERREUR :':                'FEHLER :',
     'Traduction échouée :':    'Übersetzung fehlgeschlagen :',
+
+    // Quizz community
+    'Aucune entrée pour ce pays.':        'Keine Einträge für dieses Land.',
+    'chargement…':                        'wird geladen…',
+    'Pseudo requis.':                     'Nickname erforderlich.',
+    'Minimum 5 questions requises.':      'Mindestens 5 Fragen erforderlich.',
+    '✓ Score soumis !':                   '✓ Punktzahl eingereicht!',
+    'SOUMETTRE':                          'EINREICHEN',
+    '💡 Proposer une question':           '💡 Frage vorschlagen',
+    '// Proposer une question':           '// Frage vorschlagen',
+    'QUESTION *':                         'FRAGE *',
+    'RÉPONSE':                            'ANTWORT',
+    'SOURCE LÉGALE':                      'RECHTSGRUNDLAGE',
+    'PSEUDO':                             'NICKNAME',
+    'ENVOYER':                            'SENDEN',
+    '✓ Merci pour votre contribution !':  '✓ Danke für Ihren Beitrag!',
+    'Question requise.':                  'Frage erforderlich.',
   },
 
   // ── Néerlandais belge (Vlaams) ─────────────────────────────────────────────
@@ -358,5 +375,22 @@ export const STATIC_DICT = {
     '⚠ Année invalide.':       '⚠ Ongeldig jaar.',
     'ERREUR :':                'FOUT :',
     'Traduction échouée :':    'Vertaling mislukt :',
+
+    // Quizz community
+    'Aucune entrée pour ce pays.':        'Geen gegevens voor dit land.',
+    'chargement…':                        'laden…',
+    'Pseudo requis.':                     'Gebruikersnaam vereist.',
+    'Minimum 5 questions requises.':      'Minimaal 5 vragen vereist.',
+    '✓ Score soumis !':                   '✓ Score ingediend!',
+    'SOUMETTRE':                          'INDIENEN',
+    '💡 Proposer une question':           '💡 Vraag voorstellen',
+    '// Proposer une question':           '// Vraag voorstellen',
+    'QUESTION *':                         'VRAAG *',
+    'RÉPONSE':                            'ANTWOORD',
+    'SOURCE LÉGALE':                      'WETTELIJKE BRON',
+    'PSEUDO':                             'GEBRUIKERSNAAM',
+    'ENVOYER':                            'VERZENDEN',
+    '✓ Merci pour votre contribution !':  '✓ Bedankt voor uw bijdrage!',
+    'Question requise.':                  'Vraag vereist.',
   },
 };

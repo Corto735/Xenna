@@ -1408,6 +1408,36 @@
       to   { opacity: 1; transform: scale(1); }
     }
     @media (max-width: 480px) { .qz-choix { grid-template-columns: 1fr; } }
+
+    /* Leaderboard panel */
+    .qz-lb-panel { display:none; margin-top:1.5rem; border:1px solid var(--border); background:var(--bg2); padding:1.25rem; }
+    .qz-lb-panel.open { display:block; }
+    .qz-lb-title { font-size:0.58rem; color:var(--yellow); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
+    .qz-lb-submit { margin-bottom:1.25rem; }
+    .qz-lb-row { display:flex; gap:.5rem; align-items:stretch; margin-bottom:.5rem; }
+    .qz-lb-table { width:100%; border-collapse:collapse; font-size:0.68rem; color:var(--text); margin-top:.75rem; }
+    .qz-lb-table th { color:var(--muted); font-weight:normal; letter-spacing:.08em; text-align:left; padding:.25rem .5rem; border-bottom:1px solid var(--border); }
+    .qz-lb-table td { padding:.3rem .5rem; }
+    .qz-lb-table tr:first-child td { color:var(--yellow); }
+    .qz-lb-empty { font-size:0.68rem; color:var(--muted); padding:.5rem 0; }
+    .qz-lb-msg   { font-size:0.68rem; color:var(--muted); margin-top:.4rem; }
+    .qz-lb-msg.ok  { color:var(--green); }
+    .qz-lb-msg.err { color:var(--red); }
+
+    /* Suggestion panel */
+    .qz-sugg-panel { display:none; margin-top:1rem; border:1px solid var(--border); background:var(--bg2); padding:1.25rem; }
+    .qz-sugg-panel.open { display:block; }
+    .qz-sugg-title { font-size:0.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
+    .qz-sugg-field { margin-bottom:.65rem; }
+    .qz-sugg-field label { display:block; font-size:0.62rem; color:var(--muted); letter-spacing:.08em; margin-bottom:.25rem; }
+    .qz-sugg-field textarea { width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:inherit; font-size:0.9rem; padding:.55rem .85rem; outline:none; resize:vertical; min-height:3.5rem; }
+    .qz-sugg-field textarea:focus { border-color:var(--blue); }
+    .qz-sugg-actions { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+    @media (max-width:480px) {
+      .qz-lb-row    { flex-direction:column; }
+      .qz-sugg-actions { flex-direction:column; align-items:flex-start; }
+    }
+
     .qz-pays-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.1rem; }
     .qz-pays-btn {
       font: 0.62rem/1 var(--font-mono, monospace); letter-spacing: 0.08em; text-transform: uppercase;
@@ -3143,6 +3173,8 @@
     <div class="qz-wrap">
       <div class="qz-head">
         <span class="sect-label" style="margin:0">QUIZZ PAIE</span>
+        <button class="qz-btn" id="qz-lb-btn" onclick="quizzToggleLb()"
+                style="font-size:0.68rem;padding:.2rem .6rem" title="Classement">🏆</button>
         <span class="qz-score" id="qz-score">0 / 0</span>
       </div>
 
@@ -3205,6 +3237,60 @@
         </div>
 
       </div><!-- /qz-play -->
+
+      <!-- Panneau classement (inline) -->
+      <div class="qz-lb-panel" id="qz-lb-panel">
+        <div class="qz-lb-title">🏆 CLASSEMENT — <span id="qz-lb-pays-label">FRANCE</span></div>
+        <div class="qz-lb-submit" id="qz-lb-submit" style="display:none">
+          <div style="font-size:0.68rem;color:var(--muted);margin-bottom:.6rem">
+            Votre score : <strong id="qz-lb-score-display" style="color:var(--yellow)">—</strong>
+          </div>
+          <div class="qz-lb-row">
+            <input id="qz-lb-pseudo" class="qz-input" type="text"
+                   placeholder="pseudo…" maxlength="50" autocomplete="off" style="max-width:180px"/>
+            <button class="qz-btn" onclick="quizzSoumettrScore()">SOUMETTRE</button>
+          </div>
+          <div class="qz-lb-msg" id="qz-lb-msg"></div>
+        </div>
+        <div id="qz-lb-body"><div class="qz-lb-empty">chargement…</div></div>
+      </div>
+
+      <!-- Toggle suggestion -->
+      <div style="margin-top:1.25rem;text-align:center">
+        <button class="qz-btn" onclick="quizzToggleSugg()"
+                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted)">
+          💡 Proposer une question
+        </button>
+      </div>
+
+      <!-- Panneau suggestion (inline) -->
+      <div class="qz-sugg-panel" id="qz-sugg-panel">
+        <div class="qz-sugg-title">// Proposer une question</div>
+        <div class="qz-sugg-field">
+          <label>QUESTION *</label>
+          <textarea id="qz-sugg-q" maxlength="500" placeholder="Énoncez votre question…"></textarea>
+        </div>
+        <div class="qz-sugg-field">
+          <label>RÉPONSE <span style="color:var(--dim)">(optionnel)</span></label>
+          <input id="qz-sugg-rep" class="qz-input" type="text" maxlength="200"
+                 placeholder="la réponse attendue…" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div class="qz-sugg-field">
+          <label>SOURCE LÉGALE <span style="color:var(--dim)">(optionnel)</span></label>
+          <input id="qz-sugg-src" class="qz-input" type="text" maxlength="300"
+                 placeholder="ex : Art. L3141-1 Code du travail…" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div class="qz-sugg-field">
+          <label>PSEUDO <span style="color:var(--dim)">(optionnel)</span></label>
+          <input id="qz-sugg-pseudo" class="qz-input" type="text" maxlength="50"
+                 placeholder="anonyme…" style="width:60%;box-sizing:border-box"/>
+        </div>
+        <div class="qz-sugg-actions">
+          <button class="qz-btn" onclick="quizzEnvoyerSuggestion()">ENVOYER</button>
+          <span class="qz-lb-msg" id="qz-sugg-msg"></span>
+        </div>
+      </div>
+
     </div>
   </div>
 

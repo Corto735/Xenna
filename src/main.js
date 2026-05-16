@@ -3690,6 +3690,7 @@ function quizzSetPays(p) {
   document.getElementById('qz-start-wrap').style.display = 'flex';
   document.getElementById('qz-play').style.display = 'none';
   document.querySelector('.qz-pays-bar').classList.remove('locked');
+  if (_qzLbOpen) quizzChargerLb();
 }
 
 function quizzInit() {
@@ -3725,6 +3726,107 @@ window.quizzStart       = quizzStart;
 window.quizzSetPays     = quizzSetPays;
 window.quizzToggleCarre = quizzToggleCarre;
 window.quizzFiftyFifty  = quizzFiftyFifty;
+
+
+// ── Quizz community — Leaderboard & Suggestions ──────────────────────────────
+
+const QZ_PAYS_LABELS = {
+  fr:'FRANCE', fpt:'FONCTION PUBLIQUE', ch:'SUISSE',
+  lu:'LUXEMBOURG', it:'ITALIE', ca:'CANADA', qc:'QUÉBEC',
+};
+let _qzLbOpen = false, _qzSuggOpen = false;
+
+function quizzToggleLb() {
+  _qzLbOpen = !_qzLbOpen;
+  document.getElementById('qz-lb-panel').classList.toggle('open', _qzLbOpen);
+  if (_qzLbOpen) quizzChargerLb();
+}
+
+async function quizzChargerLb() {
+  document.getElementById('qz-lb-pays-label').textContent =
+    QZ_PAYS_LABELS[_qzPays] || _qzPays.toUpperCase();
+
+  const submitWrap = document.getElementById('qz-lb-submit');
+  if (_qzTotal >= 5 && _qzPlaying) {
+    document.getElementById('qz-lb-score-display').textContent =
+      `${_qzOk} / ${_qzTotal} (${Math.round(_qzOk * 100 / _qzTotal)} %)`;
+    submitWrap.style.display = 'block';
+  } else {
+    submitWrap.style.display = 'none';
+  }
+
+  const body = document.getElementById('qz-lb-body');
+  body.innerHTML = `<div class="qz-lb-empty">chargement…</div>`;
+  try {
+    const r = await fetch(`/quizz/leaderboard/${encodeURIComponent(_qzPays)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = await r.json();
+    body.innerHTML = rows.length
+      ? `<table class="qz-lb-table"><thead><tr>
+           <th>#</th><th>Pseudo</th><th>Score</th><th>%</th><th>Date</th>
+         </tr></thead><tbody>${rows.map(e => `<tr>
+           <td>${e.rang}</td><td>${esc(e.pseudo)}</td>
+           <td>${e.score} / ${e.total}</td><td>${e.pct} %</td><td>${esc(e.date)}</td>
+         </tr>`).join('')}</tbody></table>`
+      : `<div class="qz-lb-empty">Aucune entrée pour ce pays.</div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="qz-lb-empty" style="color:var(--red)">${esc(errToStr(e))}</div>`;
+  }
+}
+
+async function quizzSoumettrScore() {
+  const pseudo = document.getElementById('qz-lb-pseudo').value.trim();
+  const msgEl  = document.getElementById('qz-lb-msg');
+  msgEl.textContent = ''; msgEl.className = 'qz-lb-msg';
+  if (!pseudo) { msgEl.textContent = 'Pseudo requis.'; msgEl.className += ' err'; return; }
+  if (_qzTotal < 5) { msgEl.textContent = 'Minimum 5 questions requises.'; msgEl.className += ' err'; return; }
+  try {
+    const r = await fetch('/quizz/score', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ pseudo, pays: _qzPays, score: _qzOk, total: _qzTotal }),
+    });
+    if (!r.ok) throw new Error(await r.text() || `HTTP ${r.status}`);
+    msgEl.textContent = '✓ Score soumis !'; msgEl.className += ' ok';
+    document.getElementById('qz-lb-submit').style.display = 'none';
+    quizzChargerLb();
+  } catch (e) { msgEl.textContent = errToStr(e); msgEl.className += ' err'; }
+}
+
+function quizzToggleSugg() {
+  _qzSuggOpen = !_qzSuggOpen;
+  document.getElementById('qz-sugg-panel').classList.toggle('open', _qzSuggOpen);
+}
+
+async function quizzEnvoyerSuggestion() {
+  const question = document.getElementById('qz-sugg-q').value.trim();
+  const msgEl    = document.getElementById('qz-sugg-msg');
+  msgEl.textContent = ''; msgEl.className = 'qz-lb-msg';
+  if (!question) { msgEl.textContent = 'Question requise.'; msgEl.className += ' err'; return; }
+  try {
+    const r = await fetch('/quizz/suggestion', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        pays:    _qzPays,
+        question,
+        reponse: document.getElementById('qz-sugg-rep').value.trim()    || null,
+        source:  document.getElementById('qz-sugg-src').value.trim()    || null,
+        pseudo:  document.getElementById('qz-sugg-pseudo').value.trim() || null,
+      }),
+    });
+    if (!r.ok) throw new Error(await r.text() || `HTTP ${r.status}`);
+    msgEl.textContent = '✓ Merci pour votre contribution !'; msgEl.className += ' ok';
+    ['qz-sugg-q', 'qz-sugg-rep', 'qz-sugg-src', 'qz-sugg-pseudo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  } catch (e) { msgEl.textContent = errToStr(e); msgEl.className += ' err'; }
+}
+
+window.quizzToggleLb          = quizzToggleLb;
+window.quizzSoumettrScore     = quizzSoumettrScore;
+window.quizzToggleSugg        = quizzToggleSugg;
+window.quizzEnvoyerSuggestion = quizzEnvoyerSuggestion;
 
 
 // ── Meliinda ─────────────────────────────────────────────────────────────────
