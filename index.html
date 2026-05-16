@@ -1433,9 +1433,29 @@
     .qz-sugg-field textarea { width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:inherit; font-size:0.9rem; padding:.55rem .85rem; outline:none; resize:vertical; min-height:3.5rem; }
     .qz-sugg-field textarea:focus { border-color:var(--blue); }
     .qz-sugg-actions { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+    .qz-sugg-alts { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
+    .qz-sugg-wrongs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.4rem; }
+
+    /* Vote panel */
+    .qz-vote-panel { display:none; margin-top:1rem; border:1px solid var(--border); background:var(--bg2); padding:1.25rem; }
+    .qz-vote-panel.open { display:block; }
+    .qz-vote-title { font-size:0.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
+    .qz-vote-card { border:1px solid var(--border); background:var(--bg3); padding:.75rem 1rem; margin-bottom:.5rem; display:flex; align-items:flex-start; gap:.75rem; }
+    .qz-vote-q { flex:1; font-size:0.8rem; color:var(--text); line-height:1.5; }
+    .qz-vote-right { display:flex; flex-direction:column; align-items:center; gap:.3rem; flex-shrink:0; }
+    .qz-vote-count { font-size:0.62rem; color:var(--muted); letter-spacing:.06em; }
+    .qz-vote-btn { background:none; border:1px solid var(--border); color:var(--muted); font-family:inherit; font-size:0.68rem; padding:.25rem .55rem; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .qz-vote-btn:hover:not(:disabled) { border-color:var(--blue); color:var(--blue); }
+    .qz-vote-btn:disabled { opacity:.4; cursor:default; }
+    .qz-vote-btn.voted { border-color:var(--green); color:var(--green); }
+    .qz-vote-empty { font-size:0.68rem; color:var(--muted); padding:.5rem 0; }
+
     @media (max-width:480px) {
       .qz-lb-row    { flex-direction:column; }
       .qz-sugg-actions { flex-direction:column; align-items:flex-start; }
+      .qz-sugg-alts { grid-template-columns:1fr; }
+      .qz-sugg-wrongs { grid-template-columns:1fr; }
+      .qz-vote-card { flex-direction:column; }
     }
 
     .qz-pays-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.1rem; }
@@ -3271,9 +3291,24 @@
           <textarea id="qz-sugg-q" maxlength="500" placeholder="Énoncez votre question…"></textarea>
         </div>
         <div class="qz-sugg-field">
-          <label>RÉPONSE <span style="color:var(--dim)">(optionnel)</span></label>
+          <label>BONNE RÉPONSE <span style="color:var(--dim)">(optionnel)</span></label>
           <input id="qz-sugg-rep" class="qz-input" type="text" maxlength="200"
-                 placeholder="la réponse attendue…" style="width:100%;box-sizing:border-box"/>
+                 placeholder="la réponse principale…" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div class="qz-sugg-field">
+          <label>RÉPONSES ALTERNATIVES <span style="color:var(--dim)">(optionnel — autres formulations acceptées)</span></label>
+          <div class="qz-sugg-alts">
+            <input id="qz-sugg-alt1" class="qz-input" type="text" maxlength="200" placeholder="ex : 9.2 %"/>
+            <input id="qz-sugg-alt2" class="qz-input" type="text" maxlength="200" placeholder="ex : 9,20%"/>
+          </div>
+        </div>
+        <div class="qz-sugg-field">
+          <label>MAUVAISES RÉPONSES / DISTRACTEURS <span style="color:var(--dim)">(optionnel)</span></label>
+          <div class="qz-sugg-wrongs">
+            <input id="qz-sugg-mr1" class="qz-input" type="text" maxlength="200" placeholder="fausse réponse 1"/>
+            <input id="qz-sugg-mr2" class="qz-input" type="text" maxlength="200" placeholder="fausse réponse 2"/>
+            <input id="qz-sugg-mr3" class="qz-input" type="text" maxlength="200" placeholder="fausse réponse 3"/>
+          </div>
         </div>
         <div class="qz-sugg-field">
           <label>SOURCE LÉGALE <span style="color:var(--dim)">(optionnel)</span></label>
@@ -3289,6 +3324,20 @@
           <button class="qz-btn" onclick="quizzEnvoyerSuggestion()">ENVOYER</button>
           <span class="qz-lb-msg" id="qz-sugg-msg"></span>
         </div>
+      </div>
+
+      <!-- Toggle vote -->
+      <div style="margin-top:1rem;text-align:center">
+        <button class="qz-btn" onclick="quizzToggleVote()"
+                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted)">
+          🗳 Voter pour une question
+        </button>
+      </div>
+
+      <!-- Panneau vote (inline) -->
+      <div class="qz-vote-panel" id="qz-vote-panel">
+        <div class="qz-vote-title">// Questions proposées par la communauté — <span id="qz-vote-pays-label">FRANCE</span></div>
+        <div id="qz-vote-body"><div class="qz-vote-empty">chargement…</div></div>
       </div>
 
     </div>

@@ -200,6 +200,14 @@ export const STATIC_DICT = {
     'ENVOYER':                            'SENDEN',
     '✓ Merci pour votre contribution !':  '✓ Danke für Ihren Beitrag!',
     'Question requise.':                  'Frage erforderlich.',
+    'BONNE RÉPONSE':                      'RICHTIGE ANTWORT',
+    'RÉPONSES ALTERNATIVES':              'ALTERNATIVE ANTWORTEN',
+    'MAUVAISES RÉPONSES / DISTRACTEURS':  'FALSCHE ANTWORTEN / DISTRAKTOREN',
+    '🗳 Voter pour une question':          '🗳 Für eine Frage abstimmen',
+    '// Questions proposées par la communauté': '// Von der Community vorgeschlagene Fragen',
+    'Aucune suggestion pour ce pays.':    'Keine Vorschläge für dieses Land.',
+    '✓ voté':                             '✓ abgestimmt',
+    '👍 voter':                           '👍 abstimmen',
   },
 
   // ── Néerlandais belge (Vlaams) ─────────────────────────────────────────────
@@ -392,5 +400,13 @@ export const STATIC_DICT = {
     'ENVOYER':                            'VERZENDEN',
     '✓ Merci pour votre contribution !':  '✓ Bedankt voor uw bijdrage!',
     'Question requise.':                  'Vraag vereist.',
+    'BONNE RÉPONSE':                      'JUIST ANTWOORD',
+    'RÉPONSES ALTERNATIVES':              'ALTERNATIEVE ANTWOORDEN',
+    'MAUVAISES RÉPONSES / DISTRACTEURS':  'FOUT ANTWOORDEN / DISTRACTOREN',
+    '🗳 Voter pour une question':          '🗳 Stemmen op een vraag',
+    '// Questions proposées par la communauté': '// Door de community voorgestelde vragen',
+    'Aucune suggestion pour ce pays.':    'Geen suggesties voor dit land.',
+    '✓ voté':                             '✓ gestemd',
+    '👍 voter':                           '👍 stemmen',
   },
 };

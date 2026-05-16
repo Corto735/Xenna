@@ -3455,6 +3455,16 @@ const QUIZZ_DATA = [
     rep: "Oui, même taux de base (7 %)", mr: ["Non, exonération totale en FPT", "Non, taux réduit à 5 %", "Oui, mais uniquement pour les collectivités > 50 agents"], src: "CSS, art. L241-2 — applicable" },
   { id:210, pays:'fpt', q: "La part déductible de la CSG est-elle identique pour les agents FPT et les salariés du privé ?",
     rep: "Oui, 6,8 % déductibles sur les 9,2 % totaux", mr: ["Non, 7,5 % déductibles pour les fonctionnaires", "Non, la totalité est non-déductible en FP", "Non, taux réduit 5 %"], src: "CGI, art. 154 quinquies — applicable FP" },
+
+  // ── Gestion de la paie ────────────────────────────────────────────────────
+  { id:211, pays:'fr', q: "Combien de temps l'employeur est-il tenu de conserver les doubles des bulletins de paie ?",
+    rep: "5 ans", mr: ["3 ans", "7 ans", "10 ans"], src: "C. trav., art. L3243-4" },
+  { id:212, pays:'fr', q: "Quel est le délai de prescription pour réclamer un rappel de salaire ?",
+    rep: "3 ans", mr: ["1 an", "2 ans", "5 ans"], src: "C. trav., art. L3245-1" },
+  { id:213, pays:'fr', q: "Dans quel délai maximum avant l'embauche la DPAE peut-elle être transmise à l'URSSAF ?",
+    rep: "8 jours", mr: ["24 heures", "15 jours", "48 heures"], src: "CSS, art. R1221-1" },
+  { id:214, pays:'fr', q: "Quel est le délai de carence légal de la Sécurité sociale avant versement des indemnités journalières maladie ?",
+    rep: "3 jours", mr: ["1 jour", "5 jours", "7 jours"], src: "CSS, art. L323-1" },
 ];
 
 const QZ_SESSION_KEY = 'xenna-qz-pending';
@@ -3690,7 +3700,8 @@ function quizzSetPays(p) {
   document.getElementById('qz-start-wrap').style.display = 'flex';
   document.getElementById('qz-play').style.display = 'none';
   document.querySelector('.qz-pays-bar').classList.remove('locked');
-  if (_qzLbOpen) quizzChargerLb();
+  if (_qzLbOpen)   quizzChargerLb();
+  if (_qzVoteOpen) quizzChargerVotes();
 }
 
 function quizzInit() {
@@ -3803,30 +3814,132 @@ async function quizzEnvoyerSuggestion() {
   const msgEl    = document.getElementById('qz-sugg-msg');
   msgEl.textContent = ''; msgEl.className = 'qz-lb-msg';
   if (!question) { msgEl.textContent = 'Question requise.'; msgEl.className += ' err'; return; }
+
+  const alt1 = document.getElementById('qz-sugg-alt1').value.trim();
+  const alt2 = document.getElementById('qz-sugg-alt2').value.trim();
+  const repsAlt = [alt1, alt2].filter(Boolean).join(' | ') || null;
+
+  const mr1 = document.getElementById('qz-sugg-mr1').value.trim();
+  const mr2 = document.getElementById('qz-sugg-mr2').value.trim();
+  const mr3 = document.getElementById('qz-sugg-mr3').value.trim();
+  const mauvaiseRep = [mr1, mr2, mr3].filter(Boolean).join(' | ') || null;
+
   try {
     const r = await fetch('/quizz/suggestion', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        pays:    _qzPays,
+        pays:         _qzPays,
         question,
-        reponse: document.getElementById('qz-sugg-rep').value.trim()    || null,
-        source:  document.getElementById('qz-sugg-src').value.trim()    || null,
-        pseudo:  document.getElementById('qz-sugg-pseudo').value.trim() || null,
+        reponse:      document.getElementById('qz-sugg-rep').value.trim()    || null,
+        repsAlt,
+        mauvaiseRep,
+        source:       document.getElementById('qz-sugg-src').value.trim()    || null,
+        pseudo:       document.getElementById('qz-sugg-pseudo').value.trim() || null,
       }),
     });
     if (!r.ok) throw new Error(await r.text() || `HTTP ${r.status}`);
     msgEl.textContent = '✓ Merci pour votre contribution !'; msgEl.className += ' ok';
-    ['qz-sugg-q', 'qz-sugg-rep', 'qz-sugg-src', 'qz-sugg-pseudo'].forEach(id => {
+    ['qz-sugg-q','qz-sugg-rep','qz-sugg-alt1','qz-sugg-alt2',
+     'qz-sugg-mr1','qz-sugg-mr2','qz-sugg-mr3','qz-sugg-src','qz-sugg-pseudo'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    if (_qzVoteOpen) quizzChargerVotes();
   } catch (e) { msgEl.textContent = errToStr(e); msgEl.className += ' err'; }
+}
+
+// ── Quizz — Vote communautaire ────────────────────────────────────────────────
+
+const QZ_VOTER_KEY  = 'xenna-voter-id';
+const QZ_VOTED_KEY  = 'xenna-qz-voted-ids';
+let _qzVoteOpen = false;
+
+function _qzGetVoterId() {
+  let id = localStorage.getItem(QZ_VOTER_KEY);
+  if (!id) {
+    try { id = crypto.randomUUID(); } catch (_) {}
+    if (!id) id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    localStorage.setItem(QZ_VOTER_KEY, id);
+  }
+  return id;
+}
+
+function _qzVotedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(QZ_VOTED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+
+function _qzMarkVoted(id) {
+  const ids = _qzVotedIds();
+  ids.add(id);
+  localStorage.setItem(QZ_VOTED_KEY, JSON.stringify([...ids]));
+}
+
+function quizzToggleVote() {
+  _qzVoteOpen = !_qzVoteOpen;
+  document.getElementById('qz-vote-panel').classList.toggle('open', _qzVoteOpen);
+  if (_qzVoteOpen) quizzChargerVotes();
+}
+
+async function quizzChargerVotes() {
+  document.getElementById('qz-vote-pays-label').textContent =
+    QZ_PAYS_LABELS[_qzPays] || _qzPays.toUpperCase();
+  const body  = document.getElementById('qz-vote-body');
+  const voted = _qzVotedIds();
+  body.innerHTML = `<div class="qz-vote-empty">chargement…</div>`;
+  try {
+    const r = await fetch(`/quizz/suggestions/${encodeURIComponent(_qzPays)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = await r.json();
+    if (!rows.length) {
+      body.innerHTML = `<div class="qz-vote-empty">Aucune suggestion pour ce pays.</div>`;
+      return;
+    }
+    body.innerHTML = rows.map(s => {
+      const hasVoted = voted.has(s.id);
+      return `<div class="qz-vote-card">
+        <div class="qz-vote-q">${esc(s.question)}</div>
+        <div class="qz-vote-right">
+          <span class="qz-vote-count">${s.votes} vote${s.votes !== 1 ? 's' : ''}</span>
+          <button class="qz-vote-btn${hasVoted ? ' voted' : ''}"
+                  ${hasVoted ? 'disabled' : `onclick="quizzVoter(${s.id},this)"`}>
+            ${hasVoted ? '✓ voté' : '👍 voter'}
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<div class="qz-vote-empty" style="color:var(--red)">${esc(errToStr(e))}</div>`;
+  }
+}
+
+async function quizzVoter(id, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/quizz/vote/${id}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ voterId: _qzGetVoterId() }),
+    });
+    if (!r.ok) throw new Error(await r.text() || `HTTP ${r.status}`);
+    const votes = await r.json();
+    _qzMarkVoted(id);
+    btn.textContent = '✓ voté';
+    btn.classList.add('voted');
+    const countEl = btn.closest('.qz-vote-card')?.querySelector('.qz-vote-count');
+    if (countEl) countEl.textContent = `${votes} vote${votes !== 1 ? 's' : ''}`;
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = `⚠ ${errToStr(e)}`;
+  }
 }
 
 window.quizzToggleLb          = quizzToggleLb;
 window.quizzSoumettrScore     = quizzSoumettrScore;
 window.quizzToggleSugg        = quizzToggleSugg;
 window.quizzEnvoyerSuggestion = quizzEnvoyerSuggestion;
+window.quizzToggleVote        = quizzToggleVote;
+window.quizzVoter             = quizzVoter;
 
 
 // ── Meliinda ─────────────────────────────────────────────────────────────────
