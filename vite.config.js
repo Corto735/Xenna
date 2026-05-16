@@ -11,6 +11,7 @@ export default defineConfig({
       '/forge':  { target: 'http://localhost:8080', changeOrigin: true },
       '/profil': { target: 'http://localhost:8080', changeOrigin: true },
       '/api':    { target: 'http://localhost:8080', changeOrigin: true },
+      '/quizz':  { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
   envPrefix: ["VITE_", "TAURI_"],
