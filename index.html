@@ -284,38 +284,39 @@
     }
     .flash-67 { animation: flash67 0.45s ease forwards; border-radius: 2px; }
 
-    /* Mode noir & blanc zébré */
+    /* Mode noir & blanc — fond clair, texte noir partout */
     body.bw-mode {
-      --bg:     #ffffff; --bg2:    #f2f2f2; --bg3:    #e8e8e8;
-      --text:   #000000; --muted:  #222222; --dim:    #555555;
+      --bg:     #ffffff; --bg2:    #f4f4f4; --bg3:    #e8e8e8;
+      --text:   #000000; --muted:  #333333; --dim:    #555555;
       --border: #000000; --blue:   #000000; --red:    #000000;
-      --orange: #000000; --green:  #000000; --purple: #000000; --gray: #000000;
+      --orange: #000000; --green:  #000000; --purple: #000000;
+      --gray:   #000000; --yellow: #000000; --white:  #000000;
     }
-    /* Zébrures mobile */
+    /* Zébrures mobile — deux gris très clairs, texte noir partout */
     body.bw-mode .mob-row:nth-child(odd)  { background: #ffffff !important; }
-    body.bw-mode .mob-row:nth-child(even) { background: #3a3a3a !important; }
-    body.bw-mode .mob-row:nth-child(odd)  * { color: #000000 !important; }
-    body.bw-mode .mob-row:nth-child(even) * { color: #ffffff !important; }
+    body.bw-mode .mob-row:nth-child(even) { background: #eeeeee !important; }
+    body.bw-mode .mob-row * { color: #000000 !important; }
     /* Zébrures desktop (tableau ascii) */
     body.bw-mode .ascii-tbl tr:nth-child(odd)  td { background: #ffffff; color: #000000 !important; }
-    body.bw-mode .ascii-tbl tr:nth-child(even) td { background: #3a3a3a; color: #ffffff !important; }
+    body.bw-mode .ascii-tbl tr:nth-child(even) td { background: #eeeeee; color: #000000 !important; }
     /* Neutralise les couleurs restantes */
     body.bw-mode .c-red, body.bw-mode .c-orange,
     body.bw-mode .c-green, body.bw-mode .c-purple,
     body.bw-mode .c-blue, body.bw-mode .c-alleg { color: inherit !important; }
     body.bw-mode .sb-val, body.bw-mode .mob-val  { color: inherit !important; }
     body.bw-mode .summary-bar .sb-cell { background: #f2f2f2; border-color: #000; }
-    body.bw-mode .btn-calc { background: #3a3a3a; color: #fff; border-color: #3a3a3a; }
-    body.bw-mode .ptog.ptog-on { background: #3a3a3a; border-color: #3a3a3a; color: #fff; }
-    /* Valeurs dans les champs de saisie — toujours en noir */
+    /* Bouton calculer et toggles : noir/blanc pour rester lisibles */
+    body.bw-mode .btn-calc { background: #000000; color: #ffffff; border-color: #000000; }
+    body.bw-mode .ptog.ptog-on { background: #000000; border-color: #000000; color: #ffffff; }
+    /* Champs de saisie */
     body.bw-mode input, body.bw-mode select { color: #000000 !important; }
-    /* Panneaux d'explication dépliables — fond très clair, texte noir */
+    /* Panneaux d'explication dépliables */
     body.bw-mode .expl-box {
       background: #f0f0f0 !important;
       border-left-color: #000 !important;
     }
     body.bw-mode .expl-txt { color: #000000 !important; }
-    body.bw-mode .expl-ref { color: #222222 !important; border-color: #555 !important; }
+    body.bw-mode .expl-ref { color: #333333 !important; border-color: #555 !important; }
 
     /* ── Mode dyslexie ──────────────────────────────────────────────────── */
     body.dyslexia-mode,
