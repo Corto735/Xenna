@@ -214,10 +214,10 @@ async fn lister_suggestions(
     }
 
     let rows = sqlx::query_as::<_, SuggestionPublique>(
-        "SELECT id, question, votes
+        "SELECT id, question, COALESCE(votes, 0) AS votes
          FROM quizz_suggestions
          WHERE pays = ?
-         ORDER BY votes DESC, created_at ASC
+         ORDER BY COALESCE(votes, 0) DESC, created_at ASC
          LIMIT 15",
     )
     .bind(&pays)
@@ -257,13 +257,13 @@ async fn voter(
 
     // Incrémenter le compteur seulement si le vote n'existait pas déjà
     if result.rows_affected() > 0 {
-        sqlx::query("UPDATE quizz_suggestions SET votes = votes + 1 WHERE id = ?")
+        sqlx::query("UPDATE quizz_suggestions SET votes = COALESCE(votes, 0) + 1 WHERE id = ?")
             .bind(id)
             .execute(&*pool)
             .await?;
     }
 
-    let votes: i64 = sqlx::query_scalar("SELECT votes FROM quizz_suggestions WHERE id = ?")
+    let votes: i64 = sqlx::query_scalar("SELECT COALESCE(votes, 0) FROM quizz_suggestions WHERE id = ?")
         .bind(id)
         .fetch_one(&*pool)
         .await?;

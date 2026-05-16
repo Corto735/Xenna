@@ -1,7 +1,7 @@
 -- Colonnes ajoutées à quizz_suggestions : réponses alternatives, mauvaises réponses, compteur votes
 ALTER TABLE quizz_suggestions ADD COLUMN reps_alt     TEXT;
 ALTER TABLE quizz_suggestions ADD COLUMN mauvaises_rep TEXT;
-ALTER TABLE quizz_suggestions ADD COLUMN votes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE quizz_suggestions ADD COLUMN votes INTEGER DEFAULT 0;
 
 -- Table de déduplication des votes (voter_id = UUID aléatoire stocké côté client)
 CREATE TABLE quizz_suggestion_votes (
