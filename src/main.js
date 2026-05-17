@@ -2420,6 +2420,10 @@ window.forgeSoumettre = async function(event) {
     if (idcc && ccn) expertises.push({ ccn_idcc: idcc, ccn_libelle: ccn.libelle, niveau });
   });
 
+  // Récupérer le payload Altcha (widget web component)
+  const altchaWidget = document.getElementById('forge-altcha');
+  const altchaValue  = altchaWidget ? altchaWidget.value : null;
+
   const payload = {
     email:            form.querySelector('[name="email"]').value.trim(),
     pseudo:           form.querySelector('[name="pseudo"]').value.trim(),
@@ -2429,12 +2433,18 @@ window.forgeSoumettre = async function(event) {
     paie_fr_niveau:   form.querySelector('[name="paie_fr_niveau"]').value || null,
     pays,
     expertises,
+    altcha: altchaValue || null,
   };
 
+  payload.password         = form.querySelector('[name="password"]').value;
+  payload.password_confirm = form.querySelector('[name="password_confirm"]').value;
+
   // Validation JS basique
-  if (!payload.email)  { errEl.textContent = 'Email requis.'; return; }
-  if (!payload.pseudo) { errEl.textContent = 'Pseudo requis.'; return; }
-  if (!payload.poste)  { errEl.textContent = 'Poste requis.'; return; }
+  if (!payload.email)    { errEl.textContent = 'Email requis.'; return; }
+  if (!payload.pseudo)   { errEl.textContent = 'Pseudo requis.'; return; }
+  if (!payload.poste)    { errEl.textContent = 'Poste requis.'; return; }
+  if (!payload.password || payload.password.length < 8) { errEl.textContent = 'Mot de passe : 8 caractères minimum.'; return; }
+  if (payload.password !== payload.password_confirm)     { errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
 
   btnEl.disabled = true;
   btnEl.textContent = '[ envoi… ]';
@@ -2446,16 +2456,18 @@ window.forgeSoumettre = async function(event) {
       body:    JSON.stringify(payload),
     });
     if (!r.ok) throw new Error(`HTTP ${r.status} — ${await r.text() || r.statusText}`);
-    const profil = await r.json();
+    const data = await r.json();
 
-    // Ajouter en tête du cache et afficher la fiche
-    forgeCache.unshift(profil);
     form.reset();
     document.getElementById('forge-pays-list').innerHTML = '';
     document.getElementById('forge-ccn-list').innerHTML  = '';
     forgePaysIdx = 0;
     forgeCcnIdx  = 0;
-    forgeAfficherProfil(profil.pseudo);
+
+    // 202 = inscription reçue, en attente de validation
+    forgeNav('liste');
+    const sub = document.getElementById('forge-subtitle');
+    if (sub) sub.textContent = data.message || 'Votre demande est en cours de traitement.';
   } catch(e) {
     errEl.textContent = errToStr(e);
     btnEl.disabled = false;

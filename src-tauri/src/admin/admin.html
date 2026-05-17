@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xenna Admin</title>
+<style>
+  :root {
+    --bg: #0a0e1a; --bg2: #0d1221; --bg3: #111827;
+    --text: #c8d0e0; --white: #e8edf5; --muted: #4a5568;
+    --dim: #1e2a3a; --blue: #4a9eff; --green: #22c55e;
+    --red: #ef4444; --yellow: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 13px; min-height: 100vh; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+  h1 { color: var(--blue); font-size: 1rem; letter-spacing: 0.1em; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); font-size: 0.7rem; letter-spacing: 0.06em; margin-bottom: 2rem; }
+
+  /* Login */
+  #login-section { max-width: 360px; margin: 4rem auto; }
+  .field { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+  input[type=text], input[type=password] {
+    width: 100%; background: var(--bg3); border: 1px solid var(--dim); color: var(--white);
+    padding: 0.5rem 0.75rem; font-family: inherit; font-size: 0.85rem; outline: none;
+    border-radius: 2px;
+  }
+  input:focus { border-color: var(--blue); }
+  .btn { background: var(--blue); color: var(--bg); border: none; padding: 0.5rem 1.2rem;
+    font-family: inherit; font-size: 0.8rem; font-weight: bold; cursor: pointer; letter-spacing: 0.05em; }
+  .btn:hover { opacity: 0.85; }
+  .btn-sm { font-size: 0.7rem; padding: 0.25rem 0.6rem; margin-left: 0.35rem; }
+  .btn-green { background: var(--green); }
+  .btn-red { background: var(--red); }
+  .err { color: var(--red); font-size: 0.72rem; margin-top: 0.5rem; min-height: 1rem; }
+
+  /* Dashboard */
+  #dashboard-section { display: none; }
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--bg2); border: 1px solid var(--dim); border-top: 2px solid var(--blue); padding: 1rem; }
+  .panel-title { color: var(--blue); font-size: 0.7rem; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  .panel-count { color: var(--muted); font-size: 0.62rem; float: right; }
+  .card { background: var(--bg3); border: 1px solid var(--dim); padding: 0.75rem; margin-bottom: 0.6rem; }
+  .card-pseudo { color: var(--white); font-weight: bold; font-size: 0.85rem; }
+  .card-email { color: var(--blue); font-size: 0.7rem; margin: 0.2rem 0; }
+  .card-meta { color: var(--muted); font-size: 0.65rem; margin-bottom: 0.5rem; }
+  .card-actions { margin-top: 0.5rem; }
+  .badge { display: inline-block; padding: 0.1rem 0.4rem; font-size: 0.6rem; letter-spacing: 0.04em; margin-right: 0.25rem; }
+  .badge-pending { background: var(--yellow); color: var(--bg); }
+  .badge-approved { background: var(--green); color: var(--bg); }
+  .empty { color: var(--muted); font-size: 0.72rem; padding: 1rem 0; text-align: center; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--dim); padding-bottom: 1rem; }
+  .user-info { color: var(--muted); font-size: 0.7rem; }
+  .spinner { color: var(--muted); font-size: 0.75rem; padding: 2rem 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="login-section">
+    <h1>XENNA ADMIN</h1>
+    <p class="subtitle">Espace de modération — accès restreint</p>
+    <div class="field"><label>IDENTIFIANT</label><input type="text" id="inp-user" autocomplete="username"></div>
+    <div class="field"><label>MOT DE PASSE</label><input type="password" id="inp-pass" autocomplete="current-password"></div>
+    <button class="btn" onclick="doLogin()">[ Connexion ]</button>
+    <div class="err" id="login-err"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard-section">
+    <div class="topbar">
+      <div>
+        <h1>XENNA ADMIN — DASHBOARD</h1>
+        <p class="subtitle" id="dash-subtitle">chargement…</p>
+      </div>
+      <div>
+        <span class="user-info" id="user-label"></span>
+        <button class="btn btn-sm" onclick="doLogout()" style="margin-left:0.75rem">Déconnexion</button>
+        <button class="btn btn-sm" onclick="loadDashboard()" style="margin-left:0.35rem;background:var(--bg3);color:var(--text);border:1px solid var(--dim)">↻ Actualiser</button>
+      </div>
+    </div>
+    <div class="dash-grid">
+      <div class="panel">
+        <div class="panel-title">INSCRIPTIONS EN ATTENTE <span class="panel-count" id="inscr-count"></span></div>
+        <div id="inscr-list"><div class="spinner">chargement…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">QUESTIONS QUIZZ À VALIDER <span class="panel-count" id="quizz-count"></span></div>
+        <div id="quizz-list"><div class="spinner">chargement…</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+let TOKEN = sessionStorage.getItem('xenna_admin_token');
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function doLogin() {
+  const user = document.getElementById('inp-user').value.trim();
+  const pass = document.getElementById('inp-pass').value;
+  const err  = document.getElementById('login-err');
+  err.textContent = '';
+  if (!user || !pass) { err.textContent = 'Identifiant et mot de passe requis'; return; }
+  try {
+    const r = await fetch('/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass }),
+    });
+    if (!r.ok) { err.textContent = 'Identifiants incorrects'; return; }
+    const data = await r.json();
+    TOKEN = data.token;
+    sessionStorage.setItem('xenna_admin_token', TOKEN);
+    showDashboard(user);
+  } catch(e) { err.textContent = 'Erreur réseau'; }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('xenna_admin_token');
+  TOKEN = null;
+  document.getElementById('dashboard-section').style.display = 'none';
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('inp-pass').value = '';
+}
+
+function showDashboard(user) {
+  document.getElementById('login-section').style.display = 'none';
+  document.getElementById('dashboard-section').style.display = 'block';
+  if (user) document.getElementById('user-label').textContent = user;
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  document.getElementById('dash-subtitle').textContent = 'chargement…';
+  try {
+    const r = await fetch('/admin/dashboard', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    if (r.status === 401) { doLogout(); return; }
+    const data = await r.json();
+    renderInscriptions(data.inscriptions_pending || []);
+    renderQuizz(data.quizz_pending || []);
+    const now = new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('dash-subtitle').textContent = `Dernière mise à jour : ${now}`;
+  } catch(e) {
+    document.getElementById('dash-subtitle').textContent = 'Erreur de chargement';
+  }
+}
+
+function renderInscriptions(list) {
+  const el = document.getElementById('inscr-list');
+  document.getElementById('inscr-count').textContent = `(${list.length})`;
+  if (!list.length) { el.innerHTML = '<div class="empty">Aucune inscription en attente</div>'; return; }
+  el.innerHTML = list.map(p => `
+    <div class="card" id="inscr-${p.id}">
+      <div class="card-pseudo">${esc(p.pseudo)} <span class="badge badge-pending">PENDING</span></div>
+      <div class="card-email">${esc(p.email_clair)}</div>
+      <div class="card-meta">${esc(p.poste)} · inscrit le ${esc(p.created_at.slice(0,10))}</div>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-green" onclick="actionInscription(${p.id},'approve')">✓ Approuver</button>
+        <button class="btn btn-sm btn-red"   onclick="actionInscription(${p.id},'reject')">✗ Rejeter</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderQuizz(list) {
+  const el = document.getElementById('quizz-list');
+  document.getElementById('quizz-count').textContent = `(${list.length})`;
+  if (!list.length) { el.innerHTML = '<div class="empty">Aucune question en attente</div>'; return; }
+  el.innerHTML = list.map(q => `
+    <div class="card" id="quizz-${q.id}">
+      <div class="card-pseudo">[${esc(q.pays.toUpperCase())}] ${esc(q.question)}</div>
+      ${q.reponse ? `<div class="card-meta" style="color:var(--green)">→ ${esc(q.reponse)}</div>` : ''}
+      ${q.pseudo  ? `<div class="card-meta">par ${esc(q.pseudo)} · ${esc(q.created_at.slice(0,10))}</div>` : ''}
+      <div class="card-meta" style="color:var(--yellow)">${q.votes} vote${q.votes !== 1 ? 's' : ''}</div>
+      <div class="card-actions">
+        <button class="btn btn-sm btn-green" onclick="actionQuizz(${q.id},'approve')">✓ Approuver</button>
+        <button class="btn btn-sm btn-red"   onclick="actionQuizz(${q.id},'reject')">✗ Rejeter</button>
+      </div>
+    </div>`).join('');
+}
+
+async function actionInscription(id, action) {
+  const r = await fetch(`/admin/inscription/${id}/${action}`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  });
+  if (r.ok) {
+    const card = document.getElementById(`inscr-${id}`);
+    if (card) card.remove();
+    const count = document.querySelectorAll('#inscr-list .card').length;
+    document.getElementById('inscr-count').textContent = `(${count})`;
+    if (!count) document.getElementById('inscr-list').innerHTML = '<div class="empty">Aucune inscription en attente</div>';
+  }
+}
+
+async function actionQuizz(id, action) {
+  const r = await fetch(`/admin/quizz/${id}/${action}`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  });
+  if (r.ok) {
+    const card = document.getElementById(`quizz-${id}`);
+    if (card) card.remove();
+    const count = document.querySelectorAll('#quizz-list .card').length;
+    document.getElementById('quizz-count').textContent = `(${count})`;
+    if (!count) document.getElementById('quizz-list').innerHTML = '<div class="empty">Aucune question en attente</div>';
+  }
+}
+
+// Auto-connect si token en session
+document.getElementById('inp-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+if (TOKEN) {
+  try {
+    const payload = JSON.parse(atob(TOKEN.split('.')[1]));
+    if (payload.exp * 1000 > Date.now()) {
+      showDashboard(payload.sub);
+    } else {
+      sessionStorage.removeItem('xenna_admin_token');
+      TOKEN = null;
+    }
+  } catch { sessionStorage.removeItem('xenna_admin_token'); TOKEN = null; }
+}
+</script>
+</body>
+</html>

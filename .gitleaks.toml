@@ -1,0 +1,22 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fichiers légitimes à ignorer"
+paths = [
+    ".env.example",
+    "CLAUDE.md",
+]
+
+# Règles supplémentaires spécifiques au projet
+[[rules]]
+id = "jwt-secret"
+description = "JWT secret hardcodé"
+regex = '''(?i)jwt[_\-]?secret\s*=\s*["'][^"']{8,}["']'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "database-url-with-password"
+description = "DATABASE_URL avec mot de passe en clair"
+regex = '''postgresql://[^:]+:[^@]{3,}@'''
+tags = ["secret", "database"]

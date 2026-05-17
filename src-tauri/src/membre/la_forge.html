@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Forge Métier — Espace membres</title>
+<style>
+:root {
+  --bg:#0a0e1a;--bg2:#0d1221;--bg3:#111827;--bg4:#0f172a;
+  --text:#c8d0e0;--white:#e8edf5;--muted:#4a5568;--dim:#1e2a3a;
+  --blue:#4a9eff;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--purple:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:13px}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Layout ── */
+.app{display:flex;flex-direction:column;height:100vh}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--dim);padding:0.6rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{color:var(--blue);font-size:0.85rem;font-weight:bold;letter-spacing:0.12em}
+.logo span{color:var(--muted);font-weight:normal}
+.user-zone{display:flex;align-items:center;gap:0.75rem;font-size:0.72rem}
+.pseudo-badge{color:var(--white);font-weight:bold;letter-spacing:0.05em}
+.btn-sm{background:transparent;border:1px solid var(--dim);color:var(--muted);padding:0.2rem 0.6rem;font-family:inherit;font-size:0.68rem;cursor:pointer;letter-spacing:0.04em}
+.btn-sm:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── Tabs ── */
+.tabs{background:var(--bg2);border-bottom:1px solid var(--dim);padding:0 1.2rem;display:flex;gap:0;flex-shrink:0}
+.tab{padding:0.6rem 1.2rem;font-size:0.72rem;letter-spacing:0.08em;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted)}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto;padding:1.5rem 1.2rem;max-width:860px;margin:0 auto;width:100%}
+
+/* ── Login ── */
+#login-section{max-width:360px;margin:3rem auto}
+.login-title{color:var(--blue);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.25rem}
+.login-sub{color:var(--muted);font-size:0.68rem;letter-spacing:0.06em;margin-bottom:2rem}
+.field{margin-bottom:0.9rem}
+label{display:block;font-size:0.62rem;color:var(--muted);letter-spacing:0.08em;margin-bottom:0.3rem}
+input[type=text],input[type=email],input[type=password],input[type=url],textarea,select{
+  width:100%;background:var(--bg3);border:1px solid var(--dim);color:var(--white);
+  padding:0.45rem 0.7rem;font-family:inherit;font-size:0.82rem;outline:none;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--blue)}
+.btn{background:var(--blue);color:var(--bg);border:none;padding:0.45rem 1.1rem;font-family:inherit;font-size:0.8rem;font-weight:bold;cursor:pointer;letter-spacing:0.05em;width:100%}
+.btn:hover{opacity:0.88}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.err{color:var(--red);font-size:0.7rem;margin-top:0.5rem;min-height:1rem}
+.login-foot{margin-top:1.5rem;font-size:0.68rem;color:var(--muted);text-align:center}
+
+/* ── Profil ── */
+.sect-title{font-size:0.65rem;color:var(--blue);letter-spacing:0.1em;margin-bottom:1rem;padding-bottom:0.4rem;border-bottom:1px solid var(--dim)}
+.profile-view{margin-bottom:1.5rem}
+.profile-pseudo{font-size:1.1rem;font-weight:bold;color:var(--white);letter-spacing:0.06em;margin-bottom:0.3rem}
+.profile-poste{font-size:0.75rem;color:var(--muted);margin-bottom:1rem}
+.stats-row{display:flex;gap:1.5rem;margin-bottom:1.2rem}
+.stat{text-align:center}
+.stat-val{font-size:1rem;font-weight:bold;color:var(--blue)}
+.stat-label{font-size:0.6rem;color:var(--muted);letter-spacing:0.05em}
+.badges{display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.6rem}
+.badge{padding:0.15rem 0.5rem;font-size:0.62rem;border:1px solid var(--dim);color:var(--muted);letter-spacing:0.03em}
+.badge.maitrisee{border-color:var(--blue);color:var(--blue)}
+.badge.pratiquee{border-color:var(--purple);color:var(--purple)}
+.badge.connue{border-color:var(--muted)}
+.edit-btn{background:transparent;border:1px solid var(--dim);color:var(--muted);padding:0.3rem 0.8rem;font-family:inherit;font-size:0.7rem;cursor:pointer;letter-spacing:0.04em;margin-top:0.5rem}
+.edit-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── Formulaire profil édition ── */
+#edit-form{display:none;margin-top:1rem;background:var(--bg2);border:1px solid var(--dim);padding:1rem}
+.ccn-row{display:flex;gap:0.4rem;margin-bottom:0.4rem;align-items:center}
+.ccn-row input,.ccn-row select{flex:1;font-size:0.78rem}
+.ccn-del{background:transparent;border:1px solid var(--dim);color:var(--red);padding:0.2rem 0.5rem;font-family:inherit;font-size:0.7rem;cursor:pointer;flex-shrink:0}
+.add-row-btn{background:transparent;border:1px dashed var(--dim);color:var(--muted);padding:0.3rem 0.8rem;font-family:inherit;font-size:0.7rem;cursor:pointer;width:100%;margin-top:0.25rem}
+.add-row-btn:hover{border-color:var(--blue);color:var(--blue)}
+.form-actions{display:flex;gap:0.6rem;margin-top:1rem}
+.btn-save{background:var(--green);color:var(--bg);border:none;padding:0.4rem 1rem;font-family:inherit;font-size:0.78rem;font-weight:bold;cursor:pointer}
+.btn-cancel{background:transparent;border:1px solid var(--dim);color:var(--muted);padding:0.4rem 1rem;font-family:inherit;font-size:0.78rem;cursor:pointer}
+
+/* ── Forum ── */
+.forum-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.btn-new-topic{background:var(--blue);color:var(--bg);border:none;padding:0.35rem 0.9rem;font-family:inherit;font-size:0.75rem;font-weight:bold;cursor:pointer;letter-spacing:0.04em}
+.btn-new-topic:hover{opacity:0.88}
+.topic-card{background:var(--bg2);border:1px solid var(--dim);padding:0.75rem 1rem;margin-bottom:0.5rem;cursor:pointer;transition:border-color 0.15s}
+.topic-card:hover{border-color:var(--blue)}
+.topic-titre{color:var(--white);font-size:0.85rem;font-weight:bold;margin-bottom:0.25rem}
+.topic-meta{font-size:0.62rem;color:var(--muted);display:flex;gap:1rem}
+.topic-meta span{display:flex;align-items:center;gap:0.25rem}
+.empty-forum{color:var(--muted);font-size:0.78rem;padding:2rem 0;text-align:center}
+
+/* ── Topic détail ── */
+#topic-detail{display:none}
+.back-btn{background:transparent;border:none;color:var(--blue);font-family:inherit;font-size:0.78rem;cursor:pointer;padding:0;margin-bottom:1rem;letter-spacing:0.02em}
+.back-btn:hover{text-decoration:underline}
+.topic-full-titre{font-size:1rem;font-weight:bold;color:var(--white);letter-spacing:0.04em;margin-bottom:0.5rem}
+.topic-full-meta{font-size:0.65rem;color:var(--muted);margin-bottom:1rem}
+.topic-full-contenu{font-size:0.8rem;line-height:1.7;color:var(--text);background:var(--bg2);border:1px solid var(--dim);padding:0.9rem;margin-bottom:0.75rem;white-space:pre-wrap}
+.vote-bar{display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem}
+.vote-btn{background:transparent;border:1px solid var(--dim);color:var(--muted);padding:0.25rem 0.7rem;font-family:inherit;font-size:0.75rem;cursor:pointer}
+.vote-btn:hover:not(:disabled){border-color:var(--yellow);color:var(--yellow)}
+.vote-btn.voted{border-color:var(--yellow);color:var(--yellow)}
+.vote-count{font-size:0.8rem;color:var(--text)}
+
+.replies-title{font-size:0.62rem;color:var(--muted);letter-spacing:0.08em;margin-bottom:0.75rem;margin-top:1rem}
+.reply-card{background:var(--bg3);border-left:2px solid var(--dim);padding:0.65rem 0.85rem;margin-bottom:0.5rem}
+.reply-author{font-size:0.65rem;color:var(--blue);margin-bottom:0.3rem;font-weight:bold}
+.reply-date{color:var(--muted);font-weight:normal;margin-left:0.5rem}
+.reply-contenu{font-size:0.78rem;line-height:1.6;color:var(--text);white-space:pre-wrap}
+
+/* ── Nouveau topic / réponse ── */
+#new-topic-form,#reply-form{display:none;margin-top:1.25rem;background:var(--bg2);border:1px solid var(--dim);padding:1rem}
+.form-title{font-size:0.65rem;color:var(--blue);letter-spacing:0.08em;margin-bottom:0.75rem}
+
+/* ── Spinner / messages ── */
+.spinner{color:var(--muted);font-size:0.75rem;padding:2rem 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ════════════ LOGIN ════════════ -->
+  <div id="login-section" style="padding:1.5rem">
+    <div class="login-title">[#] LA FORGE MÉTIER</div>
+    <p class="login-sub">Espace réservé aux membres</p>
+    <div class="field"><label>EMAIL</label><input type="email" id="inp-email" autocomplete="email" placeholder="prenom.nom@cabinet.fr"></div>
+    <div class="field"><label>MOT DE PASSE</label><input type="password" id="inp-pass" autocomplete="current-password"></div>
+    <button class="btn" id="login-btn" onclick="doLogin()">[ Connexion ]</button>
+    <div class="err" id="login-err"></div>
+    <div class="login-foot">Pas encore membre ? <a href="/">Rejoindre la Forge</a> sur payetonbulletin.fr</div>
+  </div>
+
+  <!-- ════════════ APP ════════════ -->
+  <div id="app-section" style="display:none;flex:1;display:none;flex-direction:column">
+    <div class="topbar">
+      <div class="logo">[#] LA FORGE MÉTIER <span>· espace membres</span></div>
+      <div class="user-zone">
+        <span class="pseudo-badge" id="top-pseudo"></span>
+        <button class="btn-sm" onclick="doLogout()">Déconnexion</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" id="tab-profil" onclick="showTab('profil')">MON PROFIL</div>
+      <div class="tab"        id="tab-forum"  onclick="showTab('forum')">FORUM</div>
+    </div>
+    <div class="content">
+
+      <!-- ── VUE PROFIL ── -->
+      <div id="view-profil">
+        <div class="sect-title">MON PROFIL</div>
+        <div id="profil-content"><div class="spinner">chargement…</div></div>
+      </div>
+
+      <!-- ── VUE FORUM (liste) ── -->
+      <div id="view-forum" style="display:none">
+        <div class="forum-header">
+          <div class="sect-title" style="margin:0">FORUM LA FORGE</div>
+          <button class="btn-new-topic" onclick="toggleNewTopic()">+ Nouveau sujet</button>
+        </div>
+        <div id="new-topic-form">
+          <div class="form-title">NOUVEAU SUJET</div>
+          <div class="field"><label>TITRE</label><input type="text" id="nt-titre" maxlength="200" placeholder="Sujet de discussion…"></div>
+          <div class="field"><label>CONTENU</label><textarea id="nt-contenu" rows="6" placeholder="Décrivez votre sujet…"></textarea></div>
+          <div class="err" id="nt-err"></div>
+          <div class="form-actions">
+            <button class="btn-save" onclick="soumettreNewTopic()">[ Publier ]</button>
+            <button class="btn-cancel" onclick="toggleNewTopic()">Annuler</button>
+          </div>
+        </div>
+        <div id="forum-list"><div class="spinner">chargement…</div></div>
+        <div id="topic-detail">
+          <button class="back-btn" onclick="backToForum()">← Retour au forum</button>
+          <div id="topic-content"></div>
+        </div>
+      </div>
+
+    </div><!-- .content -->
+  </div><!-- #app-section -->
+
+</div><!-- .app -->
+
+<script>
+const API = url => fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' } });
+const POST = (url, body) => fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const PUT  = (url, body) => fetch(url, { method: 'PUT',  headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+let TOKEN = localStorage.getItem('forge_member_token');
+let ME = null;
+let TOPICS = [];
+let CURRENT_TOPIC = null;
+
+// ── CCN data (subset for edit form — full list on main app) ──────────────────
+const NIVEAUX = ['Connue', 'Pratiquée', 'Maîtrisée'];
+const PAYS_LISTE = [
+  {code:'BE',libelle:'Belgique'},{code:'CH',libelle:'Suisse'},{code:'LU',libelle:'Luxembourg'},
+  {code:'DE',libelle:'Allemagne'},{code:'IT',libelle:'Italie'},{code:'ES',libelle:'Espagne'},
+  {code:'MC',libelle:'Monaco'},{code:'AD',libelle:'Andorre'},{code:'GB',libelle:'Royaume-Uni'}
+];
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function fmtDate(s){ return s ? s.slice(0,10) : '' }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function tokenExpired(t){
+  try{ const p=JSON.parse(atob(t.split('.')[1])); return p.exp*1000<Date.now(); }catch{ return true; }
+}
+
+async function doLogin(){
+  const email = document.getElementById('inp-email').value.trim();
+  const pass  = document.getElementById('inp-pass').value;
+  const err   = document.getElementById('login-err');
+  const btn   = document.getElementById('login-btn');
+  err.textContent = '';
+  if (!email || !pass){ err.textContent = 'Email et mot de passe requis.'; return; }
+  btn.disabled = true; btn.textContent = '[ connexion… ]';
+  try {
+    const r = await fetch('/la_forge/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const data = await r.json();
+    if (!r.ok){ err.textContent = data || 'Identifiants incorrects.'; btn.disabled=false; btn.textContent='[ Connexion ]'; return; }
+    TOKEN = data.token;
+    localStorage.setItem('forge_member_token', TOKEN);
+    enterApp(data.pseudo);
+  } catch(e){ err.textContent = 'Erreur réseau.'; btn.disabled=false; btn.textContent='[ Connexion ]'; }
+}
+
+function doLogout(){
+  localStorage.removeItem('forge_member_token');
+  TOKEN = null; ME = null;
+  document.getElementById('app-section').style.display = 'none';
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('inp-pass').value = '';
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn').textContent = '[ Connexion ]';
+}
+
+document.getElementById('inp-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ── App entry ─────────────────────────────────────────────────────────────────
+function enterApp(pseudo){
+  document.getElementById('login-section').style.display = 'none';
+  const app = document.getElementById('app-section');
+  app.style.display = 'flex';
+  document.getElementById('top-pseudo').textContent = pseudo;
+  loadProfil();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(name){
+  ['profil','forum'].forEach(t => {
+    document.getElementById('view-'+t).style.display = t===name ? 'block' : 'none';
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+  });
+  if (name==='forum' && TOPICS.length===0) loadForum();
+}
+
+// ── Profil : lecture ──────────────────────────────────────────────────────────
+async function loadProfil(){
+  document.getElementById('profil-content').innerHTML = '<div class="spinner">chargement…</div>';
+  const r = await API('/la_forge/me');
+  if (!r.ok){ if(r.status===401) doLogout(); return; }
+  ME = await r.json();
+  renderProfil();
+}
+
+function niveauClass(n){ return n==='Maîtrisée'?'maitrisee':n==='Pratiquée'?'pratiquee':'connue'; }
+
+function renderProfil(){
+  const m = ME;
+  const ccns = m.expertises.map(e => `<span class="badge ${niveauClass(e.niveau)}">${esc(e.ccn_idcc)} · ${esc(e.ccn_libelle)}</span>`).join('');
+  const pays = m.pays.map(p => `<span class="badge ${niveauClass(p.niveau)}">${esc(p.pays_libelle)}</span>`).join('');
+  document.getElementById('profil-content').innerHTML = `
+    <div class="profile-view">
+      <div class="profile-pseudo">${esc(m.pseudo)}</div>
+      <div class="profile-poste">${esc(m.poste)} <span style="color:var(--dim)">${m.poste_est_actuel?'(actuel)':'(visé)'}</span></div>
+      ${m.linkedin_url ? `<div style="font-size:0.7rem;margin-bottom:0.75rem"><a href="${esc(m.linkedin_url)}" target="_blank" rel="noopener">${esc(m.linkedin_url)}</a></div>` : ''}
+      <div class="stats-row">
+        <div class="stat"><div class="stat-val">${m.votes_received}</div><div class="stat-label">VOTES</div></div>
+        <div class="stat"><div class="stat-val">${m.topics_count}</div><div class="stat-label">SUJETS</div></div>
+        <div class="stat"><div class="stat-val">${m.posts_count}</div><div class="stat-label">RÉPONSES</div></div>
+      </div>
+      ${m.paie_fr_niveau ? `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.5rem">Paie FR : <span style="color:var(--text)">${esc(m.paie_fr_niveau)}</span></div>` : ''}
+      ${ccns ? `<div class="badges" style="margin-bottom:0.4rem">${ccns}</div>` : ''}
+      ${pays ? `<div class="badges">${pays}</div>` : ''}
+    </div>
+    <button class="edit-btn" onclick="toggleEditForm()">Modifier mon profil</button>
+    ${renderEditForm(m)}`;
+}
+
+// ── Profil : édition ─────────────────────────────────────────────────────────
+let ccnIdx=0, paysIdx=0;
+
+function renderEditForm(m){
+  const niveauOpts = NIVEAUX.map(n=>`<option>${n}</option>`).join('');
+  const paysOpts = PAYS_LISTE.map(p=>`<option value="${p.code}">${p.libelle}</option>`).join('');
+  return `
+  <div id="edit-form">
+    <div class="form-title">MODIFIER MON PROFIL</div>
+    <div class="field">
+      <label>POSTE</label>
+      <input type="text" id="ef-poste" value="${esc(m.poste)}" maxlength="100">
+    </div>
+    <div class="field">
+      <label>TYPE</label>
+      <select id="ef-poste-type">
+        <option value="1" ${m.poste_est_actuel?'selected':''}>Actuel</option>
+        <option value="0" ${!m.poste_est_actuel?'selected':''}>Visé</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>LINKEDIN <span style="color:var(--dim);font-size:0.6em">(optionnel)</span></label>
+      <input type="url" id="ef-linkedin" value="${esc(m.linkedin_url||'')}" placeholder="https://linkedin.com/in/…">
+    </div>
+    <div class="field">
+      <label>PAIE FR</label>
+      <select id="ef-paiefr">
+        <option value="">— non renseigné —</option>
+        ${NIVEAUX.map(n=>`<option ${m.paie_fr_niveau===n?'selected':''}>${n}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>EXPERTISES CCN</label>
+      <div id="ef-ccn-list">
+        ${m.expertises.map(e => renderCcnRow(++ccnIdx, e.ccn_idcc, e.ccn_libelle, e.niveau)).join('')}
+      </div>
+      <button type="button" class="add-row-btn" onclick="ajouterCcnEdit()">+ CCN</button>
+    </div>
+    <div class="field">
+      <label>PAYS</label>
+      <div id="ef-pays-list">
+        ${m.pays.map(p => renderPaysRow(++paysIdx, p.pays_code, p.niveau, paysOpts)).join('')}
+      </div>
+      <button type="button" class="add-row-btn" onclick="ajouterPaysEdit()">+ Pays</button>
+    </div>
+    <div class="err" id="ef-err"></div>
+    <div class="form-actions">
+      <button class="btn-save" onclick="sauvegarderProfil()">[ Sauvegarder ]</button>
+      <button class="btn-cancel" onclick="toggleEditForm()">Annuler</button>
+    </div>
+  </div>`;
+}
+
+function renderCcnRow(idx, idcc='', libelle='', niveau='Pratiquée'){
+  return `<div class="ccn-row" id="ccn-row-${idx}">
+    <input type="text" placeholder="IDCC" value="${esc(idcc)}" style="max-width:70px" class="ccn-idcc">
+    <input type="text" placeholder="Libellé CCN" value="${esc(libelle)}" class="ccn-lib">
+    <select class="ccn-niv">${NIVEAUX.map(n=>`<option${n===niveau?' selected':''}>${n}</option>`).join('')}</select>
+    <button class="ccn-del" onclick="document.getElementById('ccn-row-${idx}').remove()">✕</button>
+  </div>`;
+}
+
+function renderPaysRow(idx, code='', niveau='Pratiquée', paysOptsStr=''){
+  if(!paysOptsStr) paysOptsStr = PAYS_LISTE.map(p=>`<option value="${p.code}">${p.libelle}</option>`).join('');
+  return `<div class="ccn-row" id="pays-row-${idx}">
+    <select class="pays-code" style="flex:1">${paysOptsStr.replace(`value="${code}"`,`value="${code}" selected`)}</select>
+    <select class="ccn-niv" style="flex:0 0 110px">${NIVEAUX.map(n=>`<option${n===niveau?' selected':''}>${n}</option>`).join('')}</select>
+    <button class="ccn-del" onclick="document.getElementById('pays-row-${idx}').remove()">✕</button>
+  </div>`;
+}
+
+function ajouterCcnEdit(){
+  const list = document.getElementById('ef-ccn-list');
+  const idx = ++ccnIdx;
+  list.insertAdjacentHTML('beforeend', renderCcnRow(idx));
+}
+
+function ajouterPaysEdit(){
+  const list = document.getElementById('ef-pays-list');
+  const idx = ++paysIdx;
+  list.insertAdjacentHTML('beforeend', renderPaysRow(idx));
+}
+
+function toggleEditForm(){
+  const f = document.getElementById('edit-form');
+  f.style.display = f.style.display==='none'||!f.style.display ? 'block' : 'none';
+}
+
+async function sauvegarderProfil(){
+  const err = document.getElementById('ef-err');
+  err.textContent = '';
+  const poste = document.getElementById('ef-poste').value.trim();
+  if (!poste){ err.textContent='Poste requis.'; return; }
+
+  const expertises = [...document.querySelectorAll('#ef-ccn-list .ccn-row')].map(row => ({
+    ccn_idcc:    row.querySelector('.ccn-idcc').value.trim(),
+    ccn_libelle: row.querySelector('.ccn-lib').value.trim(),
+    niveau:      row.querySelector('.ccn-niv').value,
+  })).filter(e => e.ccn_idcc && e.ccn_libelle);
+
+  const pays = [...document.querySelectorAll('#ef-pays-list .ccn-row')].map(row => ({
+    pays_code:    row.querySelector('.pays-code').value,
+    pays_libelle: PAYS_LISTE.find(p=>p.code===row.querySelector('.pays-code').value)?.libelle || '',
+    niveau:       row.querySelector('.ccn-niv').value,
+  }));
+
+  const body = {
+    poste,
+    poste_est_actuel: document.getElementById('ef-poste-type').value === '1',
+    linkedin_url: document.getElementById('ef-linkedin').value.trim() || null,
+    paie_fr_niveau: document.getElementById('ef-paiefr').value || null,
+    expertises, pays,
+  };
+
+  const r = await PUT('/la_forge/me', body);
+  if (!r.ok){ err.textContent = 'Erreur lors de la sauvegarde.'; return; }
+  await loadProfil();
+}
+
+// ── Forum : liste ─────────────────────────────────────────────────────────────
+async function loadForum(){
+  document.getElementById('forum-list').innerHTML = '<div class="spinner">chargement…</div>';
+  document.getElementById('topic-detail').style.display = 'none';
+  document.getElementById('forum-list').style.display = 'block';
+  const r = await API('/la_forge/forum');
+  if (!r.ok){ if(r.status===401) doLogout(); return; }
+  TOPICS = await r.json();
+  renderForumList();
+}
+
+function renderForumList(){
+  const el = document.getElementById('forum-list');
+  if (!TOPICS.length){
+    el.innerHTML = '<div class="empty-forum">Aucun sujet pour l\'instant. Soyez le premier à créer un sujet !</div>';
+    return;
+  }
+  el.innerHTML = TOPICS.map(t => `
+    <div class="topic-card" onclick="ouvrirTopic(${t.id})">
+      <div class="topic-titre">${esc(t.titre)}</div>
+      <div class="topic-meta">
+        <span>par <strong>${esc(t.author_pseudo)}</strong></span>
+        <span>${fmtDate(t.created_at)}</span>
+        <span>💬 ${t.reply_count} rép.</span>
+        <span>↑ ${t.votes} vote${t.votes!==1?'s':''}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── Forum : nouveau sujet ─────────────────────────────────────────────────────
+function toggleNewTopic(){
+  const f = document.getElementById('new-topic-form');
+  f.style.display = f.style.display==='block' ? 'none' : 'block';
+}
+
+async function soumettreNewTopic(){
+  const err   = document.getElementById('nt-err');
+  const titre   = document.getElementById('nt-titre').value.trim();
+  const contenu = document.getElementById('nt-contenu').value.trim();
+  err.textContent = '';
+  if (!titre)   { err.textContent = 'Titre requis.'; return; }
+  if (!contenu) { err.textContent = 'Contenu requis.'; return; }
+
+  const r = await POST('/la_forge/forum/topic', {titre, contenu});
+  if (!r.ok){ err.textContent = 'Erreur lors de la publication.'; return; }
+  const topic = await r.json();
+  document.getElementById('nt-titre').value   = '';
+  document.getElementById('nt-contenu').value = '';
+  toggleNewTopic();
+  await loadForum();
+  ouvrirTopic(topic.id);
+}
+
+// ── Forum : topic détail ──────────────────────────────────────────────────────
+async function ouvrirTopic(id){
+  document.getElementById('forum-list').style.display = 'none';
+  const det = document.getElementById('topic-detail');
+  det.style.display = 'block';
+  document.getElementById('topic-content').innerHTML = '<div class="spinner">chargement…</div>';
+
+  const r = await API(`/la_forge/forum/topic/${id}`);
+  if (!r.ok){ document.getElementById('topic-content').innerHTML = '<div class="spinner">Erreur de chargement.</div>'; return; }
+  CURRENT_TOPIC = await r.json();
+  renderTopicDetail();
+}
+
+function renderTopicDetail(){
+  const t = CURRENT_TOPIC;
+  const repliesHtml = t.replies.map(rep => `
+    <div class="reply-card">
+      <div class="reply-author">${esc(rep.author_pseudo)}<span class="reply-date">${fmtDate(rep.created_at)}</span></div>
+      <div class="reply-contenu">${esc(rep.contenu)}</div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:0.72rem;padding:0.5rem 0">Aucune réponse pour l\'instant.</div>';
+
+  document.getElementById('topic-content').innerHTML = `
+    <div class="topic-full-titre">${esc(t.titre)}</div>
+    <div class="topic-full-meta">par <strong>${esc(t.author_pseudo)}</strong> · ${fmtDate(t.created_at)}</div>
+    <div class="topic-full-contenu">${esc(t.contenu)}</div>
+    <div class="vote-bar">
+      <button class="vote-btn ${t.user_voted?'voted':''}" id="vote-btn-${t.id}" onclick="voterTopic(${t.id})" ${t.user_voted?'disabled':''}>
+        ↑ ${t.user_voted?'Voté':'Voter'}
+      </button>
+      <span class="vote-count" id="vote-count-${t.id}">${t.votes} vote${t.votes!==1?'s':''}</span>
+    </div>
+    <div class="replies-title">RÉPONSES (${t.reply_count})</div>
+    <div id="replies-list">${repliesHtml}</div>
+    <div style="margin-top:1rem">
+      <button class="add-row-btn" onclick="toggleReplyForm()" style="text-align:left">+ Ajouter une réponse</button>
+      <div id="reply-form">
+        <div class="form-title" style="margin-top:0.75rem">VOTRE RÉPONSE</div>
+        <div class="field"><textarea id="reply-contenu" rows="5" placeholder="Votre réponse…"></textarea></div>
+        <div class="err" id="reply-err"></div>
+        <div class="form-actions">
+          <button class="btn-save" onclick="soumettreReply(${t.id})">[ Publier ]</button>
+          <button class="btn-cancel" onclick="toggleReplyForm()">Annuler</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function backToForum(){
+  document.getElementById('topic-detail').style.display = 'none';
+  document.getElementById('forum-list').style.display   = 'block';
+  CURRENT_TOPIC = null;
+}
+
+function toggleReplyForm(){
+  const f = document.getElementById('reply-form');
+  if (!f) return;
+  f.style.display = f.style.display==='block' ? 'none' : 'block';
+}
+
+async function soumettreReply(topicId){
+  const err     = document.getElementById('reply-err');
+  const contenu = document.getElementById('reply-contenu').value.trim();
+  err.textContent = '';
+  if (!contenu){ err.textContent = 'Réponse vide.'; return; }
+
+  const r = await POST(`/la_forge/forum/topic/${topicId}/reply`, {contenu});
+  if (!r.ok){ err.textContent = 'Erreur lors de la publication.'; return; }
+  const reply = await r.json();
+
+  document.getElementById('reply-contenu').value = '';
+  toggleReplyForm();
+
+  // Insérer la réponse dans la liste
+  const list = document.getElementById('replies-list');
+  list.insertAdjacentHTML('beforeend', `
+    <div class="reply-card">
+      <div class="reply-author">${esc(reply.author_pseudo)}<span class="reply-date">${fmtDate(reply.created_at)}</span></div>
+      <div class="reply-contenu">${esc(reply.contenu)}</div>
+    </div>`);
+
+  if (CURRENT_TOPIC) CURRENT_TOPIC.reply_count++;
+}
+
+async function voterTopic(topicId){
+  const r = await POST(`/la_forge/forum/topic/${topicId}/vote`, {});
+  if (!r.ok) return;
+  const votes = await r.json();
+  const btn = document.getElementById(`vote-btn-${topicId}`);
+  const cnt = document.getElementById(`vote-count-${topicId}`);
+  if (btn){ btn.classList.add('voted'); btn.disabled=true; btn.textContent='↑ Voté'; }
+  if (cnt) cnt.textContent = `${votes} vote${votes!==1?'s':''}`;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+if (TOKEN && !tokenExpired(TOKEN)) {
+  try {
+    const p = JSON.parse(atob(TOKEN.split('.')[1]));
+    // On ne connaît pas le pseudo sans fetch — on charge le profil
+    enterApp('…');
+    loadProfil().then(() => {
+      if (ME) document.getElementById('top-pseudo').textContent = ME.pseudo;
+    });
+  } catch { localStorage.removeItem('forge_member_token'); TOKEN=null; }
+}
+</script>
+</body>
+</html>

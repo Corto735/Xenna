@@ -8,7 +8,7 @@ use axum::{
     http::{header, HeaderValue, Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Redirect, Response},
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 use chrono::NaiveDate;
@@ -19,9 +19,12 @@ use sqlx::SqlitePool;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use xenna_paie_lib::{
+    admin::admin_router,
+    altcha::{generate_challenge, AltchaChallenge},
     calculs::{generer_annee, generer_bulletin},
     db::{init_db, ContextPaie},
     forge::forge_router,
+    membre::membre_router,
     quizz::quizz_router,
     models::{Salarie, Statut},
 };
@@ -83,17 +86,25 @@ async fn security_headers(req: Request, next: Next) -> Response {
     h.insert("strict-transport-security", HeaderValue::from_static("max-age=63072000; includeSubDomains"));
     h.insert(
         "content-security-policy",
+        // worker-src 'self' blob: — requis par le widget Altcha (Web Worker)
         HeaderValue::from_static(
             "default-src 'self'; \
              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
              font-src 'self' https://fonts.gstatic.com; \
              script-src 'self' 'unsafe-inline'; \
+             worker-src 'self' blob:; \
              connect-src 'self' https://api.mymemory.translated.net; \
              img-src 'self' data:; \
              frame-ancestors 'none'"
         ),
     );
     res
+}
+
+// ── GET /altcha/challenge ──────────────────────────────────────────────────────
+async fn altcha_challenge() -> Json<AltchaChallenge> {
+    let secret = std::env::var("ALTCHA_SECRET").unwrap_or_else(|_| "dev_altcha_secret".into());
+    Json(generate_challenge(&secret))
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -173,8 +184,11 @@ async fn main() {
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
+        .route("/altcha/challenge", get(altcha_challenge))
         .merge(forge_router())
         .merge(quizz_router())
+        .merge(admin_router())
+        .merge(membre_router())
         .merge(meliinda)
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))

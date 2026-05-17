@@ -79,6 +79,7 @@ pub struct ContributorProfile {
     pub votes_received:   i64,
     pub votes_given:      i64,
     pub created_at:       String,
+    pub status:           String,
 }
 
 // ── Vue agrégée ───────────────────────────────────────────────────────────────
@@ -120,6 +121,9 @@ pub struct CreerProfilReq {
     pub expertises:       Vec<CcnExpertiseInput>,
     #[serde(default)]
     pub pays:             Vec<PaysExpertiseInput>,
+    pub altcha:           Option<String>,
+    pub password:         String,
+    pub password_confirm: String,
 }
 
 fn default_actuel() -> bool { true }
