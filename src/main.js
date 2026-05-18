@@ -63,7 +63,7 @@ window.openExternal = async function(url) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 
-const DATE_MAX = '2026-01-31';
+const DATE_MAX = '2026-06-30';
 const TODAY    = DATE_MAX;   // alias pour les appels existants
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
