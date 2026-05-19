@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::Html,
     routing::{get, post, put},
     Json, Router,
 };
@@ -12,7 +12,7 @@ use sqlx::SqlitePool;
 use super::auth::{member_jwt_secret, member_profile_id, MemberAuth};
 use super::models::*;
 use crate::{
-    admin::auth::{generate_jwt, verify_password},
+    admin::auth::verify_password,
     crypto::{email_hash, parse_encryption_key},
     forge::models::{CcnExpertise, CcnLevel, PaysExpertise},
 };
