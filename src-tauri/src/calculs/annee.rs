@@ -62,6 +62,7 @@ pub async fn generer_annee(
             land: None,
             kirchenmitglied: None,
             region_be: None,
+            etp: 100.0,
         };
         let bulletin = generer_bulletin(dummy, &ctx);
 

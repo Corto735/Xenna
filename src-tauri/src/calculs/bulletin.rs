@@ -46,7 +46,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         }
     }
 
-    if let Some(fillon) = reduction_fillon(brut, ctx) {
+    if let Some(fillon) = reduction_fillon(brut, salarie.etp, ctx) {
         cotisations.push(fillon);
     }
 

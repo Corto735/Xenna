@@ -1506,6 +1506,7 @@ async function calculate(source) {
     const bulletin = await api("calculer_bulletin", {
       salarie: {
         nom, prenom, salaire_brut: brut.toString(), statut,
+        etp: parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100,
         alsace_moselle: alsaceMoselle,
         pays: paysEtranger ?? (isFPT ? "fonction_publique" : "france"),
         assujetti_is: assujettiIS,

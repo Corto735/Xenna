@@ -94,7 +94,13 @@ pub struct Salarie {
     /// Valeurs : "wallonie", "flandre", "bruxelles" (défaut : "bruxelles").
     #[serde(default)]
     pub region_be: Option<String>,
+    /// Quotité de travail en % (100 = temps plein, 80 = 4/5, 50 = mi-temps…).
+    /// Sert à proratiser le SMIC dans la formule Fillon (§670 BOSS / CSS art. L241-13).
+    #[serde(default = "etp_default")]
+    pub etp: f64,
 }
+
+fn etp_default() -> f64 { 100.0 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LigneCotisation {

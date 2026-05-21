@@ -250,8 +250,15 @@ pub fn fillon_coeff(smic: Decimal, brut: Decimal, ctx: &ContextPaie) -> Decimal 
 /// Réduction générale des cotisations patronales (loi Fillon, CSS art. L241-13).
 /// Retourne None si le salaire dépasse le seuil ou si les paramètres Fillon
 /// ne sont pas en base pour cette date.
-pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
-    let coeff = fillon_coeff(ctx.smic_mensuel, brut, ctx);
+pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Option<LigneCotisation> {
+    // §670 BOSS (CSS art. L241-13) : le SMIC est proratisé selon la durée contractuelle.
+    // SMIC_proraté = SMIC_mensuel × (ETP / 100)
+    let ratio: Decimal = format!("{:.6}", (etp_pct / 100.0).clamp(0.0, 2.0))
+        .parse()
+        .unwrap_or(dec!(1));
+    let smic = (ctx.smic_mensuel * ratio).round_dp(2);
+
+    let coeff = fillon_coeff(smic, brut, ctx);
     if coeff == Decimal::ZERO {
         return None;
     }
@@ -261,8 +268,13 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
     let tmin      = ctx.fillon_tmin.unwrap_or(Decimal::ZERO);
     let tdelta    = tmax - tmin;
     let montant   = (brut * coeff).round_dp(2);
-    let seuil_eur = (seuil * ctx.smic_mensuel).round_dp(2);
-    let smic      = ctx.smic_mensuel;
+    let seuil_eur = (seuil * smic).round_dp(2);
+
+    let etp_info = if (etp_pct - 100.0).abs() > 0.1 {
+        format!("\n⚠ Temps partiel {:.0} % — SMIC proratisé : {smic} € (§670 BOSS)", etp_pct)
+    } else {
+        String::new()
+    };
 
     let explication = if ctx.fillon_puissance.is_some() {
         let inner = (seuil * smic / brut - Decimal::ONE) / dec!(2);
@@ -289,7 +301,7 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.\n\
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
             Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires."
         )
     } else {
@@ -306,7 +318,7 @@ pub fn reduction_fillon(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisat
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois."
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}"
         )
     };
 
