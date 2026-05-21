@@ -62,14 +62,32 @@ window.openExternal = async function(url) {
 
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
+let _etpPrev = 100; // ETP de référence pour le recalcul brut proportionnel
 
-const DATE_MAX = '2026-06-30';
-const TODAY    = DATE_MAX;   // alias pour les appels existants
+function _fmLastDay(year, month) {           // month 1-indexed
+  return new Date(Date.UTC(year, month, 0)); // day=0 → dernier jour du mois précédent
+}
+const _now   = new Date();
+const _year  = _now.getFullYear();
+const _month = _now.getMonth() + 1;           // 1-indexed
+
+const DATE_MIN   = '2015-01-01';
+const DATE_TODAY = _fmLastDay(_year, _month).toISOString().slice(0, 10);
+const _nextYear  = _month === 12 ? _year + 1 : _year;
+const _nextMonth = _month === 12 ? 1 : _month + 1;
+const DATE_MAX   = _fmLastDay(_nextYear, _nextMonth).toISOString().slice(0, 10);
+const TODAY      = DATE_TODAY;  // alias rétrocompatible
+
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.value = DATE_MAX; el.max = DATE_MAX; }
+    if (el) { el.value = DATE_TODAY; el.min = DATE_MIN; el.max = DATE_MAX; }
   });
+  const yearEl = document.getElementById('a-annee');
+  if (yearEl) {
+    yearEl.max = String(_nextYear);
+    if (parseInt(yearEl.value, 10) > _nextYear) yearEl.value = String(_nextYear);
+  }
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
   // Tirage unique à l'arrivée — héros + genre initial (H : 49 %, F : 51 %)
@@ -1847,26 +1865,27 @@ window.onDureeChange = function(prefix, field) {
   });
   _syncEtpSel(other, parseFloat(etpEl.value));
 
-  ['d', 'm'].forEach(p => {
-    const btn = document.getElementById(`${p}-apply-brut`);
-    if (btn) btn.style.display = '';
-  });
+  const isChecked = document.getElementById('d-apply-brut-chk')?.checked;
+  if (isChecked && !isNaN(etp) && _etpPrev > 0 && Math.abs(etp - _etpPrev) > 0.001) {
+    const factor = etp / _etpPrev;
+    ['d-brut', 'm-brut'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const v = parseFloat(el.value);
+      if (!isNaN(v) && v > 0) el.value = Math.round(v * factor * 100) / 100;
+    });
+    _etpPrev = etp;
+  }
 };
 
-window.applyBrut = function(prefix) {
-  const hMois = parseFloat(document.getElementById(`${prefix}-h-mois`)?.value);
-  if (!hMois || hMois <= 0) return;
-  const factor = hMois / 151.67;
-  ['d-brut', 'm-brut'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const v = parseFloat(el.value);
-    if (!isNaN(v)) el.value = Math.round(v * factor * 100) / 100;
-  });
-  ['d', 'm'].forEach(p => {
-    const btn = document.getElementById(`${p}-apply-brut`);
-    if (btn) btn.style.display = 'none';
-  });
+window.onApplyBrutChk = function(prefix) {
+  const other = prefix === 'd' ? 'm' : 'd';
+  const src = document.getElementById(`${prefix}-apply-brut-chk`);
+  const dst = document.getElementById(`${other}-apply-brut-chk`);
+  if (src && dst) dst.checked = src.checked;
+  if (src?.checked) {
+    _etpPrev = parseFloat(document.getElementById(`${prefix}-etp`)?.value) || 100;
+  }
 };
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).

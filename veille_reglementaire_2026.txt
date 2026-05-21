@@ -1,0 +1,597 @@
+================================================================================
+XENNA PAIE — VEILLE RÉGLEMENTAIRE ET LÉGALE
+Modifications de taux depuis le 01/01/2026
+Tous pays et régions configurés
+Généré le 21/05/2026
+================================================================================
+
+LÉGENDE
+  [OK]  Intégré dans la base de données Xenna
+  [!!]  Manquant ou à mettre à jour en base
+  [?]   À vérifier sur la source officielle
+  [--]  Stable, aucune modification requise
+
+================================================================================
+FRANCE (métropole + régions)
+================================================================================
+
+SMIC (Salaire Minimum Interprofessionnel de Croissance)
+-------------------------------------------------------
+[OK]  01/01/2026 — Revalorisation du SMIC
+        Mensuel brut : 1 823,03 € (base 151,67 h/mois, 35h/semaine)
+        Horaire brut : 12,02 €
+        Base : décret n° 2025-1362 du 18/12/2025 (JO du 19/12/2025)
+        Hausse : +2,0 % vs SMIC au 01/11/2024 (1 801,80 €)
+        Migration DB : 0006_smic_2026.sql
+
+[OK]  01/06/2026 — Revalorisation exceptionnelle du SMIC
+        Mensuel brut : 1 867,02 € (base 151,67 h/mois)
+        Horaire brut : 12,31 €
+        Hausse : +2,4 % vs SMIC au 01/01/2026 (1 823,03 €)
+        Seuil d'extinction Fillon au 01/06/2026 : 3 × 1 867,02 = 5 601,06 €
+        Migration DB : 0047_smic_juin_2026.sql
+
+Plafonds de Sécurité Sociale
+------------------------------
+[OK]  PMSS 2026 (Plafond Mensuel de la Sécurité Sociale)
+        Valeur : 4 005 €/mois
+        Source : arrêté du 19/12/2025 (JO du 23/12/2025)
+        Rappel 2025 : 3 925 €/mois (+2,0 %)
+        Migration DB : 0014_correctifs_2025_2026.sql
+
+[OK]  PASS 2026 (Plafond Annuel de la Sécurité Sociale)
+        Valeur : 48 060 €/an (= 12 × 4 005 €)
+        Migration DB : 0014_correctifs_2025_2026.sql
+
+Réduction Générale (ex-réduction Fillon)
+-----------------------------------------
+[OK]  2026 — Nouvelle formule de calcul (réforme LFSS 2026)
+        Formule : C = Tmin + (Tdelta × D^P)
+          D      = (1/2) × (3 × SMIC_annualisé / Rémunération_annualisée − 1)
+          Tmin   = 0,0200 (plancher 2 %)
+          Tdelta = 0,3781
+          Tmax   = 0,3981 (T = Tmin + Tdelta)
+          P      = 1,75 (exposant de courbure)
+        Seuil d'extinction : 3 × SMIC (au lieu de 1,6 × SMIC avant 2026)
+        Rappel : jusqu'au 31/12/2025, formule linéaire C = (T/0,6) × (1,6×SMIC/Rémun.−1)
+                 avec T = 0,3981 — les deux sont en base.
+        Migration DB : 0014_correctifs_2025_2026.sql
+
+Cotisations Sécurité Sociale (URSSAF)
+--------------------------------------
+[--]  Maladie-Maternité
+        Salariale : 0,00 % (supprimée par LFSS 2018)
+        Patronale : 13,13 % (stable depuis 01/01/2018)
+
+[--]  Vieillesse plafonnée (CNAV, tranche ≤ 1 PMSS)
+        Salariale : 6,90 %
+        Patronale : 8,55 %
+        Stable depuis 2016
+
+[--]  Vieillesse déplafonnée (CNAV, totalité du salaire)
+        Salariale : 0,40 %
+        Patronale : 1,90 %
+        Stable
+
+[--]  Allocations familiales
+        Salariale : 0,00 %
+        Patronale : 3,45 % (taux réduit pour salaires ≤ 3,5 SMIC)
+                  / 5,25 % (taux plein au-delà)
+        Stable depuis 2015
+
+[--]  AT/MP (Accidents du Travail / Maladies Professionnelles)
+        Taux patronal individuel par établissement (secteur + sinistralité)
+        Taux moyen indicatif : 2,35 % — aucun taux national fixé
+        Notification annuelle CARSAT/URSSAF par entreprise
+
+CSG / CRDS
+-----------
+[--]  CSG déductible : 6,80 % salariale (stable depuis 01/01/2018)
+[--]  CSG non déductible : 2,40 % salariale (stable depuis 01/01/2018)
+[--]  CRDS : 0,50 % salariale (stable depuis 1996)
+
+Assurance Chômage (France Travail)
+------------------------------------
+[--]  Chômage patronal : 4,05 % (stable depuis 01/10/2017)
+[--]  Chômage salarié : 0,00 % (supprimé depuis 01/10/2017)
+
+[?]   AGS (Assurance de Garantie des Salaires)
+        Taux actuel en base : 0,15 % patronal
+        À vérifier : l'AGS peut faire l'objet d'une révision trimestrielle
+        du CNPGS. Aucune modification publiée à ce jour pour 2026.
+
+Retraite Complémentaire (AGIRC-ARRCO)
+--------------------------------------
+Accord du 05/10/2023 : taux figés pour 2024-2026. Aucune modification.
+
+[--]  AGIRC-ARRCO T1 (0 à 1 PMSS)
+        Salariale : 3,15 %  |  Patronale : 4,72 %  |  Total : 7,87 %
+
+[--]  AGIRC-ARRCO T2 (1 à 8 PMSS)
+        Salariale : 8,64 %  |  Patronale : 12,96 %  |  Total : 21,59 %
+
+[--]  CEG T1 (contribution d'équilibre général, 0-1 PMSS)
+        Salariale : 0,86 %  |  Patronale : 1,29 %
+
+[--]  CEG T2 (1-8 PMSS)
+        Salariale : 1,08 %  |  Patronale : 1,62 %
+
+[--]  CET (contribution d'équilibre et de développement)
+        Salariale : 0,14 %  |  Patronale : 0,21 %
+
+[--]  APEC (cadres uniquement)
+        Salariale : 0,24 %  |  Patronale : 0,36 %
+
+[--]  Prévoyance cadre minimale (article 7)
+        Salariale : 0,00 %  |  Patronale : 1,50 %
+        Plafond : tranche A (1 PMSS)
+
+Formation et Taxes
+-------------------
+[--]  Formation professionnelle continue : 1,00 % (≥ 11 salariés) / 0,55 % (< 11)
+[--]  Taxe d'apprentissage : 0,59 % (stable)
+[--]  Contribution CPF-CDD (alternants) : 1,00 % (stable)
+[--]  Versement mobilité (transport) : taux fixé par ILEDF/AOM — varie par zone
+        (supprimé du calcul standard depuis 2023 — à intégrer si besoin)
+
+PAS (Prélèvement à la Source)
+-------------------------------
+[?]   Barème 2026 : publié par l'administration fiscale (décret)
+        Grilles de taux par défaut non modifiées dans la DB
+        (le PAS est calculé par l'employeur selon certificat individuel — non intégré
+        dans le simulateur en mode automatique)
+
+Région Alsace-Moselle (67, 68, 57)
+-------------------------------------
+[--]  Assurance maladie complémentaire locale (régime local)
+        Salariale : 1,30 % (depuis 01/07/2018 ; était 1,50 % avant)
+        Patronale : 0,00 %
+        Stable — aucune modification en 2026
+
+================================================================================
+ALLEMAGNE
+================================================================================
+
+Assurance Maladie (Krankenversicherung — KV)
+----------------------------------------------
+[OK]  2026 — Hausse du Zusatzbeitrag moyen
+        Taux général (allgemeiner Beitragssatz) : 14,6 % — inchangé
+        Zusatzbeitrag moyen 2026 (GKV-Spitzenverband) : 2,9 % (vs 2,5 % en 2025)
+        Total KV 2026 : 17,5 % partagé à 50/50
+        → Salariale : 8,75 %  |  Patronale : 8,75 %
+        Plafond (BBG KV) 2026 : 5 812,50 €/mois
+        Base légale : Beitragssatzverordnung 2026
+        Migration DB : 0029_de_cotisations.sql (taux depuis 2026-01-01)
+
+Retraite (Rentenversicherung — RV)
+------------------------------------
+[--]  Taux 2026 : 18,6 % total, 9,30 % chacun
+        Stable depuis 2018 (était 18,7 % en 2015-2017)
+        Plafond (BBG RV) 2026 : 8 450 €/mois (unifié Est/Ouest depuis 2025)
+        Migration DB : 0029 + 0028
+
+Assurance Chômage (Arbeitslosenversicherung — AV)
+--------------------------------------------------
+[--]  Taux 2026 : 2,6 % total, 1,30 % chacun
+        Stable depuis 2023
+
+Assurance Dépendance (Pflegeversicherung — PV)
+------------------------------------------------
+[OK]  Taux 2026 : 3,6 % total (1,80 % chacun) pour les parents d'enfants
+[OK]  Majoration sans enfant (>23 ans) : +0,6 % salarié = 2,40 % sal
+        Hausse au 01/07/2023 : PV passé de 3,05 % à 3,40 % puis 3,60 %
+        Stable pour 2026 vs 2025
+        Migration DB : 0029_de_cotisations.sql
+
+Kirchensteuer (taxe ecclésiastique)
+-------------------------------------
+[--]  8 % de l'impôt (Bavière et Baden-Württemberg) ou 9 % (autres Länder)
+        Stable — décidée par chaque Land
+        Calculée en Rust uniquement si kirchenmitglied = true
+
+Solidaritätszuschlag (Soli)
+-----------------------------
+[--]  Supprimé depuis le 01/01/2021 pour la très grande majorité des salariés
+        (exonération si Lohnsteuer < seuil, qui couvre ~90 % des ménages)
+
+================================================================================
+SUISSE (26 cantons)
+================================================================================
+
+1er Pilier — Assurances fédérales (OFAS)
+-----------------------------------------
+[--]  AVS (Assurance-Vieillesse et Survivants)
+        Taux total : 8,70 % — 4,35 % chacun
+        Stable depuis le 01/01/2020 (réforme AVS 2020 — entrée en vigueur sept. 2022)
+
+[--]  AI (Assurance-Invalidité)
+        Taux total : 1,40 % — 0,70 % chacun
+        Stable depuis 2015
+
+[--]  APG (Allocations pour Perte de Gain)
+        Taux total : 0,50 % — 0,25 % chacun
+        Stable depuis 2011
+
+Assurance-Chômage (SECO / AC)
+-------------------------------
+[--]  AC phase 1 (jusqu'au plafond CHF 148 200/an)
+        Taux total : 2,20 % — 1,10 % chacun
+        Stable depuis 2014
+
+[--]  AC phase 2 (au-delà de CHF 148 200 jusqu'à CHF 296 400)
+        Taux total : 1,00 % — 0,50 % chacun (solidarité)
+        Stable
+
+Accidents du Travail (LAA — SUVA)
+-----------------------------------
+[--]  AAP (Accidents professionnels) : patronal uniquement — taux SUVA par classe
+        AANP (Non-professionnels) : salarial uniquement — indicatif 1,00-1,50 %
+        Taux fixés par chaque assureur (SUVA ou privé) — non modifiés nationalement en 2026
+
+2e Pilier — LPP (prévoyance professionnelle)
+---------------------------------------------
+[--]  Taux de cotisation minimum 2026 (selon âge) :
+        25-34 ans : 7,00 % (3,50 % chacun)
+        35-44 ans : 10,00 % (5,00 % chacun)
+        45-54 ans : 15,00 % (7,50 % chacun)
+        55-65/64 ans : 18,00 % (9,00 % chacun)
+        Base de calcul : salaire coordonné (salaire brut − déduction de coordination 26 040 CHF/an)
+        Stable — taux minimaux LPP inchangés depuis 2024
+
+[?]   Taux d'intérêt minimum LPP 2026 : fixé par le CF (décision automne 2025)
+        → Vérifier l'arrêté du Conseil Fédéral pour le taux 2026 (indicateur de référence)
+
+Impôt à la Source (IS) — par canton
+-------------------------------------
+[--]  Barème cantonal : chaque canton publie ses propres tables IS
+        26 codes cantons configurés dans la DB (GE, ZH, VD, BE, FR, etc.)
+        → Mettre à jour les barèmes IS en Rust (calcul spécifique par canton)
+
+================================================================================
+LUXEMBOURG
+================================================================================
+
+IGSS (Inspection Générale de la Sécurité Sociale)
+---------------------------------------------------
+[OK]  Maladie + Vieillesse (taux cumulés IGSS 2026)
+        Salariale  : 5,25 %
+        Patronale  : 8,10 %
+        Migration DB : 0013_seed_cotisations_lu.sql
+
+[OK]  Assurance-Chômage (Fonds de chômage)
+        Salariale  : 0,70 %
+        Patronale  : 1,40 %
+        Migration DB : 0013
+
+[--]  Accidents du Travail (AAT)
+        Patronale uniquement — taux fixé par secteur (AAA - Association d'assurance accident)
+        Indicatif général : ~1,20 % pat
+
+[?]   Ajustement sur le salaire social minimum (SSM) 2026
+        SSM non qualifié : vérifier la revalorisation 01/01/2026
+        Indexation automatique liée au coût de la vie (indice des prix)
+        (Utilisé comme base_min pour calculs — à vérifier si dans plafond_reference LU)
+
+================================================================================
+BELGIQUE (3 régions : Wallonie, Flandre, Bruxelles-Capitale)
+================================================================================
+
+ONSS (Office National de Sécurité Sociale)
+-------------------------------------------
+[--]  Cotisation personnelle salariale (travailleur)
+        Taux unique : 13,07 %
+        Stable depuis 2003 — aucune modification en 2026
+
+[--]  Cotisation patronale de base
+        Taux de référence : 25,92 %
+        En pratique réduite par la réduction structurelle (forfait mensuel)
+        Stable
+
+Réductions patronales (calculées en Rust)
+------------------------------------------
+[--]  Réduction structurelle (BE_RED_STRUCT)
+        Réduction forfaitaire mensuelle fixe selon taille de l'entreprise
+        Stable — logique dans be_cotisations.rs
+
+[--]  Bonus à l'emploi (BE_BONUS_EMPLOI)
+        Réduction dégressive pour bas salaires
+        Plafond de revenus : vérifier si le seuil 2026 a été indexé
+        Stable en base — logique dans be_cotisations.rs
+
+Précompte Professionnel (PP / Bedrijfsvoorheffing)
+----------------------------------------------------
+[OK]  Barème progressif national + correction régionale 2026 :
+        Flandre    : −6 % du PP national calculé (réduction flamande)
+        Wallonie   : +9 % du PP national calculé (surcharge wallonne)
+        Bruxelles  : aucune correction (0 %)
+        Migration DB : 0041_be_cotisations.sql (taux 2015-2026)
+
+[?]   Révision annuelle des barèmes PP
+        Les barèmes PP sont indexés chaque année (adaptation au coût de la vie)
+        → Vérifier si le barème 2026 (Rust be_pp.rs) est à jour
+
+================================================================================
+ITALIE (20 régions)
+================================================================================
+
+INPS — Previdenza Sociale
+--------------------------
+[--]  Contributi IVS (Invalidità, Vecchiaia, Superstiti)
+        Salariale (lavoratore dipendente) : 9,19 %
+        Patronale : 23,81 %
+        Stable depuis 2006
+
+[--]  Contributo addizionale NASpI (CDD)
+        Patronale : +1,40 % pour les contrats à durée déterminée
+        Stable
+
+INAIL — Accidents du Travail
+------------------------------
+[--]  Taux patronal variable par code ATECO (secteur d'activité)
+        Indicatif moyen : 1,20 % — aucune révision nationale en 2026
+
+Esonero Contributif
+--------------------
+[--]  2024 : Esonero INPS temporaire (DL 48/2023 prorogé) — intégré en base (migration 0025)
+             Plafond : 3 000 €/an, applicable si salaire ≤ 35 000 €
+             Formule DB : taux spécifique clos au 31/12/2024
+
+[--]  2025 : Remplacé par le Bonus IRPEF non-contributoire (L.207/2024 — Legge di Bilancio 2025)
+             → Pas de ligne cotisation_taux nécessaire (bonus fiscal hors assiette INPS)
+
+[?]   2026 : Vérifier prorogation/modification du bonus IRPEF
+             → Source : Legge di Bilancio 2026 (L. publicada fin 2025)
+
+IRPEF — Impôt sur le Revenu des Personnes Physiques
+------------------------------------------------------
+[OK]  Barème 2024+ (réforme Decreto Legislativo 216/2023) — 3 tranches :
+        23 % jusqu'à 28 000 €
+        35 % de 28 001 € à 50 000 €
+        43 % au-delà de 50 000 €
+        Migration DB : logique Rust it_irpef.rs / it_bulletin.rs
+
+[?]   Barème 2026 : aucune réforme supplémentaire des tranches annoncée
+        → Vérifier la Legge di Bilancio 2026 pour éventuels ajustements des déductions
+
+Addizionale Regionale IRPEF (par région)
+-----------------------------------------
+[--]  20 régions configurées (LO=Lombardia, LA=Lazio, CA=Campania, etc.)
+        Taux : de 1,23 % (min national) à 3,33 % (max autorisé)
+        Vérifier les délibérations régionales 2026 — certaines régions ajustent annuellement
+
+================================================================================
+CANADA (hors Québec — provinces anglophones)
+================================================================================
+
+RPC (Régime de Pensions du Canada)
+------------------------------------
+[--]  Phase 1 (CA_RPC) — taux 2026 : 5,95 % chacun
+        Plafond : MGA 2026
+        Taux stable depuis 2023 (bonification terminée)
+
+[!!]  MGA 2026 (Maximum des Gains Annuels ouvrant droit à pension)
+        Valeur 2025 en base : 71 300 CAD (date_fin NULL)
+        Valeur 2026 officielle : à confirmer (ARC publie en octobre/novembre)
+        → Créer une entrée plafond_reference fermant 2025 et ouvrant 2026
+
+[--]  Phase 2 (CA_RPC2) — taux 2026 : 4,00 % chacun
+        Assiette : gains entre MGA et MGAP2
+
+[!!]  MGAP2 2026 (Maximum des Gains Annuels supplémentaires)
+        Valeur 2025 en base : 81 900 CAD (date_fin NULL)
+        → Mettre à jour avec la valeur 2026 (annoncée par ARC)
+
+Assurance-Emploi (AE — hors Québec)
+--------------------------------------
+[!!]  CA_AE — Taux 2026
+        Valeur 2025 en base : 1,64 % salariale / 2,296 % patronale (date_fin NULL)
+        → Vérifier le taux 2026 sur Service Canada (annonce décembre 2025)
+        → Fermer la période 2025 et créer une ligne 2026
+
+[!!]  MAGA 2026 (Maximum des Gains Annuels Assurables AE)
+        Valeur 2025 en base : 65 700 CAD (date_fin NULL)
+        → Mettre à jour avec la valeur 2026 (annoncée par EDSC)
+
+Impôt Fédéral (retenue à la source)
+--------------------------------------
+[?]   Barème 2026 : 5 tranches 15/20,5/26/29/33 %
+        Montant Personnel de Base (MPB) 2026 : à confirmer
+        → Vérifier les tables de retenues T4032 2026 de l'ARC
+
+Impôt Provincial Ontario (province de référence hors QC)
+---------------------------------------------------------
+[?]   Barème Ontario 2026 : 5 tranches 5,05/9,15/11,16/12,16/13,16 %
+        MPB Ontario 2026 : à confirmer
+        → Vérifier les formulaires TD1ON 2026
+
+================================================================================
+QUÉBEC
+================================================================================
+
+RRQ (Régime de Rentes du Québec)
+----------------------------------
+[--]  Phase 1 (QC_RRQ) — taux 2026 : 6,40 % chacun
+        Stable depuis 2023 (taux cible atteint)
+        Plafond : même MGA que RPC
+
+[--]  Phase 2 (QC_RRQ2) — taux 2026 : 4,00 % chacun
+        Stable
+
+Assurance-Emploi Québec (taux réduit)
+---------------------------------------
+[!!]  QC_AE — Taux 2026
+        Valeur 2025 en base : 1,31 % sal / 1,834 % pat (date_fin NULL)
+        → À confirmer avec le bulletin de l'EDSC pour 2026
+
+RQAP (Régime Québécois d'Assurance Parentale)
+-----------------------------------------------
+[--]  Taux 2026 : 0,494 % salariale / 0,692 % patronale
+        Stable depuis 2021
+
+[!!]  QC_MAGA_RQAP 2026 (plafond RQAP)
+        Valeur 2025 : 97 500 CAD (date_fin NULL)
+        → Mettre à jour (Revenu Québec publie annuellement)
+
+FSS (Fonds des Services de Santé — Québec)
+--------------------------------------------
+[--]  Taux patronal indicatif : 2,05 % (secteur services, masse salariale intermédiaire)
+        Stable
+
+Impôt Provincial Québec
+------------------------
+[?]   Barème 2026 : 4 tranches 14/19/24/25,75 %
+        MPB Québec 2026 : à confirmer (indexation annuelle)
+        → Vérifier TP-1015.3 et guide de Revenu Québec 2026
+
+================================================================================
+ESPAGNE
+================================================================================
+
+Contingencias Comunes (Sécurité Sociale générale)
+--------------------------------------------------
+[--]  Taux CC 2026 : 4,70 % salariale + 23,60 % patronale = 28,30 % total
+        Stable depuis 2015 (contrato indefinido, régime général)
+
+[--]  Desempleo (chômage) : 1,55 % sal + 5,50 % pat
+        FOGASA : 0,00 % sal + 0,20 % pat
+        Formation professionnelle (FP) : 0,10 % sal + 0,60 % pat
+        Tous stables depuis 2015
+
+MEI (Mecanismo de Equidad Intergeneracional)
+---------------------------------------------
+[!!]  MEI 2026 — Mise à jour requise
+        Taux 2025 en base (date_fin NULL) : 0,13 % sal + 0,53 % pat = 0,66 % total
+        Progression légale (Ley 21/2021) prévue pour 2026 : ~0,74 % total
+        Répartition estimée : 0,14 % sal + 0,60 % pat (à confirmer avec l'Orden de cotización 2026)
+        → Fermer la période 2025 au 31/12/2025 et créer une entrée 2026-01-01
+
+Bases de cotisation (plafonds)
+-------------------------------
+[!!]  ES_BASE_MAX 2026 (base máxima de cotización)
+        Valeur 2025 en base : 4 909,50 €/mois (date_fin NULL)
+        Valeur 2026 estimée : ~5 100-5 200 €/mois (indexation Loi PGE 2026)
+        → Source officielle : Orden de cotización 2026 (TGSS)
+
+[!!]  ES_BASE_MIN 2026 (= SMI 2026 × coefficient)
+        Valeur 2025 en base : 1 184,00 €/mois (SMI 2025, date_fin NULL)
+        SMI 2026 : en cours de négociation gouvernementale
+        → Source : décret royal début 2026 (SMI)
+
+IRPF (Impuesto sobre la Renta de las Personas Físicas)
+-------------------------------------------------------
+[--]  Barème 5 tranches : 19 / 24 / 30 / 37 / 45 %
+        Stable (calcul en Rust es_irpf.rs)
+[?]   Vérifier les ajustements des déductions 2026 (Agencia Tributaria)
+
+================================================================================
+PORTUGAL (régime général)
+================================================================================
+
+TSU (Taxa Social Única — Segurança Social)
+-------------------------------------------
+[--]  Salariale : 11,00 %
+        Patronale : 23,75 %
+        Total : 34,75 %
+        Stable depuis 2013 — inchangé en 2026
+
+FCT / FGCT (garantie des indemnités de licenciement)
+------------------------------------------------------
+[--]  FCT  : 0,925 % patronale
+        FGCT : 0,075 % patronale
+        Stables depuis DL 210/2015
+
+AT/Seguro (Accidents du Travail)
+---------------------------------
+[--]  Taux moyen indicatif : 1,75 % patronale (tertiaire)
+        Varie selon le contrat d'assurance souscrit
+
+Salaire Minimum National (SMN)
+-------------------------------
+[!!]  SMN 2026 — Mise à jour requise
+        Valeur 2025 en base : 870,00 €/mois (date_fin NULL)
+        SMN 2026 : annoncé dans l'OE 2026 (Lei do Orçamento do Estado)
+        Estimation : entre 910 € et 930 €/mois selon engagement gouvernemental
+        → Fermer la période 2025 et créer l'entrée 2026 dans plafond_reference
+
+IRS (Retenção na Fonte — retenue à la source)
+----------------------------------------------
+[?]   Barème IRS 2026 (9 tranches — OE 2026)
+        Calcul en Rust pt_irs.rs — barème annuel à mettre à jour
+        L'OE 2026 ajuste généralement les tranches par indexation
+        → Vérifier le Decreto-Lei portant approbation des tables IRS 2026
+
+================================================================================
+RÉSUMÉ DES ACTIONS PRIORITAIRES
+================================================================================
+
+IMMÉDIAT — À intégrer en base (migration SQL) :
+  [1]  Espagne : MEI 2026 (~0,74 % total) — Orden de cotización 2026 publiée
+  [2]  Espagne : ES_BASE_MAX 2026 et ES_BASE_MIN 2026 (SMI 2026)
+  [3]  Portugal : PT_SMN 2026 (OE 2026)
+  [4]  Canada/Québec : CA_MGA / CA_MGAP2 / CA_MAGA / QC_MAGA_RQAP 2026
+  [5]  Canada : CA_AE 2026 (taux AE) — après publication EDSC
+  [6]  Québec : QC_AE 2026 — après publication EDSC
+
+À VÉRIFIER / METTRE À JOUR DANS RUST :
+  [7]  Belgique : barème PP 2026 (be_pp.rs) — indexation annuelle
+  [8]  Italie : addizionale regionale 2026 (it_irpef.rs) — délibérations régionales
+  [9]  Portugal : barème IRS 2026 (pt_irs.rs)
+  [10] Canada/Québec : barèmes impôt fédéral et provinciaux 2026 (ca_impot.rs / qc_impot.rs)
+  [11] Suisse : barèmes IS cantonaux 2026 (ch_is.rs)
+
+SURVEILLER :
+  [12] France : AGS — révision trimestrielle CNPGS
+  [13] France : taux AT/MP individuels 2026 (notifications CARSAT)
+  [14] Italie : Legge di Bilancio 2026 — prorogation/modification bonus IRPEF
+  [15] Luxembourg : SSM 2026 et taux IGSS si révision en cours d'année
+
+================================================================================
+SOURCES OFFICIELLES DE RÉFÉRENCE
+================================================================================
+
+FRANCE
+  URSSAF          : https://www.urssaf.fr/portail/home/taux-et-baremes.html
+  AGIRC-ARRCO     : https://www.agirc-arrco.fr
+  Légifrance      : https://www.legifrance.gouv.fr
+  Journal Officiel : https://www.journal-officiel.gouv.fr
+
+ALLEMAGNE
+  GKV-Spitzenverband : https://www.gkv-spitzenverband.de
+  Deutsche RV     : https://www.deutsche-rentenversicherung.de
+  Bundesagentur   : https://www.arbeitsagentur.de
+
+SUISSE
+  OFAS            : https://www.bsv.admin.ch
+  SECO            : https://www.seco.admin.ch
+
+LUXEMBOURG
+  IGSS            : https://www.igss.lu
+
+BELGIQUE
+  ONSS            : https://www.onss.be
+  SPF Finances    : https://finances.belgium.be
+
+ITALIE
+  INPS            : https://www.inps.it
+  Agenzia Entrate : https://www.agenziaentrate.gov.it
+
+CANADA / QUÉBEC
+  ARC (CRA)       : https://www.canada.ca/fr/agence-revenu-canada.html
+  EDSC            : https://www.canada.ca/fr/emploi-developpement-social.html
+  Retraite Québec : https://www.retraitequebec.gouv.qc.ca
+  Revenu Québec   : https://www.revenuquebec.ca
+
+ESPAGNE
+  TGSS            : https://www.seg-social.es
+  Agencia Tributaria : https://www.agenciatributaria.es
+
+PORTUGAL
+  IGFSS / SS      : https://www.seg-social.pt
+  Autoridade Tributária : https://www.portaldasfinancas.gov.pt
+
+================================================================================
+FIN DU DOCUMENT
+Généré par Xenna Paie — veille réglementaire 2026
+Note : les taux marqués [?] ou [!!] doivent être vérifiés sur les sources
+officielles avant utilisation en paie réelle.
+================================================================================
