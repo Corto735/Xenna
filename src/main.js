@@ -1188,7 +1188,9 @@ function renderDesktop(b) {
       </tbody>
     </table>`;
 
-  el.innerHTML = simBanner + summaryBar + `<div class="tbl-wrap">${tableAll}${tableAlleg}</div>`;
+  el.innerHTML = simBanner + summaryBar
+    + `<div id="rem-result-d">${buildRemSection()}</div>`
+    + `<div class="tbl-wrap">${tableAll}${tableAlleg}</div>`;
 }
 
 // ─── Accordéon mobile ───────────────────────────────────────────────────────
@@ -1330,11 +1332,8 @@ function renderMobile(b) {
         </div>
       </div>
 
-      <!-- Brut -->
-      <div class="mob-row final-row">
-        <span class="mob-lbl">Salaire de base brut</span>
-        <span class="mob-val c-green">${fmt(b.brut)}</span>
-      </div>
+      <!-- Rémunération -->
+      <div id="rem-result-m">${buildRemSectionMobile()}</div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
       <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:0.75rem"><span class="mob-badge mob-badge-sal">Sal.</span><span class="mob-badge mob-badge-pat">Pat.</span></span></div>
@@ -1446,7 +1445,6 @@ function showInputError(msg) {
 // ═════════════════════════════════════════════════════════════════════════════
 async function calculate(source) {
   const isM = source === "mobile";
-  const prefix       = isM ? 'm' : 'd';
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
@@ -1477,7 +1475,8 @@ async function calculate(source) {
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
   // Envoyer "" à Rust provoque une erreur de désérialisation Tauri muette.
   const brutVal  = parseFloat(brut);
-  const totalBrut = getRemTotal(prefix);
+  _remBase = brutVal || 0;
+  const totalBrut = getRemTotal();
   if (!brut || isNaN(brutVal) || brutVal <= 0) {
     showInputError("Salaire brut invalide — saisir un montant positif.");
     return;
@@ -1879,8 +1878,6 @@ window.onDureeChange = function(prefix, field) {
     });
     _etpPrev = etp;
   }
-  refreshRemOptions(prefix);
-  refreshRemOptions(prefix === 'd' ? 'm' : 'd');
 };
 
 window.onApplyBrutChk = function(prefix) {
@@ -1893,7 +1890,10 @@ window.onApplyBrutChk = function(prefix) {
   }
 };
 
-// ── Section Rémunération ──────────────────────────────────────────────────────
+// ── Section Rémunération (état persisté, rendu dans le résultat) ─────────────
+
+let _remLines = []; // [{ id, type, amount }]
+let _remBase  = 0;  // salaire de base saisi dans le formulaire
 
 function getRemOptions(etp) {
   const common = [
@@ -1914,59 +1914,123 @@ function getRemOptions(etp) {
   ];
 }
 
-window.addRemLine = function(prefix) {
-  const etp  = parseFloat(document.getElementById(`${prefix}-etp`)?.value ?? '100') || 100;
+function getRemTotal() {
+  return _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+}
+
+function buildRemSection() {
+  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
   const opts = getRemOptions(etp);
-  const id   = `${prefix}-rl-${Date.now()}`;
-  const selOpts = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
-  document.getElementById(`${prefix}-rem-lines`).insertAdjacentHTML('beforeend', `
-    <div class="rem-line" id="${id}">
-      <select class="rem-type-sel">${selOpts}</select>
-      <input type="number" class="rem-amt-inp" placeholder="0.00" min="0" step="0.01"
-             oninput="updateRemTotal('${prefix}')" />
-      <button class="btn-rm-rem" type="button" onclick="removeRemLine('${id}','${prefix}')">×</button>
-    </div>
-  `);
-  updateRemTotal(prefix);
+  const lines = _remLines.map(l => {
+    const selOpts = opts.map(o =>
+      `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+    return `
+      <div class="rem-line">
+        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="0.00" min="0" step="0.01"
+               oninput="onRemAmountChange('${l.id}',this.value)" />
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
+      </div>`;
+  }).join('');
+  const total = getRemTotal();
+  const totalRow = _remLines.length > 0 ? `
+    <div class="rem-total-row" style="display:flex">
+      <span class="rem-total-lbl">Total brut</span>
+      <span class="rem-total-val">${fmt(total)}</span>
+    </div>` : '';
+  return `
+    <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
+    <div class="rem-section">
+      <div class="rem-base-row">
+        <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>
+        <span class="rem-base-lbl">Salaire de base</span>
+        <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
+      </div>
+      ${lines}${totalRow}
+    </div>`;
+}
+
+function buildRemSectionMobile() {
+  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+  const opts = getRemOptions(etp);
+  const lines = _remLines.map(l => {
+    const selOpts = opts.map(o =>
+      `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+    return `
+      <div class="rem-line">
+        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="0.00" min="0" step="0.01"
+               oninput="onRemAmountChange('${l.id}',this.value)" />
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
+      </div>`;
+  }).join('');
+  const total = getRemTotal();
+  const totalRow = _remLines.length > 0 ? `
+    <div class="rem-total-row" style="display:flex;margin-left:0">
+      <span class="rem-total-lbl">Total brut</span>
+      <span class="rem-total-val">${fmt(total)}</span>
+    </div>` : '';
+  return `
+    <div class="mob-row section"><span class="mob-lbl">── RÉMUNÉRATION ──</span></div>
+    <div class="rem-section" style="padding:0.3rem 0.5rem 0.4rem">
+      <div class="rem-base-row">
+        <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>
+        <span class="rem-base-lbl">Salaire de base</span>
+        <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
+      </div>
+      ${lines}${totalRow}
+    </div>`;
+}
+
+window.addRemLineResult = function() {
+  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+  const opts = getRemOptions(etp);
+  _remLines.push({ id: `rl-${Date.now()}`, type: opts[0].value, amount: 0 });
+  _reRenderRemInPlace();
 };
 
-window.removeRemLine = function(id, prefix) {
-  document.getElementById(id)?.remove();
-  updateRemTotal(prefix);
-};
-
-window.updateRemTotal = function(prefix) {
-  const base  = parseFloat(document.getElementById(`${prefix}-brut`)?.value ?? '0') || 0;
-  const lines = document.querySelectorAll(`#${prefix}-rem-lines .rem-line`);
-  let total   = base;
-  lines.forEach(l => { total += parseFloat(l.querySelector('.rem-amt-inp')?.value ?? '0') || 0; });
-  const row = document.getElementById(`${prefix}-rem-total-row`);
-  if (!row) return;
-  if (lines.length > 0) {
-    row.style.display = 'flex';
-    document.getElementById(`${prefix}-rem-total`).textContent = fmt(total);
+window.removeRemLineResult = function(id) {
+  _remLines = _remLines.filter(l => l.id !== id);
+  if (_remLines.every(l => !l.amount)) {
+    _reRenderRemInPlace();
   } else {
-    row.style.display = 'none';
+    _triggerRecalculate();
   }
 };
 
-function getRemTotal(prefix) {
-  const base  = parseFloat(document.getElementById(`${prefix}-brut`)?.value ?? '0') || 0;
-  const lines = document.querySelectorAll(`#${prefix}-rem-lines .rem-line`);
-  let total   = base;
-  lines.forEach(l => { total += parseFloat(l.querySelector('.rem-amt-inp')?.value ?? '0') || 0; });
-  return total;
+window.onRemTypeChange = function(id, val) {
+  const l = _remLines.find(l => l.id === id);
+  if (l) l.type = val;
+};
+
+window.onRemAmountChange = function(id, val) {
+  const l = _remLines.find(l => l.id === id);
+  if (l) l.amount = parseFloat(val) || 0;
+  // Mise à jour immédiate du total sans re-render (évite de tuer le focus input)
+  const total = getRemTotal();
+  ['d', 'm'].forEach(p => {
+    const row = document.querySelector(`#rem-result-${p} .rem-total-row`);
+    if (!row) return;
+    row.style.display = 'flex';
+    const valEl = row.querySelector('.rem-total-val');
+    if (valEl) valEl.textContent = fmt(total);
+  });
+  _triggerRecalculate();
+};
+
+function _reRenderRemInPlace() {
+  const dBlock = document.getElementById('rem-result-d');
+  if (dBlock) dBlock.innerHTML = buildRemSection();
+  const mBlock = document.getElementById('rem-result-m');
+  if (mBlock) mBlock.innerHTML = buildRemSectionMobile();
 }
 
-function refreshRemOptions(prefix) {
-  const etp     = parseFloat(document.getElementById(`${prefix}-etp`)?.value ?? '100') || 100;
-  const opts    = getRemOptions(etp);
-  const selOpts = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
-  document.querySelectorAll(`#${prefix}-rem-lines .rem-type-sel`).forEach(sel => {
-    const cur = sel.value;
-    sel.innerHTML = selOpts;
-    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
-  });
+let _recalcTimer = null;
+function _triggerRecalculate() {
+  clearTimeout(_recalcTimer);
+  _recalcTimer = setTimeout(() => calculate('desktop'), 350);
 }
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
