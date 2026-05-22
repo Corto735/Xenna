@@ -1446,6 +1446,7 @@ function showInputError(msg) {
 // ═════════════════════════════════════════════════════════════════════════════
 async function calculate(source) {
   const isM = source === "mobile";
+  const prefix       = isM ? 'm' : 'd';
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
@@ -1475,7 +1476,8 @@ async function calculate(source) {
   // ── Validation côté JS ────────────────────────────────────────────────────
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
   // Envoyer "" à Rust provoque une erreur de désérialisation Tauri muette.
-  const brutVal = parseFloat(brut);
+  const brutVal  = parseFloat(brut);
+  const totalBrut = getRemTotal(prefix);
   if (!brut || isNaN(brutVal) || brutVal <= 0) {
     showInputError("Salaire brut invalide — saisir un montant positif.");
     return;
@@ -1505,7 +1507,7 @@ async function calculate(source) {
   try {
     const bulletin = await api("calculer_bulletin", {
       salarie: {
-        nom, prenom, salaire_brut: brut.toString(), statut,
+        nom, prenom, salaire_brut: totalBrut.toString(), statut,
         etp: parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100,
         alsace_moselle: alsaceMoselle,
         pays: paysEtranger ?? (isFPT ? "fonction_publique" : "france"),
@@ -1877,6 +1879,8 @@ window.onDureeChange = function(prefix, field) {
     });
     _etpPrev = etp;
   }
+  refreshRemOptions(prefix);
+  refreshRemOptions(prefix === 'd' ? 'm' : 'd');
 };
 
 window.onApplyBrutChk = function(prefix) {
@@ -1888,6 +1892,82 @@ window.onApplyBrutChk = function(prefix) {
     _etpPrev = parseFloat(document.getElementById(`${prefix}-etp`)?.value) || 100;
   }
 };
+
+// ── Section Rémunération ──────────────────────────────────────────────────────
+
+function getRemOptions(etp) {
+  const common = [
+    { value: 'prime',      label: 'Prime' },
+    { value: 'coupure_50', label: 'Coupures 50%' },
+  ];
+  if (Math.abs(parseFloat(etp) - 100) < 0.01) {
+    return [
+      { value: 'hs_125', label: 'H. sup. 125%' },
+      { value: 'hs_150', label: 'H. sup. 150%' },
+      ...common,
+    ];
+  }
+  return [
+    { value: 'hc_110', label: 'H. comp. 110%' },
+    { value: 'hc_125', label: 'H. comp. 125%' },
+    ...common,
+  ];
+}
+
+window.addRemLine = function(prefix) {
+  const etp  = parseFloat(document.getElementById(`${prefix}-etp`)?.value ?? '100') || 100;
+  const opts = getRemOptions(etp);
+  const id   = `${prefix}-rl-${Date.now()}`;
+  const selOpts = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  document.getElementById(`${prefix}-rem-lines`).insertAdjacentHTML('beforeend', `
+    <div class="rem-line" id="${id}">
+      <select class="rem-type-sel">${selOpts}</select>
+      <input type="number" class="rem-amt-inp" placeholder="0.00" min="0" step="0.01"
+             oninput="updateRemTotal('${prefix}')" />
+      <button class="btn-rm-rem" type="button" onclick="removeRemLine('${id}','${prefix}')">×</button>
+    </div>
+  `);
+  updateRemTotal(prefix);
+};
+
+window.removeRemLine = function(id, prefix) {
+  document.getElementById(id)?.remove();
+  updateRemTotal(prefix);
+};
+
+window.updateRemTotal = function(prefix) {
+  const base  = parseFloat(document.getElementById(`${prefix}-brut`)?.value ?? '0') || 0;
+  const lines = document.querySelectorAll(`#${prefix}-rem-lines .rem-line`);
+  let total   = base;
+  lines.forEach(l => { total += parseFloat(l.querySelector('.rem-amt-inp')?.value ?? '0') || 0; });
+  const row = document.getElementById(`${prefix}-rem-total-row`);
+  if (!row) return;
+  if (lines.length > 0) {
+    row.style.display = 'flex';
+    document.getElementById(`${prefix}-rem-total`).textContent = fmt(total);
+  } else {
+    row.style.display = 'none';
+  }
+};
+
+function getRemTotal(prefix) {
+  const base  = parseFloat(document.getElementById(`${prefix}-brut`)?.value ?? '0') || 0;
+  const lines = document.querySelectorAll(`#${prefix}-rem-lines .rem-line`);
+  let total   = base;
+  lines.forEach(l => { total += parseFloat(l.querySelector('.rem-amt-inp')?.value ?? '0') || 0; });
+  return total;
+}
+
+function refreshRemOptions(prefix) {
+  const etp     = parseFloat(document.getElementById(`${prefix}-etp`)?.value ?? '100') || 100;
+  const opts    = getRemOptions(etp);
+  const selOpts = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  document.querySelectorAll(`#${prefix}-rem-lines .rem-type-sel`).forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = selOpts;
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  });
+}
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
 // Gère les checkboxes ET les selects (canton, tarif-is).

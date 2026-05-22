@@ -530,6 +530,47 @@
       border-bottom: 1px solid var(--border);
       border-top: 1px solid var(--border);
     }
+    .btn-add-rem {
+      width: 22px; height: 22px; flex-shrink: 0;
+      background: transparent; border: 1.5px solid #ffd700; color: #ffd700;
+      font-size: 1rem; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .rem-section { padding: 0.3rem 0.9rem 0.4rem; }
+    .rem-base-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.68rem; color: var(--fg); margin-bottom: 0.25rem;
+    }
+    .rem-base-lbl { flex: 1; text-transform: uppercase; letter-spacing: 0.06em; }
+    .rem-base-row input[type="number"] {
+      width: 100px; background: var(--bg2); color: var(--fg);
+      border: 1px solid var(--border); padding: 0.15rem 0.3rem;
+      font-size: 0.65rem; text-align: right;
+    }
+    .rem-line {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px;
+    }
+    .rem-type-sel {
+      flex: 1; background: var(--bg2); color: var(--fg);
+      border: 1px solid var(--border); padding: 0.15rem 0.3rem; font-size: 0.65rem;
+    }
+    .rem-amt-inp {
+      width: 80px; background: var(--bg2); color: var(--fg);
+      border: 1px solid var(--border); padding: 0.15rem 0.3rem;
+      font-size: 0.65rem; text-align: right;
+    }
+    .btn-rm-rem {
+      background: transparent; border: none; color: var(--red);
+      cursor: pointer; font-size: 0.9rem; padding: 0 0.2rem;
+    }
+    .rem-total-row {
+      display: none; align-items: center; gap: 0.5rem;
+      font-size: 0.68rem; font-weight: bold;
+      border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.25rem;
+    }
+    .rem-total-lbl { flex: 1; text-transform: uppercase; letter-spacing: 0.06em; color: #ffd700; }
+    .rem-total-val { color: var(--fg); }
     .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
       background: var(--bg3);
@@ -2122,8 +2163,20 @@
           <input type="text" id="d-prenom" value="" /></div>
         <div class="field"><label>NOM</label>
           <input type="text" id="d-nom" value="" /></div>
-        <div class="field"><label>SALAIRE BRUT (€)</label>
-          <input type="number" id="d-brut" value="2500.00" step="50" min="1766.96" /></div>
+        <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
+        <div class="rem-section" id="d-rem-section">
+          <div class="rem-base-row">
+            <button class="btn-add-rem" type="button" onclick="addRemLine('d')" title="Ajouter un élément">+</button>
+            <span class="rem-base-lbl">Salaire de base</span>
+            <input type="number" id="d-brut" value="2500.00" step="50" min="1766.96"
+                   oninput="updateRemTotal('d')" />
+          </div>
+          <div class="rem-lines" id="d-rem-lines"></div>
+          <div class="rem-total-row" id="d-rem-total-row">
+            <span class="rem-total-lbl">Total brut</span>
+            <span class="rem-total-val" id="d-rem-total"></span>
+          </div>
+        </div>
         <div class="field"><label>STATUT</label>
           <select id="d-statut">
             <option value="non_cadre">Non-cadre</option>
@@ -2400,8 +2453,20 @@
               <input type="text" id="m-prenom" value="" /></div>
             <div class="field"><label>NOM</label>
               <input type="text" id="m-nom" value="" /></div>
-            <div class="field"><label>BRUT (€)</label>
-              <input type="number" id="m-brut" value="2500" step="50" /></div>
+            <div class="tbl-section-head">── RÉMUNÉRATION ───────────────────────────</div>
+            <div class="rem-section" id="m-rem-section">
+              <div class="rem-base-row">
+                <button class="btn-add-rem" type="button" onclick="addRemLine('m')" title="Ajouter un élément">+</button>
+                <span class="rem-base-lbl">Salaire de base</span>
+                <input type="number" id="m-brut" value="2500" step="50"
+                       oninput="updateRemTotal('m')" />
+              </div>
+              <div class="rem-lines" id="m-rem-lines"></div>
+              <div class="rem-total-row" id="m-rem-total-row">
+                <span class="rem-total-lbl">Total brut</span>
+                <span class="rem-total-val" id="m-rem-total"></span>
+              </div>
+            </div>
             <div class="field"><label>STATUT</label>
               <select id="m-statut">
                 <option value="non_cadre">Non-cadre</option>
