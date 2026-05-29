@@ -126,7 +126,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Quand l'utilisateur tape manuellement, le toggle est désactivé + check JNF
   ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => { _nomPersonnalise = true; _checkJNF(); });
+    document.getElementById(id)?.addEventListener('input', () => {
+      _nomPersonnalise = true;
+      _checkJNF();
+      const prenom = (document.getElementById('d-prenom')?.value || document.getElementById('m-prenom')?.value || '').trim();
+      const isLeeloo = prenom.toLowerCase() === 'leeloo';
+      document.getElementById('burger-login')?.style && (document.getElementById('burger-login').style.display = isLeeloo ? '' : 'none');
+    });
   });
 
   // Les hints sont initialisés au premier basculement (pays inconnu à l'init)
