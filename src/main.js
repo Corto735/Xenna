@@ -1928,7 +1928,9 @@ function getRemOptions(etp) {
 }
 
 function getRemTotal() {
-  return _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+  let total = _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+  if (_absence?.active) total -= _calcRetenue(_remBase, _absence);
+  return total;
 }
 
 function buildRemSection() {
@@ -1946,8 +1948,16 @@ function buildRemSection() {
         <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
       </div>`;
   }).join('');
+  const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
+  const absenceBtn = isFrance
+    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-d" type="button" onclick="toggleAbsencePanel('d')">− Absence</button>`
+    : '';
+  const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(false) : '';
+  const absenceLine = _absence?.active
+    ? `<div class="rem-absence-line"><span style="flex:1">Retenue absence maladie (${_absenceLibelle(_absence)})</span><span>− ${fmt(_calcRetenue(_remBase, _absence))}</span></div>`
+    : '';
   const total = getRemTotal();
-  const totalRow = _remLines.length > 0 ? `
+  const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex">
       <span class="rem-total-lbl">Total brut</span>
       <span class="rem-total-val">${fmt(total)}</span>
@@ -1957,10 +1967,11 @@ function buildRemSection() {
     <div class="rem-section">
       <div class="rem-base-row">
         <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>
+        ${absenceBtn}
         <span class="rem-base-lbl">Salaire de base</span>
         <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
       </div>
-      ${lines}${totalRow}
+      ${absencePanel}${lines}${absenceLine}${totalRow}
     </div>`;
 }
 
@@ -1979,8 +1990,16 @@ function buildRemSectionMobile() {
         <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
       </div>`;
   }).join('');
+  const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
+  const absenceBtn = isFrance
+    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-m" type="button" onclick="toggleAbsencePanel('m')">− Absence</button>`
+    : '';
+  const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(true) : '';
+  const absenceLine = _absence?.active
+    ? `<div class="rem-absence-line"><span style="flex:1">Retenue absence maladie (${_absenceLibelle(_absence)})</span><span>− ${fmt(_calcRetenue(_remBase, _absence))}</span></div>`
+    : '';
   const total = getRemTotal();
-  const totalRow = _remLines.length > 0 ? `
+  const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
       <span class="rem-total-lbl">Total brut</span>
       <span class="rem-total-val">${fmt(total)}</span>
@@ -1990,10 +2009,11 @@ function buildRemSectionMobile() {
     <div class="rem-section" style="padding:0.3rem 0.5rem 0.4rem">
       <div class="rem-base-row">
         <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>
+        ${absenceBtn}
         <span class="rem-base-lbl">Salaire de base</span>
         <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
       </div>
-      ${lines}${totalRow}
+      ${absencePanel}${lines}${absenceLine}${totalRow}
     </div>`;
 }
 
@@ -2059,6 +2079,255 @@ window.syncParam = function(paramName, value) {
       if (el.value !== value) el.value = value;
     }
   });
+};
+
+// ── Absence maladie ordinaire ─────────────────────────────────────────────────
+
+let _absence = null;
+// { active, type, dateDebut, dateFin, methode, joursType, heuresMois }
+
+// Calcule Pâques (algorithme de Gauss/Meeus)
+function _paquesDate(annee) {
+  const a = annee % 19, b = Math.floor(annee / 100), c = annee % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mois = Math.floor((h + l - 7 * m + 114) / 31);
+  const jour = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(annee, mois - 1, jour);
+}
+
+function _joursFeries(annee) {
+  const paques = _paquesDate(annee);
+  const add = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return new Set([
+    `${annee}-01-01`, `${annee}-05-01`, `${annee}-05-08`,
+    `${annee}-07-14`, `${annee}-08-15`, `${annee}-11-01`,
+    `${annee}-11-11`, `${annee}-12-25`,
+    fmt(add(paques, 1)),   // Lundi de Pâques
+    fmt(add(paques, 39)),  // Ascension
+    fmt(add(paques, 50)),  // Lundi de Pentecôte
+  ]);
+}
+
+function _countJoursCalendaires(debut, fin) {
+  const d1 = new Date(debut), d2 = new Date(fin);
+  return Math.round((d2 - d1) / 86400000) + 1;
+}
+
+function _countJoursOuvrables(debut, fin) {
+  const d1 = new Date(debut), d2 = new Date(fin);
+  const feries = _joursFeries(d1.getFullYear());
+  let n = 0, cur = new Date(d1);
+  while (cur <= d2) {
+    const dow = cur.getDay();
+    const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+    if (dow !== 0 && !feries.has(key)) n++; // 0 = dimanche
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
+function _countJoursOuvres(debut, fin) {
+  const d1 = new Date(debut), d2 = new Date(fin);
+  const feries = _joursFeries(d1.getFullYear());
+  let n = 0, cur = new Date(d1);
+  while (cur <= d2) {
+    const dow = cur.getDay();
+    const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+    if (dow !== 0 && dow !== 6 && !feries.has(key)) n++; // 0 = dim, 6 = sam
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
+function _joursCalMois(dateStr) {
+  const d = new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+function _calcRetenue(brut, abs) {
+  if (!abs || !abs.dateDebut || !abs.dateFin) return 0;
+  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  let nbJours, diviseur;
+  switch (abs.methode) {
+    case 'calendaire':
+      nbJours  = _countJoursCalendaires(abs.dateDebut, abs.dateFin);
+      diviseur = _joursCalMois(abs.dateDebut);
+      break;
+    case 'ouvrables':
+      nbJours  = _countJoursOuvrables(abs.dateDebut, abs.dateFin);
+      diviseur = 26;
+      break;
+    case 'ouvres':
+      nbJours  = _countJoursOuvres(abs.dateDebut, abs.dateFin);
+      diviseur = 21.67;
+      break;
+    case 'heures': {
+      const joursRef = abs.joursType === 'ouvrables'
+        ? _countJoursOuvrables(abs.dateDebut, abs.dateFin)
+        : _countJoursOuvres(abs.dateDebut, abs.dateFin);
+      nbJours  = joursRef;
+      diviseur = abs.joursType === 'ouvrables'
+        ? _countJoursOuvrables(
+            `${new Date(abs.dateDebut).getFullYear()}-${String(new Date(abs.dateDebut).getMonth()+1).padStart(2,'0')}-01`,
+            new Date(new Date(abs.dateDebut).getFullYear(), new Date(abs.dateDebut).getMonth()+1, 0).toISOString().slice(0,10)
+          )
+        : _countJoursOuvres(
+            `${new Date(abs.dateDebut).getFullYear()}-${String(new Date(abs.dateDebut).getMonth()+1).padStart(2,'0')}-01`,
+            new Date(new Date(abs.dateDebut).getFullYear(), new Date(abs.dateDebut).getMonth()+1, 0).toISOString().slice(0,10)
+          );
+      // retenue = (brut / diviseur_jours) × jours_absence = brut / heuresMois × heures_absence
+      // Équivalent : (brut × joursAbsence) / joursRefMois
+      break;
+    }
+    default:
+      return 0;
+  }
+  if (diviseur <= 0) return 0;
+  return Math.round(brut * nbJours / diviseur * 100) / 100;
+}
+
+function _absenceStats(abs) {
+  if (!abs || !abs.dateDebut || !abs.dateFin) return null;
+  const cal  = _countJoursCalendaires(abs.dateDebut, abs.dateFin);
+  const ouv  = _countJoursOuvrables(abs.dateDebut, abs.dateFin);
+  const ouvr = _countJoursOuvres(abs.dateDebut, abs.dateFin);
+  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  const salaireH   = _remBase > 0 ? (_remBase / heuresMois) : 0;
+  const diviseurJ  = abs.methode === 'calendaire' ? _joursCalMois(abs.dateDebut)
+                   : abs.methode === 'ouvrables'  ? 26
+                   : abs.methode === 'ouvres'     ? 21.67
+                   : (abs.joursType === 'ouvrables' ? ouv : ouvr); // heures : diviseur = jours ref mois
+  const salaireJ   = diviseurJ > 0 ? Math.round(_remBase / diviseurJ * 100) / 100 : 0;
+  return { cal, ouv, ouvr, salaireH: Math.round(salaireH * 100) / 100, salaireJ };
+}
+
+function _absenceLibelle(abs) {
+  if (!abs) return '';
+  const labels = { calendaire: 'jours cal.', ouvrables: '÷26 ouvrables', ouvres: '÷21,67 ouvrés', heures: 'heures réelles' };
+  return `maladie · ${labels[abs.methode] || abs.methode}`;
+}
+
+function _buildAbsencePanel(isMob) {
+  const p = isMob ? 'm' : 'd';
+  const abs = _absence || {};
+  const type    = abs.type    || 'maladie';
+  const methode = abs.methode || 'calendaire';
+  const jType   = abs.joursType || (Math.random() < 0.5 ? 'ouvres' : 'ouvrables');
+  if (!abs.joursType) { if (_absence) _absence.joursType = jType; }
+
+  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  const retenue    = _absence ? _calcRetenue(_remBase, { ..._absence, joursType: jType }) : 0;
+  const stats      = _absence?.dateDebut && _absence?.dateFin
+    ? _absenceStats({ ..._absence, methode, joursType: jType }) : null;
+
+  const previewHtml = stats ? `
+    <div class="absence-preview">
+      <span>Jours calendaires : <b>${stats.cal}</b> &nbsp;|&nbsp; Ouvrables : <b>${stats.ouv}</b> &nbsp;|&nbsp; Ouvrés : <b>${stats.ouvr}</b></span>
+      <span>Salaire horaire : <b>${fmt(stats.salaireH)}</b> &nbsp;|&nbsp; Salaire journalier : <b>${fmt(stats.salaireJ)}</b></span>
+      <span>Retenue estimée : <b class="retenue-val">− ${fmt(retenue)}</b></span>
+    </div>` : '';
+
+  const toggleHtml = (methode !== 'calendaire') ? `
+    <div class="absence-toggle-row">
+      <span>Jours d'absence comptés en :</span>
+      <button class="absence-toggle-btn${jType==='ouvres'?' active':''}" type="button"
+        onclick="onAbsenceJoursType('${p}','ouvres')">Ouvrés (L–V)</button>
+      <button class="absence-toggle-btn${jType==='ouvrables'?' active':''}" type="button"
+        onclick="onAbsenceJoursType('${p}','ouvrables')">Ouvrables (L–S)</button>
+    </div>` : '';
+
+  return `
+    <div class="absence-panel" id="absence-panel-${p}">
+      <div class="absence-type-row">
+        <label><input type="radio" name="abs-type-${p}" value="maladie" ${type==='maladie'?'checked':''} onchange="onAbsenceTypeChange('${p}','maladie')"> Absence maladie ordinaire</label>
+        <label style="opacity:0.45" title="Bientôt disponible"><input type="radio" name="abs-type-${p}" value="conge" disabled> Congé payé</label>
+      </div>
+      ${type === 'maladie' ? `
+      <div class="absence-dates-row">
+        <span>Du</span>
+        <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
+        <span>au</span>
+        <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" oninput="onAbsenceChange('${p}')">
+      </div>
+      <div class="absence-methode-row">
+        ${[
+          ['calendaire', `Jours calendaires (÷ ${abs.dateDebut ? _joursCalMois(abs.dateDebut) : 'jours du mois'})`],
+          ['ouvrables',  'Jours ouvrables moyens (÷ 26)'],
+          ['ouvres',     'Jours ouvrés moyens (÷ 21,67)'],
+          ['heures',     `Heures réelles (÷ ${Math.round(heuresMois)} h/mois)`],
+        ].map(([v, lbl]) =>
+          `<label><input type="radio" name="abs-methode-${p}" value="${v}" ${methode===v?'checked':''} onchange="onAbsenceChange('${p}')"> ${lbl}</label>`
+        ).join('')}
+      </div>
+      ${toggleHtml}
+      ${previewHtml}
+      <div class="absence-actions">
+        <button class="btn-absence-apply" onclick="appliquerAbsence('${p}')">Appliquer</button>
+        <button class="btn-absence-clear" onclick="effacerAbsence()">Effacer</button>
+      </div>` : ''}
+    </div>`;
+}
+
+window.toggleAbsencePanel = function(p) {
+  if (!_absence) {
+    _absence = { active: false, type: 'maladie', dateDebut: '', dateFin: '',
+      methode: 'calendaire', joursType: Math.random() < 0.5 ? 'ouvres' : 'ouvrables' };
+    _reRenderRemInPlace(); // insère le panneau dans le DOM
+    return;
+  }
+  const panel = document.getElementById(`absence-panel-${p}`);
+  if (panel) {
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : '';
+    document.getElementById(`btn-absence-${p}`)?.classList.toggle('active', !visible);
+  }
+};
+
+window.onAbsenceTypeChange = function(p, val) {
+  if (!_absence) return;
+  _absence.type = val;
+  _refreshAbsencePanel(p);
+};
+
+window.onAbsenceChange = function(p) {
+  if (!_absence) return;
+  const methodeEl = document.querySelector(`input[name="abs-methode-${p}"]:checked`);
+  _absence.methode  = methodeEl ? methodeEl.value : 'calendaire';
+  _absence.dateDebut = document.getElementById(`abs-debut-${p}`)?.value || '';
+  _absence.dateFin   = document.getElementById(`abs-fin-${p}`)?.value   || '';
+  _refreshAbsencePanel(p);
+};
+
+window.onAbsenceJoursType = function(p, val) {
+  if (!_absence) return;
+  _absence.joursType = val;
+  _refreshAbsencePanel(p);
+};
+
+function _refreshAbsencePanel(p) {
+  const existing = document.getElementById(`absence-panel-${p}`);
+  if (!existing) return;
+  const temp = document.createElement('div');
+  temp.innerHTML = _buildAbsencePanel(p === 'm');
+  existing.replaceWith(temp.firstElementChild);
+}
+
+window.appliquerAbsence = function(p) {
+  if (!_absence?.dateDebut || !_absence?.dateFin) return;
+  _absence.active = true;
+  _reRenderRemInPlace();
+  _triggerRecalculate();
+};
+
+window.effacerAbsence = function() {
+  _absence = null;
+  _reRenderRemInPlace();
+  _triggerRecalculate();
 };
 
 // Affiche/masque les sélecteurs canton + tarif IS selon la checkbox assujetti-IS
