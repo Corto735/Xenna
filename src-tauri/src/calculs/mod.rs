@@ -27,6 +27,14 @@ pub mod pt_bulletin;
 pub mod be_cotisations;
 pub mod be_pp;
 pub mod be_bulletin;
+pub mod uk_cotisations;
+pub mod uk_bulletin;
+pub mod jp_cotisations;
+pub mod jp_impot;
+pub mod jp_bulletin;
+pub mod cn_cotisations;
+pub mod cn_impot;
+pub mod cn_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

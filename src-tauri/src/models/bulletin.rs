@@ -43,6 +43,16 @@ pub enum Pays {
     /// region_be : "wallonie" | "flandre" | "bruxelles".
     /// Données disponibles depuis le 01/01/2015.
     Belgique,
+    /// Salariés du secteur privé anglais (NI Class 1 + Income Tax PAYE).
+    /// Données disponibles depuis le 06/04/2024 (année fiscale 2024/25).
+    Angleterre,
+    /// Salariés du secteur privé japonais (健康/介護/厚生/雇用/労災 + 所得税 + 住民税).
+    /// Régime 協会けんぽ Tokyo. Hypothèse : salarié ≥ 40 ans.
+    /// Données disponibles depuis le 01/04/2024.
+    Japon,
+    /// Salariés du secteur privé chinois, base Pékin (五险一金 + 个人所得税).
+    /// Données disponibles depuis le 01/01/2024.
+    Chine,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

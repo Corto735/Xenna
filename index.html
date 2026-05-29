@@ -1219,7 +1219,6 @@
     /* ══════════════════════════════
        VUES FORGE & À PROPOS
     ══════════════════════════════ */
-    .view-forge,
     .view-apropos,
     .view-contact,
     .view-gaabrielle,
@@ -1266,12 +1265,6 @@
     .herc-vir-reduc td { color: var(--red) !important; font-size: 0.62rem; }
     .herc-vir-subtot td { background: var(--bg3) !important; color: var(--green); font-size: 0.62rem;
       letter-spacing: 0.06em; }
-
-    body.is-forge .view-desktop,
-    body.is-forge .view-mobile,
-    body.is-forge .view-annuel    { display: none !important; }
-    body.is-forge .view-bar       { display: none !important; }
-    body.is-forge .view-forge     { display: block; }
 
     body.is-apropos .view-desktop,
     body.is-apropos .view-mobile,
@@ -1671,7 +1664,6 @@
     .page-exit {
       display: none; /* masqué hors vues secondaires */
     }
-    body.is-forge      .page-exit,
     body.is-apropos    .page-exit,
     body.is-contact    .page-exit,
     body.is-gaabrielle .page-exit,
@@ -1681,7 +1673,6 @@
     body.is-mecenat    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
-      body.is-forge      .page-exit,
       body.is-apropos    .page-exit,
       body.is-contact    .page-exit,
       body.is-gaabrielle .page-exit,
@@ -1810,209 +1801,6 @@
       user-select: none;
     }
 
-    /* ══════════════════════════════
-       FORGE — ANNUAIRE
-    ══════════════════════════════ */
-    .forge-topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-      flex-wrap: wrap;
-    }
-    .forge-topbar-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
-    .forge-subtitle { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; letter-spacing: 0.04em; }
-    .forge-join-btn {
-      background: none;
-      border: 1px solid var(--green);
-      color: var(--green);
-      font-family: inherit;
-      font-size: 0.72rem;
-      font-weight: bold;
-      padding: 0.3rem 0.75rem;
-      cursor: pointer;
-      letter-spacing: 0.06em;
-      transition: all 0.15s;
-    }
-    .forge-join-btn:hover { background: var(--green); color: var(--bg); }
-
-    .forge-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 0.65rem;
-    }
-    .forge-card {
-      border: 1px solid var(--border);
-      background: var(--bg3);
-      padding: 1rem;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .forge-card:hover { border-color: var(--blue); background: #0a1020; }
-    .forge-card-pseudo { font-size: 0.88rem; font-weight: bold; color: var(--white); letter-spacing: 0.04em; }
-    .forge-card-poste  { font-size: 0.68rem; color: var(--muted); margin: 0.2rem 0 0.65rem; }
-    .forge-card-ccn    { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.7rem; min-height: 1.4rem; }
-    .forge-card-stats  { display: flex; gap: 1.1rem; font-size: 0.64rem; color: var(--muted); }
-    .forge-stat-val    { color: var(--text); font-weight: bold; }
-
-    /* Badges niveau CCN */
-    .ccn-badge {
-      font-size: 0.6rem;
-      padding: 0.12rem 0.38rem;
-      border: 1px solid;
-      letter-spacing: 0.02em;
-      white-space: nowrap;
-    }
-    .ccn-badge.m { color: var(--green);  border-color: color-mix(in srgb, var(--green) 50%, transparent); }
-    .ccn-badge.p { color: var(--blue);   border-color: color-mix(in srgb, var(--blue)  50%, transparent); }
-    .ccn-badge.c { color: var(--muted);  border-color: var(--dim); }
-
-    /* ══════════════════════════════
-       FORGE — FICHE PROFIL
-    ══════════════════════════════ */
-    .profil-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 1rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 1rem;
-      margin-bottom: 1.25rem;
-      flex-wrap: wrap;
-    }
-    .profil-pseudo  { font-size: 1.15rem; font-weight: bold; color: var(--white); letter-spacing: 0.06em; }
-    .profil-poste   { font-size: 0.72rem; color: var(--muted); margin: 0.25rem 0 0.5rem; }
-    .profil-linkedin {
-      font-size: 0.68rem;
-      color: var(--blue);
-      text-decoration: none;
-      border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
-      padding: 0.15rem 0.45rem;
-      display: inline-block;
-      transition: border-color 0.15s;
-    }
-    .profil-linkedin:hover { border-color: var(--blue); }
-    .profil-since { font-size: 0.62rem; color: var(--dim); align-self: flex-start; flex-shrink: 0; }
-
-    .profil-body   { margin-bottom: 1.5rem; }
-    .profil-ccn-tbl { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-    .profil-ccn-tbl td { padding: 0.28rem 0.5rem 0.28rem 0; border-bottom: 1px solid #0c1520; }
-    .profil-ccn-tbl td:last-child { text-align: right; }
-    .profil-ccn-idcc { color: var(--muted); width: 80px; font-variant-numeric: tabular-nums; }
-    .profil-ccn-section td {
-      background: var(--bg3);
-      color: var(--yellow);
-      font-size: 0.6rem;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .profil-stats {
-      display: flex;
-      border: 1px solid var(--border);
-      background: var(--bg2);
-    }
-    .profil-stat {
-      flex: 1;
-      padding: 0.6rem 0.9rem;
-      border-right: 1px solid var(--border);
-      text-align: center;
-    }
-    .profil-stat:last-child { border-right: none; }
-    .profil-stat-val { font-size: 1.1rem; font-weight: bold; color: var(--blue); font-variant-numeric: tabular-nums; }
-    .profil-stat-lbl { font-size: 0.6rem; color: var(--muted); margin-top: 0.1rem; text-transform: uppercase; letter-spacing: 0.06em; }
-
-    /* ══════════════════════════════
-       FORGE — FORMULAIRE CRÉATION
-    ══════════════════════════════ */
-    .forge-form { max-width: 620px; }
-    .forge-form-section { margin-bottom: 1.25rem; }
-    .forge-form .field { margin-bottom: 0.6rem; }
-
-    .forge-ccn-row {
-      display: grid;
-      grid-template-columns: 1fr 110px 28px;
-      gap: 0.4rem;
-      margin-bottom: 0.4rem;
-      align-items: center;
-    }
-    .forge-ccn-row input,
-    .forge-ccn-row select {
-      background: var(--bg);
-      border: 1px solid var(--dim);
-      color: var(--white);
-      font-family: inherit;
-      font-size: 0.75rem;
-      padding: 0.28rem 0.45rem;
-      width: 100%;
-      transition: border-color 0.15s;
-    }
-    .forge-ccn-row input:focus,
-    .forge-ccn-row select:focus { outline: none; border-color: var(--blue); }
-    .forge-ccn-row select option { background: var(--bg2); }
-    .forge-ccn-del {
-      background: none;
-      border: 1px solid var(--dim);
-      color: var(--muted);
-      font-family: inherit;
-      font-size: 0.9rem;
-      cursor: pointer;
-      padding: 0;
-      line-height: 1;
-      height: 100%;
-      transition: all 0.12s;
-    }
-    .forge-ccn-del:hover { border-color: var(--red); color: var(--red); }
-
-    .forge-add-ccn {
-      background: none;
-      border: 1px dashed var(--dim);
-      color: var(--muted);
-      font-family: inherit;
-      font-size: 0.7rem;
-      padding: 0.3rem 0.7rem;
-      cursor: pointer;
-      letter-spacing: 0.05em;
-      transition: all 0.15s;
-      margin-top: 0.3rem;
-    }
-    .forge-add-ccn:hover { border-color: var(--blue); color: var(--blue); border-style: solid; }
-    .forge-form-err { color: var(--red); font-size: 0.72rem; min-height: 1.2rem; margin-bottom: 0.4rem; }
-
-    /* Texte d'intro de l'annuaire */
-    .forge-intro {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-bottom: 1rem;
-      line-height: 1.5;
-    }
-
-    /* Toggle actuel / visé */
-    .poste-toggle { display: flex; }
-    .ptog {
-      background: none;
-      border: 1px solid var(--dim);
-      color: var(--muted);
-      font-family: inherit;
-      font-size: 0.68rem;
-      padding: 0.22rem 0.65rem;
-      cursor: pointer;
-      letter-spacing: 0.08em;
-      transition: all 0.12s;
-    }
-    .ptog:first-child { border-right: none; }
-    .ptog.ptog-on {
-      background: var(--blue);
-      border-color: var(--blue);
-      color: var(--bg);
-      font-weight: bold;
-    }
-    .ptog.ptog-off { }
-
     .genre-ecart-hint {
       font-size: 0.57rem;
       color: var(--dim);
@@ -2056,10 +1844,6 @@
         <button class="burger-item" onclick="setView('meliinda'); closeBurger()">
           <span class="burger-item-icon">✎</span>
           Meliinda <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">prototype</span>
-        </button>
-        <button class="burger-item" onclick="setView('forge'); closeBurger()">
-          <span class="burger-item-icon">⬡</span>
-          La Forge
         </button>
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
           <span class="burger-item-icon">?</span>
@@ -2329,6 +2113,18 @@
               <option value="wallonie">Wallonie</option>
             </select>
           </div>
+          <label class="param-item">
+            <input type="checkbox" id="d-angleterre" onchange="syncParam('angleterre', this.checked); onTogglePays('angleterre', this.checked)" />
+            <span class="flag-emoji">🇬🇧</span> Angleterre
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
+            <span class="flag-emoji">🇯🇵</span> Japon
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
+            <span class="flag-emoji">🇨🇳</span> Chine
+          </label>
           <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
             <span class="flag-emoji">🇨🇦</span> Canada
@@ -2609,6 +2405,18 @@
               </select>
             </div>
             <label class="param-item">
+              <input type="checkbox" id="m-angleterre" onchange="syncParam('angleterre', this.checked); onTogglePays('angleterre', this.checked)" />
+              <span class="flag-emoji">🇬🇧</span> Angleterre
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
+              <span class="flag-emoji">🇯🇵</span> Japon
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
+              <span class="flag-emoji">🇨🇳</span> Chine
+            </label>
+            <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
               <span class="flag-emoji">🇨🇦</span> Canada
             </label>
@@ -2712,118 +2520,6 @@
       <div style="color:var(--dim);font-size:0.78rem;padding:1rem">
         Saisissez un salaire brut mensuel et une année, puis cliquez sur [ SIMULER L'ANNÉE ].
       </div>
-    </div>
-
-  </div>
-
-  <!-- ════════════════════════════════
-       VUE FORGE MÉTIER
-  ════════════════════════════════ -->
-  <div class="view-forge">
-
-    <!-- ── Annuaire ── -->
-    <div id="forge-liste">
-      <div class="forge-topbar">
-        <div>
-          <div class="sect-label">LA FORGE MÉTIER</div>
-          <div class="forge-subtitle" id="forge-subtitle">chargement…</div>
-        </div>
-        <div class="forge-topbar-actions">
-          <button class="forge-join-btn" onclick="forgeNav('creer')">+ Rejoindre</button>
-        </div>
-      </div>
-      <p class="forge-intro">La Forge est l'espace communautaire de Xenna Paie réservé aux contributeurs.</p>
-      <div id="forge-cards" class="forge-grid"></div>
-    </div>
-
-    <!-- ── Fiche profil ── -->
-    <div id="forge-detail" style="display:none">
-      <div class="forge-topbar" style="margin-bottom:1.5rem">
-        <button class="page-nav" onclick="forgeNav('liste')" title="Retour à l'annuaire">←</button>
-      </div>
-      <div id="forge-profil-content"></div>
-    </div>
-
-    <!-- ── Formulaire création ── -->
-    <div id="forge-creer" style="display:none">
-      <div class="forge-topbar" style="margin-bottom:1.25rem">
-        <button class="page-nav" onclick="forgeNav('liste')" title="Retour à l'annuaire">←</button>
-      </div>
-      <div class="sect-label">REJOINDRE LA FORGE</div>
-
-      <form id="forge-form" onsubmit="forgeSoumettre(event)" class="forge-form" novalidate>
-
-        <div class="forge-form-section">
-          <div class="field">
-            <label>EMAIL <span style="color:var(--muted);font-size:0.6em">(non visible publiquement)</span></label>
-            <input type="email" name="email" required autocomplete="email" placeholder="prenom.nom@cabinet.fr" />
-          </div>
-          <div class="field">
-            <label>PSEUDO PUBLIC</label>
-            <input type="text" name="pseudo" required maxlength="40" placeholder="MonPseudo" />
-          </div>
-          <div class="field">
-            <label>POSTE</label>
-            <div class="poste-toggle">
-              <button type="button" class="ptog ptog-on"  id="ptog-actuel" onclick="setPosteType(true)">ACTUEL</button>
-              <button type="button" class="ptog ptog-off" id="ptog-vise"   onclick="setPosteType(false)">VISÉ</button>
-            </div>
-            <input type="text"   name="poste" required maxlength="80" placeholder="Gestionnaire paie, DRH, Consultant…" style="margin-top:0.3rem" />
-            <input type="hidden" name="poste_est_actuel" id="poste_est_actuel_input" value="1" />
-          </div>
-          <div class="field">
-            <label>PROFIL LINKEDIN <span style="color:var(--dim);font-size:0.6em">(optionnel)</span></label>
-            <input type="url" name="linkedin_url" placeholder="https://linkedin.com/in/…" />
-          </div>
-          <div class="field">
-            <label>MOT DE PASSE <span style="color:var(--muted);font-size:0.6em">(espace membre · 8 caractères min.)</span></label>
-            <input type="password" name="password" required minlength="8" autocomplete="new-password" />
-          </div>
-          <div class="field">
-            <label>CONFIRMER LE MOT DE PASSE</label>
-            <input type="password" name="password_confirm" required minlength="8" autocomplete="new-password" />
-          </div>
-        </div>
-
-        <div class="forge-form-section">
-          <div class="sect-label">PAIE FRANÇAISE</div>
-          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
-            Ton niveau de connaissance du droit social et de la paie en France.
-          </div>
-          <div class="field">
-            <select name="paie_fr_niveau">
-              <option value="">— non renseigné —</option>
-              <option value="Connue">Connue</option>
-              <option value="Pratiquée">Pratiquée</option>
-              <option value="Maîtrisée">Maîtrisée</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="forge-form-section">
-          <div class="sect-label">PAIE INTERNATIONALE</div>
-          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
-            Pays frontaliers + Royaume-Uni : ajoute ceux dont tu connais la paie.
-          </div>
-          <div id="forge-pays-list"></div>
-          <button type="button" class="forge-add-ccn" onclick="forgeAjouterPays()">+ Ajouter un pays</button>
-        </div>
-
-        <div class="forge-form-section">
-          <div class="sect-label">EXPERTISES CCN</div>
-          <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
-            Renseigne les conventions collectives que tu pratiques avec ton niveau de maîtrise.<br>
-            Code IDCC disponible sur <span style="color:var(--blue)">legifrance.gouv.fr</span>.
-          </div>
-          <div id="forge-ccn-list"></div>
-          <button type="button" class="forge-add-ccn" onclick="forgeAjouterCcn()">+ Ajouter une CCN</button>
-        </div>
-
-        <div class="forge-form-err" id="forge-form-err"></div>
-        <altcha-widget id="forge-altcha" challengeurl="/altcha/challenge" style="margin-bottom:0.75rem"></altcha-widget>
-        <button type="submit" id="forge-submit-btn" class="btn-calc">[ Rejoindre la Forge ]</button>
-
-      </form>
     </div>
 
   </div>

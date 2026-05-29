@@ -12,6 +12,9 @@ use super::de_bulletin::generer_bulletin_de;
 use super::es_bulletin::generer_bulletin_es;
 use super::pt_bulletin::generer_bulletin_pt;
 use super::be_bulletin::generer_bulletin_be;
+use super::uk_bulletin::generer_bulletin_uk;
+use super::jp_bulletin::generer_bulletin_jp;
+use super::cn_bulletin::generer_bulletin_cn;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     match salarie.pays {
@@ -25,6 +28,9 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         Pays::Espagne           => return generer_bulletin_es(salarie, ctx),
         Pays::Portugal          => return generer_bulletin_pt(salarie, ctx),
         Pays::Belgique          => return generer_bulletin_be(salarie, ctx),
+        Pays::Angleterre        => return generer_bulletin_uk(salarie, ctx),
+        Pays::Japon             => return generer_bulletin_jp(salarie, ctx),
+        Pays::Chine             => return generer_bulletin_cn(salarie, ctx),
         Pays::France            => {}
     }
 
