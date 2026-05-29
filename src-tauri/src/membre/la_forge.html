@@ -218,8 +218,13 @@ async function doLogin(){
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({email, password: pass})
     });
+    if (!r.ok) {
+      const msg = await r.text().catch(() => '');
+      err.textContent = msg || 'Identifiants incorrects.';
+      btn.disabled=false; btn.textContent='[ Connexion ]';
+      return;
+    }
     const data = await r.json();
-    if (!r.ok){ err.textContent = data || 'Identifiants incorrects.'; btn.disabled=false; btn.textContent='[ Connexion ]'; return; }
     TOKEN = data.token;
     localStorage.setItem('forge_member_token', TOKEN);
     enterApp(data.pseudo);
