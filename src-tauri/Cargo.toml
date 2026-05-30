@@ -12,6 +12,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "web"
 path = "src/bin/web.rs"
 
+[[bin]]
+name = "admin_reset"
+path = "src/bin/admin_reset.rs"
+
 [features]
 default = []
 desktop = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build"]

@@ -307,7 +307,9 @@
     body.bw-mode .summary-bar .sb-cell { background: #f2f2f2; border-color: #000; }
     /* Bouton calculer et toggles : noir/blanc pour rester lisibles */
     body.bw-mode .btn-calc { background: #000000; color: #ffffff; border-color: #000000; }
-    body.bw-mode .ptog.ptog-on { background: #000000; border-color: #000000; color: #ffffff; }
+    body.bw-mode .hf-knob { background: #000000; box-shadow: none; }
+    body.bw-mode .hf-toggle.is-h .hf-end-h,
+    body.bw-mode .hf-toggle.is-f .hf-end-f { color: #ffffff; }
     /* Champs de saisie */
     body.bw-mode input, body.bw-mode select { color: #000000 !important; }
     /* Panneaux d'explication dépliables */
@@ -369,7 +371,7 @@
     body.hv-mode input,
     body.hv-mode select,
     body.hv-mode button,
-    body.hv-mode .ptog,
+    body.hv-mode .hf-toggle,
     body.hv-mode .btn-view,
     body.hv-mode .btn-calc { border-width: 2px !important; }
     body.hv-mode .mob-row { border-bottom: 2px solid var(--border); }
@@ -1860,6 +1862,51 @@
       letter-spacing: 0.04em;
       font-style: italic;
     }
+
+    /* Toggle H/F — interrupteur coulissant bleu électrique */
+    .hf-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 3.2rem;
+      height: 1.35rem;
+      padding: 0 0.34rem;
+      box-sizing: border-box;
+      border: 1px solid var(--dim);
+      border-radius: 0.7rem;
+      background: var(--bg3);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .hf-toggle:hover { border-color: var(--blue); }
+    .hf-end {
+      position: relative;
+      z-index: 1;
+      font-size: 0.62rem;
+      font-weight: bold;
+      line-height: 1;
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+    .hf-knob {
+      position: absolute;
+      top: 50%;
+      width: 0.95rem;
+      height: 0.95rem;
+      border-radius: 50%;
+      background: var(--blue);
+      transform: translateY(-50%);
+      transition: left 0.18s ease, background 0.15s;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
+    }
+    .hf-toggle.is-h .hf-knob { left: 0.13rem; }
+    .hf-toggle.is-f .hf-knob { left: calc(100% - 0.95rem - 0.13rem); }
+    /* La lettre active passe sous la pastille bleue → contraste sombre */
+    .hf-toggle.is-h .hf-end-h,
+    .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
 </head>
@@ -1913,6 +1960,10 @@
         <button id="burger-login" class="burger-item" style="display:none" onclick="window.location.href='/la_forge'; closeBurger()">
           <span class="burger-item-icon">⬡</span>
           La Forge <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">connexion</span>
+        </button>
+        <button id="burger-admin" class="burger-item" style="display:none" onclick="window.location.href='/admin'; closeBurger()">
+          <span class="burger-item-icon">⚷</span>
+          Admin <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">modération</span>
         </button>
       </nav>
     </div>
@@ -1990,10 +2041,12 @@
       <div class="fp-title">SAISIE SALARIÉ</div>
       <div class="fp-body">
         <div class="field" style="flex-direction:row;align-items:center;gap:0.6rem;flex-wrap:wrap">
-          <div class="poste-toggle">
-            <button type="button" class="ptog ptog-on"  id="d-hf-h" onclick="setGenre('H')">H</button>
-            <button type="button" class="ptog ptog-off" id="d-hf-f" onclick="setGenre('F')">F</button>
-          </div>
+          <button type="button" class="hf-toggle is-h" id="d-hf" role="switch" aria-checked="false"
+                  title="Sexe du salarié" onclick="toggleGenre()">
+            <span class="hf-end hf-end-h">H</span>
+            <span class="hf-end hf-end-f">F</span>
+            <span class="hf-knob"></span>
+          </button>
           <label class="param-item" style="gap:0.4rem">
             <input type="checkbox" id="d-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
             simuler un écart salarial
@@ -2280,10 +2333,12 @@
         <div class="mob-form-body">
           <div class="mob-grid">
             <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;grid-column:1/-1;flex-wrap:wrap">
-              <div class="poste-toggle">
-                <button type="button" class="ptog ptog-on"  id="m-hf-h" onclick="setGenre('H')">H</button>
-                <button type="button" class="ptog ptog-off" id="m-hf-f" onclick="setGenre('F')">F</button>
-              </div>
+              <button type="button" class="hf-toggle is-h" id="m-hf" role="switch" aria-checked="false"
+                      title="Sexe du salarié" onclick="toggleGenre()">
+                <span class="hf-end hf-end-h">H</span>
+                <span class="hf-end hf-end-f">F</span>
+                <span class="hf-knob"></span>
+              </button>
               <label class="param-item" style="gap:0.4rem">
                 <input type="checkbox" id="m-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
                 simuler un écart salarial
@@ -2588,7 +2643,7 @@
     <div class="about-head">
       <div class="about-title">XENNA PAIE</div>
       <div class="about-sub">
-        Un simulateur de bulletin de paie français — pédagogique, citoyen, open source.<br>
+        Un simulateur de bulletin de paie français — pédagogique et open source.<br>
         Chaque cotisation est expliquée, datée, et rattachée à son texte de loi.<br>
         Transparent. Citoyen. Vérifiable.
       </div>
@@ -2877,23 +2932,6 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- ── Accès gratuit ── -->
-    <div class="sect-label">QUI ACCÈDE GRATUITEMENT</div>
-    <div class="gpl-box" style="border-left-color:var(--blue)">
-      <div style="margin-bottom:0.75rem">
-        Xenna Paie et Gaabrielle RH seront <strong>gratuits à vie</strong> pour :
-      </div>
-      <div class="gpl-libertes" style="margin-bottom:0.85rem">
-        <span>Étudiants et apprentis <span style="color:var(--dim)">(justificatif)</span></span>
-        <span>Associations loi 1901 <span style="color:var(--dim)">(justificatif)</span></span>
-      </div>
-      <div>
-        Tout <strong>contributeur sérieux au projet</strong> — code, données légales, retours terrain —
-        bénéficiera d'un accès à vie à Xenna Paie <em>et</em> Gaabrielle RH,
-        dans la limite de <strong>500 bulletins simulés par mois</strong>.
-      </div>
     </div>
 
   </div>
@@ -3223,7 +3261,6 @@
         <input type="text" id="ml-label-input" placeholder="Label (optionnel)">
         <button class="ml-btn" id="ml-btn-save" disabled>[ Sauvegarder ]</button>
         <button class="ml-btn ml-danger" id="ml-btn-replay" disabled>[ Replay ]</button>
-        <button class="ml-btn" id="ml-btn-export" disabled>[ Export vidéo ]</button>
         <button class="ml-btn" id="ml-btn-new">[ Nouvelle session ]</button>
       </div>
       <div id="ml-status"></div>

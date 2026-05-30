@@ -94,12 +94,16 @@ document.addEventListener("DOMContentLoaded", () => {
   window._heroH = Math.random() < 0.015 ? { prenom: 'Jean-Noël', nom: 'Favari' } : _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
 
+  // Amorce la mémoire par sexe avec le tirage au sort
+  _noms.H = { prenom: window._heroH.prenom, nom: window._heroH.nom };
+  _noms.F = { prenom: window._heroF.prenom, nom: window._heroF.nom };
+
   if (Math.random() < 0.51) {
     // Préselection F — écart tiré une fois, mémorisé pour toute la session
     _ecartActif = _drawEcartPct();
     _ecartTire  = true;
     _genre      = 'F';
-    _setNomFields(window._heroF.prenom, window._heroF.nom);
+    _applyNoms('F');
     const _e0 = _ecartActif / 100;
     const _a0 = Math.abs(_ecartActif);
     const _b0 = Math.abs(Math.round(_e0 / (1 + _e0) * 100));
@@ -117,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     _syncToggleUI('F', false);
   } else {
-    _setNomFields(window._heroH.prenom, window._heroH.nom);
+    _applyNoms('H');
     _syncToggleUI('H');
   }
 
@@ -127,11 +131,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Quand l'utilisateur tape manuellement, le toggle est désactivé + check JNF
   ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => {
-      _nomPersonnalise = true;
+      const prefix = id.startsWith('d-') ? 'd' : 'm';
+      _captureNoms(_genre, prefix);   // saisie permanente, mémorisée pour le sexe courant
       _checkJNF();
-      const prenom = (document.getElementById('d-prenom')?.value || document.getElementById('m-prenom')?.value || '').trim();
+      const prenom = (_noms[_genre].prenom || '').trim();
       const isLeeloo = prenom.toLowerCase() === 'leeloo';
       document.getElementById('burger-login')?.style && (document.getElementById('burger-login').style.display = isLeeloo ? '' : 'none');
+      document.getElementById('burger-admin')?.style && (document.getElementById('burger-admin').style.display = isLeeloo ? '' : 'none');
     });
   });
 
@@ -662,6 +668,7 @@ window.setView = function (v) {
   document.getElementById("btn-mob") .classList.toggle("active", v === "mobile");
   document.getElementById("btn-ann") .classList.toggle("active", v === "annuel");
   if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
+  if (v === 'desktop' || v === 'mobile') _applyNoms(_genre);
   if (v === 'quizz')      quizzInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
@@ -1955,6 +1962,9 @@ function buildRemSection() {
       </div>`;
   }).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
+  const addBtn = isFrance
+    ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>`
+    : '';
   const absenceBtn = isFrance
     ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-d" type="button" onclick="toggleAbsencePanel('d')">− Absence</button>`
     : '';
@@ -1972,7 +1982,7 @@ function buildRemSection() {
     <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
     <div class="rem-section">
       <div class="rem-base-row">
-        <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>
+        ${addBtn}
         ${absenceBtn}
         <span class="rem-base-lbl">Salaire de base</span>
         <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
@@ -1997,6 +2007,9 @@ function buildRemSectionMobile() {
       </div>`;
   }).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
+  const addBtn = isFrance
+    ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>`
+    : '';
   const absenceBtn = isFrance
     ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-m" type="button" onclick="toggleAbsencePanel('m')">− Absence</button>`
     : '';
@@ -2014,7 +2027,7 @@ function buildRemSectionMobile() {
     <div class="mob-row section"><span class="mob-lbl">── RÉMUNÉRATION ──</span></div>
     <div class="rem-section" style="padding:0.3rem 0.5rem 0.4rem">
       <div class="rem-base-row">
-        <button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>
+        ${addBtn}
         ${absenceBtn}
         <span class="rem-base-lbl">Salaire de base</span>
         <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
@@ -2417,8 +2430,11 @@ function _drawEcartPct() {
 let _ecartActif = 0;    // mémorise l'écart appliqué H→F pour le retour F→H
 let _ecartTire  = false; // tirage unique pour toute la session
 
-let _genre          = 'H';
-let _nomPersonnalise = false;
+let _genre = 'H';
+
+// Mémoire des noms par sexe — chaque sexe conserve son propre couple prénom/nom.
+// Initialisé au tirage au sort, puis écrasé de façon permanente dès saisie.
+let _noms = { H: { prenom: '', nom: '' }, F: { prenom: '', nom: '' } };
 
 function _heroRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -2427,18 +2443,29 @@ function _heroRandom(list) {
 function _setNomFields(prenom, nom) {
   ['d-prenom', 'm-prenom'].forEach(id => { const el = document.getElementById(id); if (el) el.value = prenom; });
   ['d-nom',    'm-nom'   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = nom;    });
-  _nomPersonnalise = false;
+}
+
+// Affiche le couple mémorisé pour un sexe donné dans les deux vues (desktop + mobile).
+function _applyNoms(genre) {
+  _setNomFields(_noms[genre].prenom, _noms[genre].nom);
+}
+
+// Enregistre, pour le sexe donné, les valeurs saisies dans la vue active.
+function _captureNoms(genre, prefix) {
+  const px = prefix || (document.body.classList.contains('is-mobile') ? 'm' : 'd');
+  const prenom = document.getElementById(px + '-prenom')?.value ?? '';
+  const nom    = document.getElementById(px + '-nom')?.value ?? '';
+  _noms[genre] = { prenom, nom };
 }
 
 function _syncToggleUI(genre, showHint = false) {
   const onH = genre === 'H';
-  ['d-hf-h', 'm-hf-h'].forEach(id => {
-    document.getElementById(id)?.classList.toggle('ptog-on',  onH);
-    document.getElementById(id)?.classList.toggle('ptog-off', !onH);
-  });
-  ['d-hf-f', 'm-hf-f'].forEach(id => {
-    document.getElementById(id)?.classList.toggle('ptog-on',  !onH);
-    document.getElementById(id)?.classList.toggle('ptog-off', onH);
+  ['d-hf', 'm-hf'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('is-h', onH);
+    el.classList.toggle('is-f', !onH);
+    el.setAttribute('aria-checked', onH ? 'false' : 'true');
   });
   if (showHint) {
     document.querySelectorAll('.genre-ecart-hint').forEach(el => {
@@ -2448,13 +2475,15 @@ function _syncToggleUI(genre, showHint = false) {
   }
 }
 
+window.toggleGenre = function() { window.setGenre(_genre === 'H' ? 'F' : 'H'); };
+
 window.setGenre = function(genre) {
   if (genre === _genre) return;
 
-  if (!_nomPersonnalise) {
-    const hero = genre === 'F' ? window._heroF : window._heroH;
-    _setNomFields(hero.prenom, hero.nom);
-  }
+  // Mémorise les noms de la vue active pour le sexe quitté, puis affiche
+  // ceux mémorisés (tirage au sort ou saisie) pour le sexe demandé.
+  _captureNoms(_genre);
+  _applyNoms(genre);
 
   const simuleEcart = !!document.getElementById('d-ecart-actif')?.checked
                    || !!document.getElementById('m-ecart-actif')?.checked;
@@ -3848,7 +3877,6 @@ function meliindaInit() {
   const btnReplay   = document.getElementById('ml-btn-replay');
   const btnNew      = document.getElementById('ml-btn-new');
   const btnStop     = document.getElementById('ml-btn-stop');
-  const btnExport   = document.getElementById('ml-btn-export');
   const labelInp    = document.getElementById('ml-label-input');
   const statusEl    = document.getElementById('ml-status');
   const replayWrap  = document.getElementById('ml-replay-wrap');
@@ -3859,7 +3887,7 @@ function meliindaInit() {
     if (mlStartTime === null) mlStartTime = performance.now();
     mlEvents.push({ key: e.key, t: performance.now() - mlStartTime, type: 'down' });
     mlUpdateStats();
-    btnSave.disabled = btnReplay.disabled = btnExport.disabled = false;
+    btnSave.disabled = btnReplay.disabled = false;
   });
 
   editor.addEventListener('keyup', e => {
@@ -3900,7 +3928,7 @@ function meliindaInit() {
     mlStopReplay();
     mlEvents = []; mlStartTime = null;
     editor.value = ''; labelInp.value = '';
-    btnSave.disabled = btnReplay.disabled = btnExport.disabled = true;
+    btnSave.disabled = btnReplay.disabled = true;
     mlUpdateStats();
     mlSetStatus('', '');
     editor.focus();
@@ -3942,9 +3970,6 @@ function meliindaInit() {
     replayWrap.style.display = 'none';
   }
 
-  // ── Export vidéo (canvas + MediaRecorder → .webm) ─────────────────────────
-  btnExport.addEventListener('click', () => mlExportVideo(mlEvents, labelInp.value));
-
   function mlSetStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = cls; }
 
   mlLoadLibrary();
@@ -3960,93 +3985,6 @@ function mlRenderSnapshot(snapshot, target) {
     const txt = p.chars.join('').replace(/&/g,'&amp;').replace(/</g,'&lt;');
     return p.deleted ? `<span class="ml-ghost">${txt}</span>` : txt;
   }).join('') + '<span class="ml-cursor"></span>';
-}
-
-function mlExportVideo(evts, label) {
-  if (!evts.length) return;
-  const statusEl = document.getElementById('ml-status');
-  const downs    = evts.filter(e => e.type === 'down');
-  const duration = downs[downs.length - 1].t + 800;
-
-  const W = 720, H = 320, PAD = 24, FONT = 15;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  const stream   = canvas.captureStream(30);
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-  const chunks   = [];
-  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = (label || 'meliinda') + '.webm';
-    a.click();
-    URL.revokeObjectURL(url);
-    statusEl.textContent = 'Vidéo exportée.'; statusEl.className = 'ok';
-  };
-
-  // Construit les états et dessine frame par frame
-  let buffer = [], frameTimers = [];
-
-  function drawState(snapshot, cursorOn) {
-    ctx.fillStyle = '#141417';
-    ctx.fillRect(0, 0, W, H);
-
-    // label en haut
-    ctx.font = `10px monospace`;
-    ctx.fillStyle = '#555566';
-    ctx.fillText('// Meliinda · empreinte de frappe', PAD, PAD);
-
-    ctx.font = `${FONT}px monospace`;
-    let x = PAD, y = PAD + 28;
-    for (const c of snapshot) {
-      const ch = c.char === '\n' ? '' : c.char;
-      ctx.fillStyle = c.deleted ? '#e05c5c' : '#eeeef2';
-      if (c.deleted) {
-        ctx.fillText(ch, x, y);
-        ctx.fillStyle = '#e05c5c';
-        ctx.fillRect(x, y - FONT * 0.6, ctx.measureText(ch).width, 1);
-      } else {
-        ctx.fillText(ch, x, y);
-      }
-      x += ctx.measureText(ch || ' ').width;
-      if (c.char === '\n' || x > W - PAD * 2) { x = PAD; y += FONT + 6; }
-    }
-    // curseur
-    if (cursorOn) {
-      ctx.fillStyle = '#5b8dee';
-      ctx.fillRect(x, y - FONT, 2, FONT + 2);
-    }
-  }
-
-  // Blink cursor
-  let cursorOn = true;
-  const blinkTimer = setInterval(() => { cursorOn = !cursorOn; }, 450);
-
-  // Planifie chaque frame
-  for (const ev of downs) {
-    if (ev.key === 'Backspace') {
-      for (let i = buffer.length - 1; i >= 0; i--) {
-        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
-      }
-    } else if (ev.key.length === 1 || ev.key === 'Enter') {
-      buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
-    }
-    const snap = buffer.map(c => ({ ...c }));
-    frameTimers.push(setTimeout(() => drawState(snap, cursorOn), ev.t));
-  }
-
-  recorder.start();
-  statusEl.textContent = 'Export vidéo en cours…'; statusEl.className = '';
-
-  setTimeout(() => {
-    frameTimers.forEach(clearTimeout);
-    clearInterval(blinkTimer);
-    recorder.stop();
-  }, duration);
 }
 
 async function mlLoadLibrary() {

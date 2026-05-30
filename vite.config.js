@@ -8,10 +8,12 @@ export default defineConfig({
     // En dev, le moteur de paie et la Forge tournent sur Axum :8080.
     // Vite proxifie ces préfixes pour éviter les erreurs CORS / 404 HTML.
     proxy: {
-      '/forge':  { target: 'http://localhost:8080', changeOrigin: true },
-      '/profil': { target: 'http://localhost:8080', changeOrigin: true },
-      '/api':    { target: 'http://localhost:8080', changeOrigin: true },
-      '/quizz':  { target: 'http://localhost:8080', changeOrigin: true },
+      '/forge':    { target: 'http://localhost:8080', changeOrigin: true },
+      '/la_forge': { target: 'http://localhost:8080', changeOrigin: true },
+      '/admin':    { target: 'http://localhost:8080', changeOrigin: true },
+      '/profil':   { target: 'http://localhost:8080', changeOrigin: true },
+      '/api':      { target: 'http://localhost:8080', changeOrigin: true },
+      '/quizz':    { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
   envPrefix: ["VITE_", "TAURI_"],
