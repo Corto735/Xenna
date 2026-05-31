@@ -307,7 +307,9 @@
     body.bw-mode .summary-bar .sb-cell { background: #f2f2f2; border-color: #000; }
     /* Bouton calculer et toggles : noir/blanc pour rester lisibles */
     body.bw-mode .btn-calc { background: #000000; color: #ffffff; border-color: #000000; }
-    body.bw-mode .ptog.ptog-on { background: #000000; border-color: #000000; color: #ffffff; }
+    body.bw-mode .hf-knob { background: #000000; box-shadow: none; }
+    body.bw-mode .hf-toggle.is-h .hf-end-h,
+    body.bw-mode .hf-toggle.is-f .hf-end-f { color: #ffffff; }
     /* Champs de saisie */
     body.bw-mode input, body.bw-mode select { color: #000000 !important; }
     /* Panneaux d'explication dépliables */
@@ -369,7 +371,7 @@
     body.hv-mode input,
     body.hv-mode select,
     body.hv-mode button,
-    body.hv-mode .ptog,
+    body.hv-mode .hf-toggle,
     body.hv-mode .btn-view,
     body.hv-mode .btn-calc { border-width: 2px !important; }
     body.hv-mode .mob-row { border-bottom: 2px solid var(--border); }
@@ -1684,6 +1686,38 @@
     .gaab-poste { color: var(--purple); font-style: italic; }
     .gaab-sal { color: var(--yellow); white-space: nowrap; text-align: right; }
 
+    /* Répartition des salaires — boîte à moustaches */
+    .gaab-box-section { margin-top: 2.8rem; }
+    .gaab-box-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.7rem; margin-bottom: 0.6rem; }
+    .gaab-box-title { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; }
+    .gaab-box-basis { font-size: 0.58rem; color: var(--blue); letter-spacing: 0.08em; }
+    .gaab-box-locked {
+      font-size: 0.66rem; color: var(--muted); letter-spacing: 0.04em;
+      border: 1px dashed var(--dim); border-radius: 0.3rem;
+      padding: 1.4rem 1rem; text-align: center;
+    }
+    .gaab-box-inner { display: none; }
+    .gaab-box-section.revealed .gaab-box-inner  { display: block; }
+    .gaab-box-section.revealed .gaab-box-locked { display: none; }
+    .gaab-box-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0.2rem auto 0; overflow: visible; }
+    .gb-box   { fill: rgba(56,189,248,0.10); stroke: var(--blue);   stroke-width: 1.4; }
+    .gb-med   { stroke: var(--yellow); stroke-width: 2.2; }
+    .gb-mean  { stroke: var(--green);  stroke-width: 1.4; stroke-dasharray: 3 3; }
+    .gb-whisk { stroke: var(--muted);  stroke-width: 1.4; }
+    .gb-dot   { fill: var(--purple); opacity: 0.6; }
+    .gb-out   { fill: var(--red);    opacity: 0.95; }
+    .gb-tick  { fill: var(--dim);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
+    .gb-val   { fill: var(--text); font-size: 13px; font-family: var(--font-mono, monospace); }
+    .gaab-box-legend {
+      display: flex; flex-wrap: wrap; gap: 0.45rem 1.2rem; justify-content: center;
+      margin-top: 0.7rem; font-size: 0.64rem; color: var(--muted); letter-spacing: 0.03em;
+    }
+    .gaab-box-legend b { color: var(--text); font-weight: 500; }
+    .gb-num    { color: var(--yellow); font-variant-numeric: tabular-nums; }
+    .gb-l-med  b { color: var(--yellow); }
+    .gb-l-mean b { color: var(--green); }
+    .gb-l-out  { color: var(--red); }
+
     /* Boutons de navigation des vues secondaires */
     .page-exit,
     .page-nav {
@@ -1860,9 +1894,54 @@
       letter-spacing: 0.04em;
       font-style: italic;
     }
+
+    /* Toggle H/F — interrupteur coulissant bleu électrique */
+    .hf-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 3.2rem;
+      height: 1.35rem;
+      padding: 0 0.34rem;
+      box-sizing: border-box;
+      border: 1px solid var(--dim);
+      border-radius: 0.7rem;
+      background: var(--bg3);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .hf-toggle:hover { border-color: var(--blue); }
+    .hf-end {
+      position: relative;
+      z-index: 1;
+      font-size: 0.62rem;
+      font-weight: bold;
+      line-height: 1;
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+    .hf-knob {
+      position: absolute;
+      top: 50%;
+      width: 0.95rem;
+      height: 0.95rem;
+      border-radius: 50%;
+      background: var(--blue);
+      transform: translateY(-50%);
+      transition: left 0.18s ease, background 0.15s;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
+    }
+    .hf-toggle.is-h .hf-knob { left: 0.13rem; }
+    .hf-toggle.is-f .hf-knob { left: calc(100% - 0.95rem - 0.13rem); }
+    /* La lettre active passe sous la pastille bleue → contraste sombre */
+    .hf-toggle.is-h .hf-end-h,
+    .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-uazL8ozw.js"></script>
+  <script type="module" crossorigin src="/assets/index-C99QCJ37.js"></script>
 </head>
 <body>
 
@@ -1914,6 +1993,10 @@
         <button id="burger-login" class="burger-item" style="display:none" onclick="window.location.href='/la_forge'; closeBurger()">
           <span class="burger-item-icon">⬡</span>
           La Forge <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">connexion</span>
+        </button>
+        <button id="burger-admin" class="burger-item" style="display:none" onclick="window.location.href='/admin'; closeBurger()">
+          <span class="burger-item-icon">⚷</span>
+          Admin <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">modération</span>
         </button>
       </nav>
     </div>
@@ -1991,10 +2074,12 @@
       <div class="fp-title">SAISIE SALARIÉ</div>
       <div class="fp-body">
         <div class="field" style="flex-direction:row;align-items:center;gap:0.6rem;flex-wrap:wrap">
-          <div class="poste-toggle">
-            <button type="button" class="ptog ptog-on"  id="d-hf-h" onclick="setGenre('H')">H</button>
-            <button type="button" class="ptog ptog-off" id="d-hf-f" onclick="setGenre('F')">F</button>
-          </div>
+          <button type="button" class="hf-toggle is-h" id="d-hf" role="switch" aria-checked="false"
+                  title="Sexe du salarié" onclick="toggleGenre()">
+            <span class="hf-end hf-end-h">H</span>
+            <span class="hf-end hf-end-f">F</span>
+            <span class="hf-knob"></span>
+          </button>
           <label class="param-item" style="gap:0.4rem">
             <input type="checkbox" id="d-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
             simuler un écart salarial
@@ -2281,10 +2366,12 @@
         <div class="mob-form-body">
           <div class="mob-grid">
             <div class="field" style="flex-direction:row;align-items:center;gap:0.5rem;grid-column:1/-1;flex-wrap:wrap">
-              <div class="poste-toggle">
-                <button type="button" class="ptog ptog-on"  id="m-hf-h" onclick="setGenre('H')">H</button>
-                <button type="button" class="ptog ptog-off" id="m-hf-f" onclick="setGenre('F')">F</button>
-              </div>
+              <button type="button" class="hf-toggle is-h" id="m-hf" role="switch" aria-checked="false"
+                      title="Sexe du salarié" onclick="toggleGenre()">
+                <span class="hf-end hf-end-h">H</span>
+                <span class="hf-end hf-end-f">F</span>
+                <span class="hf-knob"></span>
+              </button>
               <label class="param-item" style="gap:0.4rem">
                 <input type="checkbox" id="m-ecart-actif" onchange="syncParam('ecart-actif', this.checked); onToggleEcartActif(this.checked)" />
                 simuler un écart salarial
@@ -2589,7 +2676,7 @@
     <div class="about-head">
       <div class="about-title">XENNA PAIE</div>
       <div class="about-sub">
-        Un simulateur de bulletin de paie français — pédagogique, citoyen, open source.<br>
+        Un simulateur de bulletin de paie français — pédagogique et open source.<br>
         Chaque cotisation est expliquée, datée, et rattachée à son texte de loi.<br>
         Transparent. Citoyen. Vérifiable.
       </div>
@@ -2880,23 +2967,6 @@
 
     </div>
 
-    <!-- ── Accès gratuit ── -->
-    <div class="sect-label">QUI ACCÈDE GRATUITEMENT</div>
-    <div class="gpl-box" style="border-left-color:var(--blue)">
-      <div style="margin-bottom:0.75rem">
-        Xenna Paie et Gaabrielle RH seront <strong>gratuits à vie</strong> pour :
-      </div>
-      <div class="gpl-libertes" style="margin-bottom:0.85rem">
-        <span>Étudiants et apprentis <span style="color:var(--dim)">(justificatif)</span></span>
-        <span>Associations loi 1901 <span style="color:var(--dim)">(justificatif)</span></span>
-      </div>
-      <div>
-        Tout <strong>contributeur sérieux au projet</strong> — code, données légales, retours terrain —
-        bénéficiera d'un accès à vie à Xenna Paie <em>et</em> Gaabrielle RH,
-        dans la limite de <strong>500 bulletins simulés par mois</strong>.
-      </div>
-    </div>
-
   </div>
 
   <!-- ════════════════════════════════
@@ -2957,6 +3027,19 @@
           </thead>
           <tbody id="gaab-tbody"></tbody>
         </table>
+        </div>
+      </div>
+
+      <!-- Répartition des salaires — boîte à moustaches -->
+      <div class="gaab-box-section" id="gaab-box-section">
+        <div class="gaab-box-head">
+          <span class="gaab-box-title">Répartition des rémunérations</span>
+          <span class="gaab-box-basis" id="gaab-box-basis"></span>
+        </div>
+        <div class="gaab-box-locked">🔒 cliquez sur € (ou choisissez une base de rémunération) pour révéler la dispersion</div>
+        <div class="gaab-box-inner">
+          <div id="gaab-box-plot"></div>
+          <div class="gaab-box-legend" id="gaab-box-legend"></div>
         </div>
       </div>
     </div>
@@ -3224,7 +3307,6 @@
         <input type="text" id="ml-label-input" placeholder="Label (optionnel)">
         <button class="ml-btn" id="ml-btn-save" disabled>[ Sauvegarder ]</button>
         <button class="ml-btn ml-danger" id="ml-btn-replay" disabled>[ Replay ]</button>
-        <button class="ml-btn" id="ml-btn-export" disabled>[ Export vidéo ]</button>
         <button class="ml-btn" id="ml-btn-new">[ Nouvelle session ]</button>
       </div>
       <div id="ml-status"></div>

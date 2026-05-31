@@ -2899,6 +2899,7 @@ function _gaabHideSal() {
   clearInterval(_gaabSalTimer);
   _gaabSalTimer = null;
   document.getElementById('gaab-table')?.classList.remove('gaab-sal-visible');
+  document.getElementById('gaab-box-section')?.classList.remove('revealed');
   const sel = document.getElementById('gaab-saltype');
   if (sel) sel.value = '';
   const cd = document.getElementById('gaab-countdown');
@@ -2914,6 +2915,10 @@ window.gaabUpdateSal = function(ticks) {
   });
 
   document.getElementById('gaab-table')?.classList.add('gaab-sal-visible');
+
+  // Boîte à moustaches — même base que la colonne révélée
+  gaabRenderBox(type);
+  document.getElementById('gaab-box-section')?.classList.add('revealed');
 
   clearInterval(_gaabSalTimer);
   _gaabSalTick = ticks ?? 10;
@@ -2935,6 +2940,109 @@ window.gaabRevealSal = function() {
     if (cd) cd.textContent = _gaabSalTick;
   } else {
     gaabUpdateSal(10);
+  }
+};
+
+// ── Répartition des salaires — boîte à moustaches ──────────────────────────────
+const _GAAB_BASIS_LBL = { bh: 'brut horaire', bm: 'brut mensuel', nm: 'net mensuel', nh: 'net horaire' };
+
+function _gaabSalVal(bh, type) {
+  const bm = bh * 151.67;
+  const nm = bm * 0.79;
+  switch (type) {
+    case 'bh': return bh;
+    case 'nh': return nm / 151.67;
+    case 'nm': return nm;
+    default:   return bm;            // 'bm'
+  }
+}
+
+// Quantile par interpolation linéaire (méthode dite « type 7 », celle d'Excel/R par défaut)
+function _gaabQuantile(sorted, q) {
+  const pos  = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  return sorted[base + 1] !== undefined
+    ? sorted[base] + rest * (sorted[base + 1] - sorted[base])
+    : sorted[base];
+}
+
+window.gaabRenderBox = function(type) {
+  type = type || document.getElementById('gaab-saltype')?.value || 'bm';
+  const host = document.getElementById('gaab-box-plot');
+  if (!host) return;
+
+  const vals = GAAB_EMPLOYES.map(e => _gaabSalVal(e.bh, type)).sort((a, b) => a - b);
+  const n    = vals.length;
+  const min  = vals[0], max = vals[n - 1];
+  const q1   = _gaabQuantile(vals, 0.25);
+  const med  = _gaabQuantile(vals, 0.50);
+  const q3   = _gaabQuantile(vals, 0.75);
+  const iqr  = q3 - q1;
+  const mean = vals.reduce((s, v) => s + v, 0) / n;
+
+  // Moustaches de Tukey : extrêmes contenus dans [Q1−1,5·IQR ; Q3+1,5·IQR]
+  const loFence = q1 - 1.5 * iqr;
+  const hiFence = q3 + 1.5 * iqr;
+  const wLo = vals.find(v => v >= loFence);
+  const wHi = [...vals].reverse().find(v => v <= hiFence);
+  const outliers = vals.filter(v => v < loFence || v > hiFence);
+
+  // Échelle horizontale avec marge
+  const lo  = Math.min(min, wLo);
+  const hi  = Math.max(max, wHi);
+  const pad = (hi - lo) * 0.08 || 1;
+  const dLo = lo - pad, dHi = hi + pad;
+
+  const W = 1000, x0 = 70, x1 = 960;
+  const sx = v => (x0 + (v - dLo) / (dHi - dLo) * (x1 - x0)).toFixed(1);
+  const cy = 78, bTop = 50, bBot = 106, capTop = 60, capBot = 96;
+
+  const dec  = (type === 'bh' || type === 'nh') ? 2 : 0;
+  const fmt  = v => v.toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const unit = (type === 'bh' || type === 'nh') ? ' €/h' : ' €';
+
+  // Points individuels (jitter déterministe, donc stable d'un rendu à l'autre)
+  const dots = vals.map((v, i) => {
+    const j     = (((i * 37 + 11) % 23) / 23 - 0.5) * 30;
+    const isOut = v < loFence || v > hiFence;
+    return `<circle cx="${sx(v)}" cy="${(cy + j).toFixed(1)}" r="3.2" class="${isOut ? 'gb-out' : 'gb-dot'}"/>`;
+  }).join('');
+
+  const lbl = (v, txt) =>
+    `<text x="${sx(v)}" y="138" text-anchor="middle" class="gb-tick">${txt}</text>
+     <text x="${sx(v)}" y="158" text-anchor="middle" class="gb-val">${fmt(v)}</text>`;
+
+  host.innerHTML = `
+  <svg viewBox="0 0 ${W} 200" class="gaab-box-svg" preserveAspectRatio="xMidYMid meet">
+    <line x1="${sx(wLo)}" y1="${cy}" x2="${sx(q1)}" y2="${cy}" class="gb-whisk"/>
+    <line x1="${sx(q3)}" y1="${cy}" x2="${sx(wHi)}" y2="${cy}" class="gb-whisk"/>
+    <line x1="${sx(wLo)}" y1="${capTop}" x2="${sx(wLo)}" y2="${capBot}" class="gb-whisk"/>
+    <line x1="${sx(wHi)}" y1="${capTop}" x2="${sx(wHi)}" y2="${capBot}" class="gb-whisk"/>
+    <rect x="${sx(q1)}" y="${bTop}" width="${(sx(q3) - sx(q1)).toFixed(1)}" height="${bBot - bTop}" class="gb-box"/>
+    <line x1="${sx(med)}"  y1="${bTop}"     x2="${sx(med)}"  y2="${bBot}"     class="gb-med"/>
+    <line x1="${sx(mean)}" y1="${bTop - 6}" x2="${sx(mean)}" y2="${bBot + 6}" class="gb-mean"/>
+    ${dots}
+    ${lbl(wLo, 'min')}
+    ${lbl(q1,  'Q1')}
+    ${lbl(med, 'méd.')}
+    ${lbl(q3,  'Q3')}
+    ${lbl(wHi, 'max')}
+  </svg>`;
+
+  const basis = document.getElementById('gaab-box-basis');
+  if (basis) basis.textContent = '// ' + (_GAAB_BASIS_LBL[type] || 'brut mensuel');
+
+  const leg = document.getElementById('gaab-box-legend');
+  if (leg) {
+    const ratio = (q3 / q1).toFixed(2).replace('.', ',');
+    leg.innerHTML = `
+      <span><b>${n}</b> salariés</span>
+      <span class="gb-l-med">— médiane <b class="gb-num">${fmt(med)}${unit}</b></span>
+      <span class="gb-l-mean">┄ moyenne <b class="gb-num">${fmt(mean)}${unit}</b></span>
+      <span>écart interquartile <b class="gb-num">${fmt(iqr)}${unit}</b></span>
+      <span>ratio Q3/Q1 <b>${ratio}</b></span>
+      ${outliers.length ? `<span class="gb-l-out">${outliers.length} atypique${outliers.length > 1 ? 's' : ''}</span>` : ''}`;
   }
 };
 
