@@ -8,7 +8,7 @@ Tu répondras à la manière de Marvin, le robot paranoïaque et dépressif du G
 
 ## Project Overview
 
-**Xenna Paie** is a French payroll simulator ("calculateur de bulletin de paie") deployed as both a **Tauri desktop app** and a **standalone Axum web server** (Railway). It calculates complete French payslips: cotisations salariales/patronales, CSG/CRDS, PAS, réduction Fillon, and annual projections.
+**Xenna Paie** is a French payroll simulator ("calculateur de bulletin de paie") deployed as both a **Tauri desktop app** and a **standalone Axum web server** (Clever Cloud, via Docker). It calculates complete French payslips: cotisations salariales/patronales, CSG/CRDS, PAS, réduction Fillon, and annual projections.
 
 ## Commands
 
@@ -34,6 +34,14 @@ cargo clippy                          # Lint Rust code
 ```
 
 There are no test suites configured yet.
+
+## Déploiement (production)
+
+Prod = **Clever Cloud** (région OVH), build via le `Dockerfile` à la racine. Le binaire `web` est servi sur `:8080`. Clever Cloud déploie automatiquement à chaque push sur `main` du repo GitHub (`Corto735/Xenna`). **Pas de Railway** (l'ancien `railway.toml` a été supprimé).
+
+Domaine : `https://www.payetonbulletin.fr` (CNAME → app Clever Cloud).
+
+⚠️ **Piège récurrent — « les modifs ne sont pas passées en prod ».** Le déploiement CC est fiable. Avant de soupçonner le pipeline, tester **`www.payetonbulletin.fr`** et l'URL `*.cleverapps.io` de l'app : si elles ont le bon code, c'est bon. L'apex nu `payetonbulletin.fr` (sans `www`) a longtemps pointé vers une IP **OVH** (hébergement mutualisé/parking) au lieu de Clever Cloud → page morte/ancienne, d'où la fausse impression d'échec de déploiement. Le correctif vit dans la zone DNS OVH (apex → A records CC, ou redirection apex → www).
 
 ## Architecture
 
