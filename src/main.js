@@ -211,9 +211,29 @@ document.addEventListener("DOMContentLoaded", () => {
 let _currentLang = 'fr';
 const _tradCache  = {};     // { 'en': Map<original, translated> }
 const _origTexts  = new Map(); // node → texte original
+let _lastCalcReq  = null;   // dernière requête calculer_bulletin (pour re-calcul au changement de langue)
+
+// Re-calcule le bulletin courant dans la langue demandée : les libellés et
+// explications de cotisation sont traduits côté backend (crate::i18n) et
+// reviennent déjà localisés. Sans bulletin affiché, no-op.
+async function _recalcForLang(lang) {
+  if (!_lastCalcReq || !lastBulletin) return;
+  _lastCalcReq = { ..._lastCalcReq, lang };
+  try {
+    const b = await api("calculer_bulletin", _lastCalcReq);
+    lastBulletin = b;
+    renderAll(b);
+  } catch (e) {
+    console.error('[recalc langue] échec :', e);
+  }
+}
 
 function _getTranslatableNodes() {
-  const SKIP = 'script,style,input,select,textarea,.mob-val,.sb-val,.fm-val,.a11y-float,.trad-panel,#a11y-panel';
+  // .trad-skip + classes dédiées au contenu cotisation fourni (déjà traduit)
+  // par le backend : on ne les repasse PAS par MyMemory, sinon double traduction
+  // qui massacre le texte juridique. Voir crate::i18n côté Rust.
+  const SKIP = 'script,style,input,select,textarea,.mob-val,.sb-val,.fm-val,.a11y-float,.trad-panel,#a11y-panel'
+    + ',.trad-skip,.expl-txt,.expl-ref,.mob-exp-txt,.mob-exp-loi,.mob-cot-lbl,.fm-fillon,#fm-title';
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode(n) {
       const t = n.textContent.trim();
@@ -244,17 +264,24 @@ window.translateApp = async function(lang) {
   document.querySelectorAll('.trad-lang-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.trad-lang-btn[onclick="translateApp('${lang}')"]`)?.classList.add('active');
 
-  // Retour au français : restaure les textes originaux
+  // Retour au français : re-calcule (cotisations en FR via backend) puis
+  // restaure les textes statiques d'origine.
   if (lang === 'fr') {
+    _currentLang = 'fr';
+    await _recalcForLang('fr');
     _origTexts.forEach((orig, node) => { if (node.isConnected) node.textContent = orig; });
     document.documentElement.lang = 'fr';
-    _currentLang = 'fr';
     return;
   }
 
   const btn = document.getElementById('trad-btn');
   btn.classList.add('loading');
   btn.textContent = '🌐 …';
+
+  // Re-calcule d'abord pour que libellés/explications de cotisation reviennent
+  // déjà traduits du backend (nœuds marqués .trad-skip → ignorés ci-dessous).
+  _currentLang = lang;
+  await _recalcForLang(lang);
 
   const nodes = _getTranslatableNodes();
 
@@ -1008,7 +1035,9 @@ function renderDesktop(b) {
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
-  const netPayer = parseFloat(b.net_a_payer) - pas.total;
+  // IJSS nettes réintégrées au net à payer (subrogation maladie).
+  const ijssNet  = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
+  const netPayer = parseFloat(b.net_a_payer) - pas.total + ijssNet;
   if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
 
   // IS suisse — extrait pour l'afficher séparément dans la barre récap
@@ -1063,6 +1092,10 @@ function renderDesktop(b) {
             <span>Total retenues</span>
             <span style="color:var(--red)">− ${fmt(totalSal + pas.total)}</span>
           </div>
+          ${ijssNet > 0 ? `<div class="sb-ded-row">
+            <span>IJSS nettes (subrogation)</span>
+            <span style="color:var(--green)">+ ${fmt(ijssNet)}</span>
+          </div>` : ''}
         </div>
       </div>
       <div class="sb-cell">
@@ -1106,7 +1139,7 @@ function renderDesktop(b) {
           <td>
             <span class="expand-icon">▶</span>
             <span class="cat ${catCls}">[${c.categorie}]</span>
-            <span>${c.libelle}</span>
+            <span class="trad-skip">${c.libelle}</span>
           </td>
           <td class="r">${fmt(c.base)}</td>
           <td class="r">${parseFloat(c.taux_sal) > 0 ? '− ' : ''}${fmtPct(c.taux_sal)}</td>
@@ -1117,8 +1150,8 @@ function renderDesktop(b) {
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
             <div class="expl-box">
-              <div class="expl-txt">▸ ${esc(c.explication)}</div>
-              ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
+              <div class="expl-txt trad-skip">▸ ${esc(c.explication)}</div>
+              ${c.loi_ref ? `<div class="expl-ref trad-skip">§ ${esc(c.loi_ref)}</div>` : ""}
             </div>
           </td>
         </tr>`;
@@ -1183,7 +1216,7 @@ function renderDesktop(b) {
               <td>
                 <span class="expand-icon">▶</span>
                 <span class="cat ${catCls}">[${c.categorie}]</span>
-                <span>${c.libelle}</span>
+                <span class="trad-skip">${c.libelle}</span>
               </td>
               <td class="r">${fmt(c.base)}</td>
               <td class="r"></td>
@@ -1275,7 +1308,9 @@ function renderMobile(b) {
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
-  const netPayer  = parseFloat(b.net_a_payer) - pas.total;
+  // IJSS nettes réintégrées au net à payer (subrogation maladie).
+  const ijssNet   = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
+  const netPayer  = parseFloat(b.net_a_payer) - pas.total + ijssNet;
   const superBrut = parseFloat(b.brut) + totalPat;
 
   // IS suisse — extrait pour l'afficher en accordéon dédié (comme PAS pour la France)
@@ -1412,6 +1447,12 @@ function renderMobile(b) {
         ${itBonusCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itBonusCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
 
+      <!-- IJSS nettes (subrogation) -->
+      ${ijssNet > 0 ? `<div class="mob-row">
+        <span class="mob-lbl">IJSS nettes (subrogation)</span>
+        <span class="mob-val c-green">+ ${fmt(ijssNet)}</span>
+      </div>` : ''}
+
       <!-- Net à payer -->
       <div class="mob-row final-row">
         <span class="mob-lbl">NET À PAYER</span>
@@ -1527,7 +1568,9 @@ async function calculate(source) {
   const datePaie = date;
 
   try {
-    const bulletin = await api("calculer_bulletin", {
+    // Mémorisé pour pouvoir re-calculer à l'identique au changement de langue
+    // (translateApp) sans relire les formulaires.
+    _lastCalcReq = {
       salarie: {
         nom, prenom, salaire_brut: totalBrut.toString(), statut,
         etp: parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100,
@@ -1546,7 +1589,10 @@ async function calculate(source) {
         region_be:    isBelgique ? beRegion : null,
       },
       datePaie,
-    });
+      lang: _currentLang,
+      absence: getAbsencePayload(),
+    };
+    const bulletin = await api("calculer_bulletin", _lastCalcReq);
     lastBulletin = bulletin;
     renderAll(bulletin);
     _updateAnnuelBtn();
@@ -1941,9 +1987,24 @@ function getRemOptions(etp) {
 }
 
 function getRemTotal() {
-  let total = _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-  if (_absence?.active) total -= _calcRetenue(_remBase, _absence);
-  return total;
+  // Brut plein (base + éléments variables). La retenue d'absence, le maintien
+  // et les IJSS sont désormais calculés côté backend (qui reçoit ce brut plein
+  // + la spec d'absence) et renvoyés dans bulletin.absence.
+  return _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+}
+
+// Spec d'absence envoyée au backend (snake_case, comme les champs de salarie).
+function getAbsencePayload() {
+  if (!_absence?.active) return null;
+  return {
+    type_arret:      _absence.type || 'maladie',
+    date_debut:      _absence.dateDebut || '',
+    date_fin:        _absence.dateFin || '',
+    methode:         _absence.methode || 'moyens',
+    jours_type:      _absence.joursType || 'ouvres',
+    heures_mois:     parseFloat(document.getElementById('d-h-mois')?.value) || 151.67,
+    convention_idcc: _absence.conventionIDCC || '0016',
+  };
 }
 
 function buildRemSection() {
@@ -1966,13 +2027,15 @@ function buildRemSection() {
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>`
     : '';
   const absenceBtn = isFrance
-    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-d" type="button" onclick="toggleAbsencePanel('d')">− Absence</button>`
+    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-d" type="button" title="Retenue pour absence" onclick="toggleAbsencePanel('d')">−</button>`
     : '';
   const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(false) : '';
-  const absenceLine = _absence?.active
-    ? `<div class="rem-absence-line"><span style="flex:1">Retenue absence maladie (${_absenceLibelle(_absence)})</span><span>− ${fmt(_calcRetenue(_remBase, _absence))}</span></div>`
-    : '';
-  const total = getRemTotal();
+  const absInfo = (_absence?.active && lastBulletin?.absence) ? lastBulletin.absence : null;
+  const absenceLine = absInfo ? `
+    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
+    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
+    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
+  const total = (absInfo && lastBulletin) ? parseFloat(lastBulletin.brut) : getRemTotal();
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex">
       <span class="rem-total-lbl">Total brut</span>
@@ -2011,13 +2074,15 @@ function buildRemSectionMobile() {
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>`
     : '';
   const absenceBtn = isFrance
-    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-m" type="button" onclick="toggleAbsencePanel('m')">− Absence</button>`
+    ? `<button class="btn-absence-toggle${_absence ? ' active' : ''}" id="btn-absence-m" type="button" title="Retenue pour absence" onclick="toggleAbsencePanel('m')">−</button>`
     : '';
   const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(true) : '';
-  const absenceLine = _absence?.active
-    ? `<div class="rem-absence-line"><span style="flex:1">Retenue absence maladie (${_absenceLibelle(_absence)})</span><span>− ${fmt(_calcRetenue(_remBase, _absence))}</span></div>`
-    : '';
-  const total = getRemTotal();
+  const absInfo = (_absence?.active && lastBulletin?.absence) ? lastBulletin.absence : null;
+  const absenceLine = absInfo ? `
+    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
+    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
+    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
+  const total = (absInfo && lastBulletin) ? parseFloat(lastBulletin.brut) : getRemTotal();
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
       <span class="rem-total-lbl">Total brut</span>
@@ -2177,6 +2242,17 @@ function _calcRetenue(brut, abs) {
       nbJours  = _countJoursCalendaires(abs.dateDebut, abs.dateFin);
       diviseur = _joursCalMois(abs.dateDebut);
       break;
+    // Jours moyens : le diviseur dépend du choix ouvré/ouvrable (toggle).
+    case 'moyens':
+      if (abs.joursType === 'ouvrables') {
+        nbJours  = _countJoursOuvrables(abs.dateDebut, abs.dateFin);
+        diviseur = 26;
+      } else {
+        nbJours  = _countJoursOuvres(abs.dateDebut, abs.dateFin);
+        diviseur = 21.67;
+      }
+      break;
+    // Anciens codes conservés par compatibilité (réglages mémorisés)
     case 'ouvrables':
       nbJours  = _countJoursOuvrables(abs.dateDebut, abs.dateFin);
       diviseur = 26;
@@ -2218,6 +2294,7 @@ function _absenceStats(abs) {
   const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
   const salaireH   = _remBase > 0 ? (_remBase / heuresMois) : 0;
   const diviseurJ  = abs.methode === 'calendaire' ? _joursCalMois(abs.dateDebut)
+                   : abs.methode === 'moyens'     ? (abs.joursType === 'ouvrables' ? 26 : 21.67)
                    : abs.methode === 'ouvrables'  ? 26
                    : abs.methode === 'ouvres'     ? 21.67
                    : (abs.joursType === 'ouvrables' ? ouv : ouvr); // heures : diviseur = jours ref mois
@@ -2227,6 +2304,9 @@ function _absenceStats(abs) {
 
 function _absenceLibelle(abs) {
   if (!abs) return '';
+  if (abs.methode === 'moyens') {
+    return `maladie · ${abs.joursType === 'ouvrables' ? '÷26 ouvrables' : '÷21,67 ouvrés'}`;
+  }
   const labels = { calendaire: 'jours cal.', ouvrables: '÷26 ouvrables', ouvres: '÷21,67 ouvrés', heures: 'heures réelles' };
   return `maladie · ${labels[abs.methode] || abs.methode}`;
 }
@@ -2235,9 +2315,11 @@ function _buildAbsencePanel(isMob) {
   const p = isMob ? 'm' : 'd';
   const abs = _absence || {};
   const type    = abs.type    || 'maladie';
-  const methode = abs.methode || 'calendaire';
-  const jType   = abs.joursType || (Math.random() < 0.5 ? 'ouvres' : 'ouvrables');
+  const methode = abs.methode || 'moyens';
+  const jType   = abs.joursType || 'ouvres';
+  const conv    = abs.conventionIDCC || '0016';
   if (!abs.joursType) { if (_absence) _absence.joursType = jType; }
+  if (!abs.conventionIDCC && _absence) _absence.conventionIDCC = conv;
 
   const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
   const retenue    = _absence ? _calcRetenue(_remBase, { ..._absence, joursType: jType }) : 0;
@@ -2273,11 +2355,16 @@ function _buildAbsencePanel(isMob) {
         <span>au</span>
         <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" oninput="onAbsenceChange('${p}')">
       </div>
+      <div class="absence-conv-row">
+        <span>Convention collective (maintien) :</span>
+        <select id="abs-conv-${p}" onchange="onAbsenceConvention('${p}', this.value)">
+          <option value="0016" ${conv==='0016'?'selected':''}>IDCC 0016 — Transport routier</option>
+        </select>
+      </div>
       <div class="absence-methode-row">
         ${[
           ['calendaire', `Jours calendaires (÷ ${abs.dateDebut ? _joursCalMois(abs.dateDebut) : 'jours du mois'})`],
-          ['ouvrables',  'Jours ouvrables moyens (÷ 26)'],
-          ['ouvres',     'Jours ouvrés moyens (÷ 21,67)'],
+          ['moyens',     `Jours moyens (÷ ${jType === 'ouvrables' ? '26' : '21,67'})`],
           ['heures',     `Heures réelles (÷ ${Math.round(heuresMois)} h/mois)`],
         ].map(([v, lbl]) =>
           `<label><input type="radio" name="abs-methode-${p}" value="${v}" ${methode===v?'checked':''} onchange="onAbsenceChange('${p}')"> ${lbl}</label>`
@@ -2295,7 +2382,7 @@ function _buildAbsencePanel(isMob) {
 window.toggleAbsencePanel = function(p) {
   if (!_absence) {
     _absence = { active: false, type: 'maladie', dateDebut: '', dateFin: '',
-      methode: 'calendaire', joursType: Math.random() < 0.5 ? 'ouvres' : 'ouvrables' };
+      methode: 'moyens', joursType: 'ouvres', conventionIDCC: '0016' };
     _reRenderRemInPlace(); // insère le panneau dans le DOM
     return;
   }
@@ -2316,7 +2403,7 @@ window.onAbsenceTypeChange = function(p, val) {
 window.onAbsenceChange = function(p) {
   if (!_absence) return;
   const methodeEl = document.querySelector(`input[name="abs-methode-${p}"]:checked`);
-  _absence.methode  = methodeEl ? methodeEl.value : 'calendaire';
+  _absence.methode  = methodeEl ? methodeEl.value : 'moyens';
   _absence.dateDebut = document.getElementById(`abs-debut-${p}`)?.value || '';
   _absence.dateFin   = document.getElementById(`abs-fin-${p}`)?.value   || '';
   _refreshAbsencePanel(p);
@@ -2325,6 +2412,12 @@ window.onAbsenceChange = function(p) {
 window.onAbsenceJoursType = function(p, val) {
   if (!_absence) return;
   _absence.joursType = val;
+  _refreshAbsencePanel(p);
+};
+
+window.onAbsenceConvention = function(p, val) {
+  if (!_absence) return;
+  _absence.conventionIDCC = val;
   _refreshAbsencePanel(p);
 };
 

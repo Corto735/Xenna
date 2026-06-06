@@ -1,4 +1,5 @@
 pub mod annee;
+pub mod absence;
 pub mod bulletin;
 pub mod cotisations;
 pub mod ch_cotisations;

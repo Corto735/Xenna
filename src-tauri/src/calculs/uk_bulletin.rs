@@ -23,6 +23,7 @@ pub fn generer_bulletin_uk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "GBP".into(),
+        absence: None,
         salarie,
     }
 }

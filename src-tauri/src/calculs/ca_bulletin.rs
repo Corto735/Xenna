@@ -33,6 +33,7 @@ pub fn generer_bulletin_ca(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "CAD".into(),
+        absence: None,
         salarie,
     }
 }

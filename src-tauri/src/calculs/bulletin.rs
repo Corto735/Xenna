@@ -1,6 +1,6 @@
 use rust_decimal::Decimal;
 use crate::db::ContextPaie;
-use crate::models::{Bulletin, Pays, Salarie};
+use crate::models::{AbsenceInput, Bulletin, Pays, Salarie};
 use super::cotisations::*;
 use super::ch_bulletin::generer_bulletin_ch;
 use super::lu_bulletin::generer_bulletin_lu;
@@ -16,7 +16,7 @@ use super::uk_bulletin::generer_bulletin_uk;
 use super::jp_bulletin::generer_bulletin_jp;
 use super::cn_bulletin::generer_bulletin_cn;
 
-pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
+pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     match salarie.pays {
         Pays::Suisse            => return generer_bulletin_ch(salarie, ctx),
         Pays::Luxembourg        => return generer_bulletin_lu(salarie, ctx),
@@ -34,7 +34,16 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         Pays::France            => {}
     }
 
-    let brut = salarie.salaire_brut;
+    // Brut mensuel plein = référence pour le SJB des IJSS et le per-day du maintien.
+    let base_ref = salarie.salaire_brut;
+    let absence_res = absence.and_then(|a| super::absence::compute_absence(base_ref, a, ctx));
+
+    // Assiette de cotisations du mois : brut plein − retenue + maintien − IJSS brutes.
+    // Toutes les cotisations (Fillon, tranches, plafonds) tournent sur cette assiette.
+    let brut = match &absence_res {
+        Some(r) => (base_ref - r.retenue + r.maintien - r.ijss_brut).max(Decimal::ZERO),
+        None    => base_ref,
+    };
     let mut cotisations = Vec::new();
 
     cotisations.push(ss_maladie(brut, ctx));
@@ -76,6 +85,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),
+        absence: absence_res,
         salarie,
     }
 }

@@ -30,6 +30,7 @@ pub fn generer_bulletin_jp(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(0),
         devise: "JPY".into(),
+        absence: None,
         salarie,
     }
 }

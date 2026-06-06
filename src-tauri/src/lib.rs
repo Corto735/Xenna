@@ -4,6 +4,7 @@ pub mod membre;
 pub mod calculs;
 pub mod crypto;
 pub mod db;
+pub mod i18n;
 pub mod forge;
 pub mod quizz;
 pub mod models;

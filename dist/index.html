@@ -575,11 +575,10 @@
     .rem-total-val { color: var(--fg); }
     /* ── Absence ──────────────────────────────────────────────────────────── */
     .btn-absence-toggle {
-      height: 22px; flex-shrink: 0;
+      width: 22px; height: 22px; flex-shrink: 0;
       background: transparent; border: 1.5px solid #00b4ff; color: #00b4ff;
-      font-size: 0.65rem; line-height: 1; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      padding: 0 6px; letter-spacing: 0.04em; white-space: nowrap;
+      font-size: 1rem; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0;
     }
     .btn-absence-toggle.active { background: #00b4ff22; }
     .absence-panel {
@@ -624,7 +623,16 @@
     }
     .rem-absence-line {
       display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: #ff6b6b;
+      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: var(--muted);
+    }
+    .rem-absence-line .c-red   { color: #ff6b6b; font-weight: bold; }
+    .rem-absence-line .c-green { color: var(--green); font-weight: bold; }
+    .absence-conv-row {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem;
+    }
+    .absence-conv-row select {
+      background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
+      padding: 0.12rem 0.3rem; font-size: 0.65rem;
     }
     .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
@@ -1941,7 +1949,7 @@
     .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-C99QCJ37.js"></script>
+  <script type="module" crossorigin src="/assets/index-CcwS4R9Y.js"></script>
 </head>
 <body>
 

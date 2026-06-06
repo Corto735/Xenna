@@ -64,7 +64,7 @@ pub async fn generer_annee(
             region_be: None,
             etp: 100.0,
         };
-        let bulletin = generer_bulletin(dummy, &ctx);
+        let bulletin = generer_bulletin(dummy, &ctx, None);
 
         // total_pat_brut = charges patronales hors Fillon.
         // On exclu REDUCTION_FILLON du cumul car on recalcule le montant

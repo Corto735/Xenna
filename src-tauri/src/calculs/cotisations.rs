@@ -11,17 +11,17 @@ pub fn ss_maladie(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("SS_MALADIE");
     LigneCotisation {
         code:        "SS_MALADIE".into(),
-        libelle:     "Assurance maladie, maternité, invalidité, décès".into(),
+        libelle:     ctx.libelle("SS_MALADIE", "Assurance maladie, maternité, invalidité, décès"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
-        explication: "La cotisation salariale maladie a été supprimée au 1er janvier 2018 \
+        explication: ctx.expl("SS_MALADIE", "La cotisation salariale maladie a été supprimée au 1er janvier 2018 \
             (LFSS 2018). En contrepartie, la CSG a été augmentée de 1,7 point. \
             Cette bascule visait à augmenter le salaire net sans accroître le coût employeur. \
-            La part patronale finance la branche maladie de l'Assurance Maladie.".into(),
+            La part patronale finance la branche maladie de l'Assurance Maladie."),
         loi_ref: Some("Loi n°2017-1836 du 30/12/2017 (LFSS 2018), art. 8".into()),
     }
 }
@@ -32,20 +32,20 @@ pub fn ss_vieillesse_plafonnee(brut: Decimal, ctx: &ContextPaie) -> LigneCotisat
     let tp = ctx.taux_pat("SS_VIEILLESSE_PLAF");
     LigneCotisation {
         code:        "SS_VIEILLESSE_PLAF".into(),
-        libelle:     "Assurance vieillesse (plafonnée)".into(),
+        libelle:     ctx.libelle("SS_VIEILLESSE_PLAF", "Assurance vieillesse (plafonnée)"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
-        explication: format!(
+        explication: ctx.expl("SS_VIEILLESSE_PLAF",
             "Cette cotisation retraite est limitée au Plafond Mensuel Sécurité Sociale \
-            (PMSS = {} € en {}). Au-delà, seule la cotisation déplafonnée s'applique. \
+            (PMSS = {pmss} € en {annee}). Au-delà, seule la cotisation déplafonnée s'applique. \
             Le système par répartition français, créé en 1945 par ordonnance du GPRF, \
-            garantit une pension calculée sur les 25 meilleures années (salariés privés).",
-            ctx.pmss, ctx.date_paie.format("%Y")
-        ),
+            garantit une pension calculée sur les 25 meilleures années (salariés privés).")
+            .replace("{pmss}", &ctx.pmss.to_string())
+            .replace("{annee}", &ctx.date_paie.format("%Y").to_string()),
         loi_ref: Some("Ordonnance n°45-2250 du 4/10/1945 — réformé par loi 2023-270 (réforme retraites)".into()),
     }
 }
@@ -55,17 +55,17 @@ pub fn ss_vieillesse_deplafonnee(brut: Decimal, ctx: &ContextPaie) -> LigneCotis
     let tp = ctx.taux_pat("SS_VIEILLESSE_DEPLAF");
     LigneCotisation {
         code:        "SS_VIEILLESSE_DEPLAF".into(),
-        libelle:     "Assurance vieillesse (déplafonnée)".into(),
+        libelle:     ctx.libelle("SS_VIEILLESSE_DEPLAF", "Assurance vieillesse (déplafonnée)"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
-        explication: "S'applique sur la totalité du brut, sans plafond. \
+        explication: ctx.expl("SS_VIEILLESSE_DEPLAF", "S'applique sur la totalité du brut, sans plafond. \
             Cotisation solidaire : les hauts salaires contribuent proportionnellement \
             plus pour financer un système dont les pensions sont plafonnées. \
-            Principe d'universalité de la Sécurité Sociale (Préambule de 1946).".into(),
+            Principe d'universalité de la Sécurité Sociale (Préambule de 1946)."),
         loi_ref: Some("CSS art. L241-3".into()),
     }
 }
@@ -74,16 +74,16 @@ pub fn famille(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("FAMILLE");
     LigneCotisation {
         code:        "FAMILLE".into(),
-        libelle:     "Allocations familiales".into(),
+        libelle:     ctx.libelle("FAMILLE", "Allocations familiales"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
-        explication: "Financement des prestations familiales (allocations, crèches, aide à \
+        explication: ctx.expl("FAMILLE", "Financement des prestations familiales (allocations, crèches, aide à \
             la garde d'enfants). Taux réduit à 3,45% pour les salaires ≤ 3,5 SMIC (taux plein : 5,25%). \
-            Politique nataliste française datant de l'entre-deux-guerres, institutionnalisée en 1945.".into(),
+            Politique nataliste française datant de l'entre-deux-guerres, institutionnalisée en 1945."),
         loi_ref: Some("Décret 2015-390 du 3/04/2015 — CSS art. L241-6".into()),
     }
 }
@@ -92,18 +92,18 @@ pub fn accident_travail(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("AT_MP");
     LigneCotisation {
         code:        "AT_MP".into(),
-        libelle:     "Accidents du travail / Maladies professionnelles".into(),
+        libelle:     ctx.libelle("AT_MP", "Accidents du travail / Maladies professionnelles"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
-        explication: "Taux fixé par la CARSAT selon le code risque de l'entreprise \
+        explication: ctx.expl("AT_MP", "Taux fixé par la CARSAT selon le code risque de l'entreprise \
             (secteur d'activité, sinistralité passée). Entièrement à la charge de \
             l'employeur : principe de responsabilité patronale instauré par la loi du \
             9 avril 1898, première loi sociale reconnaissant la responsabilité de \
-            l'employeur sans faute prouvée.".into(),
+            l'employeur sans faute prouvée."),
         loi_ref: Some("Loi du 9/04/1898 — CSS art. L241-5".into()),
     }
 }
@@ -119,47 +119,47 @@ pub fn csg_contributions(brut: Decimal, ctx: &ContextPaie) -> Vec<LigneCotisatio
     vec![
         LigneCotisation {
             code:        "CSG_DEDUCTIBLE".into(),
-            libelle:     "CSG déductible".into(),
+            libelle:     ctx.libelle("CSG_DEDUCTIBLE", "CSG déductible"),
             base:        assiette,
             taux_sal:    ts_ded,
             montant_sal: (assiette * ts_ded).round_dp(2),
             taux_pat:    Decimal::ZERO,
             montant_pat: Decimal::ZERO,
             categorie:   "CSG/CRDS".into(),
-            explication: "La CSG (Contribution Sociale Généralisée) a été créée en 1991 \
+            explication: ctx.expl("CSG_DEDUCTIBLE", "La CSG (Contribution Sociale Généralisée) a été créée en 1991 \
                 par Michel Rocard pour diversifier le financement de la Sécurité Sociale \
                 au-delà du travail salarié (revenus du capital inclus). La part déductible \
                 est soustraite du revenu imposable à l'IR. \
-                L'assiette est 98,25% du brut (abattement de 1,75% pour frais professionnels).".into(),
+                L'assiette est 98,25% du brut (abattement de 1,75% pour frais professionnels)."),
             loi_ref: Some("Loi n°90-1168 du 29/12/1990 — créée par Michel Rocard".into()),
         },
         LigneCotisation {
             code:        "CSG_NON_DEDUCTIBLE".into(),
-            libelle:     "CSG non déductible".into(),
+            libelle:     ctx.libelle("CSG_NON_DEDUCTIBLE", "CSG non déductible"),
             base:        assiette,
             taux_sal:    ts_non_ded,
             montant_sal: (assiette * ts_non_ded).round_dp(2),
             taux_pat:    Decimal::ZERO,
             montant_pat: Decimal::ZERO,
             categorie:   "CSG/CRDS".into(),
-            explication: "Fraction de CSG non déductible du revenu imposable : constitue \
+            explication: ctx.expl("CSG_NON_DEDUCTIBLE", "Fraction de CSG non déductible du revenu imposable : constitue \
                 un impôt sec sur le salaire. Augmentée de 1,7 point en 2018 (LFSS 2018) \
-                en contrepartie de la suppression des cotisations salariales maladie et chômage.".into(),
+                en contrepartie de la suppression des cotisations salariales maladie et chômage."),
             loi_ref: Some("LFSS 2018 — Loi n°2017-1836".into()),
         },
         LigneCotisation {
             code:        "CRDS".into(),
-            libelle:     "CRDS".into(),
+            libelle:     ctx.libelle("CRDS", "CRDS"),
             base:        assiette,
             taux_sal:    ts_crds,
             montant_sal: (assiette * ts_crds).round_dp(2),
             taux_pat:    Decimal::ZERO,
             montant_pat: Decimal::ZERO,
             categorie:   "CSG/CRDS".into(),
-            explication: "La CRDS (Contribution au Remboursement de la Dette Sociale, 0,5%) \
+            explication: ctx.expl("CRDS", "La CRDS (Contribution au Remboursement de la Dette Sociale, 0,5%) \
                 a été créée en 1996 par Alain Juppé pour rembourser la dette de la Sécurité \
                 Sociale via la CADES. Prévue pour durer 13 ans, elle existe toujours. \
-                Non déductible de l'IR.".into(),
+                Non déductible de l'IR."),
             loi_ref: Some("Ordonnance n°96-50 du 24/01/1996 (plan Juppé)".into()),
         },
     ]
@@ -171,17 +171,17 @@ pub fn chomage(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("CHOMAGE");
     LigneCotisation {
         code:        "CHOMAGE".into(),
-        libelle:     "Assurance chômage".into(),
+        libelle:     ctx.libelle("CHOMAGE", "Assurance chômage"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(2),
         categorie:   "Chômage".into(),
-        explication: "Depuis 2018, la cotisation salariale chômage a été supprimée \
+        explication: ctx.expl("CHOMAGE", "Depuis 2018, la cotisation salariale chômage a été supprimée \
             et compensée par la hausse de CSG. Seule la part patronale subsiste, \
             plafonnée à 4 PMSS. L'assurance chômage (UNEDIC) est gérée paritairement \
-            depuis 1958.".into(),
+            depuis 1958."),
         loi_ref: Some("Convention UNEDIC — suppression cotisation sal. : LFSS 2018".into()),
     }
 }
@@ -271,17 +271,23 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
     let seuil_eur = (seuil * smic).round_dp(2);
 
     let etp_info = if (etp_pct - 100.0).abs() > 0.1 {
-        format!("\n⚠ Temps partiel {:.0} % — SMIC proratisé : {smic} € (§670 BOSS)", etp_pct)
+        ctx.expl("REDUCTION_FILLON_ETP", "\n⚠ Temps partiel {etp} % — SMIC proratisé : {smic} € (§670 BOSS)")
+            .replace("{etp}", &format!("{:.0}", etp_pct))
+            .replace("{smic}", &smic.to_string())
     } else {
         String::new()
     };
 
+    // Gabarit traduit (ou français natif), puis substitution des placeholders.
+    // L'ordre des replace : les clés les plus longues d'abord pour éviter qu'une
+    // clé courte ne morde sur une plus longue (ici aucune ne se chevauche, mais
+    // on reste prudent : {seuil_eur} avant {seuil}, {inner_disp} avant {inner}).
     let explication = if ctx.fillon_puissance.is_some() {
         let inner = (seuil * smic / brut - Decimal::ONE) / dec!(2);
         // Arrondi à 4 dp pour l'affichage — évite les longues suites décimales
         let inner_disp = inner.min(Decimal::ONE).max(Decimal::ZERO).round_dp(4);
         let p = ctx.fillon_puissance.unwrap_or(dec!(1.75));
-        format!(
+        ctx.expl("REDUCTION_FILLON_PUISSANCE",
             "[ Calcul mensuel — CSS art. L241-13 ]\n\
             \n\
             Formule : C = Tmin + (Tdelta × D^P)\n\
@@ -302,10 +308,21 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
             ────────────────────────────────────────────────────\n\
             \n\
             S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
-            Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires."
-        )
+            Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires.")
+            .replace("{etp_info}", &etp_info)
+            .replace("{inner_disp}", &inner_disp.to_string())
+            .replace("{seuil_eur}", &seuil_eur.to_string())
+            .replace("{tmin}", &tmin.to_string())
+            .replace("{tdelta}", &tdelta.to_string())
+            .replace("{tmax}", &tmax.to_string())
+            .replace("{seuil}", &seuil.to_string())
+            .replace("{smic}", &smic.to_string())
+            .replace("{brut}", &brut.to_string())
+            .replace("{coeff}", &coeff.to_string())
+            .replace("{montant}", &montant.to_string())
+            .replace("{p}", &p.to_string())
     } else {
-        format!(
+        ctx.expl("REDUCTION_FILLON_LINEAIRE",
             "[ Calcul mensuel — ancienne formule linéaire 2015-2018 ]\n\
             \n\
             Formule : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n\
@@ -318,13 +335,20 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}"
-        )
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}")
+            .replace("{etp_info}", &etp_info)
+            .replace("{seuil_eur}", &seuil_eur.to_string())
+            .replace("{tmax}", &tmax.to_string())
+            .replace("{seuil}", &seuil.to_string())
+            .replace("{smic}", &smic.to_string())
+            .replace("{brut}", &brut.to_string())
+            .replace("{coeff}", &coeff.to_string())
+            .replace("{montant}", &montant.to_string())
     };
 
     Some(LigneCotisation {
         code:        "REDUCTION_FILLON".into(),
-        libelle:     "Réduction générale des cotisations patronales".into(),
+        libelle:     ctx.libelle("REDUCTION_FILLON", "Réduction générale des cotisations patronales"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
@@ -346,21 +370,21 @@ pub fn maladie_alsace_moselle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
     }
     Some(LigneCotisation {
         code:        "ALSACE_MOSELLE_MALADIE".into(),
-        libelle:     "Maladie complémentaire Alsace-Moselle (régime local)".into(),
+        libelle:     ctx.libelle("ALSACE_MOSELLE_MALADIE", "Maladie complémentaire Alsace-Moselle (régime local)"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(2),
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Sécurité Sociale".into(),
-        explication: "Le régime local d'Alsace-Moselle (droit local) offre une couverture \
+        explication: ctx.expl("ALSACE_MOSELLE_MALADIE", "Le régime local d'Alsace-Moselle (droit local) offre une couverture \
             maladie complémentaire obligatoire aux salariés des départements du Bas-Rhin (67), \
             Haut-Rhin (68) et Moselle (57). Cette cotisation, uniquement salariale, est prélevée \
             en sus du régime général. Elle finance un remboursement à 90 % (contre 70 % en régime \
             général) des frais de santé, sans ticket modérateur pour les hospitalisations. \
             Ce régime est issu du droit bismarckien applicable depuis 1871, maintenu lors du \
             retour de l'Alsace-Lorraine à la France en 1919 (loi du 1er juin 1924). \
-            Taux 1,50 % jusqu'au 30/06/2018, puis 1,30 % à compter du 01/07/2018 (LFSS 2018).".into(),
+            Taux 1,50 % jusqu'au 30/06/2018, puis 1,30 % à compter du 01/07/2018 (LFSS 2018)."),
         loi_ref: Some("Loi locale du 1/06/1924 — CSS art. L325-1 et s. — Loi 2018-1203 du 22/12/2018".into()),
     })
 }
@@ -376,19 +400,18 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
     let mut lignes = vec![
         LigneCotisation {
             code:        "AGIRC_ARRCO_T1".into(),
-            libelle:     "AGIRC-ARRCO Tranche 1".into(),
+            libelle:     ctx.libelle("AGIRC_ARRCO_T1", "AGIRC-ARRCO Tranche 1"),
             base:        t1_base,
             taux_sal:    ctx.taux_sal("AGIRC_ARRCO_T1"),
             montant_sal: (t1_base * ctx.taux_sal("AGIRC_ARRCO_T1")).round_dp(2),
             taux_pat:    ctx.taux_pat("AGIRC_ARRCO_T1"),
             montant_pat: (t1_base * ctx.taux_pat("AGIRC_ARRCO_T1")).round_dp(2),
             categorie:   "Retraite complémentaire".into(),
-            explication: format!(
+            explication: ctx.expl("AGIRC_ARRCO_T1",
                 "AGIRC-ARRCO : fusion en 2019 des régimes cadres (AGIRC, 1947) et non-cadres \
                 (ARRCO, 1961). Système par points. \
-                Tranche 1 = salaire jusqu'au PMSS ({} €).",
-                ctx.pmss
-            ),
+                Tranche 1 = salaire jusqu'au PMSS ({pmss} €).")
+                .replace("{pmss}", &ctx.pmss.to_string()),
             loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
         },
     ];
@@ -396,16 +419,16 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
     if t2_base > Decimal::ZERO {
         lignes.push(LigneCotisation {
             code:        "AGIRC_ARRCO_T2".into(),
-            libelle:     "AGIRC-ARRCO Tranche 2".into(),
+            libelle:     ctx.libelle("AGIRC_ARRCO_T2", "AGIRC-ARRCO Tranche 2"),
             base:        t2_base,
             taux_sal:    ctx.taux_sal("AGIRC_ARRCO_T2"),
             montant_sal: (t2_base * ctx.taux_sal("AGIRC_ARRCO_T2")).round_dp(2),
             taux_pat:    ctx.taux_pat("AGIRC_ARRCO_T2"),
             montant_pat: (t2_base * ctx.taux_pat("AGIRC_ARRCO_T2")).round_dp(2),
             categorie:   "Retraite complémentaire".into(),
-            explication: "Tranche 2 : fraction du salaire entre 1 et 8 PMSS. \
+            explication: ctx.expl("AGIRC_ARRCO_T2", "Tranche 2 : fraction du salaire entre 1 et 8 PMSS. \
                 Taux plus élevé car vise les salaires intermédiaires à élevés. \
-                Géré paritairement (syndicats + patronat).".into(),
+                Géré paritairement (syndicats + patronat)."),
             loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
         });
     }
@@ -416,15 +439,15 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
     if ceg_t1_ts + ceg_t1_tp > Decimal::ZERO {
         lignes.push(LigneCotisation {
             code:        "AGIRC_ARRCO_CEG_T1".into(),
-            libelle:     "Contribution d'Équilibre Général T1".into(),
+            libelle:     ctx.libelle("AGIRC_ARRCO_CEG_T1", "Contribution d'Équilibre Général T1"),
             base:        t1_base,
             taux_sal:    ceg_t1_ts,
             montant_sal: (t1_base * ceg_t1_ts).round_dp(2),
             taux_pat:    ceg_t1_tp,
             montant_pat: (t1_base * ceg_t1_tp).round_dp(2),
             categorie:   "Retraite complémentaire".into(),
-            explication: "Contribution non génératrice de points, destinée à l'équilibre \
-                financier du régime AGIRC-ARRCO. Créée lors de la fusion 2019.".into(),
+            explication: ctx.expl("AGIRC_ARRCO_CEG_T1", "Contribution non génératrice de points, destinée à l'équilibre \
+                financier du régime AGIRC-ARRCO. Créée lors de la fusion 2019."),
             loi_ref: Some("ANI 17/11/2017".into()),
         });
     }
@@ -434,17 +457,17 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
         let tp = ctx.taux_pat("PREVOYANCE_CADRE_MIN");
         lignes.push(LigneCotisation {
             code:        "PREVOYANCE_CADRE_MIN".into(),
-            libelle:     "Prévoyance cadre minimale (art. 7 CCN 1947)".into(),
+            libelle:     ctx.libelle("PREVOYANCE_CADRE_MIN", "Prévoyance cadre minimale (art. 7 CCN 1947)"),
             base:        t1_base,
             taux_sal:    Decimal::ZERO,
             montant_sal: Decimal::ZERO,
             taux_pat:    tp,
             montant_pat: (t1_base * tp).round_dp(2),
             categorie:   "Prévoyance".into(),
-            explication: "La Convention Collective Nationale des Cadres (14/03/1947) \
+            explication: ctx.expl("PREVOYANCE_CADRE_MIN", "La Convention Collective Nationale des Cadres (14/03/1947) \
                 impose aux employeurs une cotisation minimale de 1,5% sur la tranche A \
                 pour financer la prévoyance décès des cadres. Obligation employeur unique \
-                en Europe, résultat de la négociation d'après-guerre.".into(),
+                en Europe, résultat de la négociation d'après-guerre."),
             loi_ref: Some("Convention du 14/03/1947 — Article 7".into()),
         });
     }

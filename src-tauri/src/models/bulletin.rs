@@ -112,6 +112,48 @@ pub struct Salarie {
 
 fn etp_default() -> f64 { 100.0 }
 
+/// Spécification d'une absence maladie envoyée par le front (snake_case,
+/// comme les champs de Salarie). Tous les champs hors dates ont un défaut
+/// pour rester rétro-compatible.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbsenceInput {
+    /// Type d'arrêt. Seule "maladie" (non professionnelle) est gérée pour l'instant.
+    #[serde(default)]
+    pub type_arret: String,
+    /// Dates ISO YYYY-MM-DD.
+    pub date_debut: String,
+    pub date_fin:   String,
+    /// "calendaire" | "moyens" | "heures" (+ anciens "ouvrables"/"ouvres").
+    #[serde(default)]
+    pub methode:    String,
+    /// "ouvres" | "ouvrables" — pilote le diviseur pour "moyens"/"heures".
+    #[serde(default)]
+    pub jours_type: String,
+    /// Heures/mois (méthode "heures"). Défaut 151,67 si absent.
+    #[serde(default)]
+    pub heures_mois: Option<f64>,
+    /// Code IDCC de la convention collective. Défaut "0016" (transport).
+    #[serde(default)]
+    pub convention_idcc: Option<String>,
+}
+
+/// Résultat du calcul d'absence maladie (retenue + maintien employeur + IJSS),
+/// renvoyé dans le Bulletin pour affichage. Voir crate::calculs::absence.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbsenceResult {
+    #[serde(with = "rust_decimal::serde::str")] pub retenue:   Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub maintien:  Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub ijss_brut: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub ijss_net:  Decimal,
+    pub jours_absence:  i64,
+    pub jours_ijss:     i64,
+    pub jours_maintien: i64,
+    /// Ex. "maladie · ÷21,67 ouvrés".
+    pub libelle:    String,
+    /// Ex. "IDCC 0016".
+    pub convention: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LigneCotisation {
     pub code:        String,
@@ -176,4 +218,8 @@ pub struct Bulletin {
     pub cout_total_employeur: Decimal,
     /// "EUR" pour la France, "CHF" pour la Suisse.
     pub devise: String,
+    /// Détail absence maladie (retenue, maintien, IJSS) si une absence est saisie.
+    /// Absent du JSON sinon. France uniquement pour l'instant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub absence: Option<AbsenceResult>,
 }

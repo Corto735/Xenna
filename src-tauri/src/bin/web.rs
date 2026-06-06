@@ -26,7 +26,7 @@ use xenna_paie_lib::{
     forge::forge_router,
     membre::membre_router,
     quizz::quizz_router,
-    models::{Salarie, Statut},
+    models::{AbsenceInput, Salarie, Statut},
 };
 use meliinda::meliinda_router;
 
@@ -37,6 +37,12 @@ struct BulletinReq {
     salarie: Salarie,
     #[serde(rename = "datePaie")]
     date_paie: String,
+    // Langue d'affichage des libellés/explications ("fr" par défaut).
+    #[serde(default)]
+    lang: Option<String>,
+    // Absence maladie éventuelle (retenue + maintien + IJSS).
+    #[serde(default)]
+    absence: Option<AbsenceInput>,
 }
 
 #[derive(Deserialize)]
@@ -115,14 +121,15 @@ async fn handle_bulletin(
     let date = NaiveDate::parse_from_str(&req.date_paie, "%Y-%m-%d")
         .map_err(|_| ApiError(format!("Date invalide : '{}'", req.date_paie)))?;
 
-    let ctx = ContextPaie::charger(&pool, date)
+    let mut ctx = ContextPaie::charger(&pool, date)
         .await
         .map_err(|e| {
             tracing::error!("ContextPaie::charger error: {:?}", e);
             ApiError("Erreur interne du serveur".into())
         })?;
+    ctx.lang = req.lang.unwrap_or_else(|| "fr".into());
 
-    Ok(Json(generer_bulletin(req.salarie, &ctx)))
+    Ok(Json(generer_bulletin(req.salarie, &ctx, req.absence.as_ref())))
 }
 
 async fn handle_annee(

@@ -76,6 +76,7 @@ pub fn generer_bulletin_it(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         net_a_payer,
         cout_total_employeur: (brut + total_pat - tfr_pat).round_dp(2),
         devise: "EUR".into(),
+        absence: None,
         salarie,
     }
 }

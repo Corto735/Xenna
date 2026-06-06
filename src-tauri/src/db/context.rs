@@ -21,6 +21,11 @@ pub struct ContextPaie {
     pub pmss: Decimal,
     pub smic_mensuel: Decimal,
 
+    // Langue d'affichage des libellés/explications de cotisation (code menu :
+    // "fr","en","de","nl","it","es"). "fr" = défaut natif du code (aucune
+    // traduction appliquée). Voir crate::i18n::cotisations.
+    pub lang: String,
+
     // Paramètres Fillon — None si aucune ligne ne correspond à la date.
     //
     // Deux formules coexistent selon la période :
@@ -121,6 +126,7 @@ impl ContextPaie {
 
         Ok(ContextPaie {
             date_paie: date,
+            lang: "fr".into(),
             pmss: pmss_str.parse().context("PMSS non parseable")?,
             smic_mensuel: smic_str.parse().context("SMIC non parseable")?,
             taux,
@@ -140,5 +146,32 @@ impl ContextPaie {
 
     pub fn taux_pat(&self, code: &str) -> Decimal {
         self.taux.get(code).map(|(_, p)| *p).unwrap_or(Decimal::ZERO)
+    }
+
+    // ── Traduction des libellés / explications de cotisation ──────────────────
+    // En "fr" (défaut natif), on renvoie le texte français passé en argument
+    // sans aucun lookup. Pour les autres langues, on cherche la traduction
+    // curée et on retombe sur le français si elle n'existe pas.
+
+    /// Libellé de cotisation traduit, ou le libellé français en repli.
+    pub fn libelle(&self, code: &str, fr: &str) -> String {
+        if self.lang == "fr" {
+            return fr.to_string();
+        }
+        crate::i18n::cotisations::t_libelle(code, &self.lang)
+            .unwrap_or(fr)
+            .to_string()
+    }
+
+    /// Explication de cotisation traduite (ou gabarit à placeholders pour les
+    /// explications dynamiques), ou le texte français en repli. La substitution
+    /// des placeholders `{...}` reste à la charge de l'appelant.
+    pub fn expl(&self, key: &str, fr: &str) -> String {
+        if self.lang == "fr" {
+            return fr.to_string();
+        }
+        crate::i18n::cotisations::t_explication(key, &self.lang)
+            .unwrap_or(fr)
+            .to_string()
     }
 }

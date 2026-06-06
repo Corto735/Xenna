@@ -14,7 +14,7 @@ use crate::{
     AppState,
     calculs::{generer_bulletin, generer_annee},
     db::ContextPaie,
-    models::{Bulletin, Salarie, SimulationAnnuelle, Statut},
+    models::{AbsenceInput, Bulletin, Salarie, SimulationAnnuelle, Statut},
 };
 
 #[tauri::command]
@@ -22,6 +22,11 @@ pub async fn calculer_bulletin(
     state: tauri::State<'_, AppState>,
     salarie: Salarie,
     date_paie: String,
+    // Langue d'affichage des libellés/explications ("fr" par défaut). Optionnel
+    // pour compatibilité ascendante avec un front qui ne l'enverrait pas.
+    lang: Option<String>,
+    // Absence maladie éventuelle (retenue + maintien + IJSS).
+    absence: Option<AbsenceInput>,
 ) -> Result<Bulletin, String> {
     // La date est validée ici pour renvoyer un message lisible plutôt que
     // laisser SQLx échouer avec une erreur opaque sur la requête.
@@ -30,11 +35,12 @@ pub async fn calculer_bulletin(
 
     // Charge PMSS, SMIC et tous les taux valides à cette date depuis SQLite.
     // Échoue si la date est hors couverture de la base (avant 2015 ou table vide).
-    let ctx = ContextPaie::charger(&state.db, date)
+    let mut ctx = ContextPaie::charger(&state.db, date)
         .await
         .map_err(|e| e.to_string())?;
+    ctx.lang = lang.unwrap_or_else(|| "fr".into());
 
-    Ok(generer_bulletin(salarie, &ctx))
+    Ok(generer_bulletin(salarie, &ctx, absence.as_ref()))
 }
 
 #[tauri::command]
