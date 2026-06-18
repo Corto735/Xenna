@@ -95,6 +95,21 @@ pub enum Pays {
     /// Salariés lituaniens : Sodra 19,5 % sal + GPM 20 % / 32 % (NPD dégressif).
     /// Devise EUR. Données : 2025.
     Lituanie,
+    /// Salariés autrichiens : Sozialversicherung 18,07 % sal (plafonnée) + Lohnsteuer
+    /// progressif (0 à 55 %). Devise EUR. Données : 2025.
+    Autriche,
+    /// Salariés tchèques : sociální 7,1 % + zdravotní 4,5 % sal + daň 15 % / 23 %
+    /// (sleva 2 570 CZK/mois). Devise CZK. Données : 2025.
+    Tchequie,
+    /// Salariés slovaques : santé 4 % + sociální 9,4 % sal + daň 19 % / 25 %
+    /// (časť nezdaniteľná). Devise EUR. Données : 2025.
+    Slovaquie,
+    /// Salariés hongrois : TB 18,5 % sal + SZJA 15 % (flat) ; szocho 13 % pat.
+    /// Devise HUF. Données : 2025.
+    Hongrie,
+    /// Salariés slovènes : cotisations 22,1 % sal / 16,1 % pat + dohodnina (16 à 50 %).
+    /// Devise EUR. Données : 2025.
+    Slovenie,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -51,6 +51,11 @@ pub mod se_bulletin;
 pub mod ee_bulletin;
 pub mod lv_bulletin;
 pub mod lt_bulletin;
+pub mod at_bulletin;
+pub mod cz_bulletin;
+pub mod sk_bulletin;
+pub mod hu_bulletin;
+pub mod si_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;
