@@ -53,6 +53,36 @@ pub enum Pays {
     /// Salariés du secteur privé chinois, base Pékin (五险一金 + 个人所得税).
     /// Données disponibles depuis le 01/01/2024.
     Chine,
+    /// Salariés du secteur privé néerlandais, sous l'âge AOW (régime général).
+    /// Net = loonheffing (loonbelasting + premies volksverzekeringen AOW/Anw/Wlz)
+    /// − heffingskortingen (algemene heffingskorting + arbeidskorting).
+    /// Premies werknemersverzekeringen (AWf/Aof/Whk) et Zvw : 100 % patronales.
+    /// Données disponibles depuis le 01/01/2026 (extension 2015-2025 en cours).
+    PaysBas,
+    /// Salariés du secteur privé australien, résidents fiscaux (PAYG + Medicare + Super).
+    /// Données disponibles pour l'exercice 2025-26 (dates 2026). Devise AUD.
+    Australie,
+    /// Salariés néo-zélandais, résidents fiscaux (PAYE + ACC earner's levy + KiwiSaver).
+    /// Données disponibles pour l'année fiscale 2025-26 (dates 2026). Devise NZD.
+    NouvelleZelande,
+    /// Salariés polonais (umowa o pracę) : ZUS + składka zdrowotna + PIT 12/32.
+    /// Données disponibles pour 2025. Devise PLN.
+    Pologne,
+    /// Salariés sud-coréens : 4대보험 (NPS, NHI+장기요양, 고용, 산재) + 소득세 + 지방소득세.
+    /// Données disponibles pour 2025. Devise KRW.
+    CoreeDuSud,
+    /// Salariés andorrans : CASS 6,5 % + IRPF (0 / 5 / 10 %, depuis 2015). Devise EUR.
+    /// Données disponibles pour 2025.
+    Andorre,
+    /// Salariés monégasques : CAR (retraite) + chômage ; pas d'IR pour les résidents
+    /// (sauf nationaux français). CCSS 100 % patronale. Devise EUR. Données : 2025.
+    Monaco,
+    /// Salariés danois : AM-bidrag 8 % + ATP + impôt (bund/kommune/topskat). Devise DKK.
+    /// Données disponibles pour 2025.
+    Danemark,
+    /// Salariés finlandais (17-68 ans) : TyEL + chômage + assurance maladie
+    /// + impôt d'État progressif + impôt communal moyen. Devise EUR. Données : 2026.
+    Finlande,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

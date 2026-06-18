@@ -36,6 +36,17 @@ pub mod jp_bulletin;
 pub mod cn_cotisations;
 pub mod cn_impot;
 pub mod cn_bulletin;
+pub mod nl_loonheffing;
+pub mod nl_bulletin;
+pub mod pays_non_couvert;
+pub mod au_bulletin;
+pub mod nz_bulletin;
+pub mod pl_bulletin;
+pub mod kr_bulletin;
+pub mod ad_bulletin;
+pub mod mc_bulletin;
+pub mod dk_bulletin;
+pub mod fi_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

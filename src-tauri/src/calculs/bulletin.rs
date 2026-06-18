@@ -15,6 +15,15 @@ use super::be_bulletin::generer_bulletin_be;
 use super::uk_bulletin::generer_bulletin_uk;
 use super::jp_bulletin::generer_bulletin_jp;
 use super::cn_bulletin::generer_bulletin_cn;
+use super::nl_bulletin::generer_bulletin_nl;
+use super::au_bulletin::generer_bulletin_au;
+use super::nz_bulletin::generer_bulletin_nz;
+use super::pl_bulletin::generer_bulletin_pl;
+use super::kr_bulletin::generer_bulletin_kr;
+use super::ad_bulletin::generer_bulletin_ad;
+use super::mc_bulletin::generer_bulletin_mc;
+use super::dk_bulletin::generer_bulletin_dk;
+use super::fi_bulletin::generer_bulletin_fi;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     match salarie.pays {
@@ -31,6 +40,15 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         Pays::Angleterre        => return generer_bulletin_uk(salarie, ctx),
         Pays::Japon             => return generer_bulletin_jp(salarie, ctx),
         Pays::Chine             => return generer_bulletin_cn(salarie, ctx),
+        Pays::PaysBas           => return generer_bulletin_nl(salarie, ctx),
+        Pays::Australie         => return generer_bulletin_au(salarie, ctx),
+        Pays::NouvelleZelande   => return generer_bulletin_nz(salarie, ctx),
+        Pays::Pologne           => return generer_bulletin_pl(salarie, ctx),
+        Pays::CoreeDuSud        => return generer_bulletin_kr(salarie, ctx),
+        Pays::Andorre           => return generer_bulletin_ad(salarie, ctx),
+        Pays::Monaco            => return generer_bulletin_mc(salarie, ctx),
+        Pays::Danemark          => return generer_bulletin_dk(salarie, ctx),
+        Pays::Finlande          => return generer_bulletin_fi(salarie, ctx),
         Pays::France            => {}
     }
 
