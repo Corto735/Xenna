@@ -40,3 +40,24 @@ pub struct DashboardData {
     pub inscriptions_pending: Vec<InscriptionAdmin>,
     pub quizz_pending:        Vec<QuizzSuggestionAdmin>,
 }
+
+// ── Human input · page À propos ──────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct PublishAproposReq {
+    pub contenu: String,
+    pub events:  serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PublishAproposResp {
+    pub id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AproposPost {
+    pub id:         String,
+    pub contenu:    String,
+    pub events:     serde_json::Value,
+    pub created_at: String,
+}

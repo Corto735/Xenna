@@ -699,9 +699,68 @@ window.setView = function (v) {
   if (v === 'quizz')      quizzInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
-  if (v === 'apropos')    _mecenatStart();
+  if (v === 'apropos')  { _mecenatStart(); _humanInputLoad(); }
   if (v === 'meliinda')   meliindaInit();
 };
+
+// ── Human input — posts publiés depuis Méliinda sur la page À propos ──────────
+let _hiTimers = [];
+
+function _hiStopReplay() { _hiTimers.forEach(clearTimeout); _hiTimers = []; }
+
+function _hiBuildStates(evts) {
+  const downs = evts.filter(e => e.type === 'down');
+  let buffer = [], states = [];
+  for (const ev of downs) {
+    if (ev.key === 'Backspace') {
+      for (let i = buffer.length - 1; i >= 0; i--) {
+        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+      }
+    } else if (ev.key.length === 1 || ev.key === 'Enter') {
+      buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
+    }
+    states.push({ t: ev.t, snapshot: buffer.map(c => ({ ...c })) });
+  }
+  return states;
+}
+
+function _hiReplay(events, stage) {
+  _hiStopReplay();
+  stage.style.display = 'block';
+  stage.innerHTML = '<span class="ml-cursor"></span>';
+  for (const { t, snapshot } of _hiBuildStates(events)) {
+    _hiTimers.push(setTimeout(() => mlRenderSnapshot(snapshot, stage), t));
+  }
+}
+
+async function _humanInputLoad() {
+  const box = document.getElementById('apropos-human-input');
+  if (!box) return;
+  try {
+    const res  = await fetch('/api/apropos/posts');
+    const data = await res.json();
+    if (!data.length) {
+      box.innerHTML = '<div class="hi-empty">Aucun message pour le moment.</div>';
+      return;
+    }
+    box.innerHTML = data.map((p, i) => `
+      <div class="hi-post">
+        <div class="hi-post-date">${new Date(p.created_at).toLocaleDateString('fr-FR', { year:'numeric', month:'long', day:'numeric' })}</div>
+        <div class="hi-post-text">${esc(p.contenu)}</div>
+        <button class="hi-replay-btn" data-i="${i}">▶ rejouer la frappe</button>
+        <div class="hi-stage" id="hi-stage-${i}"></div>
+      </div>`).join('');
+    box.querySelectorAll('.hi-replay-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = btn.dataset.i;
+        const events = data[i].events || [];
+        _hiReplay(events, document.getElementById('hi-stage-' + i));
+      });
+    });
+  } catch {
+    box.innerHTML = '<div class="hi-empty">Chargement impossible.</div>';
+  }
+}
 
 // ── Mécénat — déverrouillage silencieux 15 s après le premier passage sur À propos ──
 let _mecenatUnlocked = false;

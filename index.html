@@ -1812,6 +1812,32 @@
       line-height: 1.7;
     }
 
+    /* ── Human input ── */
+    .human-input { margin-bottom: 1.75rem; }
+    .human-input .hi-empty { color: var(--muted); font-size: 0.7rem; }
+    .hi-post {
+      border-left: 2px solid var(--green);
+      background: var(--bg3);
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.65rem;
+    }
+    .hi-post-date { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .hi-post-text {
+      font-size: 0.78rem; color: var(--text); line-height: 1.75;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .hi-stage {
+      display: none; margin-top: 0.6rem; background: var(--bg2); border: 1px solid var(--border);
+      padding: 0.7rem; font-size: 0.78rem; line-height: 1.75; color: var(--white);
+      white-space: pre-wrap; word-break: break-word; min-height: 3rem;
+    }
+    .hi-replay-btn {
+      margin-top: 0.55rem; background: none; border: 1px solid var(--green); color: var(--green);
+      font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em;
+      padding: 0.3rem 0.7rem; cursor: pointer; transition: all 0.15s;
+    }
+    .hi-replay-btn:hover { background: var(--green); color: var(--bg); }
+
     /* ── Grille stack technique ── */
     .stack-grid {
       display: grid;
@@ -2688,6 +2714,10 @@
         Transparent. Citoyen. Vérifiable.
       </div>
     </div>
+
+    <!-- ── Human input ── -->
+    <div class="sect-label">HUMAN INPUT :</div>
+    <div id="apropos-human-input" class="human-input"></div>
 
     <!-- ── Stack technique ── -->
     <div class="sect-label">COMMENT C'EST CONSTRUIT</div>

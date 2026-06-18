@@ -4,13 +4,18 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
+use chrono::Utc;
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 use super::auth::{generate_jwt, jwt_secret, verify_password, AdminAuth};
-use super::models::{DashboardData, InscriptionAdmin, LoginReq, LoginResp, QuizzSuggestionAdmin};
+use super::models::{
+    AproposPost, DashboardData, InscriptionAdmin, LoginReq, LoginResp, PublishAproposReq,
+    PublishAproposResp, QuizzSuggestionAdmin,
+};
 use crate::crypto::{decrypt_email, parse_encryption_key};
 
 type Db = Arc<SqlitePool>;
@@ -153,6 +158,75 @@ async fn reject_quizz(
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+// ── POST /admin/apropos/publish ──────────────────────────────────────────────
+
+async fn publish_apropos(
+    State(pool): State<Db>,
+    _auth: AdminAuth,
+    Json(req): Json<PublishAproposReq>,
+) -> Result<Json<PublishAproposResp>, (StatusCode, &'static str)> {
+    let contenu = req.contenu.trim();
+    if contenu.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Contenu vide"));
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let events_json = serde_json::to_string(&req.events)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Events invalides"))?;
+    let now = Utc::now().to_rfc3339();
+
+    sqlx::query(
+        "INSERT INTO apropos_posts (id, contenu, events, created_at) VALUES (?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(contenu)
+    .bind(&events_json)
+    .bind(&now)
+    .execute(&*pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur DB"))?;
+
+    Ok(Json(PublishAproposResp { id }))
+}
+
+// ── DELETE /admin/apropos/:id ─────────────────────────────────────────────────
+
+async fn delete_apropos(
+    State(pool): State<Db>,
+    _auth: AdminAuth,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    sqlx::query("DELETE FROM apropos_posts WHERE id = ?")
+        .bind(&id)
+        .execute(&*pool)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+// ── GET /api/apropos/posts (public) ──────────────────────────────────────────
+
+async fn list_apropos_posts(
+    State(pool): State<Db>,
+) -> Result<Json<Vec<AproposPost>>, (StatusCode, &'static str)> {
+    let rows = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT id, contenu, events, created_at FROM apropos_posts ORDER BY created_at DESC",
+    )
+    .fetch_all(&*pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur DB"))?;
+
+    let posts = rows
+        .into_iter()
+        .map(|(id, contenu, events, created_at)| {
+            let events = serde_json::from_str(&events).unwrap_or(serde_json::Value::Null);
+            AproposPost { id, contenu, events, created_at }
+        })
+        .collect();
+
+    Ok(Json(posts))
+}
+
 // ── Router exporté ────────────────────────────────────────────────────────────
 
 pub fn admin_router() -> Router<Db> {
@@ -164,4 +238,7 @@ pub fn admin_router() -> Router<Db> {
         .route("/admin/inscription/{id}/reject",    post(reject_inscription))
         .route("/admin/quizz/{id}/approve",         post(approve_quizz))
         .route("/admin/quizz/{id}/reject",          post(reject_quizz))
+        .route("/admin/apropos/publish",            post(publish_apropos))
+        .route("/admin/apropos/{id}",               delete(delete_apropos))
+        .route("/api/apropos/posts",                get(list_apropos_posts))
 }
