@@ -1168,6 +1168,17 @@
     }
     .param-item .flag-emoji { font-size: 0.9rem; line-height: 1; }
     .param-item .flag-img   { height: 0.9rem; width: auto; vertical-align: middle; object-fit: contain; }
+    .param-group-title {
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--muted);
+      margin: 0.55rem 0 0.2rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--dim);
+    }
+    .param-group-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
     /* ── Table tranches PAS ─────────────────────────────────── */
     .pas-tbl {
@@ -2139,6 +2150,7 @@
           <span class="chevron">▼</span> PAYS/RÉGION
         </button>
         <div class="params-panel" id="d-params" style="display:none">
+          <div class="param-group-title">Europe</div>
           <label class="param-item">
             <input type="checkbox" id="d-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
             <span class="flag-emoji">🇫🇷</span> France
@@ -2295,32 +2307,12 @@
             <span class="flag-emoji">🇬🇧</span> Angleterre
           </label>
           <label class="param-item">
-            <input type="checkbox" id="d-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
-            <span class="flag-emoji">🇯🇵</span> Japon
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
-            <span class="flag-emoji">🇨🇳</span> Chine
-          </label>
-          <label class="param-item">
             <input type="checkbox" id="d-paysbas" onchange="syncParam('paysbas', this.checked); onTogglePays('paysbas', this.checked)" />
             <span class="flag-emoji">🇳🇱</span> Pays-Bas
           </label>
           <label class="param-item">
-            <input type="checkbox" id="d-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
-            <span class="flag-emoji">🇦🇺</span> Australie
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-nouvellezelande" onchange="syncParam('nouvellezelande', this.checked); onTogglePays('nouvellezelande', this.checked)" />
-            <span class="flag-emoji">🇳🇿</span> Nouvelle-Zélande
-          </label>
-          <label class="param-item">
             <input type="checkbox" id="d-pologne" onchange="syncParam('pologne', this.checked); onTogglePays('pologne', this.checked)" />
             <span class="flag-emoji">🇵🇱</span> Pologne
-          </label>
-          <label class="param-item">
-            <input type="checkbox" id="d-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
-            <span class="flag-emoji">🇰🇷</span> Corée du Sud
           </label>
           <label class="param-item">
             <input type="checkbox" id="d-andorre" onchange="syncParam('andorre', this.checked); onTogglePays('andorre', this.checked)" />
@@ -2338,6 +2330,7 @@
             <input type="checkbox" id="d-finlande" onchange="syncParam('finlande', this.checked); onTogglePays('finlande', this.checked)" />
             <span class="flag-emoji">🇫🇮</span> Finlande
           </label>
+          <div class="param-group-title">Amérique</div>
           <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
             <span class="flag-emoji">🇨🇦</span> Canada
@@ -2364,6 +2357,28 @@
               <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
             </label>
           </div>
+          <div class="param-group-title">Asie</div>
+          <label class="param-item">
+            <input type="checkbox" id="d-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
+            <span class="flag-emoji">🇯🇵</span> Japon
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
+            <span class="flag-emoji">🇨🇳</span> Chine
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
+            <span class="flag-emoji">🇰🇷</span> Corée du Sud
+          </label>
+          <div class="param-group-title">Océanie</div>
+          <label class="param-item">
+            <input type="checkbox" id="d-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
+            <span class="flag-emoji">🇦🇺</span> Australie
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-nouvellezelande" onchange="syncParam('nouvellezelande', this.checked); onTogglePays('nouvellezelande', this.checked)" />
+            <span class="flag-emoji">🇳🇿</span> Nouvelle-Zélande
+          </label>
         </div>
 
         <!-- Durée de travail -->
@@ -2468,6 +2483,7 @@
             <span class="chevron">▼</span> PAYS/RÉGION
           </button>
           <div class="params-panel" id="m-params" style="display:none;grid-column:1/-1">
+            <div class="param-group-title">Europe</div>
             <label class="param-item">
               <input type="checkbox" id="m-france" checked onchange="syncParam('france', this.checked); onTogglePays('france', this.checked)" />
               <span class="flag-emoji">🇫🇷</span> France
@@ -2624,32 +2640,12 @@
               <span class="flag-emoji">🇬🇧</span> Angleterre
             </label>
             <label class="param-item">
-              <input type="checkbox" id="m-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
-              <span class="flag-emoji">🇯🇵</span> Japon
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
-              <span class="flag-emoji">🇨🇳</span> Chine
-            </label>
-            <label class="param-item">
               <input type="checkbox" id="m-paysbas" onchange="syncParam('paysbas', this.checked); onTogglePays('paysbas', this.checked)" />
               <span class="flag-emoji">🇳🇱</span> Pays-Bas
             </label>
             <label class="param-item">
-              <input type="checkbox" id="m-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
-              <span class="flag-emoji">🇦🇺</span> Australie
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-nouvellezelande" onchange="syncParam('nouvellezelande', this.checked); onTogglePays('nouvellezelande', this.checked)" />
-              <span class="flag-emoji">🇳🇿</span> Nouvelle-Zélande
-            </label>
-            <label class="param-item">
               <input type="checkbox" id="m-pologne" onchange="syncParam('pologne', this.checked); onTogglePays('pologne', this.checked)" />
               <span class="flag-emoji">🇵🇱</span> Pologne
-            </label>
-            <label class="param-item">
-              <input type="checkbox" id="m-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
-              <span class="flag-emoji">🇰🇷</span> Corée du Sud
             </label>
             <label class="param-item">
               <input type="checkbox" id="m-andorre" onchange="syncParam('andorre', this.checked); onTogglePays('andorre', this.checked)" />
@@ -2667,6 +2663,7 @@
               <input type="checkbox" id="m-finlande" onchange="syncParam('finlande', this.checked); onTogglePays('finlande', this.checked)" />
               <span class="flag-emoji">🇫🇮</span> Finlande
             </label>
+            <div class="param-group-title">Amérique</div>
             <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
               <span class="flag-emoji">🇨🇦</span> Canada
@@ -2693,6 +2690,28 @@
                 <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
               </label>
             </div>
+            <div class="param-group-title">Asie</div>
+            <label class="param-item">
+              <input type="checkbox" id="m-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
+              <span class="flag-emoji">🇯🇵</span> Japon
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-chine" onchange="syncParam('chine', this.checked); onTogglePays('chine', this.checked)" />
+              <span class="flag-emoji">🇨🇳</span> Chine
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
+              <span class="flag-emoji">🇰🇷</span> Corée du Sud
+            </label>
+            <div class="param-group-title">Océanie</div>
+            <label class="param-item">
+              <input type="checkbox" id="m-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
+              <span class="flag-emoji">🇦🇺</span> Australie
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-nouvellezelande" onchange="syncParam('nouvellezelande', this.checked); onTogglePays('nouvellezelande', this.checked)" />
+              <span class="flag-emoji">🇳🇿</span> Nouvelle-Zélande
+            </label>
           </div>
 
           <!-- Durée de travail mobile -->
