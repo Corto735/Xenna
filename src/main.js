@@ -1095,7 +1095,7 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie'].includes(b.salarie?.pays);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1368,7 +1368,7 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1597,6 +1597,10 @@ async function calculate(source) {
   const isMonaco       = document.getElementById(isM ? "m-monaco"      : "d-monaco")?.checked ?? false;
   const isDanemark     = document.getElementById(isM ? "m-danemark"    : "d-danemark")?.checked ?? false;
   const isFinlande     = document.getElementById(isM ? "m-finlande"    : "d-finlande")?.checked ?? false;
+  const isSuede        = document.getElementById(isM ? "m-suede"       : "d-suede")?.checked ?? false;
+  const isEstonie      = document.getElementById(isM ? "m-estonie"     : "d-estonie")?.checked ?? false;
+  const isLettonie     = document.getElementById(isM ? "m-lettonie"    : "d-lettonie")?.checked ?? false;
+  const isLituanie     = document.getElementById(isM ? "m-lituanie"    : "d-lituanie")?.checked ?? false;
   const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
   const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
   const caProvince     = document.getElementById(isM ? "m-ca-province" : "d-ca-province")?.value || "ON";
@@ -1642,7 +1646,9 @@ async function calculate(source) {
     : isPaysBas ? "pays_bas" : isAustralie ? "australie" : isNouvelleZl ? "nouvelle_zelande"
     : isPologne ? "pologne" : isCoree ? "coree_du_sud"
     : isAndorre ? "andorre" : isMonaco ? "monaco" : isDanemark ? "danemark"
-    : isFinlande ? "finlande" : null;
+    : isFinlande ? "finlande"
+    : isSuede ? "suede" : isEstonie ? "estonie" : isLettonie ? "lettonie" : isLituanie ? "lituanie"
+    : null;
   const datePaie = date;
 
   try {
@@ -1825,8 +1831,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande'];
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande'];
+  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -1867,8 +1873,9 @@ window.onTogglePays = function(pays, checked) {
   const isPologne     = document.getElementById('d-pologne')?.checked;
   const isCoree       = document.getElementById('d-coree')?.checked;
   const isDanemark    = document.getElementById('d-danemark')?.checked;
-  const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : 'SALAIRE BRUT (€)';
-  const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : 'BRUT (€)';
+  const isSuede       = document.getElementById('d-suede')?.checked;
+  const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : isSuede ? 'SALAIRE BRUT (SEK)' : 'SALAIRE BRUT (€)';
+  const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : isSuede ? 'BRUT (SEK)'         : 'BRUT (€)';
   const dBrut = document.getElementById('d-brut');
   if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
   const mBrut = document.getElementById('m-brut');
@@ -2597,10 +2604,14 @@ const ECART_POOLS = {
   monaco:     [-6, -9, -11, -13, -16],
   danemark:   [-3, -6, -8, -10, -13],
   finlande:   [-4, -7, -9, -11, -14],
+  suede:      [-5, -8, -10, -12, -14],
+  estonie:    [-12, -16, -20, -23, -27],
+  lettonie:   [-9, -13, -17, -20, -24],
+  lituanie:   [-7, -10, -13, -15, -18],
 };
 
 function _getActivePays() {
-  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande']) {
+  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie']) {
     if (document.getElementById('d-' + p)?.checked) return p;
     if (document.getElementById('m-' + p)?.checked) return p;
   }

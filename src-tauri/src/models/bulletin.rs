@@ -83,6 +83,18 @@ pub enum Pays {
     /// Salariés finlandais (17-68 ans) : TyEL + chômage + assurance maladie
     /// + impôt d'État progressif + impôt communal moyen. Devise EUR. Données : 2026.
     Finlande,
+    /// Salariés suédois : arbetsgivaravgifter 31,42 % (100 % patronales) + impôt
+    /// communal moyen + impôt d'État 20 %. Devise SEK. Données : 2025.
+    Suede,
+    /// Salariés estoniens : sotsiaalmaks 33 % (pat) + chômage + 2ᵉ pilier 2 %
+    /// + impôt 22 % (exonération de base dégressive). Devise EUR. Données : 2025.
+    Estonie,
+    /// Salariés lettons : VSAOI 10,5 % sal / 23,59 % pat + IIN 25,5 % / 33 %.
+    /// Minimum non imposable 510 €/mois. Devise EUR. Données : 2025.
+    Lettonie,
+    /// Salariés lituaniens : Sodra 19,5 % sal + GPM 20 % / 32 % (NPD dégressif).
+    /// Devise EUR. Données : 2025.
+    Lituanie,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

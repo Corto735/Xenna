@@ -47,6 +47,10 @@ pub mod ad_bulletin;
 pub mod mc_bulletin;
 pub mod dk_bulletin;
 pub mod fi_bulletin;
+pub mod se_bulletin;
+pub mod ee_bulletin;
+pub mod lv_bulletin;
+pub mod lt_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;
