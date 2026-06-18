@@ -635,6 +635,15 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "es" => "\n⚠ Tiempo parcial {etp} % — SMIC prorrateado: {smic} € (§670 BOSS)",
             _ => return None,
         },
+        // Fragment plafond proratisé temps partiel — placeholders {etp} {pmss}
+        "PMSS_ETP_NOTE" => match lang {
+            "en" => "\n⚠ Part-time {etp} % — prorated SSC ceiling: {pmss} € (reduced ceiling, CSS art. L242-1)",
+            "de" => "\n⚠ Teilzeit {etp} % — anteilige Beitragsbemessungsgrenze: {pmss} € (CSS Art. L242-1)",
+            "nl" => "\n⚠ Deeltijds {etp} % — geprorateerd plafond: {pmss} € (verlaagd plafond, CSS art. L242-1)",
+            "it" => "\n⚠ Tempo parziale {etp} % — massimale proporzionato: {pmss} € (massimale ridotto, CSS art. L242-1)",
+            "es" => "\n⚠ Tiempo parcial {etp} % — tope prorrateado: {pmss} € (tope reducido, CSS art. L242-1)",
+            _ => return None,
+        },
         _ => return None,
     })
 }

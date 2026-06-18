@@ -122,6 +122,15 @@ pub enum Pays {
     /// Salariés croates : retraite 20 % sal + porez na dohodak (20 % / 30 %) ;
     /// santé 16,5 % pat. Devise EUR. Données : 2025.
     Croatie,
+    /// Salariés irlandais : PRSI 4,1 % + USC + Income Tax 20 % / 40 % (crédits).
+    /// Devise EUR. Données : 2025.
+    Irlande,
+    /// Salariés roumains : CAS 25 % + CASS 10 % sal + impôt 10 % ; CAM 2,25 % pat.
+    /// Devise RON. Données : 2018-2025 (taux figés depuis OUG 79/2017).
+    Roumanie,
+    /// Salariés bulgares : cotisations 13,78 % sal (plafonnées) + impôt 10 %.
+    /// Devise BGN (euro au 01/01/2026). Données : 2025.
+    Bulgarie,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

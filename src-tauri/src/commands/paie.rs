@@ -49,6 +49,7 @@ pub async fn simuler_annee(
     annee: i32,
     salaire_brut: String,
     statut: Statut,
+    etp: Option<f64>,
 ) -> Result<SimulationAnnuelle, String> {
     // salaire_brut est transmis en String (pas f64) pour préserver la précision
     // exacte via rust_decimal — pas de perte d'arrondi flottant.
@@ -58,7 +59,7 @@ pub async fn simuler_annee(
 
     // Génère 12 bulletins mensuels avec Fillon régularisé cumulé.
     // Peut échouer si l'année n'est pas couverte en base pour certains mois.
-    generer_annee(&state.db, brut, statut, annee)
+    generer_annee(&state.db, brut, statut, annee, etp.unwrap_or(100.0))
         .await
         .map_err(|e| e.to_string())
 }

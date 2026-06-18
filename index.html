@@ -2236,6 +2236,10 @@
             </select>
           </div>
           <label class="param-item">
+            <input type="checkbox" id="d-bulgarie" onchange="syncParam('bulgarie', this.checked); onTogglePays('bulgarie', this.checked)" />
+            <span class="flag-emoji">🇧🇬</span> Bulgarie
+          </label>
+          <label class="param-item">
             <input type="checkbox" id="d-chypre" onchange="syncParam('chypre', this.checked); onTogglePays('chypre', this.checked)" />
             <span class="flag-emoji">🇨🇾</span> Chypre
           </label>
@@ -2266,6 +2270,10 @@
           <label class="param-item">
             <input type="checkbox" id="d-hongrie" onchange="syncParam('hongrie', this.checked); onTogglePays('hongrie', this.checked)" />
             <span class="flag-emoji">🇭🇺</span> Hongrie
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-irlande" onchange="syncParam('irlande', this.checked); onTogglePays('irlande', this.checked)" />
+            <span class="flag-emoji">🇮🇪</span> Irlande
           </label>
           <label class="param-item">
             <input type="checkbox" id="d-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
@@ -2302,6 +2310,10 @@
           <label class="param-item">
             <input type="checkbox" id="d-portugal" onchange="syncParam('portugal', this.checked); onTogglePays('portugal', this.checked)" />
             <span class="flag-emoji">🇵🇹</span> Portugal
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-roumanie" onchange="syncParam('roumanie', this.checked); onTogglePays('roumanie', this.checked)" />
+            <span class="flag-emoji">🇷🇴</span> Roumanie
           </label>
           <label class="param-item">
             <input type="checkbox" id="d-slovaquie" onchange="syncParam('slovaquie', this.checked); onTogglePays('slovaquie', this.checked)" />
@@ -2621,6 +2633,10 @@
               </select>
             </div>
             <label class="param-item">
+              <input type="checkbox" id="m-bulgarie" onchange="syncParam('bulgarie', this.checked); onTogglePays('bulgarie', this.checked)" />
+              <span class="flag-emoji">🇧🇬</span> Bulgarie
+            </label>
+            <label class="param-item">
               <input type="checkbox" id="m-chypre" onchange="syncParam('chypre', this.checked); onTogglePays('chypre', this.checked)" />
               <span class="flag-emoji">🇨🇾</span> Chypre
             </label>
@@ -2651,6 +2667,10 @@
             <label class="param-item">
               <input type="checkbox" id="m-hongrie" onchange="syncParam('hongrie', this.checked); onTogglePays('hongrie', this.checked)" />
               <span class="flag-emoji">🇭🇺</span> Hongrie
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-irlande" onchange="syncParam('irlande', this.checked); onTogglePays('irlande', this.checked)" />
+              <span class="flag-emoji">🇮🇪</span> Irlande
             </label>
             <label class="param-item">
               <input type="checkbox" id="m-italie" onchange="syncParam('italie', this.checked); onTogglePays('italie', this.checked)" />
@@ -2687,6 +2707,10 @@
             <label class="param-item">
               <input type="checkbox" id="m-portugal" onchange="syncParam('portugal', this.checked); onTogglePays('portugal', this.checked)" />
               <span class="flag-emoji">🇵🇹</span> Portugal
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-roumanie" onchange="syncParam('roumanie', this.checked); onTogglePays('roumanie', this.checked)" />
+              <span class="flag-emoji">🇷🇴</span> Roumanie
             </label>
             <label class="param-item">
               <input type="checkbox" id="m-slovaquie" onchange="syncParam('slovaquie', this.checked); onTogglePays('slovaquie', this.checked)" />
@@ -2886,6 +2910,9 @@
           <option value="non_cadre">Non-cadre</option>
           <option value="cadre">Cadre</option>
         </select></div>
+      <div class="field"><label>ETP (%)</label>
+        <input type="number" id="a-etp" value="100" min="1" max="100" step="1" style="width:80px"
+               title="Quotité de travail — proratise le PMSS et le SMIC du Fillon (100 % = temps plein)." /></div>
       <button class="btn-calc" id="a-calc">[ SIMULER L'ANNÉE ]</button>
     </div>
 

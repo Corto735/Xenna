@@ -798,6 +798,8 @@ function devSym() {
   if (DEVISE === "NZD") return " $";
   if (DEVISE === "PLN") return " zł";
   if (DEVISE === "DKK") return " kr";
+  if (DEVISE === "RON") return " lei";
+  if (DEVISE === "BGN") return " лв";
   return " €";
 }
 const _DEVISE_0DP = ["JPY", "CNY", "KRW"];
@@ -1095,7 +1097,7 @@ window.toggleExpl = function (i) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie'].includes(b.salarie?.pays);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1368,7 +1370,7 @@ function renderMobile(b) {
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie'].includes(b.salarie?.pays);
+  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -1610,6 +1612,9 @@ async function calculate(source) {
   const isChypre       = document.getElementById(isM ? "m-chypre"      : "d-chypre")?.checked ?? false;
   const isMalte        = document.getElementById(isM ? "m-malte"       : "d-malte")?.checked ?? false;
   const isCroatie      = document.getElementById(isM ? "m-croatie"     : "d-croatie")?.checked ?? false;
+  const isIrlande      = document.getElementById(isM ? "m-irlande"     : "d-irlande")?.checked ?? false;
+  const isRoumanie     = document.getElementById(isM ? "m-roumanie"    : "d-roumanie")?.checked ?? false;
+  const isBulgarie     = document.getElementById(isM ? "m-bulgarie"    : "d-bulgarie")?.checked ?? false;
   const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
   const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
   const caProvince     = document.getElementById(isM ? "m-ca-province" : "d-ca-province")?.value || "ON";
@@ -1659,6 +1664,7 @@ async function calculate(source) {
     : isSuede ? "suede" : isEstonie ? "estonie" : isLettonie ? "lettonie" : isLituanie ? "lituanie"
     : isAutriche ? "autriche" : isTchequie ? "tchequie" : isSlovaquie ? "slovaquie" : isHongrie ? "hongrie" : isSlovenie ? "slovenie"
     : isGrece ? "grece" : isChypre ? "chypre" : isMalte ? "malte" : isCroatie ? "croatie"
+    : isIrlande ? "irlande" : isRoumanie ? "roumanie" : isBulgarie ? "bulgarie"
     : null;
   const datePaie = date;
 
@@ -1829,6 +1835,7 @@ async function calculerAnnee() {
       annee,
       salaireBrut: brut.toString(),
       statut,
+      etp: parseFloat(document.getElementById('a-etp')?.value ?? '100') || 100,
     });
     renderAnnuel(sim);
   } catch (e) {
@@ -1842,8 +1849,8 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie'];
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie'];
+  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie'];
+  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -1887,8 +1894,10 @@ window.onTogglePays = function(pays, checked) {
   const isSuede       = document.getElementById('d-suede')?.checked;
   const isTchequie    = document.getElementById('d-tchequie')?.checked;
   const isHongrie     = document.getElementById('d-hongrie')?.checked;
-  const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : isSuede ? 'SALAIRE BRUT (SEK)' : isTchequie ? 'SALAIRE BRUT (CZK)' : isHongrie ? 'SALAIRE BRUT (HUF)' : 'SALAIRE BRUT (€)';
-  const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : isSuede ? 'BRUT (SEK)'         : isTchequie ? 'BRUT (CZK)'         : isHongrie ? 'BRUT (HUF)'         : 'BRUT (€)';
+  const isRoumanie    = document.getElementById('d-roumanie')?.checked;
+  const isBulgarie    = document.getElementById('d-bulgarie')?.checked;
+  const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : isSuede ? 'SALAIRE BRUT (SEK)' : isTchequie ? 'SALAIRE BRUT (CZK)' : isHongrie ? 'SALAIRE BRUT (HUF)' : isRoumanie ? 'SALAIRE BRUT (RON)' : isBulgarie ? 'SALAIRE BRUT (BGN)' : 'SALAIRE BRUT (€)';
+  const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : isSuede ? 'BRUT (SEK)'         : isTchequie ? 'BRUT (CZK)'         : isHongrie ? 'BRUT (HUF)'         : isRoumanie ? 'BRUT (RON)'         : isBulgarie ? 'BRUT (BGN)'         : 'BRUT (€)';
   const dBrut = document.getElementById('d-brut');
   if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
   const mBrut = document.getElementById('m-brut');
@@ -2630,10 +2639,14 @@ const ECART_POOLS = {
   chypre:     [-8, -11, -14, -17, -20],
   malte:      [-7, -10, -12, -14, -17],
   croatie:    [-6, -9, -11, -13, -16],
+  // Eurostat gender pay gap (forme non ajustée) : IE ≈ 10 %, RO ≈ 4 % (un des plus bas UE), BG ≈ 13 %.
+  irlande:    [-6, -9, -11, -13, -16],
+  roumanie:   [-3, -5, -7, -9, -12],
+  bulgarie:   [-6, -10, -13, -16, -19],
 };
 
 function _getActivePays() {
-  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie']) {
+  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie']) {
     if (document.getElementById('d-' + p)?.checked) return p;
     if (document.getElementById('m-' + p)?.checked) return p;
   }

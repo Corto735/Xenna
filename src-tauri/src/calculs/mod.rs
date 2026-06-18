@@ -60,6 +60,9 @@ pub mod gr_bulletin;
 pub mod cy_bulletin;
 pub mod mt_bulletin;
 pub mod hr_bulletin;
+pub mod ie_bulletin;
+pub mod ro_bulletin;
+pub mod bg_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;

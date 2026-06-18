@@ -37,6 +37,9 @@ use super::gr_bulletin::generer_bulletin_gr;
 use super::cy_bulletin::generer_bulletin_cy;
 use super::mt_bulletin::generer_bulletin_mt;
 use super::hr_bulletin::generer_bulletin_hr;
+use super::ie_bulletin::generer_bulletin_ie;
+use super::ro_bulletin::generer_bulletin_ro;
+use super::bg_bulletin::generer_bulletin_bg;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     match salarie.pays {
@@ -75,6 +78,9 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         Pays::Chypre            => return generer_bulletin_cy(salarie, ctx),
         Pays::Malte             => return generer_bulletin_mt(salarie, ctx),
         Pays::Croatie           => return generer_bulletin_hr(salarie, ctx),
+        Pays::Irlande           => return generer_bulletin_ie(salarie, ctx),
+        Pays::Roumanie          => return generer_bulletin_ro(salarie, ctx),
+        Pays::Bulgarie          => return generer_bulletin_bg(salarie, ctx),
         Pays::France            => {}
     }
 
@@ -91,13 +97,13 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     let mut cotisations = Vec::new();
 
     cotisations.push(ss_maladie(brut, ctx));
-    cotisations.push(ss_vieillesse_plafonnee(brut, ctx));
+    cotisations.push(ss_vieillesse_plafonnee(brut, salarie.etp, ctx));
     cotisations.push(ss_vieillesse_deplafonnee(brut, ctx));
     cotisations.push(famille(brut, ctx));
     cotisations.push(accident_travail(brut, ctx));
-    cotisations.push(chomage(brut, ctx));
+    cotisations.push(chomage(brut, salarie.etp, ctx));
     cotisations.extend(csg_contributions(brut, ctx));
-    cotisations.extend(retraite_complementaire(brut, &salarie.statut, ctx));
+    cotisations.extend(retraite_complementaire(brut, &salarie.statut, salarie.etp, ctx));
 
     if salarie.alsace_moselle {
         if let Some(am) = maladie_alsace_moselle(brut, ctx) {

@@ -27,11 +27,17 @@ pub async fn generer_annee(
     brut: Decimal,
     statut: Statut,
     annee: i32,
+    etp: f64,
 ) -> Result<SimulationAnnuelle> {
     let mut lignes        = Vec::with_capacity(12);
     let mut brut_cumule   = Decimal::ZERO;
     let mut smic_cumule   = Decimal::ZERO;
     let mut fillon_verse  = Decimal::ZERO;  // cumul Fillon régularisé déjà versé
+
+    // Ratio de proratisation temps partiel (ETP/100), borné comme dans le calcul mensuel.
+    let etp_ratio: Decimal = format!("{:.6}", (etp / 100.0).clamp(0.0, 2.0))
+        .parse()
+        .unwrap_or(dec!(1));
 
     for mois in 1u32..=12 {
         let date = NaiveDate::from_ymd_opt(annee, mois, 1)
@@ -62,7 +68,7 @@ pub async fn generer_annee(
             land: None,
             kirchenmitglied: None,
             region_be: None,
-            etp: 100.0,
+            etp,
         };
         let bulletin = generer_bulletin(dummy, &ctx, None);
 
@@ -88,7 +94,7 @@ pub async fn generer_annee(
         // est recalculé sur la rémunération annuelle totale, comme
         // l'exige la méthode URSSAF de régularisation annuelle.
         brut_cumule  += brut_mois;
-        smic_cumule  += ctx.smic_mensuel;
+        smic_cumule  += (ctx.smic_mensuel * etp_ratio).round_dp(2);
 
         let fillon_reg = fillon_regularise_mois(
             brut_cumule, smic_cumule, fillon_verse, &ctx,

@@ -26,8 +26,28 @@ pub fn ss_maladie(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     }
 }
 
-pub fn ss_vieillesse_plafonnee(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let base = brut.min(ctx.pmss);
+/// PMSS proratisé selon la quotité de travail (ETP), + note explicative (vide à temps plein).
+/// PMSS_proraté = PMSS × ETP/100 (CSS art. L242-1 ; durée contractuelle / durée légale).
+/// Même ratio que le SMIC proratisé du Fillon (§670 BOSS).
+fn pmss_proratise(ctx: &ContextPaie, etp_pct: f64) -> (Decimal, String) {
+    let ratio: Decimal = format!("{:.6}", (etp_pct / 100.0).clamp(0.0, 2.0))
+        .parse()
+        .unwrap_or(dec!(1));
+    let pmss = (ctx.pmss * ratio).round_dp(2);
+    let note = if (etp_pct - 100.0).abs() > 0.1 {
+        ctx.expl("PMSS_ETP_NOTE",
+            "\n⚠ Temps partiel {etp} % — PMSS proratisé : {pmss} € (plafond réduit, CSS art. L242-1)")
+            .replace("{etp}", &format!("{:.0}", etp_pct))
+            .replace("{pmss}", &pmss.to_string())
+    } else {
+        String::new()
+    };
+    (pmss, note)
+}
+
+pub fn ss_vieillesse_plafonnee(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisation {
+    let (pmss, note) = pmss_proratise(ctx, etp_pct);
+    let base = brut.min(pmss);
     let ts = ctx.taux_sal("SS_VIEILLESSE_PLAF");
     let tp = ctx.taux_pat("SS_VIEILLESSE_PLAF");
     LigneCotisation {
@@ -43,8 +63,9 @@ pub fn ss_vieillesse_plafonnee(brut: Decimal, ctx: &ContextPaie) -> LigneCotisat
             "Cette cotisation retraite est limitée au Plafond Mensuel Sécurité Sociale \
             (PMSS = {pmss} € en {annee}). Au-delà, seule la cotisation déplafonnée s'applique. \
             Le système par répartition français, créé en 1945 par ordonnance du GPRF, \
-            garantit une pension calculée sur les 25 meilleures années (salariés privés).")
-            .replace("{pmss}", &ctx.pmss.to_string())
+            garantit une pension calculée sur les 25 meilleures années (salariés privés).{etp_info}")
+            .replace("{etp_info}", &note)
+            .replace("{pmss}", &pmss.to_string())
             .replace("{annee}", &ctx.date_paie.format("%Y").to_string()),
         loi_ref: Some("Ordonnance n°45-2250 du 4/10/1945 — réformé par loi 2023-270 (réforme retraites)".into()),
     }
@@ -165,8 +186,9 @@ pub fn csg_contributions(brut: Decimal, ctx: &ContextPaie) -> Vec<LigneCotisatio
     ]
 }
 
-pub fn chomage(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let base = brut.min(ctx.pmss * dec!(4));
+pub fn chomage(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisation {
+    let (pmss, note) = pmss_proratise(ctx, etp_pct);
+    let base = brut.min(pmss * dec!(4));
     let ts = ctx.taux_sal("CHOMAGE");
     let tp = ctx.taux_pat("CHOMAGE");
     LigneCotisation {
@@ -181,7 +203,8 @@ pub fn chomage(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         explication: ctx.expl("CHOMAGE", "Depuis 2018, la cotisation salariale chômage a été supprimée \
             et compensée par la hausse de CSG. Seule la part patronale subsiste, \
             plafonnée à 4 PMSS. L'assurance chômage (UNEDIC) est gérée paritairement \
-            depuis 1958."),
+            depuis 1958.{etp_info}")
+            .replace("{etp_info}", &note),
         loi_ref: Some("Convention UNEDIC — suppression cotisation sal. : LFSS 2018".into()),
     }
 }
@@ -389,10 +412,11 @@ pub fn maladie_alsace_moselle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
     })
 }
 
-pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie) -> Vec<LigneCotisation> {
-    let t1_base = brut.min(ctx.pmss);
-    let t2_base = if brut > ctx.pmss {
-        (brut - ctx.pmss).min(ctx.pmss * dec!(7))
+pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx: &ContextPaie) -> Vec<LigneCotisation> {
+    let (pmss, note) = pmss_proratise(ctx, etp_pct);
+    let t1_base = brut.min(pmss);
+    let t2_base = if brut > pmss {
+        (brut - pmss).min(pmss * dec!(7))
     } else {
         Decimal::ZERO
     };
@@ -410,8 +434,9 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
             explication: ctx.expl("AGIRC_ARRCO_T1",
                 "AGIRC-ARRCO : fusion en 2019 des régimes cadres (AGIRC, 1947) et non-cadres \
                 (ARRCO, 1961). Système par points. \
-                Tranche 1 = salaire jusqu'au PMSS ({pmss} €).")
-                .replace("{pmss}", &ctx.pmss.to_string()),
+                Tranche 1 = salaire jusqu'au PMSS ({pmss} €).{etp_info}")
+                .replace("{etp_info}", &note)
+                .replace("{pmss}", &pmss.to_string()),
             loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
         },
     ];
@@ -428,7 +453,8 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, ctx: &ContextPaie
             categorie:   "Retraite complémentaire".into(),
             explication: ctx.expl("AGIRC_ARRCO_T2", "Tranche 2 : fraction du salaire entre 1 et 8 PMSS. \
                 Taux plus élevé car vise les salaires intermédiaires à élevés. \
-                Géré paritairement (syndicats + patronat)."),
+                Géré paritairement (syndicats + patronat).{etp_info}")
+                .replace("{etp_info}", &note),
             loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
         });
     }

@@ -51,7 +51,11 @@ struct AnneeReq {
     #[serde(rename = "salaireBrut")]
     salaire_brut: String,
     statut: Statut,
+    #[serde(default = "default_etp_100")]
+    etp: f64,
 }
+
+fn default_etp_100() -> f64 { 100.0 }
 
 struct ApiError(String);
 
@@ -147,7 +151,7 @@ async fn handle_annee(
         ));
     }
 
-    let sim = generer_annee(&pool, brut, req.statut, req.annee)
+    let sim = generer_annee(&pool, brut, req.statut, req.annee, req.etp)
         .await
         .map_err(|e| {
             tracing::error!("generer_annee error: {:?}", e);
