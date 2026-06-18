@@ -110,6 +110,18 @@ pub enum Pays {
     /// Salariés slovènes : cotisations 22,1 % sal / 16,1 % pat + dohodnina (16 à 50 %).
     /// Devise EUR. Données : 2025.
     Slovenie,
+    /// Salariés grecs : EFKA 13,87 % sal (plafonné) + impôt progressif (9 à 44 %).
+    /// Devise EUR. Données : 2025.
+    Grece,
+    /// Salariés chypriotes : assurance sociale + GESY 11,45 % sal + impôt (0 à 35 %).
+    /// Devise EUR. Données : 2025.
+    Chypre,
+    /// Salariés maltais : SSC 10 % sal (plafonné) + impôt (0 à 35 %, barème single).
+    /// Devise EUR. Données : 2025.
+    Malte,
+    /// Salariés croates : retraite 20 % sal + porez na dohodak (20 % / 30 %) ;
+    /// santé 16,5 % pat. Devise EUR. Données : 2025.
+    Croatie,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -56,6 +56,10 @@ pub mod cz_bulletin;
 pub mod sk_bulletin;
 pub mod hu_bulletin;
 pub mod si_bulletin;
+pub mod gr_bulletin;
+pub mod cy_bulletin;
+pub mod mt_bulletin;
+pub mod hr_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;
