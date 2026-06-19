@@ -7,7 +7,13 @@
 //   • Daň z príjmov : 19 % jusqu'à 4 036,79 €/mois, 25 % au-delà.
 //   • Nezdaniteľná časť (part non imposable) : 479,48 €/mois (simplifiée — la
 //     dégressivité pour hauts revenus n'est pas modélisée → net prudent).
-// Source : Sociálna poisťovňa ; ÚDZS ; Finančná správa (daň 2025).
+//
+// 2026 :
+//   • Nezdaniteľná časť 497,23 €/mois (21× životné minimum 284,13 € de juillet 2025).
+//   • Daň : 19 % jusqu'à 176,8× ŽM = 4 186,18 €/mois, 25 % au-delà.
+//   • Taux sociaux/santé inchangés (lus en base). Plafond social 2025 (15 730 €/mois)
+//     reconduit faute de valeur 2026 sourcée — n'affecte que les revenus > 15 730 €/mois.
+// Source : Sociálna poisťovňa ; ÚDZS ; Finančná správa (daň 2025 et 2026 ; NČZD 2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -19,10 +25,13 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Slovaquie : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Slovaquie : données disponibles pour 2025 et 2026.");
     }
+    // Part non imposable mensuelle et seuil 25 % selon l'année.
+    let nczd = if annee >= 2026 { dec!(497.23) } else { dec!(479.48) };
+    let seuil = if annee >= 2026 { dec!(4186.18) } else { dec!(4036.79) };
 
     // Santé (non plafonnée).
     let ts_z = ctx.taux_sal("SK_ZDRAVOTNE");
@@ -57,8 +66,7 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     ];
 
     // Daň z príjmov : base = brut − cotisations salariales − part non imposable.
-    let base = (brut - z_sal - s_sal - dec!(479.48)).max(Decimal::ZERO);
-    let seuil = dec!(4036.79);
+    let base = (brut - z_sal - s_sal - nczd).max(Decimal::ZERO);
     let part_haute = (base - seuil).max(Decimal::ZERO);
     let part_basse = base - part_haute;
     let impot = (part_basse * dec!(0.19) + part_haute * dec!(0.25)).round_dp(2);
@@ -70,12 +78,12 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025.\n\n\
-            Base = brut − cotisations salariales − part non imposable 479,48 € = {b:.2} €\n\
-            19 % jusqu'à 4 036,79 €/mois, 25 % au-delà → {im:.2} €/mois.\n\n\
+            "Impôt sur le revenu {annee}.\n\n\
+            Base = brut − cotisations salariales − part non imposable {nczd:.2} € = {b:.2} €\n\
+            19 % jusqu'à {seuil:.2} €/mois, 25 % au-delà → {im:.2} €/mois.\n\n\
             Note : dégressivité de la part non imposable non modélisée (net prudent).\n\
             Source : Finančná správa.",
-            b = base, im = impot,
+            annee = annee, nczd = nczd, seuil = seuil, b = base, im = impot,
         ),
         loi_ref: Some("Zákon o dani z príjmov".into()),
     });

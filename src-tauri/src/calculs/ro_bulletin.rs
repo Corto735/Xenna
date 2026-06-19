@@ -5,9 +5,10 @@
 //   • CAM (contribution assurantielle de travail) employeur 2,25 %.
 //   • Impozit pe venit : 10 % proportionnel, sur le revenu après CAS et CASS.
 //
-// Couverture 2018-2025 (rates constants). Simplification : la déduction personnelle
-// (deducere personală), réservée aux bas salaires et dégressive, n'est pas modélisée
-// (net prudent). Source : ANAF ; Codul fiscal (Legea 227/2015).
+// Couverture 2018-2026 (taux constants : CAS 25 % / CASS 10 % / CAM 2,25 % / impôt 10 %).
+// Simplification : la déduction personnelle (deducere personală), réservée aux bas
+// salaires et dégressive, n'est pas modélisée (net prudent).
+// Source : ANAF ; Codul fiscal (Legea 227/2015).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -35,7 +36,7 @@ pub fn generer_bulletin_ro(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if !(2018..=2025).contains(&annee) {
+    if !(2018..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "RON", "Roumanie : données disponibles depuis 2018 (réforme OUG 79/2017).");
     }

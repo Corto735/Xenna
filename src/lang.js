@@ -163,8 +163,8 @@ export const STATIC_DICT = {
     'Retenue':                 'Einbehalt',
 
     // App meta
-    'simulateur pédagogique · bulletin de paye français · v0.1.5':
-      'pädagogischer Simulator · Französische Gehaltsabrechnung · v0.1.5',
+    'simulateur pédagogique · bulletin de paye français · v0.1.6':
+      'pädagogischer Simulator · Französische Gehaltsabrechnung · v0.1.6',
     'paye ton bulletin':       'Deine Gehaltsabrechnung',
 
     // Accessibilité
@@ -363,8 +363,8 @@ export const STATIC_DICT = {
     'Retenue':                 'Inhouding',
 
     // App meta
-    'simulateur pédagogique · bulletin de paye français · v0.1.5':
-      'educatieve simulator · Franse loonbrief · v0.1.5',
+    'simulateur pédagogique · bulletin de paye français · v0.1.6':
+      'educatieve simulator · Franse loonbrief · v0.1.6',
     'paye ton bulletin':       'Jouw loonbrief',
 
     // Accessibilité

@@ -7,8 +7,13 @@
 //     30 000 / 40 000 €), assiette = revenu après cotisations salariales.
 //   • Réduction d'impôt salarié : 777 € (sans enfant, simplifiée).
 //
+// 2026 (réforme Ν. 5246/2025) : baisse des taux intermédiaires de 2 points et nouveau
+// palier 39 % de 40 000 à 60 000 € ; le 44 % ne s'applique plus qu'au-delà de 60 000 €.
+// Barème 9 / 20 / 26 / 34 / 39 / 44 %. Taux EFKA réduits (salarié 13,37 % / employeur
+// 21,79 %, lus en base) et plafond porté à 7 761,94 €/mois.
 // Simplification (net prudent) : réduction d'impôt fixée à 777 € (majorations pour
-// enfants et dégressivité non modélisées). Source : EFKA ; AADE (barème 2025).
+// enfants, dégressivité et taux 0 % des moins de 25 ans non modélisés).
+// Source : EFKA ; AADE (barème 2025 et 2026, Ν. 5246/2025).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -16,8 +21,23 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Impôt sur le revenu annuel 2025 (barème progressif), avant réduction.
-fn impot_brut(t: Decimal) -> Decimal {
+/// Impôt sur le revenu annuel (barème progressif), avant réduction, selon l'année.
+fn impot_brut(t: Decimal, annee: i32) -> Decimal {
+    if annee >= 2026 {
+        return if t <= dec!(10000) {
+            t * dec!(0.09)
+        } else if t <= dec!(20000) {
+            dec!(900) + (t - dec!(10000)) * dec!(0.20)
+        } else if t <= dec!(30000) {
+            dec!(2900) + (t - dec!(20000)) * dec!(0.26)
+        } else if t <= dec!(40000) {
+            dec!(5500) + (t - dec!(30000)) * dec!(0.34)
+        } else if t <= dec!(60000) {
+            dec!(8900) + (t - dec!(40000)) * dec!(0.39)
+        } else {
+            dec!(16700) + (t - dec!(60000)) * dec!(0.44)
+        };
+    }
     if t <= dec!(10000) {
         t * dec!(0.09)
     } else if t <= dec!(20000) {
@@ -35,13 +55,14 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Grèce : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Grèce : données disponibles pour 2025 et 2026.");
     }
 
-    // EFKA sur assiette plafonnée (7 572,62 €/mois).
-    let assiette = brut.min(dec!(7572.62));
+    // EFKA sur assiette plafonnée (7 572,62 €/mois en 2025, 7 761,94 € en 2026).
+    let plafond = if annee >= 2026 { dec!(7761.94) } else { dec!(7572.62) };
+    let assiette = brut.min(plafond);
     let ts = ctx.taux_sal("GR_EFKA");
     let tp = ctx.taux_pat("GR_EFKA");
     let efka_sal = (assiette * ts).round_dp(2);
@@ -53,15 +74,15 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Sécurité sociale".into(),
         explication: format!(
             "EFKA — salarié {ts:.2} % / employeur {tp:.2} % (retraite, maladie, \
-            complémentaire). Assiette plafonnée à 7 572,62 €/mois. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = efka_sal,
+            complémentaire). Assiette plafonnée à {pl:.2} €/mois. Salarié : {ms:.2} €.",
+            ts = ts * dec!(100), tp = tp * dec!(100), pl = plafond, ms = efka_sal,
         ),
         loi_ref: Some("Ν. 4387/2016 (EFKA)".into()),
     }];
 
     // Impôt : base annuelle = (brut − EFKA) × 12 ; réduction 777 €.
     let base_an = ((brut - efka_sal).max(Decimal::ZERO)) * dec!(12);
-    let impot_an = (impot_brut(base_an) - dec!(777)).max(Decimal::ZERO);
+    let impot_an = (impot_brut(base_an, annee) - dec!(777)).max(Decimal::ZERO);
     let impot_mens = (impot_an / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
@@ -71,13 +92,18 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (annualisé).\n\n\
+            "Impôt sur le revenu {annee} (annualisé).\n\n\
             Base = (brut − EFKA) × 12 = {b:.0} €\n\
-            Barème 9 / 22 / 28 / 36 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 €)\n\
+            {bareme}\n\
             − réduction salarié 777 € → {im:.2} €/mois.\n\n\
             Note : majorations pour enfants non modélisées (net prudent).\n\
             Source : AADE.",
-            b = base_an, im = impot_mens,
+            annee = annee, b = base_an, im = impot_mens,
+            bareme = if annee >= 2026 {
+                "Barème 9 / 20 / 26 / 34 / 39 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 / 60 000 €)"
+            } else {
+                "Barème 9 / 22 / 28 / 36 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 €)"
+            },
         ),
         loi_ref: Some("Ν. 4172/2013 (Κ.Φ.Ε.)".into()),
     });

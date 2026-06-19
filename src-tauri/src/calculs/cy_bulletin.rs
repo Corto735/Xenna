@@ -7,7 +7,10 @@
 //     en pratique ici).
 //   • Impôt sur le revenu : 0 / 20 / 25 / 30 / 35 % (seuils 19 500 / 28 000 / 36 300 /
 //     60 000 €), assiette = revenu après cotisations salariales (déductibles).
-// Source : Υπηρεσίες Κοινωνικών Ασφαλίσεων ; Τμήμα Φορολογίας (barème 2025).
+// 2026 (réforme fiscale) : seuil exonéré porté à 22 000 € et nouveaux paliers
+// (0 / 20 / 25 / 30 / 35 %, seuils 22 000 / 32 000 / 42 000 / 72 000 €). Taux d'assurance
+// sociale (8,8 %) et GESY inchangés ; plafond d'assurance sociale porté à 5 742 €/mois.
+// Source : Υπηρεσίες Κοινωνικών Ασφαλίσεων ; Τμήμα Φορολογίας (barème 2025 et 2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -15,8 +18,21 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Impôt sur le revenu annuel 2025 (barème progressif).
-fn impot(t: Decimal) -> Decimal {
+/// Impôt sur le revenu annuel (barème progressif) selon l'année.
+fn impot(t: Decimal, annee: i32) -> Decimal {
+    if annee >= 2026 {
+        return if t <= dec!(22000) {
+            Decimal::ZERO
+        } else if t <= dec!(32000) {
+            (t - dec!(22000)) * dec!(0.20)
+        } else if t <= dec!(42000) {
+            dec!(2000) + (t - dec!(32000)) * dec!(0.25)
+        } else if t <= dec!(72000) {
+            dec!(4500) + (t - dec!(42000)) * dec!(0.30)
+        } else {
+            dec!(13500) + (t - dec!(72000)) * dec!(0.35)
+        };
+    }
     if t <= dec!(19500) {
         Decimal::ZERO
     } else if t <= dec!(28000) {
@@ -34,13 +50,14 @@ pub fn generer_bulletin_cy(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Chypre : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Chypre : données disponibles pour 2025 et 2026.");
     }
 
-    // Assurance sociale (plafonnée) + GESY (non plafonné).
-    let assiette_si = brut.min(dec!(5551));
+    // Assurance sociale (plafonnée : 5 551 €/mois en 2025, 5 742 € en 2026) + GESY (non plafonné).
+    let plafond_si = if annee >= 2026 { dec!(5742) } else { dec!(5551) };
+    let assiette_si = brut.min(plafond_si);
     let ts_si = ctx.taux_sal("CY_SI");
     let tp_si = ctx.taux_pat("CY_SI");
     let si_sal = (assiette_si * ts_si).round_dp(2);
@@ -56,7 +73,7 @@ pub fn generer_bulletin_cy(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             categorie: "Sécurité sociale".into(),
             explication: format!(
                 "Assurance sociale — salarié {:.2} % / employeur {:.2} %. Assiette plafonnée \
-                à 5 551 €/mois.", ts_si * dec!(100), tp_si * dec!(100)),
+                à {:.0} €/mois.", ts_si * dec!(100), tp_si * dec!(100), plafond_si),
             loi_ref: Some("Περί Κοινωνικών Ασφαλίσεων Νόμος".into()),
         },
         LigneCotisation {
@@ -73,7 +90,7 @@ pub fn generer_bulletin_cy(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     // Impôt : base annuelle = (brut − cotisations salariales) × 12.
     let base_an = ((brut - si_sal - gesy_sal).max(Decimal::ZERO)) * dec!(12);
-    let impot_mens = (impot(base_an) / dec!(12)).round_dp(2);
+    let impot_mens = (impot(base_an, annee) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "CY_FOROS".into(),
@@ -82,12 +99,17 @@ pub fn generer_bulletin_cy(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (annualisé).\n\n\
+            "Impôt sur le revenu {annee} (annualisé).\n\n\
             Base = (brut − cotisations) × 12 = {b:.0} €\n\
-            Barème 0 / 20 / 25 / 30 / 35 % (seuils 19 500 / 28 000 / 36 300 / 60 000 €)\n\
+            {bareme}\n\
             → {im:.2} €/mois.\n\n\
             Source : Τμήμα Φορολογίας.",
-            b = base_an, im = impot_mens,
+            annee = annee, b = base_an, im = impot_mens,
+            bareme = if annee >= 2026 {
+                "Barème 0 / 20 / 25 / 30 / 35 % (seuils 22 000 / 32 000 / 42 000 / 72 000 €)"
+            } else {
+                "Barème 0 / 20 / 25 / 30 / 35 % (seuils 19 500 / 28 000 / 36 300 / 60 000 €)"
+            },
         ),
         loi_ref: Some("Περί Φορολογίας του Εισοδήματος Νόμος".into()),
     });

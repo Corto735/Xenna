@@ -7,8 +7,13 @@
 //   • Income Tax : 20 % jusqu'à 44 000 €/an, 40 % au-delà ; crédits d'impôt
 //     (personnel 2 000 € + PAYE 2 000 € = 4 000 €).
 //
+// 2026 (Budget 2026) : PRSI Class A salarié 4,2 % (lu en base) ; USC inchangé sauf la
+// bande à 2 % dont le plafond passe de 27 382 € à 28 700 € ; Income Tax et crédits
+// inchangés (tranche standard 44 000 €, crédits 4 000 €).
+// Note : la hausse PRSI de +0,15 % au 1ᵉʳ octobre 2026 n'est pas modélisée (taux annuel
+// retenu = 4,2 %, net prudent).
 // Simplification : assiette = brut (PRSI non déductible) ; crédits standard d'un
-// salarié célibataire. Source : Revenue (barème 2025) ; Department of Social Protection.
+// salarié célibataire. Source : Revenue (barème 2025-2026) ; Department of Social Protection.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -16,8 +21,20 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// USC annuel 2025 (bandes progressives).
-fn usc(t: Decimal) -> Decimal {
+/// USC annuel (bandes progressives) selon l'année.
+fn usc(t: Decimal, annee: i32) -> Decimal {
+    if annee >= 2026 {
+        // Plafond de la bande à 2 % porté à 28 700 € (Budget 2026).
+        return if t <= dec!(12012) {
+            t * dec!(0.005)
+        } else if t <= dec!(28700) {
+            dec!(60.06) + (t - dec!(12012)) * dec!(0.02)
+        } else if t <= dec!(70044) {
+            dec!(393.82) + (t - dec!(28700)) * dec!(0.03)
+        } else {
+            dec!(1634.14) + (t - dec!(70044)) * dec!(0.08)
+        };
+    }
     if t <= dec!(12012) {
         t * dec!(0.005)
     } else if t <= dec!(27382) {
@@ -43,9 +60,9 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Irlande : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Irlande : données disponibles pour 2025 et 2026.");
     }
 
     let g = brut * dec!(12);
@@ -68,7 +85,7 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     }];
 
     // USC (annualisé).
-    let usc_mens = (usc(g) / dec!(12)).round_dp(2);
+    let usc_mens = (usc(g, annee) / dec!(12)).round_dp(2);
     let usc_taux = if brut > Decimal::ZERO { (usc_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "IE_USC".into(),
@@ -77,15 +94,16 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
         explication: format!(
-            "USC 2025 : 0,5 % / 2 % / 3 % / 8 % (seuils 12 012 / 27 382 / 70 044 €).\n\
+            "USC {annee} : 0,5 % / 2 % / 3 % / 8 % (seuils {seuils}).\n\
             Revenu annuel {g:.0} € → {im:.2} €/mois.",
-            g = g, im = usc_mens,
+            annee = annee, g = g, im = usc_mens,
+            seuils = if annee >= 2026 { "12 012 / 28 700 / 70 044 €" } else { "12 012 / 27 382 / 70 044 €" },
         ),
         loi_ref: Some("Finance Act (USC)".into()),
     });
 
     // Income Tax (PAYE), annualisé, après crédits.
-    let it_mens = (income_tax(g) / dec!(12)).round_dp(2);
+    let it_mens = (income_tax(g) / dec!(12)).round_dp(2); // bandes/crédits inchangés en 2026
     let it_taux = if brut > Decimal::ZERO { (it_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "IE_PAYE".into(),
@@ -94,11 +112,11 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (annualisé).\n\n\
+            "Impôt sur le revenu {annee} (annualisé).\n\n\
             20 % jusqu'à 44 000 €/an, 40 % au-delà − crédits 4 000 € (personnel + PAYE)\n\
             Revenu annuel {g:.0} € → {im:.2} €/mois.\n\n\
             Note : crédits d'un salarié célibataire. Source : Revenue.",
-            g = g, im = it_mens,
+            annee = annee, g = g, im = it_mens,
         ),
         loi_ref: Some("Taxes Consolidation Act 1997".into()),
     });

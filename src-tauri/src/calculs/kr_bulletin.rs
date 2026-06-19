@@ -76,11 +76,15 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    // 2024 et 2025 : NHI 7,09 % (gelé), LTC 12,95 %, pension 9 %, EI 0,9 % identiques.
-    if !(2024..=2025).contains(&annee) {
+    // 2024-2025 : NHI 7,09 % (gelé), LTC 12,95 %, pension 9 %, EI 0,9 %.
+    // 2026 : pension 9,5 % (réforme, 4,75 % chacun), NHI 7,19 % (3,595 % chacun, lus en
+    // base), LTC 13,14 % de la prime santé ; barème d'impôt inchangé.
+    if !(2024..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "KRW", "Corée du Sud : données disponibles pour 2024-2025.");
+            salarie, brut, "KRW", "Corée du Sud : données disponibles pour 2024-2026.");
     }
+    // Taux dépendance (장기요양) = part de la prime santé, relevé en 2026.
+    let ltc_taux = if annee >= 2026 { dec!(0.1314) } else { dec!(0.1295) };
 
     let mut cotisations = Vec::new();
 
@@ -119,8 +123,7 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some("국민건강보험법".into()),
     });
 
-    // 장기요양 = 12,95 % de la prime santé
-    let ltc_taux = dec!(0.1295);
+    // 장기요양 = part de la prime santé (12,95 % en 2024-2025, 13,14 % en 2026)
     let ltc_sal = (nhi_sal * ltc_taux).round_dp(0);
     let ltc_pat = (nhi_pat * ltc_taux).round_dp(0);
     cotisations.push(LigneCotisation {
@@ -128,9 +131,9 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_sal: ltc_taux, montant_sal: ltc_sal, taux_pat: ltc_taux, montant_pat: ltc_pat,
         categorie: "Sécurité sociale".into(),
         explication: format!(
-            "장기요양보험 — soins de longue durée. 12,95 % de la prime santé (2025).\n\
+            "장기요양보험 — soins de longue durée. {lt:.2} % de la prime santé.\n\
             Assiette : prime santé salariale {b:.0} ₩ → {ms:.0} ₩.\n\nBase légale : 노인장기요양보험법.",
-            b = nhi_sal, ms = ltc_sal,
+            lt = ltc_taux * dec!(100), b = nhi_sal, ms = ltc_sal,
         ),
         loi_ref: Some("노인장기요양보험법".into()),
     });

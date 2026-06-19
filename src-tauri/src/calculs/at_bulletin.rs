@@ -7,9 +7,15 @@
 //   • Lohnsteuer : barème progressif 2025 (0 / 20 / 30 / 40 / 48 / 50 / 55 %),
 //     assiette = revenu après cotisations sociales salariales.
 //
+// 2026 :
+//   • Höchstbeitragsgrundlage portée à 6 930 €/mois (contre 6 450 en 2025).
+//   • Barème Lohnsteuer relevé des 2/3 de l'inflation (+1,733 %) sauf la tranche à 55 %
+//     (seuils 13 539 / 21 992 / 36 458 / 70 365 / 104 859 / 1 000 000 €).
+//   • Taux SV salarié inchangé (18,07 %, lu en base).
+//
 // Simplifications documentées (net prudent) : 13ᵉ/14ᵉ mois (Sonderzahlungen, imposés
 // à 6 %) non modélisés ; crédits AVAB/AEAB et Verkehrsabsetzbetrag non modélisés.
-// Sources : ÖGK (taux SV 2025, Höchstbeitragsgrundlage) ; BMF (barème Lohnsteuer 2025).
+// Sources : ÖGK (taux SV, Höchstbeitragsgrundlage 2025-2026) ; BMF (barème Lohnsteuer 2025-2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -17,8 +23,25 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Lohnsteuer annuel 2025 (barème progressif, cumul par tranche).
-fn lohnsteuer(t: Decimal) -> Decimal {
+/// Lohnsteuer annuel (barème progressif, cumul par tranche) selon l'année.
+fn lohnsteuer(t: Decimal, annee: i32) -> Decimal {
+    if annee >= 2026 {
+        return if t <= dec!(13539) {
+            Decimal::ZERO
+        } else if t <= dec!(21992) {
+            (t - dec!(13539)) * dec!(0.20)
+        } else if t <= dec!(36458) {
+            dec!(1690.60) + (t - dec!(21992)) * dec!(0.30)
+        } else if t <= dec!(70365) {
+            dec!(6030.40) + (t - dec!(36458)) * dec!(0.40)
+        } else if t <= dec!(104859) {
+            dec!(19593.20) + (t - dec!(70365)) * dec!(0.48)
+        } else if t <= dec!(1000000) {
+            dec!(36150.32) + (t - dec!(104859)) * dec!(0.50)
+        } else {
+            dec!(483720.82) + (t - dec!(1000000)) * dec!(0.55)
+        };
+    }
     if t <= dec!(13308) {
         Decimal::ZERO
     } else if t <= dec!(21617) {
@@ -40,13 +63,14 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Autriche : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Autriche : données disponibles pour 2025 et 2026.");
     }
 
-    // Assiette SV plafonnée (Höchstbeitragsgrundlage 6 450 €/mois en 2025).
-    let assiette_sv = brut.min(dec!(6450));
+    // Assiette SV plafonnée (Höchstbeitragsgrundlage : 6 450 €/mois en 2025, 6 930 en 2026).
+    let hbgl = if annee >= 2026 { dec!(6930) } else { dec!(6450) };
+    let assiette_sv = brut.min(hbgl);
     let ts = ctx.taux_sal("AT_SV");
     let tp = ctx.taux_pat("AT_SV");
     let sv_sal = (assiette_sv * ts).round_dp(2);
@@ -58,16 +82,16 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Sécurité sociale".into(),
         explication: format!(
             "Sozialversicherung — salarié {ts:.2} % / employeur {tp:.2} % (retraite PV, \
-            maladie KV, chômage ALV, AK, WBF). Assiette plafonnée à 6 450 €/mois \
+            maladie KV, chômage ALV, AK, WBF). Assiette plafonnée à {hbgl:.0} €/mois \
             (Höchstbeitragsgrundlage). Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = sv_sal,
+            ts = ts * dec!(100), tp = tp * dec!(100), hbgl = hbgl, ms = sv_sal,
         ),
         loi_ref: Some("ASVG".into()),
     }];
 
     // Lohnsteuer : base annuelle = (brut − SV salarié) × 12.
     let base_an = ((brut - sv_sal).max(Decimal::ZERO)) * dec!(12);
-    let impot_mens = (lohnsteuer(base_an) / dec!(12)).round_dp(2);
+    let impot_mens = (lohnsteuer(base_an, annee) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "AT_LOHNSTEUER".into(),
@@ -76,14 +100,19 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (annualisé).\n\n\
+            "Impôt sur le revenu {annee} (annualisé).\n\n\
             Base = (brut − SV salarié) × 12 = {b:.0} €\n\
             Barème 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n\
-            (seuils 13 308 / 21 617 / 35 836 / 69 166 / 103 072 / 1 000 000 €)\n\
+            (seuils {seuils})\n\
             → {im:.2} €/mois.\n\n\
             Note : 13ᵉ/14ᵉ mois (Sonderzahlungen) et crédits non modélisés (net prudent).\n\
             Source : BMF.",
-            b = base_an, im = impot_mens,
+            annee = annee, b = base_an, im = impot_mens,
+            seuils = if annee >= 2026 {
+                "13 539 / 21 992 / 36 458 / 70 365 / 104 859 / 1 000 000 €"
+            } else {
+                "13 308 / 21 617 / 35 836 / 69 166 / 103 072 / 1 000 000 €"
+            },
         ),
         loi_ref: Some("EStG 1988".into()),
     });

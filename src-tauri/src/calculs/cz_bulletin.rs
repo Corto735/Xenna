@@ -6,8 +6,11 @@
 //   • Daň z příjmů : 15 % jusqu'à 36× le salaire moyen (≈ 139 671 CZK/mois en 2025),
 //     23 % au-delà. Sleva na poplatníka (crédit d'impôt) : 2 570 CZK/mois.
 //
+// 2026 : taux sociaux/santé et sleva (2 570 CZK/mois) inchangés ; seul le seuil de la
+// tranche à 23 % évolue (36× salaire moyen 48 967 CZK → 146 901 CZK/mois, contre
+// 139 671 en 2025).
 // La « super-hrubá mzda » a été supprimée en 2021 : la base d'imposition est le brut.
-// Source : ČSSZ (sociální) ; VZP (zdravotní) ; Finanční správa (daň 2025).
+// Source : ČSSZ (sociální) ; VZP (zdravotní) ; Finanční správa (daň 2025 et 2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -35,9 +38,9 @@ pub fn generer_bulletin_cz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "CZK", "Tchéquie : données disponibles pour 2025.");
+            salarie, brut, "CZK", "Tchéquie : données disponibles pour 2025 et 2026.");
     }
 
     let mut cotisations = vec![
@@ -45,8 +48,8 @@ pub fn generer_bulletin_cz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         ligne_cot("CZ_ZDRAVOTNI", "Zdravotní pojištění — Assurance maladie", brut, ctx),
     ];
 
-    // Daň z příjmů : 15 % jusqu'à 139 671 CZK/mois, 23 % au-delà ; sleva 2 570 CZK.
-    let seuil = dec!(139671);
+    // Daň z příjmů : 15 % jusqu'au seuil, 23 % au-delà ; sleva 2 570 CZK.
+    let seuil = if annee >= 2026 { dec!(146901) } else { dec!(139671) };
     let part_haute = (brut - seuil).max(Decimal::ZERO);
     let part_basse = brut - part_haute;
     let impot_brut = part_basse * dec!(0.15) + part_haute * dec!(0.23);
@@ -59,11 +62,11 @@ pub fn generer_bulletin_cz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025.\n\n\
-            15 % jusqu'à 139 671 CZK/mois, 23 % au-delà = {ib:.2} CZK\n\
+            "Impôt sur le revenu {annee}.\n\n\
+            15 % jusqu'à {seuil:.0} CZK/mois, 23 % au-delà = {ib:.2} CZK\n\
             − sleva na poplatníka 2 570 CZK = {im:.2} CZK/mois.\n\n\
             Source : Finanční správa.",
-            ib = impot_brut.round_dp(2), im = impot,
+            annee = annee, seuil = seuil, ib = impot_brut.round_dp(2), im = impot,
         ),
         loi_ref: Some("Zákon o daních z příjmů".into()),
     });

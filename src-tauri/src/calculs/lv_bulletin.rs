@@ -7,9 +7,11 @@
 //     25,5 % jusqu'à 105 300 €/an (8 775 €/mois), 33 % au-delà.
 //   • Minimum non imposable fixe 2025 : 510 €/mois.
 //
-// Simplification : minimum non imposable fixé à 510 €/mois (le dispositif différencié
-// a été remplacé par un montant fixe en 2025). Base IIN = brut − VSAOI salarié − 510 €.
-// Source : Valsts ieņēmumu dienests (VID) ; réforme IIN 2025.
+// Simplification : minimum non imposable fixé (le dispositif différencié a été remplacé
+// par un montant fixe en 2025) : 510 €/mois en 2025, 550 €/mois en 2026.
+// Base IIN = brut − VSAOI salarié − minimum non imposable. Barème 25,5 % / 33 % inchangé
+// (surtaxe +3 % au-delà de 200 000 €/an non modélisée — n'affecte que les très hauts revenus).
+// Source : Valsts ieņēmumu dienests (VID) ; réforme IIN 2025 ; paramètres 2026.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -21,10 +23,12 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Lettonie : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Lettonie : données disponibles pour 2025 et 2026.");
     }
+    // Minimum non imposable mensuel : 510 € (2025), 550 € (2026).
+    let min_non_imp = if annee >= 2026 { dec!(550) } else { dec!(510) };
 
     // VSAOI salarié + patronal (taux lus en base).
     let ts = ctx.taux_sal("LV_VSAOI");
@@ -44,8 +48,8 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some("Likums «Par valsts sociālo apdrošināšanu»".into()),
     }];
 
-    // IIN : base = brut − VSAOI salarié − 510 € ; 25,5 % jusqu'à 8 775 €/mois, 33 % au-delà.
-    let base = (brut - vsaoi_sal - dec!(510)).max(Decimal::ZERO);
+    // IIN : base = brut − VSAOI salarié − minimum non imposable ; 25,5 % jusqu'à 8 775 €/mois, 33 % au-delà.
+    let base = (brut - vsaoi_sal - min_non_imp).max(Decimal::ZERO);
     let part_haute = (brut - dec!(8775)).max(Decimal::ZERO); // tranche à 33 %
     let part_basse = (base - part_haute).max(Decimal::ZERO);
     let iin = (part_basse * dec!(0.255) + part_haute * dec!(0.33)).round_dp(2);
@@ -57,11 +61,11 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025.\n\n\
-            Base = brut − VSAOI {vs:.2} € − minimum non imposable 510 € = {b:.2} €\n\
+            "Impôt sur le revenu {annee}.\n\n\
+            Base = brut − VSAOI {vs:.2} € − minimum non imposable {mni:.0} € = {b:.2} €\n\
             Taux 25,5 % (jusqu'à 8 775 €/mois) puis 33 % au-delà → {iin:.2} €/mois.\n\n\
             Source : Valsts ieņēmumu dienests.",
-            vs = vsaoi_sal, b = base, iin = iin,
+            annee = annee, vs = vsaoi_sal, mni = min_non_imp, b = base, iin = iin,
         ),
         loi_ref: Some("Likums «Par iedzīvotāju ienākuma nodokli»".into()),
     });

@@ -8,8 +8,10 @@
 //     30 % au-delà. Abattement personnel (osobni odbitak) 600 €/mois.
 //   • Assiette de l'impôt = revenu après cotisation retraite et abattement.
 //
+// 2026 : cadre national inchangé (2 tranches 20 % / 30 %, seuil 5 000 €/mois,
+// abattement personnel 600 €, cotisations 20 % / 16,5 %) → mêmes règles qu'en 2025.
 // Simplification : taux communaux représentatifs (20 % / 30 %). Source : HZMO ;
-// Porezna uprava (barème 2025).
+// Porezna uprava (barème 2025-2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -21,9 +23,9 @@ pub fn generer_bulletin_hr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Croatie : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Croatie : données disponibles pour 2025 et 2026.");
     }
 
     // Retraite salarié 20 % ; santé 16,5 % employeur.
@@ -65,11 +67,11 @@ pub fn generer_bulletin_hr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025.\n\n\
+            "Impôt sur le revenu {annee}.\n\n\
             Base = brut − retraite − abattement 600 € = {b:.2} €\n\
             20 % jusqu'à 5 000 €/mois, 30 % au-delà → {im:.2} €/mois.\n\n\
             Note : taux communaux représentatifs. Source : Porezna uprava.",
-            b = base, im = impot,
+            annee = annee, b = base, im = impot,
         ),
         loi_ref: Some("Zakon o porezu na dohodak".into()),
     });

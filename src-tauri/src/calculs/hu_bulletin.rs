@@ -6,9 +6,11 @@
 //   • Szociális hozzájárulási adó (szocho) employeur 13 %.
 //   • SZJA (impôt sur le revenu) : taux proportionnel unique 15 %.
 //
+// 2026 : taux inchangés (TB 18,5 % / szocho 13 % / SZJA 15 %, stables) → mêmes
+// règles qu'en 2025.
 // Simplifications : abattements familiaux (családi kedvezmény), exonération des
 // moins de 25 ans et des mères de moins de 30 ans NON modélisés (net prudent).
-// Source : NAV (SZJA 2025) ; loi LXXX de 2019 (TB).
+// Source : NAV (SZJA 2025-2026) ; loi LXXX de 2019 (TB).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -20,9 +22,9 @@ pub fn generer_bulletin_hu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "HUF", "Hongrie : données disponibles pour 2025.");
+            salarie, brut, "HUF", "Hongrie : données disponibles pour 2025 et 2026.");
     }
 
     let ts = ctx.taux_sal("HU_TB");
@@ -58,10 +60,10 @@ pub fn generer_bulletin_hu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 : taux proportionnel unique 15 % → {im:.2} HUF/mois.\n\n\
+            "Impôt sur le revenu {annee} : taux proportionnel unique 15 % → {im:.2} HUF/mois.\n\n\
             Note : abattements familiaux et exonérations jeunes/mères non modélisés (net prudent).\n\
             Source : NAV.",
-            im = impot,
+            annee = annee, im = impot,
         ),
         loi_ref: Some("1995. évi CXVII. törvény (SZJA)".into()),
     });

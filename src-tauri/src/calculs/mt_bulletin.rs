@@ -7,8 +7,11 @@
 //   • Impôt sur le revenu (barème « single » 2025) : 0 % jusqu'à 12 000 €, 15 %,
 //     25 %, 35 %, calculé par taux × revenu − abattement.
 //
+// 2026 : barème d'impôt single inchangé ; SSC Klassi 1 inchangée (10 % / 10 %) mais
+// plafond porté à 2 423,67 €/mois (base maximale 29 084 €/an, contribution max
+// 55,93 €/semaine, personnes nées après 1962).
 // Simplification : barème célibataire (single) ; SSC non déductible de l'impôt.
-// Source : Department of Social Security ; Commissioner for Revenue (barème 2025).
+// Source : Department of Social Security ; Commissioner for Revenue (barème 2025-2026).
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -33,13 +36,14 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Malte : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Malte : données disponibles pour 2025 et 2026.");
     }
 
-    // SSC sur assiette plafonnée (2 306,58 €/mois).
-    let assiette = brut.min(dec!(2306.58));
+    // SSC sur assiette plafonnée (2 306,58 €/mois en 2025, 2 423,67 € en 2026).
+    let plafond = if annee >= 2026 { dec!(2423.67) } else { dec!(2306.58) };
+    let assiette = brut.min(plafond);
     let ts = ctx.taux_sal("MT_SSC");
     let tp = ctx.taux_pat("MT_SSC");
     let ssc_sal = (assiette * ts).round_dp(2);
@@ -51,8 +55,8 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Sécurité sociale".into(),
         explication: format!(
             "SSC — salarié {ts:.2} % / employeur {tp:.2} %. Assiette plafonnée à \
-            2 306,58 €/mois (≈ 27 679 €/an). Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = ssc_sal,
+            {pl:.2} €/mois. Salarié : {ms:.2} €.",
+            ts = ts * dec!(100), tp = tp * dec!(100), pl = plafond, ms = ssc_sal,
         ),
         loi_ref: Some("Social Security Act (Cap. 318)".into()),
     }];
@@ -68,12 +72,12 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (barème single, annualisé).\n\n\
+            "Impôt sur le revenu {annee} (barème single, annualisé).\n\n\
             Base = brut × 12 = {b:.0} €\n\
             0 % jusqu'à 12 000 €, puis 15 % / 25 % / 35 % (abattements 1 800 / 3 400 / 9 400 €)\n\
             → {im:.2} €/mois.\n\n\
             Source : Commissioner for Revenue.",
-            b = base_an, im = impot_mens,
+            annee = annee, b = base_an, im = impot_mens,
         ),
         loi_ref: Some("Income Tax Act (Cap. 123)".into()),
     });

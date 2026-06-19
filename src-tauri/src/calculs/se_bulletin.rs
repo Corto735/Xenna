@@ -24,12 +24,15 @@ pub fn generer_bulletin_se(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "SEK", "Suède : données disponibles pour 2025.");
+            salarie, brut, "SEK", "Suède : données disponibles pour 2025 et 2026.");
     }
 
     let g = brut * dec!(12); // revenu annuel
+    // 2026 : kommunalskatt moyen 32,38 % ; skiktgräns 643 000 SEK (impôt d'État 20 %).
+    let taux_communal = if annee >= 2026 { dec!(0.3238) } else { dec!(0.3241) };
+    let skiktgrans = if annee >= 2026 { dec!(643000) } else { dec!(625800) };
 
     // Cotisation patronale unique : arbetsgivaravgifter 31,42 % (taux lu en base).
     let tp = ctx.taux_pat("SE_ARBETSGIVARAVGIFT");
@@ -51,8 +54,8 @@ pub fn generer_bulletin_se(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     }];
 
     // Impôt sur le revenu : communal moyen + État 20 % au-delà de 625 800 SEK/an.
-    let communal = g * dec!(0.3241);
-    let etat = if g > dec!(625800) { (g - dec!(625800)) * dec!(0.20) } else { Decimal::ZERO };
+    let communal = g * taux_communal;
+    let etat = if g > skiktgrans { (g - skiktgrans) * dec!(0.20) } else { Decimal::ZERO };
     let impot_mens = ((communal + etat) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
@@ -62,14 +65,15 @@ pub fn generer_bulletin_se(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 (annualisé).\n\n\
+            "Impôt sur le revenu {annee} (annualisé).\n\n\
             Revenu annuel : {g:.0} SEK\n\
-            Impôt communal moyen 32,41 % → {co:.0} SEK\n\
-            Impôt d'État 20 % au-delà de 625 800 SEK/an → {et:.0} SEK\n\
+            Impôt communal moyen {tc:.2} % → {co:.0} SEK\n\
+            Impôt d'État 20 % au-delà de {sk:.0} SEK/an → {et:.0} SEK\n\
             = {im:.2} SEK/mois.\n\n\
             Note : grundavdrag et jobbskatteavdrag non modélisés (net prudent).\n\
             Source : Skatteverket.",
-            g = g, co = communal, et = etat, im = impot_mens,
+            annee = annee, g = g, tc = taux_communal * dec!(100), sk = skiktgrans,
+            co = communal, et = etat, im = impot_mens,
         ),
         loi_ref: Some("Inkomstskattelagen (1999:1229)".into()),
     });

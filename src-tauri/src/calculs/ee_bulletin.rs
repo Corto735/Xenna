@@ -9,7 +9,12 @@
 //
 // Abattement de base 2025 (dégressif sur le revenu annuel brut) :
 //   ≤ 14 400 € → 7 848 € ; ≥ 25 200 € → 0 ; linéaire entre les deux.
-// Source : Maksu- ja Tolliamet (tulumaks 22 % en 2025) ; Sotsiaalmaksuseadus.
+//
+// 2026 : suppression de la dégressivité (« tax hump ») — abattement forfaitaire
+// universel de 700 €/mois = 8 400 €/an quel que soit le revenu. Taux d'impôt
+// inchangé à 22 %. (Abattement majoré 776 €/mois pour les retraités, non modélisé.)
+// Source : Maksu- ja Tolliamet (tulumaks 22 % ; maksuvaba tulu 8 400 € en 2026) ;
+// Sotsiaalmaksuseadus.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -33,8 +38,12 @@ fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> Lig
     }
 }
 
-/// Abattement de base annuel 2025 (maksuvaba tulu), dégressif.
-fn abattement_annuel(g: Decimal) -> Decimal {
+/// Abattement de base annuel (maksuvaba tulu) selon l'année.
+/// 2025 : dégressif. 2026 : forfaitaire 8 400 €/an (réforme « tax hump »).
+fn abattement_annuel(g: Decimal, annee: i32) -> Decimal {
+    if annee >= 2026 {
+        return dec!(8400);
+    }
     if g <= dec!(14400) {
         dec!(7848)
     } else if g >= dec!(25200) {
@@ -49,9 +58,9 @@ pub fn generer_bulletin_ee(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    if annee != 2025 {
+    if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Estonie : données disponibles pour 2025.");
+            salarie, brut, "EUR", "Estonie : données disponibles pour 2025 et 2026.");
     }
 
     let g = brut * dec!(12);
@@ -64,7 +73,7 @@ pub fn generer_bulletin_ee(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     // Base imposable : brut − cotisations salariales − abattement de base.
     let cot_sal_taux = ctx.taux_sal("EE_TOOTUS") + ctx.taux_sal("EE_KOGUMISPENSION");
-    let abatt_an = abattement_annuel(g);
+    let abatt_an = abattement_annuel(g, annee);
     let base_imp_an = (g * (Decimal::ONE - cot_sal_taux) - abatt_an).max(Decimal::ZERO);
     let impot_mens = (base_imp_an * dec!(0.22) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
@@ -75,12 +84,18 @@ pub fn generer_bulletin_ee(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: format!(
-            "Impôt sur le revenu 2025 : 22 % (taux unique).\n\n\
+            "Impôt sur le revenu {annee} : 22 % (taux unique).\n\n\
             Revenu annuel {g:.0} € − cotisations salariales − abattement de base {ab:.0} €\n\
             = base imposable {b:.0} € → {im:.2} €/mois.\n\n\
-            Abattement de base dégressif (7 848 € si ≤ 14 400 €/an, nul si ≥ 25 200 €/an).\n\
+            {abatt_txt}\n\
             Source : Maksu- ja Tolliamet.",
-            g = g, ab = abatt_an, b = base_imp_an, im = impot_mens,
+            annee = annee, g = g, ab = abatt_an, b = base_imp_an, im = impot_mens,
+            abatt_txt = if annee >= 2026 {
+                "Abattement de base forfaitaire 8 400 €/an (700 €/mois), uniforme depuis 2026 \
+                (fin de la dégressivité)."
+            } else {
+                "Abattement de base dégressif (7 848 € si ≤ 14 400 €/an, nul si ≥ 25 200 €/an)."
+            },
         ),
         loi_ref: Some("Tulumaksuseadus".into()),
     });
