@@ -78,11 +78,44 @@ const _nextMonth = _month === 12 ? 1 : _month + 1;
 const DATE_MAX   = _fmLastDay(_nextYear, _nextMonth).toISOString().slice(0, 10);
 const TODAY      = DATE_TODAY;  // alias rétrocompatible
 
+// ── Liste des pays : par défaut, seuls les pays frontaliers de la France + l'Angleterre
+// sont visibles ; les autres sont masqués derrière le lien « autres pays européens ». ──
+const PAYS_EXTRA = ['autriche', 'bulgarie', 'chypre', 'croatie', 'danemark', 'estonie',
+  'finlande', 'grece', 'hongrie', 'irlande', 'lettonie', 'lituanie', 'malte', 'paysbas',
+  'pologne', 'portugal', 'roumanie', 'slovaquie', 'slovenie', 'suede', 'tchequie',
+  'canada', 'quebec', 'japon', 'chine', 'coree', 'australie', 'nouvellezelande'];
+
+// Tague (classe pays-extra) les pays non frontaliers + les groupes Amérique/Asie/Océanie.
+function _setupPaysExtra() {
+  ['d', 'm'].forEach(p => {
+    const panel = document.getElementById(`${p}-params`);
+    if (!panel) return;
+    PAYS_EXTRA.forEach(id => {
+      const item = document.getElementById(`${p}-${id}`)?.closest('label.param-item');
+      if (item) item.classList.add('pays-extra');
+    });
+    panel.querySelectorAll('.param-group-title').forEach(t => {
+      if (['Amérique', 'Asie', 'Océanie'].includes(t.textContent.trim())) t.classList.add('pays-extra');
+    });
+  });
+}
+
+let _paysAllShown = false;
+window.togglePaysExtra = function() {
+  _paysAllShown = !_paysAllShown;
+  ['d', 'm'].forEach(p => {
+    document.getElementById(`${p}-params`)?.classList.toggle('pays-all', _paysAllShown);
+    const lk = document.getElementById(`${p}-pays-more`);
+    if (lk) lk.textContent = _paysAllShown ? '− masquer les autres pays' : '+ autres pays européens';
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   ["d-date", "m-date"].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.value = DATE_TODAY; el.min = DATE_MIN; el.max = DATE_MAX; }
   });
+  _setupPaysExtra();
   const yearEl = document.getElementById('a-annee');
   if (yearEl) {
     yearEl.max = String(_nextYear);

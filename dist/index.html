@@ -1183,6 +1183,15 @@
       border-top: 1px solid var(--dim);
     }
     .param-group-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    /* Liste des pays : par défaut seuls les frontaliers + Angleterre ; le reste masqué. */
+    .params-panel .pays-extra { display: none; }
+    .params-panel.pays-all .pays-extra { display: block; }
+    .params-panel.pays-all .pays-extra.param-item { display: flex; }
+    .param-pays-more {
+      font-size: 0.66rem; color: var(--blue); cursor: pointer;
+      padding: 0.35rem 0 0.15rem; user-select: none; letter-spacing: 0.03em;
+    }
+    .param-pays-more:hover { text-decoration: underline; color: var(--white); }
 
     /* ── Table tranches PAS ─────────────────────────────────── */
     .pas-tbl {
@@ -2017,7 +2026,7 @@
     .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-KLGPTT94.js"></script>
+  <script type="module" crossorigin src="/assets/index-BiQxjSOV.js"></script>
 </head>
 <body>
 
@@ -2025,7 +2034,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.7</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.8</div>
     </div>
 
     <!-- Burger menu -->
@@ -2439,6 +2448,7 @@
             <input type="checkbox" id="d-tchequie" onchange="syncParam('tchequie', this.checked); onTogglePays('tchequie', this.checked)" />
             <span class="flag-emoji">🇨🇿</span> Tchéquie
           </label>
+          <div class="param-pays-more" id="d-pays-more" onclick="togglePaysExtra()">+ autres pays européens</div>
           <div class="param-group-title">Amérique</div>
           <label class="param-item">
             <input type="checkbox" id="d-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
@@ -2858,6 +2868,7 @@
               <input type="checkbox" id="m-tchequie" onchange="syncParam('tchequie', this.checked); onTogglePays('tchequie', this.checked)" />
               <span class="flag-emoji">🇨🇿</span> Tchéquie
             </label>
+            <div class="param-pays-more" id="m-pays-more" onclick="togglePaysExtra()">+ autres pays européens</div>
             <div class="param-group-title">Amérique</div>
             <label class="param-item">
               <input type="checkbox" id="m-canada" onchange="syncParam('canada', this.checked); onTogglePays('canada', this.checked)" />
