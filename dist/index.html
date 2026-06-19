@@ -1741,6 +1741,33 @@
     .gb-l-mean b { color: var(--green); }
     .gb-l-out  { color: var(--red); }
 
+    /* Taux de RQTH */
+    .gaab-rqth-section { margin-top: 2.8rem; }
+    .gaab-rqth-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1.1rem; margin-top: 0.5rem; }
+    .gaab-rqth-pct { font-size: 1.8rem; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+    .gaab-rqth-frac { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.04em; }
+    .gaab-rqth-badge { font-size: 0.6rem; letter-spacing: 0.05em; padding: 0.15rem 0.5rem; border-radius: 3px; white-space: nowrap; }
+    .gaab-rqth-badge.ok { color: var(--green); border: 1px solid rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+    .gaab-rqth-badge.ko { color: var(--yellow); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
+    .gaab-rqth-bar { position: relative; height: 8px; max-width: 420px; margin: 0.7rem 0 0; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .gaab-rqth-bar > span { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+    .gaab-rqth-bar .gaab-rqth-seuil { position: absolute; top: -3px; right: 0; width: 2px; height: 14px; background: var(--green); }
+    .gaab-rqth-note { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.03em; margin-top: 0.6rem; line-height: 1.5; max-width: 640px; }
+    .gaab-rqth-note b { color: var(--muted); font-weight: 600; }
+
+    /* Pyramide des âges H/F */
+    .gaab-pyr-section { margin-top: 2.8rem; }
+    .gaab-pyr-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0.4rem auto 0; overflow: visible; }
+    .gp-bar-h { fill: var(--blue);   opacity: 0.7; }
+    .gp-bar-f { fill: var(--purple); opacity: 0.7; }
+    .gp-band  { fill: var(--dim);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+    .gp-cnt   { fill: var(--text); font-size: 12px; font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
+    .gp-axis  { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
+    .gp-head  { font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.05em; }
+    .gp-head.gp-h { fill: var(--blue); }
+    .gp-head.gp-f { fill: var(--purple); }
+    .gp-moy   { fill: var(--dim); font-size: 12px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+
     /* Boutons de navigation des vues secondaires */
     .page-exit,
     .page-nav {
@@ -1990,7 +2017,7 @@
     .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DFYHBh5L.js"></script>
+  <script type="module" crossorigin src="/assets/index-KLGPTT94.js"></script>
 </head>
 <body>
 
@@ -1998,7 +2025,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.6</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.7</div>
     </div>
 
     <!-- Burger menu -->
@@ -3319,7 +3346,7 @@
               <th>Nom</th>
               <th>Prénom</th>
               <th>Date d'embauche</th>
-              <th>Âge à l'embauche</th>
+              <th>Date de naissance</th>
               <th>Poste</th>
               <th>ETP</th>
               <th class="gaab-sal-th" style="text-align:right; white-space:nowrap">
@@ -3338,6 +3365,12 @@
         </div>
       </div>
 
+      <!-- Taux de RQTH -->
+      <div class="gaab-rqth-section">
+        <div class="gaab-box-title">Taux de travailleurs handicapés (RQTH)</div>
+        <div id="gaab-rqth"></div>
+      </div>
+
       <!-- Répartition des salaires — boîte à moustaches -->
       <div class="gaab-box-section" id="gaab-box-section">
         <div class="gaab-box-head">
@@ -3349,6 +3382,15 @@
           <div id="gaab-box-plot"></div>
           <div class="gaab-box-legend" id="gaab-box-legend"></div>
         </div>
+      </div>
+
+      <!-- Pyramide des âges H/F -->
+      <div class="gaab-pyr-section">
+        <div class="gaab-box-head">
+          <span class="gaab-box-title">Pyramide des âges</span>
+          <span class="gaab-box-basis">// effectif par tranche de 5 ans</span>
+        </div>
+        <div id="gaab-pyramide"></div>
       </div>
     </div>
   </div>

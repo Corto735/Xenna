@@ -3271,47 +3271,29 @@ document.addEventListener('click', () => closeBurger());
 burgerMenu.addEventListener('click', e => e.stopPropagation());
 
 // ── Gaabrielle RH ─────────────────────────────────────────────────────────────
+// Effectif fictif. sexe H/F, naissance ISO (= embauche − âge à l'embauche), rqth :
+// 11/20 RQTH = 55 %, cohérent avec le seuil légal d'une entreprise adaptée.
 const GAAB_EMPLOYES = [
-  // ── H ──
-  { mat:'XN-001', nom:'de Riv',        prenom:'Geralt',   embauche:'2016-04-11', ageEmb:{a:38,m:2, j:7 }, poste:'Chasseur de Bugs Mutants — Résilience Maximale',                 bh:44.00, etp:100 },
-  // ── F ──
-  { mat:'XN-002', nom:'Belacqua',      prenom:'Lyra',     embauche:'2023-09-01', ageEmb:{a:22,m:0, j:14}, poste:'Cartographe des Mondes Parallèles Contractuels',                bh:16.50, etp:80  },
-  // ── H ──
-  { mat:'XN-003', nom:'Vimes',         prenom:'Sam',      embauche:'2017-02-20', ageEmb:{a:45,m:6, j:3 }, poste:'Commissaire aux Anomalies Comportementales',                    bh:38.50, etp:100 },
-  // ── F ──
-  { mat:'XN-004', nom:'Granger',       prenom:'Hermione', embauche:'2020-09-01', ageEmb:{a:28,m:0, j:0 }, poste:'Directrice des Procédures Magiques et de la Conformité',        bh:31.00, etp:100 },
-  // ── H ──
-  { mat:'XN-005', nom:'de Melniboné',  prenom:'Elric',    embauche:'2018-06-15', ageEmb:{a:33,m:3, j:19}, poste:'Canalisateur des Flux d\'Entropie Numérique',                   bh:51.00, etp:100 },
-  // ── F ──
-  { mat:'XN-006', nom:'du Rohan',      prenom:'Eowyn',    embauche:'2019-11-03', ageEmb:{a:31,m:7, j:22}, poste:'Cheffe de Projet Déconstruction des Obstacles Genrés',          bh:24.50, etp:100 },
-  // ── H ──
-  { mat:'XN-007', nom:'la Légende',    prenom:'Druss',    embauche:'2014-08-30', ageEmb:{a:52,m:1, j:8 }, poste:'Directeur des Opérations Physiques Irréversibles',              bh:48.00, etp:100 },
-  // ── F ──
-  { mat:'XN-008', nom:'Caldin',        prenom:'Ellana',   embauche:'2021-03-08', ageEmb:{a:26,m:9, j:15}, poste:'Analyste en Trajectoires Inconventionnelles',                   bh:19.75, etp:80  },
-  // ── H ──
-  { mat:'XN-009', nom:'Neuf-Doigts',   prenom:'Logen',    embauche:'2020-01-13', ageEmb:{a:37,m:4, j:27}, poste:'Expert en Gestion de Crises Légèrement Incontrôlables',         bh:29.00, etp:100 },
-  // ── F ──
-  { mat:'XN-010', nom:'Maljinn',       prenom:'Ferro',    embauche:'2022-05-16', ageEmb:{a:29,m:11,j:4 }, poste:'Responsable de la Désintégration des Processus Obsolètes',      bh:21.50, etp:100 },
-  // ── H ──
-  { mat:'XN-011', nom:'Grands-Pas',    prenom:'Aragorn',  embauche:'2015-07-22', ageEmb:{a:41,m:0, j:11}, poste:'Directeur Général des Transitions de Paradigme',                bh:58.00, etp:100 },
-  // ── F ──
-  { mat:'XN-012', nom:'Garlick',       prenom:'Magrat',   embauche:'2018-04-01', ageEmb:{a:34,m:5, j:17}, poste:'Consultante en Phytothérapie Algorithmique',                    bh:20.00, etp:80  },
-  // ── H ──
-  { mat:'XN-013', nom:'Shannow',       prenom:'Jon',      embauche:'2019-06-09', ageEmb:{a:44,m:8, j:2 }, poste:'Pisteur de Tendances Post-Apocalyptiques',                      bh:33.75, etp:100 },
-  // ── F ──
-  { mat:'XN-014', nom:"Gil'Sayan",     prenom:'Ewilan',   embauche:'2024-02-19', ageEmb:{a:21,m:3, j:6 }, poste:'Ingénieure en Dessin de Réalités Augmentées',                   bh:15.50, etp:80  },
-  // ── H ──
-  { mat:'XN-015', nom:'Dhibi',         prenom:'Salim',    embauche:'2021-10-04', ageEmb:{a:30,m:2, j:29}, poste:'Archiviste des Compétences Émergentes Non-Homologuées',         bh:26.50, etp:100 },
-  // ── F ──
-  { mat:'XN-016', nom:'la Guerrière',  prenom:'Sigarni',  embauche:'2013-11-18', ageEmb:{a:48,m:6, j:0 }, poste:'Directrice des Restructurations Stratégiques',                  bh:38.00, etp:100 },
-  // ── H ──
-  { mat:'XN-017', nom:'le Magi',       prenom:'Bayaz',    embauche:'2011-03-01', ageEmb:{a:61,m:0, j:0 }, poste:'Conseiller Exécutif en Manipulation des Lois Fondamentales',    bh:62.00, etp:100 },
-  // ── F ──
-  { mat:'XN-018', nom:'la Nord',       prenom:'Rikke',    embauche:'2022-08-22', ageEmb:{a:27,m:5, j:9 }, poste:'Prévisionniste des Déviations Sociales Involontaires',          bh:22.25, etp:100 },
-  // ── H ──
-  { mat:'XN-019', nom:"l'Enchanteur",  prenom:'Merlin',   embauche:'2009-05-12', ageEmb:{a:67,m:3, j:21}, poste:'Président du Conseil des Visions à Long Terme',                 bh:55.00, etp:100 },
-  // ── F ──
-  { mat:'XN-020', nom:'la Magicienne', prenom:'Tanaquil', embauche:'2017-09-25', ageEmb:{a:36,m:1, j:13}, poste:'Architecte des Sortilèges Organisationnels',                    bh:27.50, etp:80  },
+  { mat:'XN-001', nom:'de Riv',        prenom:'Geralt',   sexe:'H', naissance:'1978-02-04', rqth:true,  embauche:'2016-04-11', poste:'Chasseur de Bugs Mutants — Résilience Maximale',                 bh:44.00, etp:100 },
+  { mat:'XN-002', nom:'Belacqua',      prenom:'Lyra',     sexe:'F', naissance:'2001-08-18', rqth:false, embauche:'2023-09-01', poste:'Cartographe des Mondes Parallèles Contractuels',                bh:16.50, etp:80  },
+  { mat:'XN-003', nom:'Vimes',         prenom:'Sam',      sexe:'H', naissance:'1971-08-17', rqth:true,  embauche:'2017-02-20', poste:'Commissaire aux Anomalies Comportementales',                    bh:38.50, etp:100 },
+  { mat:'XN-004', nom:'Granger',       prenom:'Hermione', sexe:'F', naissance:'1992-09-01', rqth:true,  embauche:'2020-09-01', poste:'Directrice des Procédures Magiques et de la Conformité',        bh:31.00, etp:100 },
+  { mat:'XN-005', nom:'de Melniboné',  prenom:'Elric',    sexe:'H', naissance:'1985-02-24', rqth:false, embauche:'2018-06-15', poste:'Canalisateur des Flux d\'Entropie Numérique',                   bh:51.00, etp:100 },
+  { mat:'XN-006', nom:'du Rohan',      prenom:'Eowyn',    sexe:'F', naissance:'1988-03-12', rqth:true,  embauche:'2019-11-03', poste:'Cheffe de Projet Déconstruction des Obstacles Genrés',          bh:24.50, etp:100 },
+  { mat:'XN-007', nom:'la Légende',    prenom:'Druss',    sexe:'H', naissance:'1962-07-22', rqth:true,  embauche:'2014-08-30', poste:'Directeur des Opérations Physiques Irréversibles',              bh:48.00, etp:100 },
+  { mat:'XN-008', nom:'Caldin',        prenom:'Ellana',   sexe:'F', naissance:'1994-05-24', rqth:false, embauche:'2021-03-08', poste:'Analyste en Trajectoires Inconventionnelles',                   bh:19.75, etp:80  },
+  { mat:'XN-009', nom:'Neuf-Doigts',   prenom:'Logen',    sexe:'H', naissance:'1982-08-17', rqth:true,  embauche:'2020-01-13', poste:'Expert en Gestion de Crises Légèrement Incontrôlables',         bh:29.00, etp:100 },
+  { mat:'XN-010', nom:'Maljinn',       prenom:'Ferro',    sexe:'F', naissance:'1992-06-12', rqth:false, embauche:'2022-05-16', poste:'Responsable de la Désintégration des Processus Obsolètes',      bh:21.50, etp:100 },
+  { mat:'XN-011', nom:'Grands-Pas',    prenom:'Aragorn',  sexe:'H', naissance:'1974-07-11', rqth:false, embauche:'2015-07-22', poste:'Directeur Général des Transitions de Paradigme',                bh:58.00, etp:100 },
+  { mat:'XN-012', nom:'Garlick',       prenom:'Magrat',   sexe:'F', naissance:'1983-10-15', rqth:true,  embauche:'2018-04-01', poste:'Consultante en Phytothérapie Algorithmique',                    bh:20.00, etp:80  },
+  { mat:'XN-013', nom:'Shannow',       prenom:'Jon',      sexe:'H', naissance:'1974-10-07', rqth:false, embauche:'2019-06-09', poste:'Pisteur de Tendances Post-Apocalyptiques',                      bh:33.75, etp:100 },
+  { mat:'XN-014', nom:"Gil'Sayan",     prenom:'Ewilan',   sexe:'F', naissance:'2002-11-13', rqth:true,  embauche:'2024-02-19', poste:'Ingénieure en Dessin de Réalités Augmentées',                   bh:15.50, etp:80  },
+  { mat:'XN-015', nom:'Dhibi',         prenom:'Salim',    sexe:'H', naissance:'1991-07-06', rqth:false, embauche:'2021-10-04', poste:'Archiviste des Compétences Émergentes Non-Homologuées',         bh:26.50, etp:100 },
+  { mat:'XN-016', nom:'la Guerrière',  prenom:'Sigarni',  sexe:'F', naissance:'1965-05-18', rqth:true,  embauche:'2013-11-18', poste:'Directrice des Restructurations Stratégiques',                  bh:38.00, etp:100 },
+  { mat:'XN-017', nom:'le Magi',       prenom:'Bayaz',    sexe:'H', naissance:'1950-03-01', rqth:false, embauche:'2011-03-01', poste:'Conseiller Exécutif en Manipulation des Lois Fondamentales',    bh:62.00, etp:100 },
+  { mat:'XN-018', nom:'la Nord',       prenom:'Rikke',    sexe:'F', naissance:'1995-03-13', rqth:true,  embauche:'2022-08-22', poste:'Prévisionniste des Déviations Sociales Involontaires',          bh:22.25, etp:100 },
+  { mat:'XN-019', nom:"l'Enchanteur",  prenom:'Merlin',   sexe:'H', naissance:'1942-01-22', rqth:false, embauche:'2009-05-12', poste:'Président du Conseil des Visions à Long Terme',                 bh:55.00, etp:100 },
+  { mat:'XN-020', nom:'la Magicienne', prenom:'Tanaquil', sexe:'F', naissance:'1981-08-12', rqth:true,  embauche:'2017-09-25', poste:'Architecte des Sortilèges Organisationnels',                    bh:27.50, etp:80  },
 ];
 
 function _gaabSalStr(bh, type) {
@@ -3347,21 +3329,117 @@ function gaabInit() {
   const tbody = document.getElementById('gaab-tbody');
   if (tbody) {
     tbody.innerHTML = GAAB_EMPLOYES.map(e => {
-      const { a, m, j } = e.ageEmb;
-      const age    = `${a} a ${m} m ${j} j`;
       const etpCls = e.etp < 100 ? 'style="color:var(--yellow)"' : 'style="color:var(--dim)"';
       return `<tr>
         <td class="gaab-mat">${e.mat}</td>
         <td>${e.nom}</td>
         <td>${e.prenom}</td>
         <td>${e.embauche}</td>
-        <td class="gaab-age">${age}</td>
+        <td class="gaab-age">${formatDate(e.naissance)}</td>
         <td class="gaab-poste">${e.poste}</td>
         <td class="gaab-etp" ${etpCls}>${e.etp} %</td>
         <td class="gaab-sal" data-bh="${e.bh}">${_gaabSalStr(e.bh, 'bh')}</td>
       </tr>`;
     }).join('');
   }
+
+  gaabRenderRqth();
+  gaabRenderPyramide();
+}
+
+// Âge courant (années révolues) à partir de la date de naissance ISO.
+function _gaabAge(naissanceIso) {
+  const [y, m, d] = naissanceIso.split('-').map(Number);
+  const [ty, tm, td] = DATE_TODAY.split('-').map(Number);
+  let age = ty - y;
+  if (tm < m || (tm === m && td < d)) age--;
+  return age;
+}
+
+// ── Taux de RQTH ───────────────────────────────────────────────────────────────
+function gaabRenderRqth() {
+  const host = document.getElementById('gaab-rqth');
+  if (!host) return;
+  const total  = GAAB_EMPLOYES.length;
+  const nRqth  = GAAB_EMPLOYES.filter(e => e.rqth).length;
+  const taux   = total ? (nRqth / total) * 100 : 0;
+  const txtTaux = taux.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const SEUIL_EA = 55;
+  const atteint  = taux >= SEUIL_EA;
+  const w = Math.min(100, taux / SEUIL_EA * 100).toFixed(1); // jauge : 100 % = seuil EA atteint
+  host.innerHTML = `
+    <div class="gaab-rqth-row">
+      <span class="gaab-rqth-pct">${txtTaux} %</span>
+      <span class="gaab-rqth-frac">${nRqth} / ${total} salariés RQTH</span>
+      <span class="gaab-rqth-badge ${atteint ? 'ok' : 'ko'}">${atteint ? '✓ seuil entreprise adaptée atteint' : '✗ sous le seuil entreprise adaptée'}</span>
+    </div>
+    <div class="gaab-rqth-bar"><span style="width:${w}%"></span><i class="gaab-rqth-seuil" title="Seuil EA 55 %"></i></div>
+    <div class="gaab-rqth-note">Entreprise adaptée : au moins <b>55 %</b> de l'effectif en situation de handicap (RQTH).
+    Pour mémoire, l'obligation d'emploi (OETH) des entreprises ordinaires d'au moins 20 salariés est de <b>6 %</b>.</div>`;
+}
+
+// ── Pyramide des âges H/F ──────────────────────────────────────────────────────
+function gaabRenderPyramide() {
+  const host = document.getElementById('gaab-pyramide');
+  if (!host) return;
+
+  // Tranches de 5 ans, de la plus âgée (en haut) à la plus jeune (en bas).
+  const bands = [
+    { lbl: '60 +',    lo: 60, hi: 200 },
+    { lbl: '55–59',   lo: 55, hi: 59  },
+    { lbl: '50–54',   lo: 50, hi: 54  },
+    { lbl: '45–49',   lo: 45, hi: 49  },
+    { lbl: '40–44',   lo: 40, hi: 44  },
+    { lbl: '35–39',   lo: 35, hi: 39  },
+    { lbl: '30–34',   lo: 30, hi: 34  },
+    { lbl: '25–29',   lo: 25, hi: 29  },
+    { lbl: '< 25',    lo: 0,  hi: 24  },
+  ];
+  const ages = GAAB_EMPLOYES.map(e => ({ age: _gaabAge(e.naissance), sexe: e.sexe }));
+  const rows = bands.map(b => ({
+    lbl: b.lbl,
+    h: ages.filter(a => a.sexe === 'H' && a.age >= b.lo && a.age <= b.hi).length,
+    f: ages.filter(a => a.sexe === 'F' && a.age >= b.lo && a.age <= b.hi).length,
+  }));
+  const totH = ages.filter(a => a.sexe === 'H').length;
+  const totF = ages.filter(a => a.sexe === 'F').length;
+  const moyH = totH ? ages.filter(a => a.sexe === 'H').reduce((s, a) => s + a.age, 0) / totH : 0;
+  const moyF = totF ? ages.filter(a => a.sexe === 'F').reduce((s, a) => s + a.age, 0) / totF : 0;
+  const maxC = Math.max(1, ...rows.map(r => Math.max(r.h, r.f)));
+
+  // Géométrie SVG : axe central, H à gauche (miroir), F à droite.
+  const W = 1000, cx = 500, lblW = 96, gap = 56;
+  const xMaxL = lblW + 10, xMaxR = W - 10;     // bornes des barres
+  const halfL = cx - gap / 2 - xMaxL;          // largeur dispo côté H
+  const halfR = xMaxR - (cx + gap / 2);        // largeur dispo côté F
+  const rowH = 30, top = 24, barH = 20;
+  const H = top + rows.length * rowH + 46;
+
+  const svgRows = rows.map((r, i) => {
+    const y = top + i * rowH;
+    const wH = (r.h / maxC) * halfL;
+    const wF = (r.f / maxC) * halfR;
+    const xH = cx - gap / 2 - wH;
+    const xF = cx + gap / 2;
+    const barHtml =
+      (r.h ? `<rect x="${xH.toFixed(1)}" y="${y}" width="${wH.toFixed(1)}" height="${barH}" class="gp-bar-h"/>
+              <text x="${(xH - 6).toFixed(1)}" y="${y + barH / 2 + 4}" text-anchor="end" class="gp-cnt">${r.h}</text>` : '')
+      + (r.f ? `<rect x="${xF.toFixed(1)}" y="${y}" width="${wF.toFixed(1)}" height="${barH}" class="gp-bar-f"/>
+              <text x="${(xF + wF + 6).toFixed(1)}" y="${y + barH / 2 + 4}" text-anchor="start" class="gp-cnt">${r.f}</text>` : '');
+    return `${barHtml}
+      <text x="${cx}" y="${y + barH / 2 + 4}" text-anchor="middle" class="gp-band">${r.lbl}</text>`;
+  }).join('');
+
+  const yBase = top + rows.length * rowH + 4;
+  host.innerHTML = `
+  <svg viewBox="0 0 ${W} ${H}" class="gaab-pyr-svg" preserveAspectRatio="xMidYMid meet">
+    <text x="${(xMaxL + (cx - gap / 2)) / 2}" y="16" text-anchor="middle" class="gp-head gp-h">Hommes (${totH})</text>
+    <text x="${((cx + gap / 2) + xMaxR) / 2}" y="16" text-anchor="middle" class="gp-head gp-f">Femmes (${totF})</text>
+    ${svgRows}
+    <line x1="${cx}" y1="${top - 4}" x2="${cx}" y2="${yBase}" class="gp-axis"/>
+    <text x="${(xMaxL + (cx - gap / 2)) / 2}" y="${yBase + 26}" text-anchor="middle" class="gp-moy">âge moyen ${moyH.toFixed(0)} ans</text>
+    <text x="${((cx + gap / 2) + xMaxR) / 2}" y="${yBase + 26}" text-anchor="middle" class="gp-moy">âge moyen ${moyF.toFixed(0)} ans</text>
+  </svg>`;
 }
 
 let _gaabEditMode = false;
