@@ -882,6 +882,7 @@ const CAT_CLASS = {
   "Prévoyance":             "cat-prev",
   "Chômage":                "cat-cho",
   "Allègement":             "cat-alleg",
+  "Aide à l'emploi":        "cat-alleg",
   // Suisse
   "1er pilier":             "cat-ss",
   "Assurance chômage":      "cat-cho",
@@ -951,10 +952,56 @@ window.togglePasDetail = function(expandId) {
   if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
 };
 
+function buildAidePosteFormulaContent(d) {
+  const forfaitAnnuel  = parseFloat(d.forfait_annuel);
+  const forfaitMensuel = parseFloat(d.forfait_mensuel);
+  const etp            = parseFloat(d.etp);
+  const etpRatio       = parseFloat(d.etp_ratio);
+  const frac           = parseFloat(d.absent_fraction);
+  const partAbsente    = parseFloat(d.part_absente);   // 30 % SMIC × part absente (pour 1 ETP)
+  const aide           = parseFloat(d.aide);
+
+  // Base mensuelle pour 1 ETP avant proratisation du temps de travail.
+  const partTravaillee = forfaitMensuel * (1 - frac);
+  const baseAvantEtp   = partTravaillee + partAbsente;
+  // Décote due au temps partiel (ETP < 100 %).
+  const decoteTp       = baseAvantEtp - aide;
+
+  const rows = [];
+  rows.push(`<tr><td>Forfait annuel (${esc(d.tranche)})</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(forfaitAnnuel)}</td></tr>`);
+  rows.push(`<tr><td>÷ 12 (versement mensuel)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(forfaitMensuel)}</td></tr>`);
+
+  if (frac > 0) {
+    rows.push(`<tr><td>dont part travaillée (× ${fmtPct(1 - frac)})</td><td class="fm-op">=</td><td class="fm-val">${fmt(partTravaillee)}</td></tr>`);
+    rows.push(`<tr><td>dont part en arrêt (30 % SMIC × ${fmtPct(frac)})</td><td class="fm-op">+</td><td class="fm-val">${fmt(partAbsente)}</td></tr>`);
+    rows.push(`<tr><td>Base mensuelle (pour 1 ETP)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(baseAvantEtp)}</td></tr>`);
+  }
+
+  rows.push(`<tr><td>Quotité de travail — ETP ${fmtPct(etp / 100)}</td><td class="fm-op">×</td><td class="fm-val c-taux">${etpRatio.toLocaleString('fr-FR')}</td></tr>`);
+  if (Math.abs(decoteTp) >= 0.005) {
+    rows.push(`<tr><td>Décote temps partiel (ETP &lt; 100 %)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(decoteTp)}</td></tr>`);
+  }
+  rows.push(`<tr class="fm-result fm-sep"><td>Aide au poste mensuelle</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(aide)}</td></tr>`);
+
+  return `
+    <div class="fm-generic">Forfait annuel  ÷ 12  ×  ETP</div>
+    <div class="fm-base-note">Aide forfaitaire de l'État (ASP) versée à l'employeur d'une entreprise adaptée
+    au titre d'un travailleur RQTH. Elle ne touche ni le brut ni le net du salarié&nbsp;:
+    elle <b>vient en déduction du coût employeur</b> (ligne patronale négative).</div>
+    <table class="fm-calc">${rows.join('')}</table>`;
+}
+
 function buildFormulaContent(c, type) {
   // Fillon : l'explication contient déjà la formule complète avec valeurs substituées.
   if (c.code === 'REDUCTION_FILLON') {
     return `<pre class="fm-fillon">${esc(c.explication)}</pre>`;
+  }
+
+  // Aide au poste (entreprise adaptée) : forfait annuel ÷ 12, décote temps partiel
+  // (ETP ≠ 100 %) et, le cas échéant, minoration des absences. L'aide est versée à
+  // l'employeur et vient en déduction du coût employeur.
+  if (c.code === 'AIDE_POSTE_EA' && c.aidePosteDetail) {
+    return buildAidePosteFormulaContent(c.aidePosteDetail);
   }
 
   const isSal     = type === 'sal';
@@ -1052,9 +1099,11 @@ window.showFormula = function(key) {
   const isSal = type === 'sal';
   const badge = c.code === 'REDUCTION_FILLON'
     ? '── Allègement patronal ──────────────────────'
-    : isSal
-      ? '── Part salariale ───────────────────────────'
-      : '── Part patronale ───────────────────────────';
+    : c.code === 'AIDE_POSTE_EA'
+      ? '── Aide de l\'État (ASP) — coût employeur ────'
+      : isSal
+        ? '── Part salariale ───────────────────────────'
+        : '── Part patronale ───────────────────────────';
   document.getElementById('fm-title').textContent = c.libelle;
   document.getElementById('fm-badge').textContent = badge;
   fmBody.className = `fm-type-${type}`;
@@ -1180,9 +1229,9 @@ function renderDesktop(b) {
     </div>`;
 
   // ── Table cotisations salariales ──
-  const cotAll      = cots.filter(c => c.categorie !== "Allègement" &&
+  const cotAll      = cots.filter(c => !["Allègement", "Aide à l'emploi"].includes(c.categorie) &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
-  const cotAlleg    = cots.filter(c => c.categorie === "Allègement");
+  const cotAlleg    = cots.filter(c => ["Allègement", "Aide à l'emploi"].includes(c.categorie));
   const totalPatBrut = cotAll.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
   function buildRows(list, offset) {
@@ -1395,10 +1444,10 @@ function renderMobile(b) {
   const totalSalSansIS = totalSal - isChAmt - itIrpefAmtMob - itBonusAmtMob;
 
   // CH_IS, IT_IRPEF, IT_BONUS_CUNEO retirés de la liste — affichés séparément
-  const cotAllMob    = cots.filter(c => c.categorie !== "Allègement" && c.code !== 'CH_IS'
+  const cotAllMob    = cots.filter(c => !["Allègement", "Aide à l'emploi"].includes(c.categorie) && c.code !== 'CH_IS'
     && c.code !== 'IT_IRPEF' && c.code !== 'IT_BONUS_CUNEO' &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
-  const cotAllegMob  = cots.filter(c => c.categorie === "Allègement");
+  const cotAllegMob  = cots.filter(c => ["Allègement", "Aide à l'emploi"].includes(c.categorie));
   const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const totalAlleg      = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
 
@@ -1547,8 +1596,22 @@ function renderMobile(b) {
 // ═════════════════════════════════════════════════════════════════════════════
 // RENDU GLOBAL (les deux vues)
 // ═════════════════════════════════════════════════════════════════════════════
+// Détache le bloc de détail « aide au poste » (préfixé par U+0001 côté backend)
+// du texte d'explication : `c.explication` redevient propre pour l'affichage,
+// et `c.aidePosteDetail` porte les valeurs chiffrées pour le modal de formule.
+function extractAidePosteDetail(b) {
+  (b.cotisations || []).forEach(c => {
+    const i = typeof c.explication === "string" ? c.explication.indexOf("\u0001") : -1;
+    if (i === -1) return;
+    const raw = c.explication.slice(i + 1);
+    c.explication = c.explication.slice(0, i).trim();
+    try { c.aidePosteDetail = JSON.parse(raw); } catch { /* bloc illisible : on l'ignore */ }
+  });
+}
+
 function renderAll(b) {
   DEVISE = b.devise || "EUR";
+  extractAidePosteDetail(b);
   renderDesktop(b);
   renderMobile(b);
   if (_dactyloMode) {
@@ -1581,6 +1644,8 @@ async function calculate(source) {
   const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
   const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
+  const isEA           = document.getElementById(isM ? "m-ea"          : "d-ea")?.checked ?? false;
+  const eaTranche      = document.getElementById(isM ? "m-ea-tranche"  : "d-ea-tranche")?.value || "m50";
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
   const isEspagne      = document.getElementById(isM ? "m-espagne"     : "d-espagne")?.checked ?? false;
   const isPortugal     = document.getElementById(isM ? "m-portugal"    : "d-portugal")?.checked ?? false;
@@ -1677,6 +1742,9 @@ async function calculate(source) {
         etp: parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100,
         alsace_moselle: alsaceMoselle,
         pays: paysEtranger ?? (isFPT ? "fonction_publique" : "france"),
+        // Entreprise adaptée : France privé uniquement (jamais FPT ni étranger).
+        entreprise_adaptee: isEA && !paysEtranger && !isFPT,
+        tranche_age_ea: (isEA && !paysEtranger && !isFPT) ? eaTranche : null,
         assujetti_is: assujettiIS,
         canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
         tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
@@ -1874,6 +1942,17 @@ window.onTogglePays = function(pays, checked) {
       if (am) am.checked = false;
     }
   });
+
+  // Entreprise adaptée : France privé uniquement (incompatible FPT/étranger).
+  // On décoche EA dès que France privé n'est plus le régime actif.
+  const isFrancePrive = document.getElementById('d-france')?.checked
+    && !document.getElementById('d-fpt')?.checked;
+  ['d', 'm'].forEach(p => {
+    const ea = document.getElementById(`${p}-ea`);
+    if (ea && !isFrancePrive) ea.checked = false;
+    const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
+    if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
+  });
   ['d-date', 'm-date'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1964,6 +2043,34 @@ window.onTogglePays = function(pays, checked) {
 
   // Nouveau pays → prochain basculement H/F tire depuis le bon pool
   _ecartTire = false;
+};
+
+// Entreprise adaptée (aide au poste) : régime France privé.
+// Incompatible avec la Fonction publique et tout pays étranger ;
+// cumulable avec Alsace-Moselle. Affiche le sélecteur de tranche d'âge.
+window.onToggleEA = function(prefix, checked) {
+  if (checked) {
+    // EA = France privé : décocher FPT et basculer sur France via onTogglePays
+    // (qui décoche aussi tout pays étranger et réaffiche le sous-menu France).
+    ['d', 'm'].forEach(p => {
+      const fpt = document.getElementById(`${p}-fpt`);
+      if (fpt) fpt.checked = false;
+      const fr = document.getElementById(`${p}-france`);
+      if (fr) fr.checked = true;
+    });
+    window.onTogglePays('france', true);
+    // onTogglePays ne touche pas EA en France privé : on garde la case cochée.
+    ['d', 'm'].forEach(p => {
+      const ea = document.getElementById(`${p}-ea`);
+      if (ea) ea.checked = true;
+    });
+  }
+  // Sélecteur de tranche d'âge visible uniquement quand EA est coché.
+  ['d', 'm'].forEach(p => {
+    const ea = document.getElementById(`${p}-ea`);
+    const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
+    if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
+  });
 };
 
 window.toggleDeKircheDetail = function(prefix, checked) {
@@ -2822,7 +2929,7 @@ function herculeInit() {
 
   // ── Info bulletin ─────────────────────────────────────────────────────────
   const info = document.getElementById('herc-bulletin-info');
-  if (info) info.innerHTML = `Bulletin de <strong>${b.salarie.prenom} ${b.salarie.nom}</strong> · Brut ${fmtE(brut)} · ${b.salarie.alsace_moselle ? 'Alsace-Moselle · ' : ''}${b.salarie.statut === 'cadre' ? 'Cadre' : 'Non-cadre'}`;
+  if (info) info.innerHTML = `Bulletin de <strong>${b.salarie.prenom} ${b.salarie.nom}</strong> · Brut ${fmtE(brut)} · ${b.salarie.alsace_moselle ? 'Alsace-Moselle · ' : ''}${b.salarie.entreprise_adaptee ? '♿ Entreprise adaptée · ' : ''}${b.salarie.statut === 'cadre' ? 'Cadre' : 'Non-cadre'}`;
 
   // ── Écriture 1 : Constatation de la rémunération ──────────────────────────
   const totalRetenues = ss431_sal + csg4378_sal + cho4379_sal + rcc437_sal + pas;

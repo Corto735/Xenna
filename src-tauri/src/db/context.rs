@@ -46,6 +46,11 @@ pub struct ContextPaie {
     // Map code_cotisation → (taux_salarial, taux_patronal) en Decimal.
     // Les codes absents retournent Decimal::ZERO via taux_sal/taux_pat.
     taux: HashMap<String, (Decimal, Decimal)>,
+
+    // Map code → valeur d'un plafond/référence (PMSS, SMIC, aides EA…) valide à
+    // la date. Permet de lire des montants ponctuels via plafond() sans requête
+    // dédiée. Les codes absents retournent None.
+    plafonds: HashMap<String, Decimal>,
 }
 
 impl ContextPaie {
@@ -96,6 +101,24 @@ impl ContextPaie {
             taux.insert(code, (sal, pat));
         }
 
+        // Tous les plafonds/références valides à la date (PMSS, SMIC, aides EA…),
+        // chargés en une passe pour lecture ponctuelle via plafond().
+        let plafond_rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT code, valeur FROM plafond_reference
+             WHERE date_debut <= ? AND (date_fin IS NULL OR date_fin > ?)",
+        )
+        .bind(&d).bind(&d)
+        .fetch_all(pool)
+        .await
+        .context("Erreur chargement plafonds")?;
+
+        let mut plafonds = HashMap::with_capacity(plafond_rows.len());
+        for (code, val) in plafond_rows {
+            if let Ok(v) = val.parse::<Decimal>() {
+                plafonds.insert(code, v);
+            }
+        }
+
         // fetch_optional : Fillon peut ne pas exister pour la date (avant 2015).
         // Toutes les colonnes Fillon sont NULLables → Option<Option<String>>.
         // tmin et puissance sont NULL pour la formule 2015-2018 (linéaire),
@@ -130,6 +153,7 @@ impl ContextPaie {
             pmss: pmss_str.parse().context("PMSS non parseable")?,
             smic_mensuel: smic_str.parse().context("SMIC non parseable")?,
             taux,
+            plafonds,
             fillon_coeff_max,
             fillon_seuil_smic,
             fillon_tmin,
@@ -146,6 +170,12 @@ impl ContextPaie {
 
     pub fn taux_pat(&self, code: &str) -> Decimal {
         self.taux.get(code).map(|(_, p)| *p).unwrap_or(Decimal::ZERO)
+    }
+
+    /// Valeur d'un plafond/référence (PMSS, SMIC, aide EA…) valide à la date,
+    /// ou None si le code n'existe pas pour cette date (paramètre non applicable).
+    pub fn plafond(&self, code: &str) -> Option<Decimal> {
+        self.plafonds.get(code).copied()
     }
 
     // ── Traduction des libellés / explications de cotisation ──────────────────

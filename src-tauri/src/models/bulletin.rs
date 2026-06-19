@@ -186,6 +186,14 @@ pub struct Salarie {
     /// Sert à proratiser le SMIC dans la formule Fillon (§670 BOSS / CSS art. L241-13).
     #[serde(default = "etp_default")]
     pub etp: f64,
+    /// Vrai si l'employeur est une entreprise adaptée (EA) → aide au poste versée
+    /// par l'État (ASP) au titre de l'emploi d'un travailleur handicapé (RQTH).
+    /// France privé uniquement ; cumulable avec Alsace-Moselle, incompatible FPT.
+    #[serde(default)]
+    pub entreprise_adaptee: bool,
+    /// Tranche d'âge pour l'aide au poste EA : "m50" | "50_55" | "56p". Défaut "m50".
+    #[serde(default)]
+    pub tranche_age_ea: Option<String>,
 }
 
 fn etp_default() -> f64 { 100.0 }

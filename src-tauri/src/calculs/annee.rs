@@ -69,6 +69,8 @@ pub async fn generer_annee(
             kirchenmitglied: None,
             region_be: None,
             etp,
+            entreprise_adaptee: false,
+            tranche_age_ea: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx, None);
 

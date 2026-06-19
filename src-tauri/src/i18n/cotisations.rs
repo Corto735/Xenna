@@ -124,6 +124,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Reducción general de las cotizaciones patronales",
             _ => return None,
         },
+        "AIDE_POSTE_EA" => match lang {
+            "en" => "Employment support grant — adapted enterprise (State/ASP)",
+            "de" => "Beschäftigungszuschuss — angepasstes Unternehmen (Staat/ASP)",
+            "nl" => "Tewerkstellingssteun — aangepaste onderneming (Staat/ASP)",
+            "it" => "Aiuto al posto di lavoro — impresa adattata (Stato/ASP)",
+            "es" => "Ayuda al puesto — empresa adaptada (Estado/ASP)",
+            _ => return None,
+        },
         _ => return None,
     })
 }
@@ -642,6 +650,44 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "nl" => "\n⚠ Deeltijds {etp} % — geprorateerd plafond: {pmss} € (verlaagd plafond, CSS art. L242-1)",
             "it" => "\n⚠ Tempo parziale {etp} % — massimale proporzionato: {pmss} € (massimale ridotto, CSS art. L242-1)",
             "es" => "\n⚠ Tiempo parcial {etp} % — tope prorrateado: {pmss} € (tope reducido, CSS art. L242-1)",
+            _ => return None,
+        },
+        "AIDE_POSTE_EA" => match lang {
+            "en" => "The employment support grant is State financial aid, paid to the employer by \
+                the Agency for Services and Payment (ASP), for employing a disabled worker in an \
+                adapted enterprise. Annual lump sum per full-time equivalent, paid monthly and \
+                prorated to working time. Amount depends on the worker's age bracket. In case of \
+                sick leave or accident, the absent share is reduced to 30 % of the gross hourly \
+                minimum wage. This aid does not change the employee's gross or net pay: it reduces \
+                the real cost borne by the employer.",
+            "de" => "Der Beschäftigungszuschuss ist eine staatliche Finanzhilfe, die dem Arbeitgeber \
+                von der Agentur für Dienstleistungen und Zahlungen (ASP) für die Beschäftigung eines \
+                schwerbehinderten Arbeitnehmers in einem angepassten Unternehmen gezahlt wird. \
+                Jährlicher Pauschalbetrag je Vollzeitäquivalent, monatlich gezahlt und nach der \
+                Arbeitszeit anteilig berechnet. Höhe je nach Altersgruppe. Bei Krankheit oder Unfall \
+                wird der Abwesenheitsanteil auf 30 % des Brutto-Mindeststundenlohns gekürzt. Diese \
+                Hilfe ändert weder Brutto- noch Nettolohn: sie senkt die tatsächlichen Arbeitgeberkosten.",
+            "nl" => "De tewerkstellingssteun is een financiële steun van de Staat, betaald aan de \
+                werkgever door het Agentschap voor Diensten en Betalingen (ASP), voor het in dienst \
+                nemen van een werknemer met een handicap in een aangepaste onderneming. Jaarlijks \
+                forfait per voltijdequivalent, maandelijks uitbetaald en geproratiseerd naar arbeidstijd. \
+                Bedrag afhankelijk van de leeftijdscategorie. Bij ziekte of ongeval wordt het afwezige \
+                deel verlaagd tot 30 % van het bruto minimumuurloon. Deze steun wijzigt het bruto- noch \
+                het nettoloon: ze verlaagt de werkelijke kosten voor de werkgever.",
+            "it" => "L'aiuto al posto di lavoro è un sostegno finanziario dello Stato, versato al \
+                datore di lavoro dall'Agenzia per i servizi e i pagamenti (ASP), per l'assunzione di \
+                un lavoratore disabile in un'impresa adattata. Importo forfettario annuo per equivalente \
+                a tempo pieno, erogato mensilmente e proporzionato all'orario di lavoro. Importo secondo \
+                la fascia di età. In caso di malattia o infortunio, la quota di assenza è ridotta al 30 % \
+                del salario minimo orario lordo. Questo aiuto non modifica né il lordo né il netto del \
+                dipendente: riduce il costo reale a carico del datore di lavoro.",
+            "es" => "La ayuda al puesto es una ayuda financiera del Estado, abonada al empleador por \
+                la Agencia de Servicios y Pagos (ASP), por emplear a un trabajador con discapacidad en \
+                una empresa adaptada. Importe anual a tanto alzado por equivalente a tiempo completo, \
+                pagado mensualmente y prorrateado al tiempo de trabajo. Importe según el tramo de edad. \
+                En caso de baja por enfermedad o accidente, la parte ausente se reduce al 30 % del \
+                salario mínimo bruto por hora. Esta ayuda no modifica ni el bruto ni el neto del \
+                trabajador: reduce el coste real soportado por el empleador.",
             _ => return None,
         },
         _ => return None,

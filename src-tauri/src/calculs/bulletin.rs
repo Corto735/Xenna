@@ -115,6 +115,18 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         cotisations.push(fillon);
     }
 
+    // Entreprise adaptée : aide au poste (État/ASP) au titre d'un salarié RQTH.
+    // Aide versée à l'employeur → ligne patronale négative, n'affecte pas le net.
+    if salarie.entreprise_adaptee {
+        let absent_fraction = match &absence_res {
+            Some(r) if base_ref > Decimal::ZERO => (r.retenue / base_ref).min(Decimal::ONE),
+            _ => Decimal::ZERO,
+        };
+        if let Some(aide) = super::ea::aide_poste_ea(&salarie, base_ref, absent_fraction, ctx) {
+            cotisations.push(aide);
+        }
+    }
+
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
 
