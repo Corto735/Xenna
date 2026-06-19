@@ -62,6 +62,7 @@ pub fn generer_bulletin_nl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             cout_total_employeur: brut,
             devise: "EUR".into(),
             absence: None,
+            heures_sup: None,
             salarie,
         };
     };
@@ -92,6 +93,7 @@ pub fn generer_bulletin_nl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),
         absence: None,
+        heures_sup: None,
         salarie,
     }
 }

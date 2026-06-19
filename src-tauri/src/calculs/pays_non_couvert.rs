@@ -27,6 +27,7 @@ pub fn bulletin_non_couvert(salarie: Salarie, brut: Decimal, devise: &str, messa
         cout_total_employeur: brut,
         devise: devise.into(),
         absence: None,
+        heures_sup: None,
         salarie,
     }
 }

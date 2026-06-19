@@ -88,11 +88,18 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     let base_ref = salarie.salaire_brut;
     let absence_res = absence.and_then(|a| super::absence::compute_absence(base_ref, a, ctx));
 
-    // Assiette de cotisations du mois : brut plein − retenue + maintien − IJSS brutes.
+    // Heures supplémentaires / complémentaires : majoration ajoutée au brut, puis
+    // réduction salariale, déduction patronale et exonération d'impôt. Le gain majoré
+    // s'ajoute par-dessus le brut (éventuellement déjà ajusté par l'absence).
+    let hs = super::heures_sup::calculer(&salarie, ctx);
+    let gain_hs_total = hs.as_ref().map(|h| h.gain_total).unwrap_or(Decimal::ZERO);
+
+    // Assiette de cotisations du mois : brut plein − retenue + maintien − IJSS brutes,
+    // + majoration des heures supp/compl.
     // Toutes les cotisations (Fillon, tranches, plafonds) tournent sur cette assiette.
     let brut = match &absence_res {
-        Some(r) => (base_ref - r.retenue + r.maintien - r.ijss_brut).max(Decimal::ZERO),
-        None    => base_ref,
+        Some(r) => (base_ref - r.retenue + r.maintien - r.ijss_brut).max(Decimal::ZERO) + gain_hs_total,
+        None    => base_ref + gain_hs_total,
     };
     let mut cotisations = Vec::new();
 
@@ -127,6 +134,12 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         }
     }
 
+    // Lignes heures supp/compl : réduction salariale (négatif salarial) + déduction
+    // forfaitaire patronale (négatif patronal). Poussées avant les totaux.
+    if let Some(h) = &hs {
+        cotisations.extend(h.lignes.iter().cloned());
+    }
+
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
 
@@ -137,8 +150,19 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         .map(|c| c.montant_sal)
         .sum();
 
-    let net_imposable = (brut - total_sal + csg_non_ded_et_crds).round_dp(2);
+    let mut net_imposable = (brut - total_sal + csg_non_ded_et_crds).round_dp(2);
     let net_a_payer   = (brut - total_sal).round_dp(2);
+
+    // Exonération d'impôt sur le revenu des HS/HC : retranchée du net imposable
+    // (base PAS), plafonnée à l'enveloppe annuelle (mois isolé = plafond plein).
+    let heures_sup = hs.map(|h| {
+        let mut r = h.result;
+        let exo = super::heures_sup::net_imposable_exo(h.gain_total, net_imposable, brut, ctx)
+            .min(r.exo_plafond);
+        net_imposable = (net_imposable - exo).round_dp(2);
+        r.exo_fiscale = exo;
+        r
+    });
 
     Bulletin {
         cotisations,
@@ -148,6 +172,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),
         absence: absence_res,
+        heures_sup,
         salarie,
     }
 }

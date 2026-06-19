@@ -194,6 +194,22 @@ pub struct Salarie {
     /// Tranche d'âge pour l'aide au poste EA : "m50" | "50_55" | "56p". Défaut "m50".
     #[serde(default)]
     pub tranche_age_ea: Option<String>,
+    /// Nombre d'heures supplémentaires du mois (temps plein). Majoration légale :
+    /// 8 premières à +25 %, au-delà +50 % (seuil mensuel forfaitaire dans le simulateur).
+    #[serde(default)]
+    pub heures_supp: f64,
+    /// Nombre d'heures complémentaires du mois (temps partiel). +10 % dans la limite
+    /// du dixième des heures contractuelles, +25 % au-delà.
+    #[serde(default)]
+    pub heures_comp: f64,
+    /// Salaire de base mensuel (hors primes/HS), sert à dériver le taux horaire
+    /// = salaire_base / (151,67 × ETP/100). TEXT pour précision ; fallback salaire_brut si absent.
+    #[serde(default)]
+    pub salaire_base: Option<String>,
+    /// Effectif de l'entreprise pour la déduction forfaitaire patronale HS :
+    /// "moins20" | "20_249" | "250p". Défaut "moins20".
+    #[serde(default)]
+    pub effectif: Option<String>,
 }
 
 fn etp_default() -> f64 { 100.0 }
@@ -308,4 +324,32 @@ pub struct Bulletin {
     /// Absent du JSON sinon. France uniquement pour l'instant.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub absence: Option<AbsenceResult>,
+    /// Détail heures supplémentaires/complémentaires (gains majorés + exonérations)
+    /// si des heures sont saisies. Absent du JSON sinon. France uniquement.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heures_sup: Option<HeuresSupResult>,
+}
+
+/// Résultat du calcul des heures supplémentaires/complémentaires (gains majorés
+/// par tranche + exonérations), renvoyé dans le Bulletin pour affichage.
+/// Voir crate::calculs::heures_sup.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeuresSupResult {
+    #[serde(with = "rust_decimal::serde::str")] pub taux_horaire: Decimal,
+    /// Heures supp à +25 % (≤ 8) et leur gain brut.
+    pub h_supp_25: f64,
+    pub h_supp_50: f64,
+    #[serde(with = "rust_decimal::serde::str")] pub gain_hs: Decimal,
+    /// Heures complémentaires à +10 % (≤ 1/10 contractuel) et à +25 %.
+    pub h_comp_10: f64,
+    pub h_comp_25: f64,
+    #[serde(with = "rust_decimal::serde::str")] pub gain_hc: Decimal,
+    /// Réduction de cotisations salariales (montant positif retranché du net salarial).
+    #[serde(with = "rust_decimal::serde::str")] pub reduction_salariale: Decimal,
+    /// Déduction forfaitaire patronale (montant positif retranché du coût employeur).
+    #[serde(with = "rust_decimal::serde::str")] pub deduction_patronale: Decimal,
+    /// Net imposable exonéré d'impôt sur le revenu au titre des HS/HC.
+    #[serde(with = "rust_decimal::serde::str")] pub exo_fiscale: Decimal,
+    /// Plafond annuel d'exonération applicable à la date (info).
+    #[serde(with = "rust_decimal::serde::str")] pub exo_plafond: Decimal,
 }

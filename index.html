@@ -562,6 +562,10 @@
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
+    .rem-h-hint {
+      font-size: 0.6rem; color: var(--accent, #8aa); white-space: nowrap;
+      opacity: 0.9; min-width: 64px; text-align: right;
+    }
     .btn-rm-rem {
       background: transparent; border: none; color: var(--red);
       cursor: pointer; font-size: 0.9rem; padding: 0 0.2rem;
@@ -1993,7 +1997,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.4</div>
+      <div class="banner-sub">// simulateur pédagogique · bulletin de paye français · v0.1.5</div>
     </div>
 
     <!-- Burger menu -->
@@ -2488,6 +2492,14 @@
             <input type="number" id="d-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('d','mois')" />
             <span class="duree-unit">h</span>
           </div>
+          <div class="duree-row">
+            <label title="Détermine la déduction forfaitaire patronale sur les heures supplémentaires">Effectif</label>
+            <select id="d-effectif" onchange="syncParam('effectif', this.value); _triggerRecalculate()" class="etp-sel" style="flex:1">
+              <option value="moins20">&lt; 20 salariés</option>
+              <option value="20_249">20 à 249</option>
+              <option value="250p">≥ 250</option>
+            </select>
+          </div>
           <label class="chk-apply-brut">
             <input type="checkbox" id="d-apply-brut-chk" onchange="onApplyBrutChk('d')" />
             <span>APPLIQUER</span>
@@ -2898,6 +2910,14 @@
               <label>Heures / mois</label>
               <input type="number" id="m-h-mois" value="151.67" min="0" step="1" oninput="onDureeChange('m','mois')" />
               <span class="duree-unit">h</span>
+            </div>
+            <div class="duree-row">
+              <label title="Détermine la déduction forfaitaire patronale sur les heures supplémentaires">Effectif</label>
+              <select id="m-effectif" onchange="syncParam('effectif', this.value); _triggerRecalculate()" class="etp-sel" style="flex:1">
+                <option value="moins20">&lt; 20 salariés</option>
+                <option value="20_249">20 à 249</option>
+                <option value="250p">≥ 250</option>
+              </select>
             </div>
             <label class="chk-apply-brut" style="grid-column:1/-1">
               <input type="checkbox" id="m-apply-brut-chk" onchange="onApplyBrutChk('m')" />

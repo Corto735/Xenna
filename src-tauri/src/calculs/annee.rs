@@ -71,6 +71,12 @@ pub async fn generer_annee(
             etp,
             entreprise_adaptee: false,
             tranche_age_ea: None,
+            // La projection annuelle modélise le salaire de base seul (comme les
+            // primes et absences, non reportées) → pas d'heures supp/compl ici.
+            heures_supp: 0.0,
+            heures_comp: 0.0,
+            salaire_base: None,
+            effectif: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx, None);
 

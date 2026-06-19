@@ -883,6 +883,7 @@ const CAT_CLASS = {
   "Chômage":                "cat-cho",
   "Allègement":             "cat-alleg",
   "Aide à l'emploi":        "cat-alleg",
+  "Heures supplémentaires": "cat-alleg",
   // Suisse
   "1er pilier":             "cat-ss",
   "Assurance chômage":      "cat-cho",
@@ -991,6 +992,43 @@ function buildAidePosteFormulaContent(d) {
     <table class="fm-calc">${rows.join('')}</table>`;
 }
 
+// Réduction de cotisations salariales sur heures supp/compl : gain majoré × taux
+// (somme vieillesse + retraite compl., plafonné à 11,31 %).
+function buildReducSalHsFormula(d) {
+  const gain    = parseFloat(d.gain_total);
+  const taux    = parseFloat(d.taux_reduc);
+  const plafond = parseFloat(d.plafond_taux);
+  const reduc   = parseFloat(d.reduction);
+  const plafonne = Math.abs(taux - plafond) < 1e-6;
+  const rows = [];
+  rows.push(`<tr><td>Rémunération HS/HC majorée</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(gain)}</td></tr>`);
+  rows.push(`<tr><td>Taux (vieillesse + retraite compl.${plafonne ? ', plafonné' : ''})</td><td class="fm-op">×</td><td class="fm-val c-taux">${fmtPct(taux)}</td></tr>`);
+  rows.push(`<tr class="fm-result fm-sep"><td>Réduction salariale</td><td class="fm-op">=</td><td class="fm-val c-alleg">+ ${fmt(reduc)}</td></tr>`);
+  return `
+    <div class="fm-generic">Rémunération HS/HC  ×  min(taux vieillesse, ${fmtPct(plafond)})</div>
+    <div class="fm-base-note">Réduction des cotisations salariales d'assurance vieillesse sur les heures
+    supplémentaires/complémentaires (loi du 24/12/2018). Elle <b>vient en déduction des cotisations
+    salariales</b> : elle augmente le net à payer, sans changer le brut.</div>
+    <table class="fm-calc">${rows.join('')}</table>`;
+}
+
+// Déduction forfaitaire patronale : nombre d'heures supp × tarif (€/h selon effectif).
+function buildDfpHsFormula(d) {
+  const heures = parseFloat(d.heures_supp);
+  const tarif  = parseFloat(d.tarif);
+  const ded    = parseFloat(d.deduction);
+  const rows = [];
+  rows.push(`<tr><td>Heures supplémentaires</td><td class="fm-op">=</td><td class="fm-val c-base">${heures.toLocaleString('fr-FR')} h</td></tr>`);
+  rows.push(`<tr><td>Tarif forfaitaire (effectif)</td><td class="fm-op">×</td><td class="fm-val c-taux">${fmt(tarif)} / h</td></tr>`);
+  rows.push(`<tr class="fm-result fm-sep"><td>Déduction patronale</td><td class="fm-op">=</td><td class="fm-val c-alleg">− ${fmt(ded)}</td></tr>`);
+  return `
+    <div class="fm-generic">Heures supp.  ×  tarif (€/h)</div>
+    <div class="fm-base-note">Déduction forfaitaire de cotisations patronales par heure supplémentaire
+    (1,50 € si &lt; 20 salariés, 0,50 € à partir de 20). Elle <b>réduit le coût employeur</b>,
+    sans effet sur le net du salarié.</div>
+    <table class="fm-calc">${rows.join('')}</table>`;
+}
+
 function buildFormulaContent(c, type) {
   // Fillon : l'explication contient déjà la formule complète avec valeurs substituées.
   if (c.code === 'REDUCTION_FILLON') {
@@ -1002,6 +1040,15 @@ function buildFormulaContent(c, type) {
   // l'employeur et vient en déduction du coût employeur.
   if (c.code === 'AIDE_POSTE_EA' && c.aidePosteDetail) {
     return buildAidePosteFormulaContent(c.aidePosteDetail);
+  }
+
+  // Heures supplémentaires : réduction de cotisations salariales (gain × taux ≤ 11,31 %)
+  // et déduction forfaitaire patronale (heures × tarif).
+  if (c.code === 'REDUC_SAL_HS' && c.formulaDetail) {
+    return buildReducSalHsFormula(c.formulaDetail);
+  }
+  if (c.code === 'DFP_HS' && c.formulaDetail) {
+    return buildDfpHsFormula(c.formulaDetail);
   }
 
   const isSal     = type === 'sal';
@@ -1101,9 +1148,13 @@ window.showFormula = function(key) {
     ? '── Allègement patronal ──────────────────────'
     : c.code === 'AIDE_POSTE_EA'
       ? '── Aide de l\'État (ASP) — coût employeur ────'
-      : isSal
-        ? '── Part salariale ───────────────────────────'
-        : '── Part patronale ───────────────────────────';
+      : c.code === 'REDUC_SAL_HS'
+        ? '── Exonération salariale — heures supp. ─────'
+        : c.code === 'DFP_HS'
+          ? '── Déduction patronale — heures supp. ───────'
+          : isSal
+            ? '── Part salariale ───────────────────────────'
+            : '── Part patronale ───────────────────────────';
   document.getElementById('fm-title').textContent = c.libelle;
   document.getElementById('fm-badge').textContent = badge;
   fmBody.className = `fm-type-${type}`;
@@ -1200,6 +1251,10 @@ function renderDesktop(b) {
             <span>Bonus cuneo fiscale</span>
             <span style="color:var(--green)">+ ${fmt(Math.abs(itBonusAmt))}</span>
           </div>` : ''}
+          ${(b.heures_sup && parseFloat(b.heures_sup.exo_fiscale) > 0) ? `<div class="sb-ded-row" style="opacity:0.85" title="Heures supp/compl exonérées d'impôt sur le revenu — plafond ${fmt(b.heures_sup.exo_plafond)} / an">
+            <span>Dont HS/HC exonérées d'impôt</span>
+            <span style="color:var(--green)">base PAS − ${fmt(b.heures_sup.exo_fiscale)}</span>
+          </div>` : ''}
           ${!skipPas ? `<div class="sb-ded-row">
             <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
             <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('PAS')">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
@@ -1229,10 +1284,13 @@ function renderDesktop(b) {
     </div>`;
 
   // ── Table cotisations salariales ──
-  const cotAll      = cots.filter(c => !["Allègement", "Aide à l'emploi"].includes(c.categorie) &&
+  const cotAll      = cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
-  const cotAlleg    = cots.filter(c => ["Allègement", "Aide à l'emploi"].includes(c.categorie));
+  const cotAlleg    = cots.filter(c => ["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie));
   const totalPatBrut = cotAll.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
+  // Total salarial des seules cotisations affichées dans ce tableau (la réduction
+  // salariale HS figure dans la section allègements, pas ici).
+  const totalSalCot  = cotAll.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
 
   function buildRows(list, offset) {
     return list.map((c, i) => {
@@ -1302,7 +1360,7 @@ function renderDesktop(b) {
         ${buildRows(cotAll, 0)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
-          <td class="r c-sal">= − ${fmt(totalSal)}</td>
+          <td class="r c-sal">= − ${fmt(totalSalCot)}</td>
           <td></td>
           <td class="r c-pat">= − ${fmt(totalPatBrut)}</td>
         </tr>
@@ -1314,19 +1372,25 @@ function renderDesktop(b) {
     &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données sans le moindre état d'âme
   </div>`;
 
-  // Section allègements (Fillon, etc.) — montants négatifs affichés en économie
-  const totalAlleg = cotAlleg.reduce((s, c) => s + parseFloat(c.montant_pat), 0); // négatif
+  // Section allègements/exonérations — montants négatifs affichés en économie.
+  // Une ligne peut être patronale (Fillon, EA, DFP) ou salariale (réduction HS).
+  const totalAllegPat = cotAlleg.reduce((s, c) => s + parseFloat(c.montant_pat), 0); // négatif
+  const totalAllegSal = cotAlleg.reduce((s, c) => s + parseFloat(c.montant_sal), 0); // négatif
   const tableAlleg = cotAlleg.length === 0 ? "" : `
-    <div class="tbl-section-head">── ALLÈGEMENTS PATRONAUX ───────────────────────────────────────────</div>
+    <div class="tbl-section-head">── ALLÈGEMENTS & EXONÉRATIONS ──────────────────────────────────────</div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
         ${cotAlleg.map((c, i) => {
           const idx    = cotAll.length + i;
           const catCls = CAT_CLASS[c.categorie] || "cat-alleg";
-          const montant = Math.abs(parseFloat(c.montant_pat));
+          const isSalSide = Math.abs(parseFloat(c.montant_sal)) > 0; // réduction salariale
+          const montant = Math.abs(parseFloat(isSalSide ? c.montant_sal : c.montant_pat));
+          const taux    = Math.abs(parseFloat(isSalSide ? c.taux_sal : c.taux_pat));
           const keyAlleg = `${c.code}_alleg`;
           _fmStore[keyAlleg] = { c, type: 'alleg' };
+          const cellMontant = `<td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>`;
+          const cellTaux = `<td class="r c-alleg">${fmtPct(taux)}</td>`;
           return `
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>
@@ -1335,10 +1399,8 @@ function renderDesktop(b) {
                 <span class="trad-skip">${c.libelle}</span>
               </td>
               <td class="r">${fmt(c.base)}</td>
-              <td class="r"></td>
-              <td class="r"></td>
-              <td class="r c-alleg">${fmtPct(Math.abs(parseFloat(c.taux_pat)))}</td>
-              <td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>
+              ${isSalSide ? `${cellTaux}${cellMontant}<td class="r"></td><td class="r"></td>`
+                          : `<td class="r"></td><td class="r"></td>${cellTaux}${cellMontant}`}
             </tr>
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
@@ -1350,8 +1412,10 @@ function renderDesktop(b) {
             </tr>`;
         }).join("")}
         <tr class="tbl-total">
-          <td colspan="5">TOTAL ALLÈGEMENTS PATRONAUX</td>
-          <td class="r c-alleg">− ${fmt(Math.abs(totalAlleg))}</td>
+          <td colspan="3">TOTAL ALLÈGEMENTS & EXONÉRATIONS</td>
+          <td class="r c-alleg">${totalAllegSal < 0 ? '+ ' + fmt(Math.abs(totalAllegSal)) : ''}</td>
+          <td></td>
+          <td class="r c-alleg">${totalAllegPat < 0 ? '− ' + fmt(Math.abs(totalAllegPat)) : ''}</td>
         </tr>
       </tbody>
     </table>`;
@@ -1444,12 +1508,15 @@ function renderMobile(b) {
   const totalSalSansIS = totalSal - isChAmt - itIrpefAmtMob - itBonusAmtMob;
 
   // CH_IS, IT_IRPEF, IT_BONUS_CUNEO retirés de la liste — affichés séparément
-  const cotAllMob    = cots.filter(c => !["Allègement", "Aide à l'emploi"].includes(c.categorie) && c.code !== 'CH_IS'
+  const cotAllMob    = cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) && c.code !== 'CH_IS'
     && c.code !== 'IT_IRPEF' && c.code !== 'IT_BONUS_CUNEO' &&
     (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
-  const cotAllegMob  = cots.filter(c => ["Allègement", "Aide à l'emploi"].includes(c.categorie));
+  const cotAllegMob  = cots.filter(c => ["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie));
   const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const totalAlleg      = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
+  // Total salarial des seules lignes affichées (la réduction HS est en allègements).
+  const totalSalCotMob  = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
+  const totalAlleg      = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0); // négatif
+  const totalAllegSalMob = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_sal), 0); // négatif
 
   const cotLines = cotAllMob.map((c, i) => {
     const hasSal   = parseFloat(c.montant_sal) > 0;
@@ -1487,7 +1554,13 @@ function renderMobile(b) {
   }).join('');
 
   const cotAllegLines = cotAllegMob
-    .map((c, i) => buildMobCotRow(c, `${c.code}_alleg`, `− ${fmt(Math.abs(parseFloat(c.montant_pat)))}`, 'c-alleg', 'alleg', i))
+    .map((c, i) => {
+      // Réduction salariale (HS) = crédit côté salarié (+) ; autres = économie patronale (−).
+      const isSalSide = Math.abs(parseFloat(c.montant_sal)) > 0;
+      const montant = Math.abs(parseFloat(isSalSide ? c.montant_sal : c.montant_pat));
+      const mHtml = `${isSalSide ? '+' : '−'} ${fmt(montant)}`;
+      return buildMobCotRow(c, `${c.code}_alleg`, mHtml, 'c-alleg', isSalSide ? 'sal' : 'alleg', i);
+    })
     .join('');
 
   el.innerHTML = `
@@ -1510,7 +1583,7 @@ function renderMobile(b) {
       ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL cotisations salariales</span>
-        <span class="mob-val c-yellow">− ${fmt(totalSalSansIS)}</span>
+        <span class="mob-val c-yellow">− ${fmt(totalSalCotMob)}</span>
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
@@ -1532,6 +1605,10 @@ function renderMobile(b) {
       ${!skipPas ? `<div class="mob-row net-row">
         <span class="mob-lbl">NET IMPOSABLE</span>
         <span class="mob-val c-green">${fmt(b.net_imposable)}</span>
+      </div>` : ''}
+      ${(b.heures_sup && parseFloat(b.heures_sup.exo_fiscale) > 0) ? `<div class="mob-row" style="opacity:0.85">
+        <span class="mob-lbl">dont HS/HC exonérées d'impôt (plafond ${fmt(b.heures_sup.exo_plafond)}/an)</span>
+        <span class="mob-val c-green">− ${fmt(b.heures_sup.exo_fiscale)}</span>
       </div>` : ''}
 
       <!-- PAS (France / FPT) -->
@@ -1575,14 +1652,18 @@ function renderMobile(b) {
         <span class="mob-val c-green">${fmt(netPayer)}</span>
       </div>
 
-      <!-- Allègements -->
+      <!-- Allègements & exonérations -->
       ${cotAllegLines.length ? `
-      <div class="mob-row section"><span class="mob-lbl">── ALLÈGEMENTS PATRONAUX ──</span><span></span></div>
+      <div class="mob-row section"><span class="mob-lbl">── ALLÈGEMENTS & EXONÉRATIONS ──</span><span></span></div>
       ${cotAllegLines}
-      <div class="mob-row subtot">
-        <span class="mob-lbl">TOTAL allègements</span>
+      ${totalAllegSalMob < 0 ? `<div class="mob-row subtot">
+        <span class="mob-lbl">dont réduction salariale (→ net)</span>
+        <span class="mob-val c-alleg">+ ${fmt(Math.abs(totalAllegSalMob))}</span>
+      </div>` : ''}
+      ${totalAlleg < 0 ? `<div class="mob-row subtot">
+        <span class="mob-lbl">TOTAL allègements patronaux</span>
         <span class="mob-val c-alleg">− ${fmt(Math.abs(totalAlleg))}</span>
-      </div>` : ""}
+      </div>` : ''}` : ""}
 
       <!-- Super brut -->
       <div class="mob-row superbrut">
@@ -1605,7 +1686,11 @@ function extractAidePosteDetail(b) {
     if (i === -1) return;
     const raw = c.explication.slice(i + 1);
     c.explication = c.explication.slice(0, i).trim();
-    try { c.aidePosteDetail = JSON.parse(raw); } catch { /* bloc illisible : on l'ignore */ }
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch { /* bloc illisible : on l'ignore */ }
+    if (!parsed) return;
+    if (c.code === 'AIDE_POSTE_EA') c.aidePosteDetail = parsed;
+    else c.formulaDetail = parsed; // réduction salariale HS, DFP…
   });
 }
 
@@ -1690,6 +1775,8 @@ async function calculate(source) {
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
+  const effectif       = document.getElementById(isM ? "m-effectif"     : "d-effectif")?.value || "moins20";
+  const remHeures      = getRemHeures();
 
   // ── Validation côté JS ────────────────────────────────────────────────────
   // Si brut est vide ou non numérique, input[type="number"] retourne "".
@@ -1745,6 +1832,12 @@ async function calculate(source) {
         // Entreprise adaptée : France privé uniquement (jamais FPT ni étranger).
         entreprise_adaptee: isEA && !paysEtranger && !isFPT,
         tranche_age_ea: (isEA && !paysEtranger && !isFPT) ? eaTranche : null,
+        // Heures supplémentaires/complémentaires : France privé uniquement. Le brut
+        // de base (salaire_base) sert à dériver le taux horaire côté backend.
+        salaire_base: _remBase.toString(),
+        heures_supp: (!paysEtranger && !isFPT) ? remHeures.supp : 0,
+        heures_comp: (!paysEtranger && !isFPT) ? remHeures.comp : 0,
+        effectif,
         assujetti_is: assujettiIS,
         canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
         tarif_is: (isSuisse && assujettiIS && tarifIs) ? tarifIs : null,
@@ -2169,6 +2262,18 @@ window.onDureeChange = function(prefix, field) {
     });
     _etpPrev = etp;
   }
+
+  // Les heures supp (temps plein) et complémentaires (temps partiel) sont
+  // mutuellement exclusives : on bascule le type des lignes selon l'ETP, puis on
+  // rafraîchit la rémunération (options + indices) et on relance le calcul.
+  const isFullTime = !isNaN(etp) && Math.abs(etp - 100) < 0.01;
+  let switched = false;
+  _remLines.forEach(l => {
+    if (isFullTime && l.type === 'hc') { l.type = 'hs'; switched = true; }
+    else if (!isFullTime && l.type === 'hs') { l.type = 'hc'; switched = true; }
+  });
+  _reRenderRemInPlace();
+  if (switched || _remLines.some(l => HEURE_TYPES.has(l.type))) _triggerRecalculate();
 };
 
 window.onApplyBrutChk = function(prefix) {
@@ -2191,25 +2296,63 @@ function getRemOptions(etp) {
     { value: 'prime',      label: 'Prime' },
     { value: 'coupure_50', label: 'Coupures 50%' },
   ];
+  // Heures supp (temps plein) / complémentaires (temps partiel) : saisie EN HEURES,
+  // la majoration par tranche est calculée (8 h à +25 % / +50 % ; 1/10 à +10 % / +25 %).
   if (Math.abs(parseFloat(etp) - 100) < 0.01) {
-    return [
-      { value: 'hs_125', label: 'H. sup. 125%' },
-      { value: 'hs_150', label: 'H. sup. 150%' },
-      ...common,
-    ];
+    return [ { value: 'hs', label: 'Heures supp.' }, ...common ];
   }
-  return [
-    { value: 'hc_110', label: 'H. comp. 110%' },
-    { value: 'hc_125', label: 'H. comp. 125%' },
-    ...common,
-  ];
+  return [ { value: 'hc', label: 'Heures compl.' }, ...common ];
+}
+
+// Types de ligne saisis en HEURES (et non en euros).
+const HEURE_TYPES = new Set(['hs', 'hc']);
+const HEURES_TEMPS_PLEIN = 151.67;
+
+// Taux horaire dérivé du salaire de base : base / (151,67 × ETP/100).
+function _tauxHoraire(base, etp) {
+  const h = HEURES_TEMPS_PLEIN * (parseFloat(etp) / 100);
+  return h > 0 ? base / h : 0;
+}
+// Gain brut majoré (preview live ; le backend reste autoritaire).
+function _gainHeures(type, hours, etp) {
+  const taux = _tauxHoraire(_remBase, etp);
+  const h = parseFloat(hours) || 0;
+  if (type === 'hs') {
+    return Math.min(h, 8) * taux * 1.25 + Math.max(0, h - 8) * taux * 1.50;
+  }
+  if (type === 'hc') {
+    const seuil = HEURES_TEMPS_PLEIN * (parseFloat(etp) / 100) * 0.10;
+    return Math.min(h, seuil) * taux * 1.10 + Math.max(0, h - seuil) * taux * 1.25;
+  }
+  return 0;
 }
 
 function getRemTotal() {
-  // Brut plein (base + éléments variables). La retenue d'absence, le maintien
-  // et les IJSS sont désormais calculés côté backend (qui reçoit ce brut plein
-  // + la spec d'absence) et renvoyés dans bulletin.absence.
-  return _remBase + _remLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+  // Brut de base envoyé au backend = salaire de base + éléments variables EN EUROS
+  // (primes, coupures). Les heures supp/compl partent en heures via getRemHeures()
+  // et leur majoration est ajoutée au brut côté backend.
+  return _remBase + _remLines
+    .filter(l => !HEURE_TYPES.has(l.type))
+    .reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+}
+
+// Heures supplémentaires/complémentaires saisies (sommées par type).
+function getRemHeures() {
+  let supp = 0, comp = 0;
+  _remLines.forEach(l => {
+    const v = parseFloat(l.amount) || 0;
+    if (l.type === 'hs') supp += v;
+    else if (l.type === 'hc') comp += v;
+  });
+  return { supp, comp };
+}
+
+// Total brut affiché (base + euros + majoration estimée des heures), pour le live.
+function getRemDisplayTotal(etp) {
+  const e = parseFloat(etp ?? document.getElementById('d-etp')?.value ?? '100') || 100;
+  const extra = _remLines.reduce((s, l) =>
+    HEURE_TYPES.has(l.type) ? s + _gainHeures(l.type, l.amount, e) : s, 0);
+  return getRemTotal() + extra;
 }
 
 // Spec d'absence envoyée au backend (snake_case, comme les champs de salarie).
@@ -2226,21 +2369,30 @@ function getAbsencePayload() {
   };
 }
 
+// Rendu d'une ligne de rémunération. Pour les types « heures » la saisie est en
+// heures (pas de pas 0,01 €) avec un indice du gain majoré estimé à côté.
+function _remLineHtml(l, opts, etp) {
+  const selOpts = opts.map(o =>
+    `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
+  ).join('');
+  const isHour = HEURE_TYPES.has(l.type);
+  const hint = isHour
+    ? `<span class="rem-h-hint" title="Taux horaire ${fmt(_tauxHoraire(_remBase, etp))} — majoration incluse">h · ≈ ${fmt(_gainHeures(l.type, l.amount, etp))}</span>`
+    : '';
+  return `
+      <div class="rem-line">
+        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${isHour ? 'heures' : '0.00'}" min="0" step="${isHour ? '0.5' : '0.01'}"
+               oninput="onRemAmountChange('${l.id}',this.value)" />
+        ${hint}
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
+      </div>`;
+}
+
 function buildRemSection() {
   const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
   const opts = getRemOptions(etp);
-  const lines = _remLines.map(l => {
-    const selOpts = opts.map(o =>
-      `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
-    ).join('');
-    return `
-      <div class="rem-line">
-        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
-        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="0.00" min="0" step="0.01"
-               oninput="onRemAmountChange('${l.id}',this.value)" />
-        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
-      </div>`;
-  }).join('');
+  const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
   const addBtn = isFrance
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>`
@@ -2254,7 +2406,7 @@ function buildRemSection() {
     <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
     ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
     ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
-  const total = (absInfo && lastBulletin) ? parseFloat(lastBulletin.brut) : getRemTotal();
+  const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex">
       <span class="rem-total-lbl">Total brut</span>
@@ -2276,18 +2428,7 @@ function buildRemSection() {
 function buildRemSectionMobile() {
   const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
   const opts = getRemOptions(etp);
-  const lines = _remLines.map(l => {
-    const selOpts = opts.map(o =>
-      `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
-    ).join('');
-    return `
-      <div class="rem-line">
-        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
-        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="0.00" min="0" step="0.01"
-               oninput="onRemAmountChange('${l.id}',this.value)" />
-        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
-      </div>`;
-  }).join('');
+  const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
   const addBtn = isFrance
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>`
@@ -2301,7 +2442,7 @@ function buildRemSectionMobile() {
     <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
     ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
     ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
-  const total = (absInfo && lastBulletin) ? parseFloat(lastBulletin.brut) : getRemTotal();
+  const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
       <span class="rem-total-lbl">Total brut</span>
@@ -2339,13 +2480,17 @@ window.removeRemLineResult = function(id) {
 window.onRemTypeChange = function(id, val) {
   const l = _remLines.find(l => l.id === id);
   if (l) l.type = val;
+  // Le passage euros ↔ heures change la nature de la ligne (placeholder, indice) :
+  // on re-rend en place puis on relance le calcul.
+  _reRenderRemInPlace();
+  _triggerRecalculate();
 };
 
 window.onRemAmountChange = function(id, val) {
   const l = _remLines.find(l => l.id === id);
   if (l) l.amount = parseFloat(val) || 0;
   // Mise à jour immédiate du total sans re-render (évite de tuer le focus input)
-  const total = getRemTotal();
+  const total = getRemDisplayTotal();
   ['d', 'm'].forEach(p => {
     const row = document.querySelector(`#rem-result-${p} .rem-total-row`);
     if (!row) return;
@@ -2368,6 +2513,8 @@ function _triggerRecalculate() {
   clearTimeout(_recalcTimer);
   _recalcTimer = setTimeout(() => calculate('desktop'), 350);
 }
+// Exposé pour les handlers inline (onchange) du HTML (module → scope non global).
+window._triggerRecalculate = _triggerRecalculate;
 
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
 // Gère les checkboxes ET les selects (canton, tarif-is).

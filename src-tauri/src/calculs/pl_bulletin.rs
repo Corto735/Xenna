@@ -156,6 +156,7 @@ pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "PLN".into(),
         absence: None,
+        heures_sup: None,
         salarie,
     }
 }

@@ -3,6 +3,7 @@ pub mod absence;
 pub mod bulletin;
 pub mod cotisations;
 pub mod ea;
+pub mod heures_sup;
 pub mod ch_cotisations;
 pub mod ch_bulletin;
 pub mod ch_is;

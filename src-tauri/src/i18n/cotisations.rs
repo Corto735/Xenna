@@ -132,6 +132,22 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Ayuda al puesto — empresa adaptada (Estado/ASP)",
             _ => return None,
         },
+        "REDUC_SAL_HS" => match lang {
+            "en" => "Employee contribution reduction — overtime/extra hours",
+            "de" => "Senkung der Arbeitnehmerbeiträge — Über-/Mehrstunden",
+            "nl" => "Vermindering werknemersbijdragen — over-/meeruren",
+            "it" => "Riduzione contributi del dipendente — ore supplementari/complementari",
+            "es" => "Reducción de cotizaciones del trabajador — horas extra/complementarias",
+            _ => return None,
+        },
+        "DFP_HS" => match lang {
+            "en" => "Flat-rate employer deduction (overtime)",
+            "de" => "Pauschaler Arbeitgeberabzug (Überstunden)",
+            "nl" => "Forfaitaire werkgeversaftrek (overuren)",
+            "it" => "Deduzione forfettaria datoriale (ore supplementari)",
+            "es" => "Deducción a tanto alzado del empleador (horas extra)",
+            _ => return None,
+        },
         _ => return None,
     })
 }
@@ -688,6 +704,52 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 En caso de baja por enfermedad o accidente, la parte ausente se reduce al 30 % del \
                 salario mínimo bruto por hora. Esta ayuda no modifica ni el bruto ni el neto del \
                 trabajador: reduce el coste real soportado por el empleador.",
+            _ => return None,
+        },
+        "REDUC_SAL_HS" => match lang {
+            "en" => "Reduction of employee old-age (basic and supplementary) social security \
+                contributions on overtime and extra-hour pay, capped at 11.31 % (law of 24/12/2018, \
+                Social Security Code art. L241-17). It is deducted from employee contributions: it \
+                increases the net pay.",
+            "de" => "Senkung der Arbeitnehmerbeiträge zur Rentenversicherung (Grund- und \
+                Zusatzversicherung) auf die Vergütung von Über- und Mehrstunden, begrenzt auf 11,31 % \
+                (Gesetz vom 24.12.2018, Sozialgesetzbuch Art. L241-17). Sie wird von den \
+                Arbeitnehmerbeiträgen abgezogen und erhöht den Nettolohn.",
+            "nl" => "Vermindering van de werknemersbijdragen voor het ouderdomspensioen (basis en \
+                aanvullend) op de vergoeding van over- en meeruren, beperkt tot 11,31 % (wet van \
+                24/12/2018, Sociale Zekerheidswet art. L241-17). Ze wordt afgetrokken van de \
+                werknemersbijdragen en verhoogt het nettoloon.",
+            "it" => "Riduzione dei contributi previdenziali del dipendente per la vecchiaia (di base \
+                e complementare) sulla retribuzione delle ore supplementari e complementari, nel \
+                limite dell'11,31 % (legge del 24/12/2018, Codice della previdenza sociale art. \
+                L241-17). È dedotta dai contributi del dipendente: aumenta il netto.",
+            "es" => "Reducción de las cotizaciones del trabajador a la jubilación (de base y \
+                complementaria) sobre la remuneración de las horas extra y complementarias, con un \
+                límite del 11,31 % (ley de 24/12/2018, Código de la Seguridad Social art. L241-17). \
+                Se deduce de las cotizaciones del trabajador: aumenta el salario neto.",
+            _ => return None,
+        },
+        "DFP_HS" => match lang {
+            "en" => "Flat-rate reduction of employer contributions per overtime hour (Social \
+                Security Code art. L241-18): €1.50 in companies with fewer than 20 employees, €0.50 \
+                from 20 employees. It lowers the real cost borne by the employer, with no effect on \
+                the employee's net pay.",
+            "de" => "Pauschale Senkung der Arbeitgeberbeiträge je Überstunde (Sozialgesetzbuch \
+                Art. L241-18): 1,50 € in Unternehmen mit weniger als 20 Beschäftigten, 0,50 € ab \
+                20 Beschäftigten. Sie senkt die tatsächlichen Arbeitgeberkosten, ohne den Nettolohn \
+                zu beeinflussen.",
+            "nl" => "Forfaitaire vermindering van de werkgeversbijdragen per overuur (Sociale \
+                Zekerheidswet art. L241-18): 1,50 € in ondernemingen met minder dan 20 werknemers, \
+                0,50 € vanaf 20 werknemers. Ze verlaagt de werkelijke werkgeverskosten, zonder \
+                invloed op het nettoloon.",
+            "it" => "Riduzione forfettaria dei contributi datoriali per ogni ora supplementare \
+                (Codice della previdenza sociale art. L241-18): 1,50 € nelle imprese con meno di 20 \
+                dipendenti, 0,50 € a partire da 20 dipendenti. Riduce il costo reale a carico del \
+                datore di lavoro, senza effetto sul netto del dipendente.",
+            "es" => "Reducción a tanto alzado de las cotizaciones patronales por hora extra (Código \
+                de la Seguridad Social art. L241-18): 1,50 € en empresas de menos de 20 trabajadores, \
+                0,50 € a partir de 20. Reduce el coste real del empleador, sin efecto sobre el neto \
+                del trabajador.",
             _ => return None,
         },
         _ => return None,
