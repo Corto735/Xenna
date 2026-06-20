@@ -231,47 +231,45 @@ pub fn irs_retencao(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "PT_IRS".into(),
-        libelle:     format!("IRS — Retenção na Fonte {annee}"),
+        libelle:     ctx.libelle("PT_IRS", "IRS — Retenção na Fonte {annee}")
+                        .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: irs_mensal,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
-            "Retenue mensuelle à la source (retenção na fonte) de l''IRS \
+        explication: ctx.expl("PT_IRS",
+            "Retenue mensuelle à la source (retenção na fonte) de l'IRS \
             (Imposto sobre o Rendimento das Pessoas Singulares). \
-            L''employeur (substituto tributário) retient chaque mois une avance \
-            sur l''IRS annuel. Régularisation lors de la déclaration Modelo 3 (avril). \
+            L'employeur (substituto tributário) retient chaque mois une avance \
+            sur l'IRS annuel. Régularisation lors de la déclaration Modelo 3 (avril). \
             \n\n\
             [ Calcul {annee} — barème CIRS art. 68, {nb_tr} tranches ]\n\
-            Rendimento mensal bruto    : {brut:.2} €\n\
-            Rendimento anual estimado  : {rend_a:.2} € (× 12)\n\
-            Dedução específica (art.25): − {ded:.2} € (max(SS {ss:.2} €, forfait {df:.2} €))\n\
-            Base imposable annuelle    : {base_irs:.2} €\n\
-            IRS annuelle               : {irs_a:.2} €\n\
-            Retenção mensuelle         : {irs_m:.2} € (÷ 12)\n\
-            Taux effectif              : {teff:.2} %\n\
+            Rendimento mensal bruto    : {brut} €\n\
+            Rendimento anual estimado  : {rend_a} € (× 12)\n\
+            Dedução específica (art.25): − {ded} € (max(SS {ss} €, forfait {df} €))\n\
+            Base imposable annuelle    : {base_irs} €\n\
+            IRS annuelle               : {irs_a} €\n\
+            Retenção mensuelle         : {irs_m} € (÷ 12)\n\
+            Taux effectif              : {teff} %\n\
             \n\
             Note : le calcul par barème annualisé est une approximation. \
             Les tables officielles AT (tabelas de retenção na fonte) sont publiées \
             annuellement et tiennent compte de la situation familiale. \
-            Base légale : CIRS art. 99 + Tables AT {annee}.",
-            annee   = annee,
-            nb_tr   = nb_tranches,
-            brut    = brut,
-            rend_a  = rendimento_a,
-            ded     = deducao,
-            ss      = ss_annuel,
-            df      = deducao_min,
-            base_irs= base_irs,
-            irs_a   = irs_anual,
-            irs_m   = irs_mensal,
-            teff    = taux_eff * dec!(100),
-        ),
-        loi_ref: Some(format!(
-            "CIRS art. 68 (barème) + art. 99 (retenção) — Lei OE {annee}",
-            annee = annee
-        )),
+            Base légale : CIRS art. 99 + Tables AT {annee}.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{nb_tr}", &nb_tranches.to_string())
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{rend_a}", &format!("{:.2}", rendimento_a))
+            .replace("{ded}", &format!("{:.2}", deducao))
+            .replace("{ss}", &format!("{:.2}", ss_annuel))
+            .replace("{df}", &format!("{:.2}", deducao_min))
+            .replace("{base_irs}", &format!("{:.2}", base_irs))
+            .replace("{irs_a}", &format!("{:.2}", irs_anual))
+            .replace("{irs_m}", &format!("{:.2}", irs_mensal))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("CIRS art. 68 (barème) + art. 99 (retenção) — Lei OE {annee}")
+                        .replace("{annee}", &annee.to_string())),
     }
 }

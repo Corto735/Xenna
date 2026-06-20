@@ -49,16 +49,18 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let ssc_sal = (assiette * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "MT_SSC".into(),
-        libelle: "Social Security Contributions (Klassi 1)".into(),
+        libelle: ctx.libelle("MT_SSC", "Social Security Contributions (Klassi 1)"),
         base: assiette, taux_sal: ts, montant_sal: ssc_sal,
         taux_pat: tp, montant_pat: (assiette * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "SSC — salarié {ts:.2} % / employeur {tp:.2} %. Assiette plafonnée à \
-            {pl:.2} €/mois. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), pl = plafond, ms = ssc_sal,
-        ),
-        loi_ref: Some("Social Security Act (Cap. 318)".into()),
+        explication: ctx.expl("MT_SSC",
+            "SSC — salarié {ts} % / employeur {tp} %. Assiette plafonnée à \
+            {pl} €/mois. Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{pl}", &format!("{:.2}", plafond))
+            .replace("{ms}", &format!("{:.2}", ssc_sal)),
+        loi_ref: Some(ctx.loi_ref("Social Security Act (Cap. 318)")),
     }];
 
     // Impôt : base annuelle = brut × 12 (SSC non déductible).
@@ -67,19 +69,20 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "MT_TAX".into(),
-        libelle: "Income Tax — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("MT_TAX", "Income Tax — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("MT_TAX",
             "Impôt sur le revenu {annee} (barème single, annualisé).\n\n\
-            Base = brut × 12 = {b:.0} €\n\
+            Base = brut × 12 = {b} €\n\
             0 % jusqu'à 12 000 €, puis 15 % / 25 % / 35 % (abattements 1 800 / 3 400 / 9 400 €)\n\
-            → {im:.2} €/mois.\n\n\
-            Source : Commissioner for Revenue.",
-            annee = annee, b = base_an, im = impot_mens,
-        ),
-        loi_ref: Some("Income Tax Act (Cap. 123)".into()),
+            → {im} €/mois.\n\n\
+            Source : Commissioner for Revenue.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.0}", base_an))
+            .replace("{im}", &format!("{:.2}", impot_mens)),
+        loi_ref: Some(ctx.loi_ref("Income Tax Act (Cap. 123)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

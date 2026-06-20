@@ -38,19 +38,18 @@ pub fn generer_bulletin_se(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let tp = ctx.taux_pat("SE_ARBETSGIVARAVGIFT");
     let mut cotisations = vec![LigneCotisation {
         code: "SE_ARBETSGIVARAVGIFT".into(),
-        libelle: "Arbetsgivaravgifter — cotisations patronales".into(),
+        libelle: ctx.libelle("SE_ARBETSGIVARAVGIFT", "Arbetsgivaravgifter — cotisations patronales"),
         base: brut,
         taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "Arbetsgivaravgifter — {tp:.2} % à la charge de l'employeur (retraite, maladie, \
+        explication: ctx.expl("SE_ARBETSGIVARAVGIFT",
+            "Arbetsgivaravgifter — {tp} % à la charge de l'employeur (retraite, maladie, \
             parentalité, accident, marché du travail, taxe générale sur salaires).\n\n\
             Côté salarié : l'allmän pensionsavgift (7 %) est intégralement compensée par \
-            une réduction d'impôt (effet net nul) → non affichée.",
-            tp = tp * dec!(100),
-        ),
-        loi_ref: Some("Socialavgiftslagen (2000:980)".into()),
+            une réduction d'impôt (effet net nul) → non affichée.")
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("Socialavgiftslagen (2000:980)")),
     }];
 
     // Impôt sur le revenu : communal moyen + État 20 % au-delà de 625 800 SEK/an.
@@ -60,22 +59,26 @@ pub fn generer_bulletin_se(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "SE_SKATT".into(),
-        libelle: "Inkomstskatt — Impôt (communal + État)".into(),
+        libelle: ctx.libelle("SE_SKATT", "Inkomstskatt — Impôt (communal + État)"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("SE_SKATT",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Revenu annuel : {g:.0} SEK\n\
-            Impôt communal moyen {tc:.2} % → {co:.0} SEK\n\
-            Impôt d'État 20 % au-delà de {sk:.0} SEK/an → {et:.0} SEK\n\
-            = {im:.2} SEK/mois.\n\n\
+            Revenu annuel : {g} SEK\n\
+            Impôt communal moyen {tc} % → {co} SEK\n\
+            Impôt d'État 20 % au-delà de {sk} SEK/an → {et} SEK\n\
+            = {im} SEK/mois.\n\n\
             Note : grundavdrag et jobbskatteavdrag non modélisés (net prudent).\n\
-            Source : Skatteverket.",
-            annee = annee, g = g, tc = taux_communal * dec!(100), sk = skiktgrans,
-            co = communal, et = etat, im = impot_mens,
-        ),
-        loi_ref: Some("Inkomstskattelagen (1999:1229)".into()),
+            Source : Skatteverket.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{tc}", &format!("{:.2}", taux_communal * dec!(100)))
+            .replace("{sk}", &format!("{:.0}", skiktgrans))
+            .replace("{co}", &format!("{:.0}", communal))
+            .replace("{et}", &format!("{:.0}", etat))
+            .replace("{im}", &format!("{:.2}", impot_mens)),
+        loi_ref: Some(ctx.loi_ref("Inkomstskattelagen (1999:1229)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

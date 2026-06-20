@@ -73,15 +73,16 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let prsi_sal = (brut * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "IE_PRSI".into(),
-        libelle: "PRSI (Class A) — Cotisation sociale".into(),
+        libelle: ctx.libelle("IE_PRSI", "PRSI (Class A) — Cotisation sociale"),
         base: brut, taux_sal: ts, montant_sal: prsi_sal,
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "PRSI Class A — salarié {ts:.2} % / employeur {tp:.2} %. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = prsi_sal,
-        ),
-        loi_ref: Some("Social Welfare Consolidation Act 2005".into()),
+        explication: ctx.expl("IE_PRSI",
+            "PRSI Class A — salarié {ts} % / employeur {tp} %. Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", prsi_sal)),
+        loi_ref: Some(ctx.loi_ref("Social Welfare Consolidation Act 2005")),
     }];
 
     // USC (annualisé).
@@ -89,17 +90,18 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let usc_taux = if brut > Decimal::ZERO { (usc_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "IE_USC".into(),
-        libelle: "Universal Social Charge (USC)".into(),
+        libelle: ctx.libelle("IE_USC", "Universal Social Charge (USC)"),
         base: brut, taux_sal: usc_taux, montant_sal: usc_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("IE_USC",
             "USC {annee} : 0,5 % / 2 % / 3 % / 8 % (seuils {seuils}).\n\
-            Revenu annuel {g:.0} € → {im:.2} €/mois.",
-            annee = annee, g = g, im = usc_mens,
-            seuils = if annee >= 2026 { "12 012 / 28 700 / 70 044 €" } else { "12 012 / 27 382 / 70 044 €" },
-        ),
-        loi_ref: Some("Finance Act (USC)".into()),
+            Revenu annuel {g} € → {im} €/mois.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{seuils}", if annee >= 2026 { "12 012 / 28 700 / 70 044 €" } else { "12 012 / 27 382 / 70 044 €" })
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{im}", &format!("{:.2}", usc_mens)),
+        loi_ref: Some(ctx.loi_ref("Finance Act (USC)")),
     });
 
     // Income Tax (PAYE), annualisé, après crédits.
@@ -107,18 +109,19 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let it_taux = if brut > Decimal::ZERO { (it_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "IE_PAYE".into(),
-        libelle: "Income Tax (PAYE) — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("IE_PAYE", "Income Tax (PAYE) — Impôt sur le revenu"),
         base: brut, taux_sal: it_taux, montant_sal: it_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("IE_PAYE",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
             20 % jusqu'à 44 000 €/an, 40 % au-delà − crédits 4 000 € (personnel + PAYE)\n\
-            Revenu annuel {g:.0} € → {im:.2} €/mois.\n\n\
-            Note : crédits d'un salarié célibataire. Source : Revenue.",
-            annee = annee, g = g, im = it_mens,
-        ),
-        loi_ref: Some("Taxes Consolidation Act 1997".into()),
+            Revenu annuel {g} € → {im} €/mois.\n\n\
+            Note : crédits d'un salarié célibataire. Source : Revenue.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{im}", &format!("{:.2}", it_mens)),
+        loi_ref: Some(ctx.loi_ref("Taxes Consolidation Act 1997")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

@@ -60,16 +60,17 @@ pub fn generer_bulletin_lt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let sodra_sal = (brut * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "LT_SODRA".into(),
-        libelle: "Sodra — Cotisations sociales".into(),
+        libelle: ctx.libelle("LT_SODRA", "Sodra — Cotisations sociales"),
         base: brut, taux_sal: ts, montant_sal: sodra_sal,
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "Sodra — salarié {ts:.2} % (retraite, maladie/PSD, maternité) / employeur {tp:.2} %. \
-            Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = sodra_sal,
-        ),
-        loi_ref: Some("Valstybinio socialinio draudimo įstatymas".into()),
+        explication: ctx.expl("LT_SODRA",
+            "Sodra — salarié {ts} % (retraite, maladie/PSD, maternité) / employeur {tp} %. \
+            Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", sodra_sal)),
+        loi_ref: Some(ctx.loi_ref("Valstybinio socialinio draudimo įstatymas")),
     }];
 
     // GPM : base = brut − NPD. Barème par tranches mensuelles selon l'année.
@@ -93,25 +94,27 @@ pub fn generer_bulletin_lt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (gpm / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "LT_GPM".into(),
-        libelle: "GPM — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("LT_GPM", "GPM — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: gpm,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("LT_GPM",
             "Impôt sur le revenu {annee} (GPM).\n\n\
-            NPD (non imposable) : {npd:.2} €\n\
-            Base = brut − NPD = {b:.2} €\n\
+            NPD (non imposable) : {npd} €\n\
+            Base = brut − NPD = {b} €\n\
             {bareme}\n\
-            → {gpm:.2} €/mois.\n\n\
-            Source : VMI.",
-            annee = annee, npd = npd_m, b = base, gpm = gpm,
-            bareme = if annee >= 2026 {
+            → {gpm} €/mois.\n\n\
+            Source : VMI.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{npd}", &format!("{:.2}", npd_m))
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{gpm}", &format!("{:.2}", gpm))
+            .replace("{bareme}", if annee >= 2026 {
                 "Barème 20 % (≤ 6 936 €/mois) / 25 % (jusqu'à 11 561 €/mois) / 32 % au-delà"
             } else {
                 "Taux 20 % (jusqu'à ≈ 10 540 €/mois) puis 32 % au-delà"
-            },
-        ),
-        loi_ref: Some("Gyventojų pajamų mokesčio įstatymas".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("Gyventojų pajamų mokesčio įstatymas")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

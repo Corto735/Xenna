@@ -93,6 +93,6 @@ pub fn aide_poste_ea(
         montant_pat: -aide, // négatif = gain employeur, réduit le coût total
         categorie:   "Aide à l'emploi".into(),
         explication: format!("{explication}{detail}"),
-        loi_ref: Some("CT art. L5213-19 et R5213-76 — Arrêté du 16/01/2025".into()),
+        loi_ref: Some(ctx.loi_ref("CT art. L5213-19 et R5213-76 — Arrêté du 16/01/2025")),
     })
 }

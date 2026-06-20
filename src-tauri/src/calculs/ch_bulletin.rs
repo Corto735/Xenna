@@ -20,7 +20,7 @@ pub fn generer_bulletin_ch(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // Impôt à la source — si le salarié est assujetti et que canton + tarif sont renseignés
     if salarie.assujetti_is {
         if let (Some(canton), Some(tarif)) = (&salarie.canton, &salarie.tarif_is) {
-            if let Some(is_ligne) = ch_is::calculer_is(canton, tarif, brut) {
+            if let Some(is_ligne) = ch_is::calculer_is(canton, tarif, brut, ctx) {
                 cotisations.push(is_ligne);
             }
         }

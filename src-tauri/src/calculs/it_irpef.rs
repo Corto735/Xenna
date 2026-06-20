@@ -118,45 +118,48 @@ pub fn bonus_cuneo_mensuel(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCoti
 
     let bonus_mensuel = (bonus_annuel / dec!(12)).round_dp(2);
 
+    let desc = if annee == 2024 {
+        ctx.expl("IT_BONUS_CUNEO_DESC_2024",
+            "L. 213/2023 : bonus 1 200 €/an pour reddito ≤ 35 000 €.")
+    } else {
+        ctx.expl("IT_BONUS_CUNEO_DESC_2025",
+            "L. 207/2024 : bonus 7,1 % × reddito (max 1 400 €) si reddito ≤ 20 000 € ; \
+            detrazione fissa 1 000 € si reddito 20 001–40 000 €.")
+    };
+    let explication = ctx.expl("IT_BONUS_CUNEO",
+        "Avantage fiscal mensuel versé par l'employeur (sostituto d'imposta) \
+        au titre du taglio del cuneo fiscale. \
+        \n\n\
+        {annee} : {desc} \
+        Reddito annuel estimé : {reddito} € → Bonus annuel : {bonus_a} € \
+        → Bonus mensuel : {bonus_m} €. \
+        \n\n\
+        Ce bonus est versé directement sur la paie mensuelle par l'employeur \
+        (avance sur crédit d'impôt) et régularisé lors de la déclaration annuelle \
+        730 ou modèle Redditi. \
+        Il est «recuperable» par l'État si le reddito réel dépasse les seuils.")
+        .replace("{annee}", &annee.to_string())
+        .replace("{desc}", &desc)
+        .replace("{reddito}", &format!("{:.0}", reddito_annuo))
+        .replace("{bonus_a}", &format!("{:.2}", bonus_annuel))
+        .replace("{bonus_m}", &format!("{:.2}", bonus_mensuel));
+
     Some(LigneCotisation {
         code:        "IT_BONUS_CUNEO".into(),
-        libelle:     format!("Bonus cuneo fiscale {annee} (trattamento integrativo)"),
+        libelle:     ctx.libelle("IT_BONUS_CUNEO", "Bonus cuneo fiscale {annee} (trattamento integrativo)")
+                        .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    -bonus_mensuel / brut, // taux effectif indicatif
         montant_sal: -bonus_mensuel,        // négatif = réduit les retenues (augmente le net)
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Bonus IRPEF".into(),
-        explication: format!(
-            "Avantage fiscal mensuel versé par l'employeur (sostituto d'imposta) \
-            au titre du taglio del cuneo fiscale. \
-            \n\n\
-            {annee} : {desc} \
-            Reddito annuel estimé : {reddito:.0} € → Bonus annuel : {bonus_a:.2} € \
-            → Bonus mensuel : {bonus_m:.2} €. \
-            \n\n\
-            Ce bonus est versé directement sur la paie mensuelle par l'employeur \
-            (avance sur crédit d'impôt) et régularisé lors de la déclaration annuelle \
-            730 ou modèle Redditi. \
-            Il est «recuperable» par l'État si le reddito réel dépasse les seuils.",
-            annee    = annee,
-            desc     = if annee == 2024 {
-                "L. 213/2023 : bonus 1 200 €/an pour reddito ≤ 35 000 €. ".to_string()
-            } else {
-                format!(
-                    "L. 207/2024 : bonus 7,1 % × reddito (max 1 400 €) si reddito ≤ 20 000 € ; \
-                    detrazione fissa 1 000 € si reddito 20 001–40 000 €. "
-                )
-            },
-            reddito  = reddito_annuo,
-            bonus_a  = bonus_annuel,
-            bonus_m  = bonus_mensuel,
-        ),
-        loi_ref: Some(if annee == 2024 {
-            "L. 213/2023 art. 1 c. 2-9 (Bilancio 2024)".into()
+        explication,
+        loi_ref: Some(ctx.loi_ref(if annee == 2024 {
+            "L. 213/2023 art. 1 c. 2-9 (Bilancio 2024)"
         } else {
-            "L. 207/2024 art. 1 c. 4-9 (Bilancio 2025)".into()
-        }),
+            "L. 207/2024 art. 1 c. 4-9 (Bilancio 2025)"
+        })),
     })
 }
 
@@ -180,43 +183,45 @@ pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         Decimal::ZERO
     };
 
+    let nb_tranches = if annee <= 2021 { 5 } else if annee <= 2023 { 4 } else { 3 };
+    let explication = ctx.expl("IT_IRPEF",
+        "L'IRPEF (Imposta sul Reddito delle Persone Fisiche) est l'impôt progressif \
+        sur le revenu des personnes physiques, régi par le TUIR (DPR 917/1986). \
+        L'employeur (sostituto d'imposta, art. 23 TUIR) est tenu d'effectuer \
+        une retenue mensuelle estimative sur le salaire, régularisée en décembre \
+        ou lors de la présentation du modèle 730/Redditi. \
+        \n\n\
+        [ Calcul {annee} — barème {nb_tranches} tranches ]\n\
+        Revenu annuel estimé  : {reddito} €\n\
+        IRPEF brute annuelle  : {irpef_b} €\n\
+        Détraction lavoro dip.: − {det} €\n\
+        IRPEF nette annuelle  : {irpef_n} €\n\
+        IRPEF mensuelle       : {irpef_m} € (÷ 12)\n\
+        Taux effectif         : {teff} %\n\
+        \n\
+        Les addizionali régionale et communale sont calculées séparément \
+        et retenues en cours d'année (généralement à partir de mars de l'année suivante \
+        via modèle 730 ou retenue complémentaire de novembre–décembre).")
+        .replace("{annee}", &annee.to_string())
+        .replace("{nb_tranches}", &nb_tranches.to_string())
+        .replace("{reddito}", &format!("{:.2}", reddito_ann))
+        .replace("{irpef_b}", &format!("{:.2}", irpef_brute))
+        .replace("{det}", &format!("{:.2}", detrazione))
+        .replace("{irpef_n}", &format!("{:.2}", irpef_nette))
+        .replace("{irpef_m}", &format!("{:.2}", irpef_mensuelle))
+        .replace("{teff}", &format!("{:.2}", taux_effectif * dec!(100)));
     LigneCotisation {
         code:        "IT_IRPEF".into(),
-        libelle:     format!("IRPEF — Retenue à la source {annee}"),
+        libelle:     ctx.libelle("IT_IRPEF", "IRPEF — Retenue à la source {annee}")
+                        .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_effectif,
         montant_sal: irpef_mensuelle,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Imposta".into(),
-        explication: format!(
-            "L'IRPEF (Imposta sul Reddito delle Persone Fisiche) est l'impôt progressif \
-            sur le revenu des personnes physiques, régi par le TUIR (DPR 917/1986). \
-            L'employeur (sostituto d'imposta, art. 23 TUIR) est tenu d'effectuer \
-            une retenue mensuelle estimative sur le salaire, régularisée en décembre \
-            ou lors de la présentation du modèle 730/Redditi. \
-            \n\n\
-            [ Calcul {annee} — barème {nb_tranches} tranches ]\n\
-            Revenu annuel estimé  : {reddito:.2} €\n\
-            IRPEF brute annuelle  : {irpef_b:.2} €\n\
-            Détraction lavoro dip.: − {det:.2} €\n\
-            IRPEF nette annuelle  : {irpef_n:.2} €\n\
-            IRPEF mensuelle       : {irpef_m:.2} € (÷ 12)\n\
-            Taux effectif         : {teff:.2} %\n\
-            \n\
-            Les addizionali régionale et communale sont calculées séparément \
-            et retenues en cours d'année (généralement à partir de mars de l'année suivante \
-            via modèle 730 ou retenue complémentaire de novembre–décembre).",
-            annee       = annee,
-            nb_tranches = if annee <= 2021 { 5 } else if annee <= 2023 { 4 } else { 3 },
-            reddito     = reddito_ann,
-            irpef_b     = irpef_brute,
-            det         = detrazione,
-            irpef_n     = irpef_nette,
-            irpef_m     = irpef_mensuelle,
-            teff        = taux_effectif * dec!(100),
-        ),
-        loi_ref: Some("DPR 917/1986 art. 11 et 23 (TUIR) — L. 213/2023 (Bilancio 2024)".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("DPR 917/1986 art. 11 et 23 (TUIR) — L. 213/2023 (Bilancio 2024)")),
     }
 }
 
@@ -224,7 +229,7 @@ pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 //
 // Taux de base 2024 par code région (voir migration 0017_it_plafonds_irpef.sql).
 // Retourne None si la région n'est pas reconnue.
-pub fn addizionale_regionale(brut: Decimal, regione: &str, _ctx: &ContextPaie) -> Option<LigneCotisation> {
+pub fn addizionale_regionale(brut: Decimal, regione: &str, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let taux: Decimal = match regione {
         "AB" => dec!(0.0173),
         "BS" => dec!(0.0090),
@@ -259,40 +264,42 @@ pub fn addizionale_regionale(brut: Decimal, regione: &str, _ctx: &ContextPaie) -
 
     let libelle_region = nom_region(regione);
 
+    let explication = ctx.expl("IT_ADD_REG",
+        "L'addizionale regionale IRPEF est un impôt prélevé par la Région \
+        en sus de l'IRPEF nationale (art. 50 D.Lgs. 446/1997). \
+        Chaque région fixe son taux annuellement par délibération. \
+        \n\n\
+        Région : {libelle} (code {code})\n\
+        Taux de base 2024 : {taux_pct} %\n\
+        Reddito annuel estimé : {reddito} €\n\
+        Addizionale annuelle : {addiz_a} €\n\
+        Mensualité indicative : {addiz_m} €\n\
+        \n\
+        Note : en pratique, l'addizionale régionale est retenue par l'employeur \
+        en 11 mensualités de mars à novembre de l'année N+1 \
+        (après déclaration 730), ou déduite sur les bulletins de novembre–décembre \
+        par solde si l'employeur procède à l'assistenza fiscale. \
+        Certaines régions ont des tranches supplémentaires pour hauts revenus \
+        non reproduites ici.")
+        .replace("{libelle}", libelle_region)
+        .replace("{code}", regione)
+        .replace("{taux_pct}", &format!("{:.2}", taux * dec!(100)))
+        .replace("{reddito}", &format!("{:.2}", reddito_ann))
+        .replace("{addiz_a}", &format!("{:.2}", addiz_annuelle))
+        .replace("{addiz_m}", &format!("{:.2}", addiz_mensuelle));
+
     Some(LigneCotisation {
         code:        format!("IT_ADD_REG_{regione}"),
-        libelle:     format!("Addizionale regionale IRPEF — {libelle_region}"),
+        libelle:     ctx.libelle("IT_ADD_REG", "Addizionale regionale IRPEF — {libelle_region}")
+                        .replace("{libelle_region}", libelle_region),
         base:        brut,
         taux_sal:    taux,
         montant_sal: addiz_mensuelle,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Imposta regionale".into(),
-        explication: format!(
-            "L'addizionale regionale IRPEF est un impôt prélevé par la Région \
-            en sus de l'IRPEF nationale (art. 50 D.Lgs. 446/1997). \
-            Chaque région fixe son taux annuellement par délibération. \
-            \n\n\
-            Région : {libelle} (code {code})\n\
-            Taux de base 2024 : {taux_pct:.2} %\n\
-            Reddito annuel estimé : {reddito:.2} €\n\
-            Addizionale annuelle : {addiz_a:.2} €\n\
-            Mensualité indicative : {addiz_m:.2} €\n\
-            \n\
-            Note : en pratique, l'addizionale régionale est retenue par l'employeur \
-            en 11 mensualités de mars à novembre de l'année N+1 \
-            (après déclaration 730), ou déduite sur les bulletins de novembre–décembre \
-            par solde si l'employeur procède à l'assistenza fiscale. \
-            Certaines régions ont des tranches supplémentaires pour hauts revenus \
-            non reproduites ici.",
-            libelle   = libelle_region,
-            code      = regione,
-            taux_pct  = taux * dec!(100),
-            reddito   = reddito_ann,
-            addiz_a   = addiz_annuelle,
-            addiz_m   = addiz_mensuelle,
-        ),
-        loi_ref: Some("D.Lgs. 446/1997 art. 50 — Delibere regionali annuali".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("D.Lgs. 446/1997 art. 50 — Delibere regionali annuali")),
     })
 }
 

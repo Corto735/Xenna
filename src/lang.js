@@ -410,3 +410,119 @@ export const STATIC_DICT = {
     '👍 voter':                           '👍 stemmen',
   },
 };
+
+// ── Index de langue pour les tables [en, de, nl, it, es] ──────────────────────
+const _LANG_IDX = { en: 0, de: 1, nl: 2, it: 3, es: 4 };
+
+// ── Catégories de cotisation (champ `categorie`) ─────────────────────────────
+// Clé = valeur brute émise par le backend (français canonique + variantes
+// historiques en langue locale). Valeurs = [en, de, nl, it, es].
+// La valeur brute reste la clé logique côté front (filtres/CAT_CLASS) ; seul
+// l'AFFICHAGE est traduit via trCat().
+export const CAT_DICT = {
+  'Sécurité sociale':        ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Sicurezza sociale', 'Seguridad social'],
+  'Sécurité Sociale':        ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Sicurezza sociale', 'Seguridad social'],
+  'Previdenza sociale':      ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Previdenza sociale', 'Seguridad social'],
+  'Assurance maladie':       ['Health insurance', 'Krankenversicherung', 'Ziektekostenverzekering', 'Assicurazione malattia', 'Seguro de enfermedad'],
+  'Assurance pension':       ['Pension insurance', 'Rentenversicherung', 'Pensioenverzekering', 'Assicurazione pensione', 'Seguro de pensión'],
+  'Assurance chômage':       ['Unemployment insurance', 'Arbeitslosenversicherung', 'Werkloosheidsverzekering', 'Assicurazione disoccupazione', 'Seguro de desempleo'],
+  'Chômage':                 ['Unemployment', 'Arbeitslosigkeit', 'Werkloosheid', 'Disoccupazione', 'Desempleo'],
+  'Disoccupazione':          ['Unemployment', 'Arbeitslosigkeit', 'Werkloosheid', 'Disoccupazione', 'Desempleo'],
+  'Assurance dépendance':    ['Long-term care insurance', 'Pflegeversicherung', 'Zorgverzekering (langdurig)', 'Assicurazione dipendenza', 'Seguro de dependencia'],
+  'Assurance accidents':     ['Accident insurance', 'Unfallversicherung', 'Ongevallenverzekering', 'Assicurazione infortuni', 'Seguro de accidentes'],
+  'Assicurazione infortuni': ['Accident insurance', 'Unfallversicherung', 'Ongevallenverzekering', 'Assicurazione infortuni', 'Seguro de accidentes'],
+  'Accidents du travail':    ['Work accidents', 'Arbeitsunfälle', 'Arbeidsongevallen', 'Infortuni sul lavoro', 'Accidentes laborales'],
+  'Retraite':                ['Pension', 'Rente', 'Pensioen', 'Pensione', 'Jubilación'],
+  'Retraite complémentaire': ['Supplementary pension', 'Zusatzrente', 'Aanvullend pensioen', 'Pensione complementare', 'Pensión complementaria'],
+  'Prévoyance':              ['Occupational benefits', 'Vorsorge', 'Voorzorg', 'Previdenza', 'Previsión'],
+  'Prévoyance (LPP)':        ['Occupational pension (LPP)', 'Berufliche Vorsorge (BVG)', 'Beroepsvoorzorg (LPP)', 'Previdenza professionale (LPP)', 'Previsión profesional (LPP)'],
+  'Prévoyance maladie':      ['Health provision', 'Krankenvorsorge', 'Ziektevoorzorg', 'Previdenza malattia', 'Previsión de enfermedad'],
+  '1er pilier':              ['First pillar', 'Erste Säule', 'Eerste pijler', 'Primo pilastro', 'Primer pilar'],
+  'CSG/CRDS':                ['CSG/CRDS', 'CSG/CRDS', 'CSG/CRDS', 'CSG/CRDS', 'CSG/CRDS'],
+  'Impôt sur le revenu':     ['Income tax', 'Einkommensteuer', 'Inkomstenbelasting', 'Imposta sul reddito', 'Impuesto sobre la renta'],
+  'Imposta':                 ['Income tax', 'Einkommensteuer', 'Inkomstenbelasting', 'Imposta sul reddito', 'Impuesto sobre la renta'],
+  'Imposta regionale':       ['Regional tax', 'Regionalsteuer', 'Regionale belasting', 'Imposta regionale', 'Impuesto regional'],
+  'Impôt à la source':       ['Withholding tax', 'Quellensteuer', 'Bronbelasting', 'Imposta alla fonte', 'Retención en origen'],
+  'Impôt fédéral':           ['Federal tax', 'Bundessteuer', 'Federale belasting', 'Imposta federale', 'Impuesto federal'],
+  'Impôt provincial':        ['Provincial tax', 'Provinzsteuer', 'Provinciale belasting', 'Imposta provinciale', 'Impuesto provincial'],
+  'Retraite fédérale':       ['Federal pension', 'Bundesrente', 'Federaal pensioen', 'Pensione federale', 'Pensión federal'],
+  'Chômage fédéral':         ['Federal unemployment', 'Bundesarbeitslosigkeit', 'Federale werkloosheid', 'Disoccupazione federale', 'Desempleo federal'],
+  'Retraite Québec':         ['Quebec pension', 'Rente Québec', 'Pensioen Québec', 'Pensione Québec', 'Pensión de Quebec'],
+  'Taxe locale':             ['Local tax', 'Kommunalsteuer', 'Lokale belasting', 'Imposta locale', 'Impuesto local'],
+  'Formation professionnelle':['Vocational training', 'Berufsbildung', 'Beroepsopleiding', 'Formazione professionale', 'Formación profesional'],
+  'Garantie salariale':      ['Wage guarantee', 'Lohngarantie', 'Loongarantie', 'Garanzia salariale', 'Garantía salarial'],
+  'Garantie emploi':         ['Employment guarantee', 'Beschäftigungsgarantie', 'Werkgelegenheidsgarantie', 'Garanzia occupazione', 'Garantía de empleo'],
+  "Aide à l'emploi":         ['Employment support', 'Beschäftigungshilfe', 'Werkgelegenheidssteun', "Sostegno all'occupazione", 'Ayuda al empleo'],
+  'Allègement':              ['Relief', 'Entlastung', 'Verlichting', 'Sgravio', 'Reducción'],
+  'Allegement':              ['Relief', 'Entlastung', 'Verlichting', 'Sgravio', 'Reducción'],
+  'Réduction patronale':     ['Employer relief', 'Arbeitgeberentlastung', 'Werkgeversvermindering', 'Sgravio datore di lavoro', 'Reducción patronal'],
+  'Réduction salariale':     ['Employee relief', 'Arbeitnehmerentlastung', 'Werknemersvermindering', 'Sgravio dipendente', 'Reducción salarial'],
+  'Mutualité des employeurs':["Employers' mutual fund", 'Arbeitgeber-Ausgleichskasse', 'Werkgeversfonds', 'Mutua datori di lavoro', 'Mutualidad de empleadores'],
+  'Cotisations patronales':  ['Employer contributions', 'Arbeitgeberbeiträge', 'Werkgeversbijdragen', 'Contributi datoriali', 'Cotizaciones patronales'],
+  'Fine rapporto':           ['End-of-service reserve', 'Abfindungsrücklage', 'Eindedienstreserve', 'Fine rapporto', 'Reserva fin de servicio'],
+  'Réserve retraite':        ['Pension reserve', 'Rentenrücklage', 'Pensioenreserve', 'Riserva pensione', 'Reserva de pensión'],
+  'Bonus IRPEF':             ['IRPEF bonus', 'IRPEF-Bonus', 'IRPEF-bonus', 'Bonus IRPEF', 'Bono IRPEF'],
+  'Parentalité Québec':      ['Quebec parental insurance', 'Elternversicherung Québec', 'Ouderschapsverzekering Québec', 'Assicurazione parentale Québec', 'Seguro parental de Quebec'],
+  'Santé Québec':            ['Quebec health', 'Gesundheit Québec', 'Gezondheid Québec', 'Sanità Québec', 'Salud Quebec'],
+  'Heures supplémentaires':  ['Overtime', 'Überstunden', 'Overuren', 'Straordinari', 'Horas extra'],
+  'Autres':                  ['Other', 'Sonstige', 'Overige', 'Altro', 'Otros'],
+  'Information':             ['Information', 'Information', 'Informatie', 'Informazione', 'Información'],
+};
+
+/// Traduit l'AFFICHAGE d'une catégorie ; renvoie la valeur brute en repli (fr).
+export function trCat(raw, lang) {
+  const idx = _LANG_IDX[lang];
+  if (idx === undefined) return raw;            // fr ou langue inconnue
+  const row = CAT_DICT[raw];
+  return row ? row[idx] : raw;
+}
+
+// ── Noms de pays et sous-régions (sélecteur + libellés) ──────────────────────
+// Clé = nom français. Valeurs = [en, de, nl, it, es]. Pré-injectées dans le
+// cache de traduction (translateApp) pour éviter MyMemory sur ces libellés.
+export const COUNTRY_DICT = {
+  'France': ['France', 'Frankreich', 'Frankrijk', 'Francia', 'Francia'],
+  'Fonction publique': ['Civil service', 'Öffentlicher Dienst', 'Overheid', 'Pubblico impiego', 'Función pública'],
+  'Entreprise adaptée (AAP)': ['Adapted enterprise (AAP)', 'Inklusionsbetrieb (AAP)', 'Aangepast bedrijf (AAP)', 'Impresa adattata (AAP)', 'Empresa adaptada (AAP)'],
+  'Alsace-Moselle': ['Alsace-Moselle', 'Elsass-Mosel', 'Alsace-Moselle', 'Alsazia-Mosella', 'Alsacia-Mosela'],
+  'Allemagne': ['Germany', 'Deutschland', 'Duitsland', 'Germania', 'Alemania'],
+  'Andorre': ['Andorra', 'Andorra', 'Andorra', 'Andorra', 'Andorra'],
+  'Angleterre': ['England', 'England', 'Engeland', 'Inghilterra', 'Inglaterra'],
+  'Autriche': ['Austria', 'Österreich', 'Oostenrijk', 'Austria', 'Austria'],
+  'Belgique': ['Belgium', 'Belgien', 'België', 'Belgio', 'Bélgica'],
+  'Flandres': ['Flanders', 'Flandern', 'Vlaanderen', 'Fiandre', 'Flandes'],
+  'Wallonie': ['Wallonia', 'Wallonien', 'Wallonië', 'Vallonia', 'Valonia'],
+  'Bruxelles': ['Brussels', 'Brüssel', 'Brussel', 'Bruxelles', 'Bruselas'],
+  'Bulgarie': ['Bulgaria', 'Bulgarien', 'Bulgarije', 'Bulgaria', 'Bulgaria'],
+  'Chypre': ['Cyprus', 'Zypern', 'Cyprus', 'Cipro', 'Chipre'],
+  'Croatie': ['Croatia', 'Kroatien', 'Kroatië', 'Croazia', 'Croacia'],
+  'Danemark': ['Denmark', 'Dänemark', 'Denemarken', 'Danimarca', 'Dinamarca'],
+  'Espagne': ['Spain', 'Spanien', 'Spanje', 'Spagna', 'España'],
+  'Estonie': ['Estonia', 'Estland', 'Estland', 'Estonia', 'Estonia'],
+  'Finlande': ['Finland', 'Finnland', 'Finland', 'Finlandia', 'Finlandia'],
+  'Grèce': ['Greece', 'Griechenland', 'Griekenland', 'Grecia', 'Grecia'],
+  'Hongrie': ['Hungary', 'Ungarn', 'Hongarije', 'Ungheria', 'Hungría'],
+  'Irlande': ['Ireland', 'Irland', 'Ierland', 'Irlanda', 'Irlanda'],
+  'Italie': ['Italy', 'Italien', 'Italië', 'Italia', 'Italia'],
+  'Lettonie': ['Latvia', 'Lettland', 'Letland', 'Lettonia', 'Letonia'],
+  'Lituanie': ['Lithuania', 'Litauen', 'Litouwen', 'Lituania', 'Lituania'],
+  'Luxembourg': ['Luxembourg', 'Luxemburg', 'Luxemburg', 'Lussemburgo', 'Luxemburgo'],
+  'Malte': ['Malta', 'Malta', 'Malta', 'Malta', 'Malta'],
+  'Monaco': ['Monaco', 'Monaco', 'Monaco', 'Monaco', 'Mónaco'],
+  'Pays-Bas': ['Netherlands', 'Niederlande', 'Nederland', 'Paesi Bassi', 'Países Bajos'],
+  'Pologne': ['Poland', 'Polen', 'Polen', 'Polonia', 'Polonia'],
+  'Portugal': ['Portugal', 'Portugal', 'Portugal', 'Portogallo', 'Portugal'],
+  'Roumanie': ['Romania', 'Rumänien', 'Roemenië', 'Romania', 'Rumanía'],
+  'Slovaquie': ['Slovakia', 'Slowakei', 'Slowakije', 'Slovacchia', 'Eslovaquia'],
+  'Slovénie': ['Slovenia', 'Slowenien', 'Slovenië', 'Slovenia', 'Eslovenia'],
+  'Suède': ['Sweden', 'Schweden', 'Zweden', 'Svezia', 'Suecia'],
+  'Suisse': ['Switzerland', 'Schweiz', 'Zwitserland', 'Svizzera', 'Suiza'],
+  'Tchéquie': ['Czechia', 'Tschechien', 'Tsjechië', 'Cechia', 'Chequia'],
+  'Canada': ['Canada', 'Kanada', 'Canada', 'Canada', 'Canadá'],
+  'Québec': ['Quebec', 'Québec', 'Quebec', 'Québec', 'Quebec'],
+  'Japon': ['Japan', 'Japan', 'Japan', 'Giappone', 'Japón'],
+  'Chine': ['China', 'China', 'China', 'Cina', 'China'],
+  'Corée du Sud': ['South Korea', 'Südkorea', 'Zuid-Korea', 'Corea del Sud', 'Corea del Sur'],
+  'Australie': ['Australia', 'Australien', 'Australië', 'Australia', 'Australia'],
+  'Nouvelle-Zélande': ['New Zealand', 'Neuseeland', 'Nieuw-Zeeland', 'Nuova Zelanda', 'Nueva Zelanda'],
+};

@@ -72,35 +72,37 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_impot = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     let ligne_impot = LigneCotisation {
         code: "AU_INCOME_TAX".into(),
-        libelle: "Income tax — Impôt sur le revenu (PAYG)".into(),
+        libelle: ctx.libelle("AU_INCOME_TAX", "Income tax — Impôt sur le revenu (PAYG)"),
         base: brut, taux_sal: taux_impot, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("AU_INCOME_TAX",
             "Impôt sur le revenu des résidents — barème de l'exercice {fy0}-{fy1}.\n\n\
-            Revenu annuel estimé : {rev:.0} $ → impôt {imp:.0} $/an / 12 = {mens:.2} $/mois.\n\
+            Revenu annuel estimé : {rev} $ → impôt {imp} $/an / 12 = {mens} $/mois.\n\
             Tranche exonérée : 18 200 $. Crédits LITO/LMITO non modélisés (net prudent).\n\n\
-            Base légale : Income Tax Assessment Act 1997.",
-            fy0 = annee - 1, fy1 = annee, rev = rev_ann, imp = impot_an, mens = impot_mens,
-        ),
-        loi_ref: Some("Income Tax Assessment Act 1997".into()),
+            Base légale : Income Tax Assessment Act 1997.")
+            .replace("{fy0}", &(annee - 1).to_string())
+            .replace("{fy1}", &annee.to_string())
+            .replace("{rev}", &format!("{:.0}", rev_ann))
+            .replace("{imp}", &format!("{:.0}", impot_an))
+            .replace("{mens}", &format!("{:.2}", impot_mens)),
+        loi_ref: Some(ctx.loi_ref("Income Tax Assessment Act 1997")),
     };
 
     // Medicare levy 2 % (constant depuis 2014-15)
     let medicare_mens = (brut * dec!(0.02)).round_dp(2);
     let ligne_medicare = LigneCotisation {
         code: "AU_MEDICARE".into(),
-        libelle: "Medicare levy — Contribution santé (2 %)".into(),
+        libelle: ctx.libelle("AU_MEDICARE", "Medicare levy — Contribution santé (2 %)"),
         base: brut, taux_sal: dec!(0.02), montant_sal: medicare_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("AU_MEDICARE",
             "Medicare levy — 2 % du revenu imposable (financement de la santé publique).\n\
-            Montant : {m:.2} $/mois. Réductions bas revenus et surtaxe (MLS) non modélisées.\n\n\
-            Base légale : Medicare Levy Act 1986.",
-            m = medicare_mens,
-        ),
-        loi_ref: Some("Medicare Levy Act 1986".into()),
+            Montant : {m} $/mois. Réductions bas revenus et surtaxe (MLS) non modélisées.\n\n\
+            Base légale : Medicare Levy Act 1986.")
+            .replace("{m}", &format!("{:.2}", medicare_mens)),
+        loi_ref: Some(ctx.loi_ref("Medicare Levy Act 1986")),
     };
 
     // Superannuation Guarantee (patronale, taux daté lu en base ; échéancier 9,5 → 12 %)
@@ -109,18 +111,18 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let ts = ctx.taux_pat("AU_SUPER");
     let ligne_super = LigneCotisation {
         code: "AU_SUPER".into(),
-        libelle: "Superannuation Guarantee — Retraite (employeur)".into(),
+        libelle: ctx.libelle("AU_SUPER", "Superannuation Guarantee — Retraite (employeur)"),
         base: base_super, taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
         taux_pat: ts, montant_pat: (base_super * ts).round_dp(2),
         categorie: "Cotisations patronales".into(),
-        explication: format!(
+        explication: ctx.expl("AU_SUPER",
             "Superannuation Guarantee — retraite, 100 % patronale, versée en sus du salaire.\n\
-            Taux de l'exercice : {t:.2} %. Assiette plafonnée à la maximum contribution base.\n\
-            Employeur : {mp:.2} $/mois.\n\n\
-            Base légale : SGAA 1992.",
-            t = ts * dec!(100), mp = (base_super * ts).round_dp(2),
-        ),
-        loi_ref: Some("Superannuation Guarantee (Administration) Act 1992".into()),
+            Taux de l'exercice : {t} %. Assiette plafonnée à la maximum contribution base.\n\
+            Employeur : {mp} $/mois.\n\n\
+            Base légale : SGAA 1992.")
+            .replace("{t}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{mp}", &format!("{:.2}", (base_super * ts).round_dp(2))),
+        loi_ref: Some(ctx.loi_ref("Superannuation Guarantee (Administration) Act 1992")),
     };
 
     let cotisations = vec![ligne_impot, ligne_medicare, ligne_super];

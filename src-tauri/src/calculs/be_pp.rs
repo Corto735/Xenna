@@ -124,55 +124,57 @@ pub fn precompte_professionnel(brut: Decimal, region: &str, ctx: &ContextPaie) -
 
     let korting_pct = ((dec!(1) - facteur) * dec!(100)).round_dp(2);
     let region_label = match region {
-        "wallonie" => "Wallonie (+9 % additionnels régionaux)".to_string(),
-        "flandre"  => format!("Flandres (réduction flamande −{korting_pct} %)"),
-        _          => "Bruxelles-Capitale (pas d'additionnel)".to_string(),
+        "wallonie" => ctx.libelle("BE_REG_WALLONIE", "Wallonie (+9 % additionnels régionaux)"),
+        "flandre"  => ctx.libelle("BE_REG_FLANDRE", "Flandres (réduction flamande −{korting} %)")
+            .replace("{korting}", &korting_pct.to_string()),
+        _          => ctx.libelle("BE_REG_BXL", "Bruxelles-Capitale (pas d'additionnel)"),
     };
 
     LigneCotisation {
         code:        "BE_PP".into(),
-        libelle:     format!("Précompte professionnel (PP/BV) {annee} — {region_label}"),
+        libelle:     ctx.libelle("BE_PP", "Précompte professionnel (PP/BV) {annee} — {rl}")
+            .replace("{annee}", &annee.to_string())
+            .replace("{rl}", &region_label),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: pp_mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
-            "Retenue mensuelle à la source de l''IPP (Impôt des Personnes Physiques). \
-            L''employeur est tenu d''effectuer cette retenue (art. 270 et s. CIR92). \
+        explication: ctx.expl("BE_PP",
+            "Retenue mensuelle à la source de l'IPP (Impôt des Personnes Physiques). \
+            L'employeur est tenu d'effectuer cette retenue (art. 270 et s. CIR92). \
             Régularisation lors de la déclaration IPP annuelle.\n\n\
             [ Calcul {annee} — région : {rl} ]\n\
-            Salaire brut mensuel          : {brut:.2} €\n\
-            Revenu annuel estimé          : {brut_a:.2} € (× 12)\n\
-            Forfait frais pro (30 %,  cap): − {fp:.2} €\n\
-            Revenu net imposable estimé   : {rn:.2} €\n\
-            IPP brute annuelle            : {ipp:.2} €\n\
-            Exonération de base           : − IPP({exo:.0} €) déduite\n\
-            Coefficient régional          : × {fac:.2}\n\
-            PP annuel                     : {ppa:.2} €\n\
-            Précompte mensuel             : {ppm:.2} € (÷ 12)\n\
-            Taux effectif                 : {teff:.2} %\n\
+            Salaire brut mensuel          : {brut} €\n\
+            Revenu annuel estimé          : {brut_a} € (× 12)\n\
+            Forfait frais pro (30 %,  cap): − {fp} €\n\
+            Revenu net imposable estimé   : {rn} €\n\
+            IPP brute annuelle            : {ipp} €\n\
+            Exonération de base           : − IPP({exo} €) déduite\n\
+            Coefficient régional          : × {fac}\n\
+            PP annuel                     : {ppa} €\n\
+            Précompte mensuel             : {ppm} € (÷ 12)\n\
+            Taux effectif                 : {teff} %\n\
             \n\
             Note : approximation par barème annualisé. \
             Les tables officielles SPF Finances tiennent compte de la \
-            situation familiale et d''autres déductions.\n\
-            Base légale : CIR92 art. 130-145 + Circulaires SPF Finances {annee}.",
-            annee  = annee,
-            rl     = region_label,
-            brut_a = brut_a,
-            fp     = fp,
-            rn     = revenu_net,
-            ipp    = ipp_brute,
-            exo    = exo,
-            fac    = facteur,
-            ppa    = pp_annuel,
-            ppm    = pp_mensuel,
-            teff   = taux_eff * dec!(100),
-        ),
-        loi_ref: Some(format!(
-            "CIR92 art. 130-145 + Circulaire SPF Finances PP/BV {annee}",
-            annee = annee
-        )),
+            situation familiale et d'autres déductions.\n\
+            Base légale : CIR92 art. 130-145 + Circulaires SPF Finances {annee}.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{rl}", &region_label)
+            .replace("{brut_a}", &format!("{:.2}", brut_a))
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{fp}", &format!("{:.2}", fp))
+            .replace("{rn}", &format!("{:.2}", revenu_net))
+            .replace("{ipp}", &format!("{:.2}", ipp_brute))
+            .replace("{exo}", &format!("{:.0}", exo))
+            .replace("{fac}", &format!("{:.2}", facteur))
+            .replace("{ppa}", &format!("{:.2}", pp_annuel))
+            .replace("{ppm}", &format!("{:.2}", pp_mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref(&format!(
+            "CIR92 art. 130-145 + Circulaire SPF Finances PP/BV {annee}"
+        ))),
     }
 }

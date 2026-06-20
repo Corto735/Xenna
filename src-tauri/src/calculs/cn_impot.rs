@@ -53,28 +53,32 @@ pub fn cn_iit(brut: Decimal, cotisations_sal: Decimal, ctx: &ContextPaie) -> Lig
 
     LigneCotisation {
         code:        "CN_IIT".into(),
-        libelle:     "个人所得税 — Impôt sur le revenu (IIT)".into(),
+        libelle:     ctx.libelle("CN_IIT", "个人所得税 — Impôt sur le revenu (IIT)"),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("CN_IIT",
             "个人所得税 — impôt sur le revenu (réforme 2018).\n\n\
-            Brut mensuel : ¥{brut:.2}\n\
-            − Cotisations sociales sal : ¥{cot:.2}\n\
-            − Déduction personnelle : ¥{dp:.0}/mois\n\
-            = Base mensuelle imposable : ¥{bm:.2}\n\
-            × 12 = Base annuelle : ¥{ba:.2}\n\n\
-            IIT annuel (tranches 3/10/20/25/30/35/45 %) : ¥{ia:.2}\n\
-            Retenue mensuelle : ¥{ia:.2} / 12 = ¥{mens:.2}\n\
-            Taux effectif mensuel : {teff:.2} %\n\n\
-            Base légale : 个人所得税法 (L. 31/08/2018) ; 国税发〔2018〕164号.",
-            brut = brut, cot = cotisations_sal, dp = deduction_perso,
-            bm   = base_mensuelle, ba = base_annuelle,
-            ia   = iit_ann, mens = mensuel, teff = taux_eff * dec!(100),
-        ),
-        loi_ref: Some("个人所得税法 (2018) — 国税发〔2018〕164号".into()),
+            Brut mensuel : ¥{brut}\n\
+            − Cotisations sociales sal : ¥{cot}\n\
+            − Déduction personnelle : ¥{dp}/mois\n\
+            = Base mensuelle imposable : ¥{bm}\n\
+            × 12 = Base annuelle : ¥{ba}\n\n\
+            IIT annuel (tranches 3/10/20/25/30/35/45 %) : ¥{ia}\n\
+            Retenue mensuelle : ¥{ia} / 12 = ¥{mens}\n\
+            Taux effectif mensuel : {teff} %\n\n\
+            Base légale : 个人所得税法 (L. 31/08/2018) ; 国税发〔2018〕164号.")
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{cot}", &format!("{:.2}", cotisations_sal))
+            .replace("{dp}", &format!("{:.0}", deduction_perso))
+            .replace("{bm}", &format!("{:.2}", base_mensuelle))
+            .replace("{ba}", &format!("{:.2}", base_annuelle))
+            .replace("{ia}", &format!("{:.2}", iit_ann))
+            .replace("{mens}", &format!("{:.2}", mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("个人所得税法 (2018) — 国税发〔2018〕164号")),
     }
 }

@@ -21,16 +21,18 @@ use crate::models::{Bulletin, LigneCotisation, Salarie};
 fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("CZ_GENERIC", "{libelle}. Salarié {ts} % / employeur {tp} %.")
+        .replace("{libelle}", &lib)
+        .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base,
+        code: code.into(), libelle: lib, base,
         taux_sal: ts, montant_sal: (base * ts).round_dp(2),
         taux_pat: tp, montant_pat: (base * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "{libelle}. Salarié {ts:.2} % / employeur {tp:.2} %.",
-            ts = ts * dec!(100), tp = tp * dec!(100),
-        ),
-        loi_ref: Some("Zákony o pojistném (ČR)".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Zákony o pojistném (ČR)")),
     }
 }
 
@@ -57,18 +59,20 @@ pub fn generer_bulletin_cz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "CZ_DAN".into(),
-        libelle: "Daň z příjmů — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("CZ_DAN", "Daň z příjmů — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("CZ_DAN",
             "Impôt sur le revenu {annee}.\n\n\
-            15 % jusqu'à {seuil:.0} CZK/mois, 23 % au-delà = {ib:.2} CZK\n\
-            − sleva na poplatníka 2 570 CZK = {im:.2} CZK/mois.\n\n\
-            Source : Finanční správa.",
-            annee = annee, seuil = seuil, ib = impot_brut.round_dp(2), im = impot,
-        ),
-        loi_ref: Some("Zákon o daních z příjmů".into()),
+            15 % jusqu'à {seuil} CZK/mois, 23 % au-delà = {ib} CZK\n\
+            − sleva na poplatníka 2 570 CZK = {im} CZK/mois.\n\n\
+            Source : Finanční správa.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{seuil}", &format!("{:.0}", seuil))
+            .replace("{ib}", &format!("{:.2}", impot_brut.round_dp(2)))
+            .replace("{im}", &format!("{:.2}", impot)),
+        loi_ref: Some(ctx.loi_ref("Zákon o daních z příjmů")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

@@ -45,23 +45,25 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let mut cotisations = vec![
         LigneCotisation {
-            code: "SK_ZDRAVOTNE".into(), libelle: "Zdravotné poistenie — Assurance maladie".into(),
+            code: "SK_ZDRAVOTNE".into(), libelle: ctx.libelle("SK_ZDRAVOTNE", "Zdravotné poistenie — Assurance maladie"),
             base: brut, taux_sal: ts_z, montant_sal: z_sal,
             taux_pat: tp_z, montant_pat: (brut * tp_z).round_dp(2),
             categorie: "Sécurité sociale".into(),
-            explication: format!("Assurance maladie — salarié {:.2} % / employeur {:.2} %.",
-                ts_z * dec!(100), tp_z * dec!(100)),
-            loi_ref: Some("Zákon o zdravotnom poistení".into()),
+            explication: ctx.expl("SK_ZDRAVOTNE", "Assurance maladie — salarié {ts} % / employeur {tp} %.")
+                .replace("{ts}", &format!("{:.2}", ts_z * dec!(100)))
+                .replace("{tp}", &format!("{:.2}", tp_z * dec!(100))),
+            loi_ref: Some(ctx.loi_ref("Zákon o zdravotnom poistení")),
         },
         LigneCotisation {
-            code: "SK_SOCIALNE".into(), libelle: "Sociálne poistenie — Sécurité sociale".into(),
+            code: "SK_SOCIALNE".into(), libelle: ctx.libelle("SK_SOCIALNE", "Sociálne poistenie — Sécurité sociale"),
             base: assiette_soc, taux_sal: ts_s, montant_sal: s_sal,
             taux_pat: tp_s, montant_pat: (assiette_soc * tp_s).round_dp(2),
             categorie: "Sécurité sociale".into(),
-            explication: format!(
-                "Sécurité sociale — salarié {:.2} % / employeur {:.2} %. Assiette plafonnée \
-                à 15 730 €/mois.", ts_s * dec!(100), tp_s * dec!(100)),
-            loi_ref: Some("Zákon o sociálnom poistení".into()),
+            explication: ctx.expl("SK_SOCIALNE",
+                "Sécurité sociale — salarié {ts} % / employeur {tp} %. Assiette plafonnée à 15 730 €/mois.")
+                .replace("{ts}", &format!("{:.2}", ts_s * dec!(100)))
+                .replace("{tp}", &format!("{:.2}", tp_s * dec!(100))),
+            loi_ref: Some(ctx.loi_ref("Zákon o sociálnom poistení")),
         },
     ];
 
@@ -73,19 +75,22 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "SK_DAN".into(),
-        libelle: "Daň z príjmov — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("SK_DAN", "Daň z príjmov — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("SK_DAN",
             "Impôt sur le revenu {annee}.\n\n\
-            Base = brut − cotisations salariales − part non imposable {nczd:.2} € = {b:.2} €\n\
-            19 % jusqu'à {seuil:.2} €/mois, 25 % au-delà → {im:.2} €/mois.\n\n\
+            Base = brut − cotisations salariales − part non imposable {nczd} € = {b} €\n\
+            19 % jusqu'à {seuil} €/mois, 25 % au-delà → {im} €/mois.\n\n\
             Note : dégressivité de la part non imposable non modélisée (net prudent).\n\
-            Source : Finančná správa.",
-            annee = annee, nczd = nczd, seuil = seuil, b = base, im = impot,
-        ),
-        loi_ref: Some("Zákon o dani z príjmov".into()),
+            Source : Finančná správa.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{nczd}", &format!("{:.2}", nczd))
+            .replace("{seuil}", &format!("{:.2}", seuil))
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{im}", &format!("{:.2}", impot)),
+        loi_ref: Some(ctx.loi_ref("Zákon o dani z príjmov")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

@@ -93,18 +93,19 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let nps_ts = ctx.taux_sal("KR_NPS");
     let nps_tp = ctx.taux_pat("KR_NPS");
     cotisations.push(LigneCotisation {
-        code: "KR_NPS".into(), libelle: "국민연금 — Pension nationale".into(), base: base_nps,
+        code: "KR_NPS".into(), libelle: ctx.libelle("KR_NPS", "국민연금 — Pension nationale"), base: base_nps,
         taux_sal: nps_ts, montant_sal: (base_nps * nps_ts).round_dp(0),
         taux_pat: nps_tp, montant_pat: (base_nps * nps_tp).round_dp(0),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "국민연금 — pension. {ts:.2} % sal / {tp:.2} % pat.\n\
-            Assiette plafonnée à 6 370 000 ₩/mois → {base:.0} ₩.\n\
-            Salarié : {ms:.0} ₩.\n\nBase légale : 국민연금법.",
-            ts = nps_ts * dec!(100), tp = nps_tp * dec!(100), base = base_nps,
-            ms = (base_nps * nps_ts).round_dp(0),
-        ),
-        loi_ref: Some("국민연금법".into()),
+        explication: ctx.expl("KR_NPS",
+            "국민연금 — pension. {ts} % sal / {tp} % pat.\n\
+            Assiette plafonnée à 6 370 000 ₩/mois → {base} ₩.\n\
+            Salarié : {ms} ₩.\n\nBase légale : 국민연금법.")
+            .replace("{ts}", &format!("{:.2}", nps_ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", nps_tp * dec!(100)))
+            .replace("{base}", &format!("{:.0}", base_nps))
+            .replace("{ms}", &format!("{:.0}", (base_nps * nps_ts).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("국민연금법")),
     });
 
     // 건강보험
@@ -113,58 +114,58 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let nhi_sal = (brut * nhi_ts).round_dp(0);
     let nhi_pat = (brut * nhi_tp).round_dp(0);
     cotisations.push(LigneCotisation {
-        code: "KR_NHI".into(), libelle: "건강보험 — Assurance santé".into(), base: brut,
+        code: "KR_NHI".into(), libelle: ctx.libelle("KR_NHI", "건강보험 — Assurance santé"), base: brut,
         taux_sal: nhi_ts, montant_sal: nhi_sal, taux_pat: nhi_tp, montant_pat: nhi_pat,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "건강보험 — santé. {ts:.3} % chacun. Salarié : {ms:.0} ₩.\n\nBase légale : 국민건강보험법.",
-            ts = nhi_ts * dec!(100), ms = nhi_sal,
-        ),
-        loi_ref: Some("국민건강보험법".into()),
+        explication: ctx.expl("KR_NHI",
+            "건강보험 — santé. {ts} % chacun. Salarié : {ms} ₩.\n\nBase légale : 국민건강보험법.")
+            .replace("{ts}", &format!("{:.3}", nhi_ts * dec!(100)))
+            .replace("{ms}", &format!("{:.0}", nhi_sal)),
+        loi_ref: Some(ctx.loi_ref("국민건강보험법")),
     });
 
     // 장기요양 = part de la prime santé (12,95 % en 2024-2025, 13,14 % en 2026)
     let ltc_sal = (nhi_sal * ltc_taux).round_dp(0);
     let ltc_pat = (nhi_pat * ltc_taux).round_dp(0);
     cotisations.push(LigneCotisation {
-        code: "KR_LTC".into(), libelle: "장기요양보험 — Dépendance".into(), base: nhi_sal,
+        code: "KR_LTC".into(), libelle: ctx.libelle("KR_LTC", "장기요양보험 — Dépendance"), base: nhi_sal,
         taux_sal: ltc_taux, montant_sal: ltc_sal, taux_pat: ltc_taux, montant_pat: ltc_pat,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "장기요양보험 — soins de longue durée. {lt:.2} % de la prime santé.\n\
-            Assiette : prime santé salariale {b:.0} ₩ → {ms:.0} ₩.\n\nBase légale : 노인장기요양보험법.",
-            lt = ltc_taux * dec!(100), b = nhi_sal, ms = ltc_sal,
-        ),
-        loi_ref: Some("노인장기요양보험법".into()),
+        explication: ctx.expl("KR_LTC",
+            "장기요양보험 — soins de longue durée. {lt} % de la prime santé.\n\
+            Assiette : prime santé salariale {b} ₩ → {ms} ₩.\n\nBase légale : 노인장기요양보험법.")
+            .replace("{lt}", &format!("{:.2}", ltc_taux * dec!(100)))
+            .replace("{b}", &format!("{:.0}", nhi_sal))
+            .replace("{ms}", &format!("{:.0}", ltc_sal)),
+        loi_ref: Some(ctx.loi_ref("노인장기요양보험법")),
     });
 
     // 고용보험
     let ei_ts = ctx.taux_sal("KR_EI");
     let ei_tp = ctx.taux_pat("KR_EI");
     cotisations.push(LigneCotisation {
-        code: "KR_EI".into(), libelle: "고용보험 — Assurance emploi".into(), base: brut,
+        code: "KR_EI".into(), libelle: ctx.libelle("KR_EI", "고용보험 — Assurance emploi"), base: brut,
         taux_sal: ei_ts, montant_sal: (brut * ei_ts).round_dp(0),
         taux_pat: ei_tp, montant_pat: (brut * ei_tp).round_dp(0),
         categorie: "Chômage".into(),
-        explication: format!(
-            "고용보험 — emploi. Salarié {ts:.2} % / employeur {tp:.2} %.\n\nBase légale : 고용보험법.",
-            ts = ei_ts * dec!(100), tp = ei_tp * dec!(100),
-        ),
-        loi_ref: Some("고용보험법".into()),
+        explication: ctx.expl("KR_EI",
+            "고용보험 — emploi. Salarié {ts} % / employeur {tp} %.\n\nBase légale : 고용보험법.")
+            .replace("{ts}", &format!("{:.2}", ei_ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", ei_tp * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("고용보험법")),
     });
 
     // 산재보험 (employeur)
     let sj_tp = ctx.taux_pat("KR_SANJAE");
     cotisations.push(LigneCotisation {
-        code: "KR_SANJAE".into(), libelle: "산재보험 — Accidents (employeur)".into(), base: brut,
+        code: "KR_SANJAE".into(), libelle: ctx.libelle("KR_SANJAE", "산재보험 — Accidents (employeur)"), base: brut,
         taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
         taux_pat: sj_tp, montant_pat: (brut * sj_tp).round_dp(0),
         categorie: "Cotisations patronales".into(),
-        explication: format!(
-            "산재보험 — accidents du travail, 100 % patronal. ≈ {tp:.2} % (moyen).\n\nBase légale : 고용보험법/산재.",
-            tp = sj_tp * dec!(100),
-        ),
-        loi_ref: Some("산업재해보상보험법".into()),
+        explication: ctx.expl("KR_SANJAE",
+            "산재보험 — accidents du travail, 100 % patronal. ≈ {tp} % (moyen).\n\nBase légale : 고용보험법/산재.")
+            .replace("{tp}", &format!("{:.2}", sj_tp * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("산업재해보상보험법")),
     });
 
     // 소득세 + 지방소득세 (annualisé)
@@ -177,31 +178,35 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let local_mens = (national_mens * dec!(0.10)).round_dp(0);
     let taux_it = if brut > Decimal::ZERO { (national_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
-        code: "KR_INCOME_TAX".into(), libelle: "소득세 — Impôt sur le revenu".into(), base: brut,
+        code: "KR_INCOME_TAX".into(), libelle: ctx.libelle("KR_INCOME_TAX", "소득세 — Impôt sur le revenu"), base: brut,
         taux_sal: taux_it, montant_sal: national_mens, taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("KR_INCOME_TAX",
             "소득세 — impôt national (annualisé).\n\n\
-            총급여 {g:.0} ₩ − 근로소득공제 {ded:.0} ₩ − 기본공제 1 500 000 ₩\n\
-            = revenu imposable {tx:.0} ₩\n\
-            Barème 6→45 % : {tb:.0} ₩ − 근로소득세액공제 {cr:.0} ₩\n\
-            = {na:.0} ₩/an / 12 = {nm:.0} ₩/mois.\n\n\
-            Base légale : 소득세법.",
-            g = g, ded = geunro_deduction(g), tx = taxable, tb = tax_brut,
-            cr = credit, na = national_ann, nm = national_mens,
-        ),
-        loi_ref: Some("소득세법".into()),
+            총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩\n\
+            = revenu imposable {tx} ₩\n\
+            Barème 6→45 % : {tb} ₩ − 근로소득세액공제 {cr} ₩\n\
+            = {na} ₩/an / 12 = {nm} ₩/mois.\n\n\
+            Base légale : 소득세법.")
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{ded}", &format!("{:.0}", geunro_deduction(g)))
+            .replace("{tx}", &format!("{:.0}", taxable))
+            .replace("{tb}", &format!("{:.0}", tax_brut))
+            .replace("{cr}", &format!("{:.0}", credit))
+            .replace("{na}", &format!("{:.0}", national_ann))
+            .replace("{nm}", &format!("{:.0}", national_mens)),
+        loi_ref: Some(ctx.loi_ref("소득세법")),
     });
     cotisations.push(LigneCotisation {
-        code: "KR_LOCAL_TAX".into(), libelle: "지방소득세 — Impôt local (10 %)".into(), base: national_mens,
+        code: "KR_LOCAL_TAX".into(), libelle: ctx.libelle("KR_LOCAL_TAX", "지방소득세 — Impôt local (10 %)"), base: national_mens,
         taux_sal: dec!(0.10), montant_sal: local_mens, taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Taxe locale".into(),
-        explication: format!(
+        explication: ctx.expl("KR_LOCAL_TAX",
             "지방소득세 — impôt local = 10 % de l'impôt national.\n\
-            {n:.0} ₩ × 10 % = {l:.0} ₩/mois.\n\nBase légale : 지방세법.",
-            n = national_mens, l = local_mens,
-        ),
-        loi_ref: Some("지방세법".into()),
+            {n} ₩ × 10 % = {l} ₩/mois.\n\nBase légale : 지방세법.")
+            .replace("{n}", &format!("{:.0}", national_mens))
+            .replace("{l}", &format!("{:.0}", local_mens)),
+        loi_ref: Some(ctx.loi_ref("지방세법")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

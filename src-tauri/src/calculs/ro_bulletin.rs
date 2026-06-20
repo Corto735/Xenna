@@ -19,16 +19,18 @@ use crate::models::{Bulletin, LigneCotisation, Salarie};
 fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("RO_GENERIC", "{libelle}. Salarié {ts} % / employeur {tp} %.")
+        .replace("{libelle}", &lib)
+        .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base,
+        code: code.into(), libelle: lib, base,
         taux_sal: ts, montant_sal: (base * ts).round_dp(2),
         taux_pat: tp, montant_pat: (base * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "{libelle}. Salarié {ts:.2} % / employeur {tp:.2} %.",
-            ts = ts * dec!(100), tp = tp * dec!(100),
-        ),
-        loi_ref: Some("Codul fiscal (Legea 227/2015)".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Codul fiscal (Legea 227/2015)")),
     }
 }
 
@@ -54,18 +56,19 @@ pub fn generer_bulletin_ro(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "RO_IMPOZIT".into(),
-        libelle: "Impozit pe venit — Impôt sur le revenu (10 %)".into(),
+        libelle: ctx.libelle("RO_IMPOZIT", "Impozit pe venit — Impôt sur le revenu (10 %)"),
         base: brut, taux_sal: taux_imp, montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("RO_IMPOZIT",
             "Impôt sur le revenu {annee} : 10 % proportionnel (flat tax depuis 2018).\n\n\
-            Base = brut − CAS 25 % − CASS 10 % = {b:.2} RON → {im:.2} RON/mois.\n\n\
+            Base = brut − CAS 25 % − CASS 10 % = {b} RON → {im} RON/mois.\n\n\
             Note : déduction personnelle (bas salaires) non modélisée (net prudent).\n\
-            Source : ANAF.",
-            annee = annee, b = base, im = impot,
-        ),
-        loi_ref: Some("Codul fiscal (Legea 227/2015)".into()),
+            Source : ANAF.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{im}", &format!("{:.2}", impot)),
+        loi_ref: Some(ctx.loi_ref("Codul fiscal (Legea 227/2015)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

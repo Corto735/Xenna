@@ -76,17 +76,19 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let sv_sal = (assiette_sv * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "AT_SV".into(),
-        libelle: "Sozialversicherung — Cotisations sociales".into(),
+        libelle: ctx.libelle("AT_SV", "Sozialversicherung — Cotisations sociales"),
         base: assiette_sv, taux_sal: ts, montant_sal: sv_sal,
         taux_pat: tp, montant_pat: (assiette_sv * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "Sozialversicherung — salarié {ts:.2} % / employeur {tp:.2} % (retraite PV, \
-            maladie KV, chômage ALV, AK, WBF). Assiette plafonnée à {hbgl:.0} €/mois \
-            (Höchstbeitragsgrundlage). Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), hbgl = hbgl, ms = sv_sal,
-        ),
-        loi_ref: Some("ASVG".into()),
+        explication: ctx.expl("AT_SV",
+            "Sozialversicherung — salarié {ts} % / employeur {tp} % (retraite PV, \
+            maladie KV, chômage ALV, AK, WBF). Assiette plafonnée à {hbgl} €/mois \
+            (Höchstbeitragsgrundlage). Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{hbgl}", &format!("{:.0}", hbgl))
+            .replace("{ms}", &format!("{:.2}", sv_sal)),
+        loi_ref: Some(ctx.loi_ref("ASVG")),
     }];
 
     // Lohnsteuer : base annuelle = (brut − SV salarié) × 12.
@@ -95,26 +97,27 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "AT_LOHNSTEUER".into(),
-        libelle: "Lohnsteuer — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("AT_LOHNSTEUER", "Lohnsteuer — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("AT_LOHNSTEUER",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Base = (brut − SV salarié) × 12 = {b:.0} €\n\
+            Base = (brut − SV salarié) × 12 = {b} €\n\
             Barème 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n\
             (seuils {seuils})\n\
-            → {im:.2} €/mois.\n\n\
+            → {im} €/mois.\n\n\
             Note : 13ᵉ/14ᵉ mois (Sonderzahlungen) et crédits non modélisés (net prudent).\n\
-            Source : BMF.",
-            annee = annee, b = base_an, im = impot_mens,
-            seuils = if annee >= 2026 {
+            Source : BMF.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.0}", base_an))
+            .replace("{im}", &format!("{:.2}", impot_mens))
+            .replace("{seuils}", if annee >= 2026 {
                 "13 539 / 21 992 / 36 458 / 70 365 / 104 859 / 1 000 000 €"
             } else {
                 "13 308 / 21 617 / 35 836 / 69 166 / 103 072 / 1 000 000 €"
-            },
-        ),
-        loi_ref: Some("EStG 1988".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("EStG 1988")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

@@ -32,22 +32,24 @@ pub fn generer_bulletin_hu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let tb_sal = (brut * ts).round_dp(2);
     let mut cotisations = vec![
         LigneCotisation {
-            code: "HU_TB".into(), libelle: "Társadalombiztosítás — Cotisation sociale".into(),
+            code: "HU_TB".into(), libelle: ctx.libelle("HU_TB", "Társadalombiztosítás — Cotisation sociale"),
             base: brut, taux_sal: ts, montant_sal: tb_sal,
             taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
             categorie: "Sécurité sociale".into(),
-            explication: format!(
-                "TB — {:.2} % salarié (retraite 10 % + maladie 7 % + chômage 1,5 %). \
-                Salarié : {:.2} HUF.", ts * dec!(100), tb_sal),
-            loi_ref: Some("2019. évi CXXII. törvény (TB)".into()),
+            explication: ctx.expl("HU_TB",
+                "TB — {ts} % salarié (retraite 10 % + maladie 7 % + chômage 1,5 %). Salarié : {ms} HUF.")
+                .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+                .replace("{ms}", &format!("{:.2}", tb_sal)),
+            loi_ref: Some(ctx.loi_ref("2019. évi CXXII. törvény (TB)")),
         },
         LigneCotisation {
-            code: "HU_SZOCHO".into(), libelle: "Szociális hozzájárulási adó (employeur)".into(),
+            code: "HU_SZOCHO".into(), libelle: ctx.libelle("HU_SZOCHO", "Szociális hozzájárulási adó (employeur)"),
             base: brut, taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
             taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
             categorie: "Sécurité sociale".into(),
-            explication: format!("Szocho — {:.2} % à la charge de l'employeur.", tp * dec!(100)),
-            loi_ref: Some("2018. évi LII. törvény (szocho)".into()),
+            explication: ctx.expl("HU_SZOCHO", "Szocho — {tp} % à la charge de l'employeur.")
+                .replace("{tp}", &format!("{:.2}", tp * dec!(100))),
+            loi_ref: Some(ctx.loi_ref("2018. évi LII. törvény (szocho)")),
         },
     ];
 
@@ -55,17 +57,17 @@ pub fn generer_bulletin_hu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let impot = (brut * dec!(0.15)).round_dp(2);
     cotisations.push(LigneCotisation {
         code: "HU_SZJA".into(),
-        libelle: "SZJA — Impôt sur le revenu (15 %)".into(),
+        libelle: ctx.libelle("HU_SZJA", "SZJA — Impôt sur le revenu (15 %)"),
         base: brut, taux_sal: dec!(0.15), montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
-            "Impôt sur le revenu {annee} : taux proportionnel unique 15 % → {im:.2} HUF/mois.\n\n\
+        explication: ctx.expl("HU_SZJA",
+            "Impôt sur le revenu {annee} : taux proportionnel unique 15 % → {im} HUF/mois.\n\n\
             Note : abattements familiaux et exonérations jeunes/mères non modélisés (net prudent).\n\
-            Source : NAV.",
-            annee = annee, im = impot,
-        ),
-        loi_ref: Some("1995. évi CXVII. törvény (SZJA)".into()),
+            Source : NAV.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{im}", &format!("{:.2}", impot)),
+        loi_ref: Some(ctx.loi_ref("1995. évi CXVII. törvény (SZJA)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

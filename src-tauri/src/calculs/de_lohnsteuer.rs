@@ -182,14 +182,33 @@ pub fn lohnsteuer_mensuel(
     let soli_annuel  = solidaritaetszuschlag(lst_annuel, annee);
     let soli_mensuel = (soli_annuel / dec!(12)).round_dp(2);
 
-    let sk_libelle = match steuerklasse {
-        1 => "I — célibataire",
-        2 => "II — parent isolé",
-        3 => "III — marié·e (revenu élevé)",
-        4 => "IV — marié·e (revenus égaux)",
-        5 => "V — marié·e (revenu faible)",
-        6 => "VI — second emploi",
-        _ => "I",
+    let sk_libelle = ctx.libelle(
+        match steuerklasse {
+            1 => "DE_SK1", 2 => "DE_SK2", 3 => "DE_SK3",
+            4 => "DE_SK4", 5 => "DE_SK5", 6 => "DE_SK6", _ => "DE_SK1",
+        },
+        match steuerklasse {
+            1 => "I — célibataire",
+            2 => "II — parent isolé",
+            3 => "III — marié·e (revenu élevé)",
+            4 => "IV — marié·e (revenus égaux)",
+            5 => "V — marié·e (revenu faible)",
+            6 => "VI — second emploi",
+            _ => "I",
+        },
+    );
+
+    let gbf_info = match steuerklasse {
+        1 | 4 => ctx.expl("DE_GBF_STD", "Grundfreibetrag ({gbf} €/an) appliqué")
+            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee))),
+        2 => ctx.expl("DE_GBF_SK2", "Grundfreibetrag + Entlastungsbetrag Alleinerziehende ({ent} €/an)")
+            .replace("{ent}", &format!("{:.0}", entlastungsbetrag(annee))),
+        3 => ctx.expl("DE_GBF_SK3", "Grundfreibetrag doublé ({gbf2} €/an) — conjoint en SK V")
+            .replace("{gbf2}", &format!("{:.0}", grundfreibetrag(annee) * dec!(2))),
+        5 => ctx.expl("DE_GBF_SK5", "Pas de Grundfreibetrag — revenu entièrement imposable"),
+        6 => ctx.expl("DE_GBF_SK6", "Pas de Grundfreibetrag + majoration second emploi"),
+        _ => ctx.expl("DE_GBF_STD", "Grundfreibetrag ({gbf} €/an) appliqué")
+            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee))),
     };
 
     let mut lignes = Vec::new();
@@ -197,7 +216,8 @@ pub fn lohnsteuer_mensuel(
     // ── Lohnsteuer ─────────────────────────────────────────
     lignes.push(LigneCotisation {
         code:        "DE_LOHNSTEUER".into(),
-        libelle:     format!("Lohnsteuer — Steuerklasse {sk_libelle}"),
+        libelle:     ctx.libelle("DE_LOHNSTEUER", "Lohnsteuer — Steuerklasse {sk}")
+            .replace("{sk}", &sk_libelle),
         base:        brut, // base mensuelle (le calcul est annualisé en interne)
         taux_sal:    if brut > Decimal::ZERO {
             (lst_mensuel / brut).round_dp(4)
@@ -208,62 +228,56 @@ pub fn lohnsteuer_mensuel(
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("DE_LOHNSTEUER",
             "La Lohnsteuer est l'impôt sur les salaires allemand, prélevé à la source par l'employeur \
-            (EStG §38). Elle est calculée sur le revenu annualisé ({revenu_an:.0} €/an) selon le barème \
+            (EStG §38). Elle est calculée sur le revenu annualisé ({revenu_an} €/an) selon le barème \
             progressif EStG §32a, puis divisée par 12 pour le bulletin mensuel.\n\n\
-            Steuerklasse {sk} ({sk_lib}) : {gbf_info}.\n\n\
-            Grundfreibetrag {annee} : {gbf:.0} €/an. \
+            Steuerklasse {skn} ({skl}) : {gbf_info}.\n\n\
+            Grundfreibetrag {annee} : {gbf} €/an. \
             Barème {annee} : 0 % jusqu'au Grundfreibetrag → progression 14 %-42 % → \
             taux marginal 42 % (Spitzensteuersatz) → 45 % au-delà de 277 825 €/an.\n\n\
-            Lohnsteuer annuelle calculée : {lst_an:.2} € → mensuelle : {lst_m:.2} €. \
-            Note : le taux effectif affiché est indicatif (LSt mensuelle / brut mensuel).",
-            revenu_an = brut * dec!(12),
-            sk        = steuerklasse,
-            sk_lib    = sk_libelle,
-            gbf_info  = match steuerklasse {
-                1 | 4 => format!("Grundfreibetrag ({:.0} €/an) appliqué", grundfreibetrag(annee)),
-                2     => format!("Grundfreibetrag + Entlastungsbetrag Alleinerziehende ({:.0} €/an)", entlastungsbetrag(annee)),
-                3     => format!("Grundfreibetrag doublé ({:.0} €/an) — conjoint en SK V", grundfreibetrag(annee) * dec!(2)),
-                5     => "Pas de Grundfreibetrag — revenu entièrement imposable".to_string(),
-                6     => "Pas de Grundfreibetrag + majoration second emploi".to_string(),
-                _     => "Grundfreibetrag appliqué".to_string(),
-            },
-            annee     = annee,
-            gbf       = grundfreibetrag(annee),
-            lst_an    = lst_annuel,
-            lst_m     = lst_mensuel,
-        ),
-        loi_ref: Some("EStG §32a, §38, §39 — Jahressteuergesetz annuels".into()),
+            Lohnsteuer annuelle calculée : {lst_an} € → mensuelle : {lst_m} €. \
+            Note : le taux effectif affiché est indicatif (LSt mensuelle / brut mensuel).")
+            .replace("{revenu_an}", &format!("{:.0}", brut * dec!(12)))
+            .replace("{skn}", &steuerklasse.to_string())
+            .replace("{skl}", &sk_libelle)
+            .replace("{gbf_info}", &gbf_info)
+            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee)))
+            .replace("{lst_an}", &format!("{:.2}", lst_annuel))
+            .replace("{lst_m}", &format!("{:.2}", lst_mensuel))
+            .replace("{annee}", &annee.to_string()),
+        loi_ref: Some(ctx.loi_ref("EStG §32a, §38, §39 — Jahressteuergesetz annuels")),
     });
 
     // ── Solidaritätszuschlag ────────────────────────────────
     if soli_mensuel > Decimal::ZERO {
         lignes.push(LigneCotisation {
             code:        "DE_SOLI".into(),
-            libelle:     "Solidaritätszuschlag".into(),
+            libelle:     ctx.libelle("DE_SOLI", "Solidaritätszuschlag"),
             base:        lst_mensuel,
             taux_sal:    dec!(0.055),
             montant_sal: soli_mensuel,
             taux_pat:    Decimal::ZERO,
             montant_pat: Decimal::ZERO,
             categorie:   "Impôt sur le revenu".into(),
-            explication: format!(
+            explication: ctx.expl("DE_SOLI",
                 "Le Solidaritätszuschlag (\"Soli\") est une surtaxe de 5,5 % sur la Lohnsteuer, \
                 instituée en 1991 pour financer la réunification allemande (SolZG). \
                 Depuis le 01/01/2021, il est supprimé pour ~90 % des contribuables : \
                 exonération si Lohnsteuer annuelle ≤ {seuil} €. \
                 Zone de transition jusqu'à {seuil_haut} € de Lohnsteuer annuelle : taux progressif 11,9 %. \
-                Au-delà : taux plein 5,5 %. {annee_info}",
-                seuil      = if annee >= 2021 { "17 543" } else { "0 (taux plein)" },
-                seuil_haut = "66 915",
-                annee_info = if annee <= 2020 {
-                    format!("En {}, le taux plein s'appliquait à tous.", annee)
+                Au-delà : taux plein 5,5 %. {annee_info}")
+                .replace("{seuil}", if annee >= 2021 { "17 543" } else { "0 (taux plein)" })
+                .replace("{seuil_haut}", "66 915")
+                .replace("{annee_info}", &if annee <= 2020 {
+                    ctx.expl("DE_SOLI_ANNEE_PRE", "En {an}, le taux plein s'appliquait à tous.")
+                        .replace("{an}", &annee.to_string())
                 } else {
-                    format!("En {}, Lohnsteuer annuelle = {:.2} € → Soli applicable.", annee, lst_annuel)
-                },
-            ),
-            loi_ref: Some("SolZG — Jahressteuergesetz 2021".into()),
+                    ctx.expl("DE_SOLI_ANNEE_POST", "En {an}, Lohnsteuer annuelle = {lst} € → Soli applicable.")
+                        .replace("{an}", &annee.to_string())
+                        .replace("{lst}", &format!("{:.2}", lst_annuel))
+                }),
+            loi_ref: Some(ctx.loi_ref("SolZG — Jahressteuergesetz 2021")),
         });
     }
 
@@ -274,14 +288,16 @@ pub fn lohnsteuer_mensuel(
         let taux_pct = if taux_k == dec!(0.08) { 8 } else { 9 };
         lignes.push(LigneCotisation {
             code:        "DE_KIRCHENSTEUER".into(),
-            libelle:     format!("Kirchensteuer ({land} — {taux_pct} %)"),
+            libelle:     ctx.libelle("DE_KIRCHENSTEUER", "Kirchensteuer ({land} — {tp} %)")
+                .replace("{land}", land)
+                .replace("{tp}", &taux_pct.to_string()),
             base:        lst_mensuel,
             taux_sal:    taux_k,
             montant_sal: kirche_mensuel,
             taux_pat:    Decimal::ZERO,
             montant_pat: Decimal::ZERO,
             categorie:   "Impôt sur le revenu".into(),
-            explication: format!(
+            explication: ctx.expl("DE_KIRCHENSTEUER",
                 "La taxe d'église (Kirchensteuer) est prélevée par l'employeur sur la Lohnsteuer \
                 au profit des grandes confessions (catholique, protestante, judaïque). \
                 Elle est obligatoire si le salarié est enregistré comme membre auprès \
@@ -290,11 +306,10 @@ pub fn lohnsteuer_mensuel(
                 Bayern (BY) et Baden-Württemberg (BW) appliquent 8 %, \
                 les 14 autres Länder appliquent 9 %.\n\n\
                 Le salarié peut se désengager (Kirchenaustritt) auprès du registre civil \
-                — la Kirchensteuer disparaît alors du bulletin.",
-                land     = land,
-                taux_pct = taux_pct,
-            ),
-            loi_ref: Some(format!("KiStG {land} — EStG §51a").into()),
+                — la Kirchensteuer disparaît alors du bulletin.")
+                .replace("{land}", land)
+                .replace("{taux_pct}", &taux_pct.to_string()),
+            loi_ref: Some(ctx.loi_ref(&format!("KiStG {land} — EStG §51a"))),
         });
     }
 

@@ -125,7 +125,7 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
                 montant_pat: Decimal::ZERO,
                 categorie:   "Heures supplémentaires".into(),
                 explication: format!("{expl}{detail}"),
-                loi_ref:     Some("CSS art. L241-17 — Loi n°2018-1213 du 24/12/2018".into()),
+                loi_ref:     Some(ctx.loi_ref("CSS art. L241-17 — Loi n°2018-1213 du 24/12/2018")),
             });
         }
 
@@ -152,7 +152,7 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
                         montant_pat: -deduction_patronale, // négatif → réduit le coût employeur
                         categorie:   "Heures supplémentaires".into(),
                         explication: format!("{expl}{detail}"),
-                        loi_ref:     Some("CSS art. L241-18".into()),
+                        loi_ref:     Some(ctx.loi_ref("CSS art. L241-18")),
                     });
                 }
             }

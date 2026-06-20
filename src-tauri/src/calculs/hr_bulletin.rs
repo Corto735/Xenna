@@ -34,23 +34,24 @@ pub fn generer_bulletin_hr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let tp = ctx.taux_pat("HR_ZDRAVSTVENO");
     let mut cotisations = vec![
         LigneCotisation {
-            code: "HR_MIROVINSKO".into(), libelle: "Mirovinsko osiguranje — Retraite".into(),
+            code: "HR_MIROVINSKO".into(), libelle: ctx.libelle("HR_MIROVINSKO", "Mirovinsko osiguranje — Retraite"),
             base: brut, taux_sal: ts, montant_sal: retraite,
             taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
             categorie: "Sécurité sociale".into(),
-            explication: format!(
-                "Retraite — {:.2} % salarié (1er pilier 15 % + 2ᵉ pilier 5 %). Salarié : {:.2} €.",
-                ts * dec!(100), retraite),
-            loi_ref: Some("Zakon o mirovinskom osiguranju".into()),
+            explication: ctx.expl("HR_MIROVINSKO",
+                "Retraite — {ts} % salarié (1er pilier 15 % + 2ᵉ pilier 5 %). Salarié : {ms} €.")
+                .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+                .replace("{ms}", &format!("{:.2}", retraite)),
+            loi_ref: Some(ctx.loi_ref("Zakon o mirovinskom osiguranju")),
         },
         LigneCotisation {
-            code: "HR_ZDRAVSTVENO".into(), libelle: "Zdravstveno osiguranje — Santé (employeur)".into(),
+            code: "HR_ZDRAVSTVENO".into(), libelle: ctx.libelle("HR_ZDRAVSTVENO", "Zdravstveno osiguranje — Santé (employeur)"),
             base: brut, taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
             taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
             categorie: "Sécurité sociale".into(),
-            explication: format!("Assurance maladie — {:.2} % à la charge de l'employeur.",
-                tp * dec!(100)),
-            loi_ref: Some("Zakon o obveznom zdravstvenom osiguranju".into()),
+            explication: ctx.expl("HR_ZDRAVSTVENO", "Assurance maladie — {tp} % à la charge de l'employeur.")
+                .replace("{tp}", &format!("{:.2}", tp * dec!(100))),
+            loi_ref: Some(ctx.loi_ref("Zakon o obveznom zdravstvenom osiguranju")),
         },
     ];
 
@@ -62,18 +63,19 @@ pub fn generer_bulletin_hr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "HR_POREZ".into(),
-        libelle: "Porez na dohodak — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("HR_POREZ", "Porez na dohodak — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("HR_POREZ",
             "Impôt sur le revenu {annee}.\n\n\
-            Base = brut − retraite − abattement 600 € = {b:.2} €\n\
-            20 % jusqu'à 5 000 €/mois, 30 % au-delà → {im:.2} €/mois.\n\n\
-            Note : taux communaux représentatifs. Source : Porezna uprava.",
-            annee = annee, b = base, im = impot,
-        ),
-        loi_ref: Some("Zakon o porezu na dohodak".into()),
+            Base = brut − retraite − abattement 600 € = {b} €\n\
+            20 % jusqu'à 5 000 €/mois, 30 % au-delà → {im} €/mois.\n\n\
+            Note : taux communaux représentatifs. Source : Porezna uprava.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{im}", &format!("{:.2}", impot)),
+        loi_ref: Some(ctx.loi_ref("Zakon o porezu na dohodak")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

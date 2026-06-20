@@ -68,16 +68,18 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let efka_sal = (assiette * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "GR_EFKA".into(),
-        libelle: "EFKA — Cotisations sociales".into(),
+        libelle: ctx.libelle("GR_EFKA", "EFKA — Cotisations sociales"),
         base: assiette, taux_sal: ts, montant_sal: efka_sal,
         taux_pat: tp, montant_pat: (assiette * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "EFKA — salarié {ts:.2} % / employeur {tp:.2} % (retraite, maladie, \
-            complémentaire). Assiette plafonnée à {pl:.2} €/mois. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), pl = plafond, ms = efka_sal,
-        ),
-        loi_ref: Some("Ν. 4387/2016 (EFKA)".into()),
+        explication: ctx.expl("GR_EFKA",
+            "EFKA — salarié {ts} % / employeur {tp} % (retraite, maladie, \
+            complémentaire). Assiette plafonnée à {pl} €/mois. Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{pl}", &format!("{:.2}", plafond))
+            .replace("{ms}", &format!("{:.2}", efka_sal)),
+        loi_ref: Some(ctx.loi_ref("Ν. 4387/2016 (EFKA)")),
     }];
 
     // Impôt : base annuelle = (brut − EFKA) × 12 ; réduction 777 €.
@@ -87,25 +89,26 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "GR_FOROS".into(),
-        libelle: "Φόρος εισοδήματος — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("GR_FOROS", "Φόρος εισοδήματος — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("GR_FOROS",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Base = (brut − EFKA) × 12 = {b:.0} €\n\
+            Base = (brut − EFKA) × 12 = {b} €\n\
             {bareme}\n\
-            − réduction salarié 777 € → {im:.2} €/mois.\n\n\
+            − réduction salarié 777 € → {im} €/mois.\n\n\
             Note : majorations pour enfants non modélisées (net prudent).\n\
-            Source : AADE.",
-            annee = annee, b = base_an, im = impot_mens,
-            bareme = if annee >= 2026 {
+            Source : AADE.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.0}", base_an))
+            .replace("{im}", &format!("{:.2}", impot_mens))
+            .replace("{bareme}", if annee >= 2026 {
                 "Barème 9 / 20 / 26 / 34 / 39 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 / 60 000 €)"
             } else {
                 "Barème 9 / 22 / 28 / 36 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 €)"
-            },
-        ),
-        loi_ref: Some("Ν. 4172/2013 (Κ.Φ.Ε.)".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("Ν. 4172/2013 (Κ.Φ.Ε.)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

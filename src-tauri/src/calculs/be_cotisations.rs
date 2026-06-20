@@ -20,24 +20,24 @@ pub fn onss_salarial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal("BE_ONSS_SAL");
     LigneCotisation {
         code:        "BE_ONSS_SAL".into(),
-        libelle:     "ONSS — cotisation salariale personnelle".into(),
+        libelle:     ctx.libelle("BE_ONSS_SAL", "ONSS — cotisation salariale personnelle"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(2),
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("BE_ONSS_SAL",
             "Cotisation personnelle ONSS de 13,07 % sur le salaire brut. \
             Couvre : maladie-invalidité, pension, chômage, accidents du travail, \
             allocations familiales. Assiette : salaire brut intégral, sans plafond.\n\n\
-            Salarié : {ts_pct:.2} % × {brut:.2} € = {ms:.2} €\n\
+            Salarié : {ts_pct} % × {brut} € = {ms} €\n\
             Taux stable depuis 2003. \
-            Base légale : Loi du 27/06/1969 ; AR ONSS annuels.",
-            ts_pct = ts * dec!(100),
-            ms     = (brut * ts).round_dp(2),
-        ),
-        loi_ref: Some("Loi 27/06/1969 — AR ONSS annuels".into()),
+            Base légale : Loi du 27/06/1969 ; AR ONSS annuels.")
+            .replace("{ts_pct}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{ms}", &format!("{:.2}", (brut * ts).round_dp(2))),
+        loi_ref: Some(ctx.loi_ref("Loi 27/06/1969 — AR ONSS annuels")),
     }
 }
 
@@ -47,26 +47,25 @@ pub fn onss_patronal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("BE_ONSS_PAT");
     LigneCotisation {
         code:        "BE_ONSS_PAT".into(),
-        libelle:     "ONSS — cotisation patronale (taux global)".into(),
+        libelle:     ctx.libelle("BE_ONSS_PAT", "ONSS — cotisation patronale (taux global)"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
-            "Cotisation patronale globale ONSS ({tp_pct:.2} % du brut). \
-            Regroupe : pension ({:.2} %), maladie-invalidité ({:.2} %), \
-            chômage ({:.2} %), allocations familiales ({:.2} %), divers. \
+        explication: ctx.expl("BE_ONSS_PAT",
+            "Cotisation patronale globale ONSS ({tp_pct} % du brut). \
+            Regroupe : pension (8,86 %), maladie-invalidité (5,90 %), \
+            chômage (1,46 %), allocations familiales (5,25 %), divers. \
             La réduction structurelle (BE_RED_STRUCT) est appliquée séparément. \
             Assiette : salaire brut intégral, sans plafond.\n\n\
-            Employeur : {tp_pct:.2} % × {brut:.2} € = {mp:.2} €\n\
-            Base légale : Loi 27/06/1969 ; AR ONSS annuels.",
-            dec!(8.86), dec!(3.55) + dec!(2.35), dec!(1.46), dec!(5.25),
-            tp_pct = tp * dec!(100),
-            mp     = (brut * tp).round_dp(2),
-        ),
-        loi_ref: Some("Loi 27/06/1969 — AR ONSS annuels".into()),
+            Employeur : {tp_pct} % × {brut} € = {mp} €\n\
+            Base légale : Loi 27/06/1969 ; AR ONSS annuels.")
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{mp}", &format!("{:.2}", (brut * tp).round_dp(2))),
+        loi_ref: Some(ctx.loi_ref("Loi 27/06/1969 — AR ONSS annuels")),
     }
 }
 
@@ -106,32 +105,32 @@ pub fn bonus_emploi(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation>
     let taux_eff = if brut > Decimal::ZERO { -(montant / brut).round_dp(4) } else { Decimal::ZERO };
     Some(LigneCotisation {
         code:        "BE_BONUS_EMPLOI".into(),
-        libelle:     format!("Bonus emploi — réduction cotisations ONSS {annee}"),
+        libelle:     ctx.libelle("BE_BONUS_EMPLOI", "Bonus emploi — réduction cotisations ONSS {annee}")
+            .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: -montant,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Réduction salariale".into(),
-        explication: format!(
+        explication: ctx.expl("BE_BONUS_EMPLOI",
             "Réduction mensuelle des cotisations personnelles ONSS (13,07 %) \
             pour les travailleurs à bas salaire. \
             Le montant est dégressif entre le seuil bas et le seuil haut.\n\n\
-            {annee} : seuil bas {sb:.0} €/an — seuil haut {sh:.0} €/an — max {mm:.2} €/mois\n\
-            Salaire annuel estimé : {ann:.2} € → réduction mensuelle : {m:.2} €\n\
-            Taux effectif indicatif : {teff:.2} %\n\
+            {annee} : seuil bas {sb} €/an — seuil haut {sh} €/an — max {mm} €/mois\n\
+            Salaire annuel estimé : {ann} € → réduction mensuelle : {m} €\n\
+            Taux effectif indicatif : {teff} %\n\
             \n\
             La réduction est déduite de la cotisation ONSS due par le travailleur. \
-            Base légale : Loi 20/12/1999 ; AR annuels ONSS.",
-            annee = annee,
-            sb    = seuil_bas,
-            sh    = seuil_haut,
-            mm    = max_mensuel,
-            ann   = annuel,
-            m     = montant,
-            teff  = taux_eff * dec!(100),
-        ),
-        loi_ref: Some("Loi 20/12/1999 — AR ONSS annuels (bonus emploi)".into()),
+            Base légale : Loi 20/12/1999 ; AR annuels ONSS.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{sb}", &format!("{:.0}", seuil_bas))
+            .replace("{sh}", &format!("{:.0}", seuil_haut))
+            .replace("{mm}", &format!("{:.2}", max_mensuel))
+            .replace("{ann}", &format!("{:.2}", annuel))
+            .replace("{m}", &format!("{:.2}", montant))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("Loi 20/12/1999 — AR ONSS annuels (bonus emploi)")),
     })
 }
 
@@ -169,27 +168,27 @@ pub fn reduction_structurelle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
     let taux_eff = if brut > Decimal::ZERO { -(montant / brut).round_dp(4) } else { Decimal::ZERO };
     Some(LigneCotisation {
         code:        "BE_RED_STRUCT".into(),
-        libelle:     format!("Réduction structurelle patronale {annee}"),
+        libelle:     ctx.libelle("BE_RED_STRUCT", "Réduction structurelle patronale {annee}")
+            .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    taux_eff,
         montant_pat: -montant,
         categorie:   "Réduction patronale".into(),
-        explication: format!(
+        explication: ctx.expl("BE_RED_STRUCT",
             "Réduction mensuelle des cotisations patronales ONSS (AR 16/05/2003). \
-            Montant forfaitaire si salaire ≤ seuil, dégressif jusqu''à 1,5 × seuil.\n\n\
-            {annee} : montant plein {mp:.2} €/mois — seuil {seuil:.0} €/an\n\
-            Salaire annuel estimé : {ann:.2} € → réduction mensuelle : {m:.2} €\n\
+            Montant forfaitaire si salaire ≤ seuil, dégressif jusqu'à 1,5 × seuil.\n\n\
+            {annee} : montant plein {mp} €/mois — seuil {seuil} €/an\n\
+            Salaire annuel estimé : {ann} € → réduction mensuelle : {m} €\n\
             \n\
             La réduction est décomptée du total des cotisations patronales ONSS. \
-            Base légale : AR 16/05/2003 (réd. structurelle) + AR annuels ONSS.",
-            annee = annee,
-            mp    = montant_plein,
-            seuil = seuil_annuel,
-            ann   = annuel,
-            m     = montant,
-        ),
-        loi_ref: Some("AR 16/05/2003 (réd. structurelle patronale) — AR ONSS annuels".into()),
+            Base légale : AR 16/05/2003 (réd. structurelle) + AR annuels ONSS.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{mp}", &format!("{:.2}", montant_plein))
+            .replace("{seuil}", &format!("{:.0}", seuil_annuel))
+            .replace("{ann}", &format!("{:.2}", annuel))
+            .replace("{m}", &format!("{:.2}", montant)),
+        loi_ref: Some(ctx.loi_ref("AR 16/05/2003 (réd. structurelle patronale) — AR ONSS annuels")),
     })
 }

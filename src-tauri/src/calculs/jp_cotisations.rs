@@ -35,27 +35,29 @@ pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_KENPO".into(),
-        libelle:     "健康保険 — Assurance maladie (協会けんぽ Tokyo)".into(),
+        libelle:     ctx.libelle("JP_KENPO", "健康保険 — Assurance maladie (協会けんぽ Tokyo)"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(0),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
-            "Assurance maladie salariés (健康保険) — Kyokai Kenpo Tokyo {annee}.\n\n\
-            Taux : {ts_pct:.2} % sal + {tp_pct:.2} % pat = {tot:.2} % total\n\
+        explication: ctx.expl("JP_KENPO",
+            "Assurance maladie salariés (健康保険) — Kyokai Kenpo Tokyo {an}.\n\n\
+            Taux : {ts} % sal + {tp} % pat = {tot} % total\n\
             Plafond 標準報酬月額 : ¥{plaf} /mois\n\
             Base retenue : ¥{base} (min(brut, plafond))\n\
             Salarié : ¥{ms} | Employeur : ¥{mp}\n\n\
-            Base légale : 健康保険法.",
-            ts_pct = ts * dec!(100), tp_pct = tp * dec!(100),
-            tot  = (ts + tp) * dec!(100),
-            plaf = plafond, base = base,
-            ms   = (base * ts).round_dp(0),
-            mp   = (base * tp).round_dp(0),
-        ),
-        loi_ref: Some("健康保険法 — 協会けんぽ Tokyo 料率 2024".into()),
+            Base légale : 健康保険法.")
+            .replace("{an}", &annee.to_string())
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{plaf}", &format!("{}", plafond))
+            .replace("{base}", &format!("{}", base))
+            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("健康保険法 — 協会けんぽ Tokyo 料率 2024")),
     }
 }
 
@@ -70,26 +72,28 @@ pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_KAIGO".into(),
-        libelle:     "介護保険 — Soins longue durée (≥ 40 ans)".into(),
+        libelle:     ctx.libelle("JP_KAIGO", "介護保険 — Soins longue durée (≥ 40 ans)"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(0),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("JP_KAIGO",
             "Assurance soins longue durée (介護保険) — applicable aux 40-64 ans.\n\n\
-            Taux national {annee} : {ts_pct:.2} % sal + {tp_pct:.2} % pat = {tot:.2} % total\n\
+            Taux national {an} : {ts} % sal + {tp} % pat = {tot} % total\n\
             Même plafond que 健康保険 : ¥{plaf}/mois\n\
             Base : ¥{base} | Salarié : ¥{ms} | Employeur : ¥{mp}\n\n\
-            Base légale : 介護保険法.",
-            ts_pct = ts * dec!(100), tp_pct = tp * dec!(100),
-            tot  = (ts + tp) * dec!(100),
-            plaf = plafond, base = base,
-            ms   = (base * ts).round_dp(0),
-            mp   = (base * tp).round_dp(0),
-        ),
-        loi_ref: Some("介護保険法 — MHLW 料率 2024".into()),
+            Base légale : 介護保険法.")
+            .replace("{an}", &annee.to_string())
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{plaf}", &format!("{}", plafond))
+            .replace("{base}", &format!("{}", base))
+            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("介護保険法 — MHLW 料率 2024")),
     }
 }
 
@@ -104,26 +108,27 @@ pub fn jp_kosei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_KOSEI".into(),
-        libelle:     "厚生年金保険 — Assurance retraite salariés".into(),
+        libelle:     ctx.libelle("JP_KOSEI", "厚生年金保険 — Assurance retraite salariés"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(0),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Retraite".into(),
-        explication: format!(
+        explication: ctx.expl("JP_KOSEI",
             "Assurance retraite obligatoire des salariés (厚生年金保険).\n\n\
-            Taux unique national (depuis oct. 2017) : {ts_pct:.2} % sal + {tp_pct:.2} % pat = {tot:.2} %\n\
+            Taux unique national (depuis oct. 2017) : {ts} % sal + {tp} % pat = {tot} %\n\
             Plafond 標準報酬月額 : ¥{plaf}/mois (grade 32)\n\
             Base : ¥{base} | Salarié : ¥{ms} | Employeur : ¥{mp}\n\n\
-            Base légale : 厚生年金保険法.",
-            ts_pct = ts * dec!(100), tp_pct = tp * dec!(100),
-            tot  = (ts + tp) * dec!(100),
-            plaf = plafond, base = base,
-            ms   = (base * ts).round_dp(0),
-            mp   = (base * tp).round_dp(0),
-        ),
-        loi_ref: Some("厚生年金保険法 — MHLW 2024".into()),
+            Base légale : 厚生年金保険法.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{plaf}", &format!("{}", plafond))
+            .replace("{base}", &format!("{}", base))
+            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("厚生年金保険法 — MHLW 2024")),
     }
 }
 
@@ -135,25 +140,25 @@ pub fn jp_koyo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_KOYO".into(),
-        libelle:     "雇用保険 — Assurance emploi (chômage)".into(),
+        libelle:     ctx.libelle("JP_KOYO", "雇用保険 — Assurance emploi (chômage)"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(0),
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(0),
         categorie:   "Chômage".into(),
-        explication: format!(
+        explication: ctx.expl("JP_KOYO",
             "Assurance emploi (雇用保険) — 一般の事業 (secteur général) 2024.\n\n\
-            Taux : salarié {ts_pct:.2} % + employeur {tp_pct:.2} % = {tot:.2} % total\n\
+            Taux : salarié {ts} % + employeur {tp} % = {tot} % total\n\
             Assiette : salaire brut intégral, sans plafond.\n\
             Salarié : ¥{ms} | Employeur : ¥{mp}\n\n\
-            Base légale : 雇用保険法.",
-            ts_pct = ts * dec!(100), tp_pct = tp * dec!(100),
-            tot = (ts + tp) * dec!(100),
-            ms  = (brut * ts).round_dp(0),
-            mp  = (brut * tp).round_dp(0),
-        ),
-        loi_ref: Some("雇用保険法 — MHLW 料率 2024".into()),
+            Base légale : 雇用保険法.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{ms}", &format!("{}", (brut * ts).round_dp(0)))
+            .replace("{mp}", &format!("{}", (brut * tp).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("雇用保険法 — MHLW 料率 2024")),
     }
 }
 
@@ -164,21 +169,20 @@ pub fn jp_rousai(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_ROUSAI".into(),
-        libelle:     "労災保険 — Accidents du travail (bureau)".into(),
+        libelle:     ctx.libelle("JP_ROUSAI", "労災保険 — Accidents du travail (bureau)"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("JP_ROUSAI",
             "Assurance accidents du travail (労働者災害補償保険).\n\
-            100 % à la charge de l'employeur. Taux bureau/services généraux 2024 : {tp_pct:.2} %.\n\
+            100 % à la charge de l'employeur. Taux bureau/services généraux 2024 : {tp} %.\n\
             Employeur : ¥{mp}\n\n\
-            Base légale : 労働者災害補償保険法.",
-            tp_pct = tp * dec!(100),
-            mp     = (brut * tp).round_dp(0),
-        ),
-        loi_ref: Some("労働者災害補償保険法 — 労災保険料率表 2024".into()),
+            Base légale : 労働者災害補償保険法.")
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{mp}", &format!("{}", (brut * tp).round_dp(0))),
+        loi_ref: Some(ctx.loi_ref("労働者災害補償保険法 — 労災保険料率表 2024")),
     }
 }

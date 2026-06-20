@@ -25,16 +25,18 @@ use crate::models::{Bulletin, LigneCotisation, Salarie};
 fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("EE_GENERIC", "{libelle}. Salarié {ts} % / employeur {tp} %.")
+        .replace("{libelle}", &lib)
+        .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base,
+        code: code.into(), libelle: lib, base,
         taux_sal: ts, montant_sal: (base * ts).round_dp(2),
         taux_pat: tp, montant_pat: (base * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "{libelle}. Salarié {ts:.2} % / employeur {tp:.2} %.",
-            ts = ts * dec!(100), tp = tp * dec!(100),
-        ),
-        loi_ref: Some("Sotsiaalmaksuseadus".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Sotsiaalmaksuseadus")),
     }
 }
 
@@ -79,25 +81,27 @@ pub fn generer_bulletin_ee(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "EE_TULUMAKS".into(),
-        libelle: "Tulumaks — Impôt sur le revenu (22 %)".into(),
+        libelle: ctx.libelle("EE_TULUMAKS", "Tulumaks — Impôt sur le revenu (22 %)"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("EE_TULUMAKS",
             "Impôt sur le revenu {annee} : 22 % (taux unique).\n\n\
-            Revenu annuel {g:.0} € − cotisations salariales − abattement de base {ab:.0} €\n\
-            = base imposable {b:.0} € → {im:.2} €/mois.\n\n\
+            Revenu annuel {g} € − cotisations salariales − abattement de base {ab} €\n\
+            = base imposable {b} € → {im} €/mois.\n\n\
             {abatt_txt}\n\
-            Source : Maksu- ja Tolliamet.",
-            annee = annee, g = g, ab = abatt_an, b = base_imp_an, im = impot_mens,
-            abatt_txt = if annee >= 2026 {
-                "Abattement de base forfaitaire 8 400 €/an (700 €/mois), uniforme depuis 2026 \
-                (fin de la dégressivité)."
+            Source : Maksu- ja Tolliamet.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{ab}", &format!("{:.0}", abatt_an))
+            .replace("{b}", &format!("{:.0}", base_imp_an))
+            .replace("{im}", &format!("{:.2}", impot_mens))
+            .replace("{abatt_txt}", if annee >= 2026 {
+                "Abattement de base forfaitaire 8 400 €/an (700 €/mois), uniforme depuis 2026 (fin de la dégressivité)."
             } else {
                 "Abattement de base dégressif (7 848 € si ≤ 14 400 €/an, nul si ≥ 25 200 €/an)."
-            },
-        ),
-        loi_ref: Some("Tulumaksuseadus".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("Tulumaksuseadus")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

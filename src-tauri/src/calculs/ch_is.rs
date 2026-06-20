@@ -1,5 +1,6 @@
 use rust_decimal::Decimal;
 use std::str::FromStr;
+use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
 // ── Seuils de salaire mensuel (CHF) ──────────────────────────────────────────
@@ -84,7 +85,7 @@ const TARIF_LABELS: &[(&str, &str)] = &[
 /// * `salaire_mensuel` — salaire brut mensuel en CHF
 ///
 /// Retourne `None` si le taux résultant est nul (salaire sous le seuil d'imposition).
-pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal) -> Option<LigneCotisation> {
+pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     // Trouver la ligne du canton
     let (_, libelle_canton, taux_a0) = CANTON_A0.iter()
         .find(|(code, _, _)| *code == canton)?;
@@ -124,48 +125,51 @@ pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal) -> Optio
 
     let montant = (salaire_mensuel * taux_decimal).round_dp(2);
 
+    let libelle = ctx.libelle("CH_IS", "Impôt à la source — Tarif {tarif} — {libelle_canton}")
+        .replace("{tarif}", tarif)
+        .replace("{libelle_canton}", libelle_canton);
+    let explication = ctx.expl("CH_IS",
+        "L'impôt à la source (IS, Quellensteuer) est prélevé directement sur le salaire des \
+        travailleurs étrangers sans permis d'établissement (C) résidant en Suisse, ainsi que des \
+        frontaliers et des non-résidents (art. 83-90a LIFD). Il se substitue à la déclaration \
+        fiscale ordinaire pour les revenus inférieurs à CHF 120 000/an (seuil de rectification \
+        facultative, selon le canton).\
+        \n\n\
+        [ Paramètres retenus ]\n\
+        Canton de travail : {canton} — {libelle_canton}\n\
+        Tarif ORIS : {tarif} — {tarif_label}\n\
+        Salaire mensuel brut : CHF {sal}\n\
+        Seuil de barème retenu : CHF {seuil}\n\
+        Taux A0 de base (tarif barème) : {taux_a0} %\n\
+        Multiplicateur tarif {tarif} : × {mult}\n\
+        Taux retenu : {taux_a0} % × {mult} = {taux_final} %\n\
+        Montant IS = CHF {sal} × {taux_final} % = CHF {montant}\
+        \n\n\
+        La retenue est calculée mois par mois sur le salaire brut du mois considéré. \
+        En cas de revenus irréguliers (primes, 13e mois, heures supplémentaires), \
+        les cantons peuvent prévoir des règles de lissage. \
+        Depuis la réforme RAS (ORIS du 12/11/2014, RS 642.118.2), un barème unique \
+        par tarif s'applique à l'ensemble du territoire cantonal.")
+        .replace("{canton}", canton)
+        .replace("{libelle_canton}", libelle_canton)
+        .replace("{tarif_label}", tarif_label)
+        .replace("{tarif}", tarif)
+        .replace("{sal}", &format!("{:.2}", salaire_mensuel))
+        .replace("{seuil}", &THRESHOLDS[idx].to_string())
+        .replace("{taux_a0}", &format!("{:.1}", taux_a0_pct))
+        .replace("{mult}", &format!("{:.3}", mult))
+        .replace("{taux_final}", &format!("{:.4}", taux_final_pct))
+        .replace("{montant}", &format!("{:.2}", montant));
     Some(LigneCotisation {
         code:        "CH_IS".into(),
-        libelle:     format!("Impôt à la source — Tarif {tarif} — {libelle_canton}"),
+        libelle,
         base:        salaire_mensuel,
         taux_sal:    taux_decimal,
         montant_sal: montant,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt à la source".into(),
-        explication: format!(
-            "L'impôt à la source (IS, Quellensteuer) est prélevé directement sur le salaire des \
-            travailleurs étrangers sans permis d'établissement (C) résidant en Suisse, ainsi que des \
-            frontaliers et des non-résidents (art. 83-90a LIFD). Il se substitue à la déclaration \
-            fiscale ordinaire pour les revenus inférieurs à CHF 120 000/an (seuil de rectification \
-            facultative, selon le canton).\
-            \n\n\
-            [ Paramètres retenus ]\n\
-            Canton de travail : {canton} — {libelle_canton}\n\
-            Tarif ORIS : {tarif} — {tarif_label}\n\
-            Salaire mensuel brut : CHF {sal:.2}\n\
-            Seuil de barème retenu : CHF {seuil}\n\
-            Taux A0 de base (tarif barème) : {taux_a0:.1} %\n\
-            Multiplicateur tarif {tarif} : × {mult:.3}\n\
-            Taux retenu : {taux_a0:.1} % × {mult:.3} = {taux_final:.4} %\n\
-            Montant IS = CHF {sal:.2} × {taux_final:.4} % = CHF {montant:.2}\
-            \n\n\
-            La retenue est calculée mois par mois sur le salaire brut du mois considéré. \
-            En cas de revenus irréguliers (primes, 13e mois, heures supplémentaires), \
-            les cantons peuvent prévoir des règles de lissage. \
-            Depuis la réforme RAS (ORIS du 12/11/2014, RS 642.118.2), un barème unique \
-            par tarif s'applique à l'ensemble du territoire cantonal.",
-            canton       = canton,
-            libelle_canton = libelle_canton,
-            tarif        = tarif,
-            tarif_label  = tarif_label,
-            sal          = salaire_mensuel,
-            seuil        = THRESHOLDS[idx],
-            taux_a0      = taux_a0_pct,
-            mult         = mult,
-            taux_final   = taux_final_pct,
-            montant      = montant,
-        ),
-        loi_ref: Some("Art. 83-90a LIFD (RS 642.11) — ORIS (RS 642.118.2)".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Art. 83-90a LIFD (RS 642.11) — ORIS (RS 642.118.2)")),
     })
 }

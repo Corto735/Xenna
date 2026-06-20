@@ -22,7 +22,7 @@ pub fn ss_maladie(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             (LFSS 2018). En contrepartie, la CSG a été augmentée de 1,7 point. \
             Cette bascule visait à augmenter le salaire net sans accroître le coût employeur. \
             La part patronale finance la branche maladie de l'Assurance Maladie."),
-        loi_ref: Some("Loi n°2017-1836 du 30/12/2017 (LFSS 2018), art. 8".into()),
+        loi_ref: Some(ctx.loi_ref("Loi n°2017-1836 du 30/12/2017 (LFSS 2018), art. 8")),
     }
 }
 
@@ -67,7 +67,7 @@ pub fn ss_vieillesse_plafonnee(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -
             .replace("{etp_info}", &note)
             .replace("{pmss}", &pmss.to_string())
             .replace("{annee}", &ctx.date_paie.format("%Y").to_string()),
-        loi_ref: Some("Ordonnance n°45-2250 du 4/10/1945 — réformé par loi 2023-270 (réforme retraites)".into()),
+        loi_ref: Some(ctx.loi_ref("Ordonnance n°45-2250 du 4/10/1945 — réformé par loi 2023-270 (réforme retraites)")),
     }
 }
 
@@ -87,7 +87,7 @@ pub fn ss_vieillesse_deplafonnee(brut: Decimal, ctx: &ContextPaie) -> LigneCotis
             Cotisation solidaire : les hauts salaires contribuent proportionnellement \
             plus pour financer un système dont les pensions sont plafonnées. \
             Principe d'universalité de la Sécurité Sociale (Préambule de 1946)."),
-        loi_ref: Some("CSS art. L241-3".into()),
+        loi_ref: Some(ctx.loi_ref("CSS art. L241-3")),
     }
 }
 
@@ -105,7 +105,7 @@ pub fn famille(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         explication: ctx.expl("FAMILLE", "Financement des prestations familiales (allocations, crèches, aide à \
             la garde d'enfants). Taux réduit à 3,45% pour les salaires ≤ 3,5 SMIC (taux plein : 5,25%). \
             Politique nataliste française datant de l'entre-deux-guerres, institutionnalisée en 1945."),
-        loi_ref: Some("Décret 2015-390 du 3/04/2015 — CSS art. L241-6".into()),
+        loi_ref: Some(ctx.loi_ref("Décret 2015-390 du 3/04/2015 — CSS art. L241-6")),
     }
 }
 
@@ -125,7 +125,7 @@ pub fn accident_travail(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             l'employeur : principe de responsabilité patronale instauré par la loi du \
             9 avril 1898, première loi sociale reconnaissant la responsabilité de \
             l'employeur sans faute prouvée."),
-        loi_ref: Some("Loi du 9/04/1898 — CSS art. L241-5".into()),
+        loi_ref: Some(ctx.loi_ref("Loi du 9/04/1898 — CSS art. L241-5")),
     }
 }
 
@@ -152,7 +152,7 @@ pub fn csg_contributions(brut: Decimal, ctx: &ContextPaie) -> Vec<LigneCotisatio
                 au-delà du travail salarié (revenus du capital inclus). La part déductible \
                 est soustraite du revenu imposable à l'IR. \
                 L'assiette est 98,25% du brut (abattement de 1,75% pour frais professionnels)."),
-            loi_ref: Some("Loi n°90-1168 du 29/12/1990 — créée par Michel Rocard".into()),
+            loi_ref: Some(ctx.loi_ref("Loi n°90-1168 du 29/12/1990 — créée par Michel Rocard")),
         },
         LigneCotisation {
             code:        "CSG_NON_DEDUCTIBLE".into(),
@@ -166,7 +166,7 @@ pub fn csg_contributions(brut: Decimal, ctx: &ContextPaie) -> Vec<LigneCotisatio
             explication: ctx.expl("CSG_NON_DEDUCTIBLE", "Fraction de CSG non déductible du revenu imposable : constitue \
                 un impôt sec sur le salaire. Augmentée de 1,7 point en 2018 (LFSS 2018) \
                 en contrepartie de la suppression des cotisations salariales maladie et chômage."),
-            loi_ref: Some("LFSS 2018 — Loi n°2017-1836".into()),
+            loi_ref: Some(ctx.loi_ref("LFSS 2018 — Loi n°2017-1836")),
         },
         LigneCotisation {
             code:        "CRDS".into(),
@@ -181,7 +181,7 @@ pub fn csg_contributions(brut: Decimal, ctx: &ContextPaie) -> Vec<LigneCotisatio
                 a été créée en 1996 par Alain Juppé pour rembourser la dette de la Sécurité \
                 Sociale via la CADES. Prévue pour durer 13 ans, elle existe toujours. \
                 Non déductible de l'IR."),
-            loi_ref: Some("Ordonnance n°96-50 du 24/01/1996 (plan Juppé)".into()),
+            loi_ref: Some(ctx.loi_ref("Ordonnance n°96-50 du 24/01/1996 (plan Juppé)")),
         },
     ]
 }
@@ -205,7 +205,7 @@ pub fn chomage(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisatio
             plafonnée à 4 PMSS. L'assurance chômage (UNEDIC) est gérée paritairement \
             depuis 1958.{etp_info}")
             .replace("{etp_info}", &note),
-        loi_ref: Some("Convention UNEDIC — suppression cotisation sal. : LFSS 2018".into()),
+        loi_ref: Some(ctx.loi_ref("Convention UNEDIC — suppression cotisation sal. : LFSS 2018")),
     }
 }
 
@@ -379,7 +379,7 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
         montant_pat: -montant,
         categorie:   "Allègement".into(),
         explication,
-        loi_ref: Some("Loi n°2003-47 du 17/01/2003 (Fillon) — CSS art. L241-13".into()),
+        loi_ref: Some(ctx.loi_ref("Loi n°2003-47 du 17/01/2003 (Fillon) — CSS art. L241-13")),
     })
 }
 
@@ -408,7 +408,7 @@ pub fn maladie_alsace_moselle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
             Ce régime est issu du droit bismarckien applicable depuis 1871, maintenu lors du \
             retour de l'Alsace-Lorraine à la France en 1919 (loi du 1er juin 1924). \
             Taux 1,50 % jusqu'au 30/06/2018, puis 1,30 % à compter du 01/07/2018 (LFSS 2018)."),
-        loi_ref: Some("Loi locale du 1/06/1924 — CSS art. L325-1 et s. — Loi 2018-1203 du 22/12/2018".into()),
+        loi_ref: Some(ctx.loi_ref("Loi locale du 1/06/1924 — CSS art. L325-1 et s. — Loi 2018-1203 du 22/12/2018")),
     })
 }
 
@@ -437,7 +437,7 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx
                 Tranche 1 = salaire jusqu'au PMSS ({pmss} €).{etp_info}")
                 .replace("{etp_info}", &note)
                 .replace("{pmss}", &pmss.to_string()),
-            loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
+            loi_ref: Some(ctx.loi_ref("Accord national interprofessionnel du 17/11/2017")),
         },
     ];
 
@@ -455,7 +455,7 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx
                 Taux plus élevé car vise les salaires intermédiaires à élevés. \
                 Géré paritairement (syndicats + patronat).{etp_info}")
                 .replace("{etp_info}", &note),
-            loi_ref: Some("Accord national interprofessionnel du 17/11/2017".into()),
+            loi_ref: Some(ctx.loi_ref("Accord national interprofessionnel du 17/11/2017")),
         });
     }
 
@@ -474,7 +474,7 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx
             categorie:   "Retraite complémentaire".into(),
             explication: ctx.expl("AGIRC_ARRCO_CEG_T1", "Contribution non génératrice de points, destinée à l'équilibre \
                 financier du régime AGIRC-ARRCO. Créée lors de la fusion 2019."),
-            loi_ref: Some("ANI 17/11/2017".into()),
+            loi_ref: Some(ctx.loi_ref("ANI 17/11/2017")),
         });
     }
 
@@ -494,7 +494,7 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx
                 impose aux employeurs une cotisation minimale de 1,5% sur la tranche A \
                 pour financer la prévoyance décès des cadres. Obligation employeur unique \
                 en Europe, résultat de la négociation d'après-guerre."),
-            loi_ref: Some("Convention du 14/03/1947 — Article 7".into()),
+            loi_ref: Some(ctx.loi_ref("Convention du 14/03/1947 — Article 7")),
         });
     }
 

@@ -87,7 +87,7 @@ pub fn uk_ni_sal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             m2  = (tranche_haute * dec!(0.02)).round_dp(2),
             tot = montant, teff = taux_eff * dec!(100),
         ),
-        loi_ref: Some("National Insurance Contributions Act 2014 — Finance Act 2024".into()),
+        loi_ref: Some(ctx.loi_ref("National Insurance Contributions Act 2014 — Finance Act 2024")),
     }
 }
 
@@ -124,7 +124,7 @@ pub fn uk_ni_pat(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             tp_pct = tp * dec!(100), st = s.st,
             base = base, tot = montant, teff = taux_eff * dec!(100),
         ),
-        loi_ref: Some("National Insurance Contributions Act 2014 — Finance Act 2024".into()),
+        loi_ref: Some(ctx.loi_ref("National Insurance Contributions Act 2014 — Finance Act 2024")),
     }
 }
 
@@ -202,6 +202,6 @@ pub fn uk_income_tax(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             pa  = s.pa * dec!(12), br = s.br_max * dec!(12), hr = s.hr_max * dec!(12),
             ia  = impot_annuel, im = impot_mensuel, teff = taux_eff * dec!(100),
         ),
-        loi_ref: Some("Income Tax Act 2007 — Finance Act 2024".into()),
+        loi_ref: Some(ctx.loi_ref("Income Tax Act 2007 — Finance Act 2024")),
     }
 }

@@ -63,33 +63,35 @@ pub fn ca_rpc(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("CA_RPC");
     LigneCotisation {
         code:        "CA_RPC".into(),
-        libelle:     "RPC — Régime de pensions du Canada".into(),
+        libelle:     ctx.libelle("CA_RPC", "RPC — Régime de pensions du Canada"),
         base:        pensionn,
         taux_sal:    ts,
         montant_sal: (pensionn * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (pensionn * tp).round_dp(2),
         categorie:   "Retraite fédérale".into(),
-        explication: format!(
+        explication: ctx.expl("CA_RPC",
             "Le Régime de pensions du Canada (RPC / CPP) est le régime de retraite \
             obligatoire fédéral, en vigueur depuis 1966 (L.R.C. 1985, ch. C-8). \
             Il verse des rentes de retraite, d'invalidité et de survivant. \
             \n\n\
-            [ Calcul {} ]\n\
+            [ Calcul {an} ]\n\
             Gains pensionnables = min(brut, MGA/12) − exonération de base\n\
-            = min({:.2}, {:.2}) − {:.2} = {:.2} CAD\n\
-            Taux : {:.2} % salarié = {:.2} % employeur (taux appariés)\n\
+            = min({brut}, {mga}) − {exo} = {pens} CAD\n\
+            Taux : {ts} % salarié = {tp} % employeur (taux appariés)\n\
             \n\
             La bonification progressive 2019-2023 a porté le taux de 4,95 % à 5,95 %. \
-            Les gains au-delà du MGA ({:.2} CAD/mois) ne donnent pas droit à pension \
+            Les gains au-delà du MGA ({mga} CAD/mois) ne donnent pas droit à pension \
             dans le régime de base (voir RPC2 pour la phase 2). \
-            L'exonération de base ({:.2} CAD/mois = 3 500 CAD/an) s'applique à tous.",
-            ctx.date_paie.year(),
-            brut, mga, EXEMPTION_BASE, pensionn,
-            ts * dec!(100), tp * dec!(100),
-            mga, EXEMPTION_BASE,
-        ),
-        loi_ref: Some("L.R.C. 1985, ch. C-8, art. 8 et 9 — L.C. 2018, ch. 12".into()),
+            L'exonération de base ({exo} CAD/mois = 3 500 CAD/an) s'applique à tous.")
+            .replace("{an}", &ctx.date_paie.year().to_string())
+            .replace("{brut}", &format!("{:.2}", brut))
+            .replace("{mga}", &format!("{:.2}", mga))
+            .replace("{exo}", &format!("{:.2}", EXEMPTION_BASE))
+            .replace("{pens}", &format!("{:.2}", pensionn))
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("L.R.C. 1985, ch. C-8, art. 8 et 9 — L.C. 2018, ch. 12")),
     }
 }
 
@@ -109,27 +111,29 @@ pub fn ca_rpc2(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let tp = ctx.taux_pat("CA_RPC2");
     Some(LigneCotisation {
         code:        "CA_RPC2".into(),
-        libelle:     "RPC2 — Bonification supplémentaire (phase 2)".into(),
+        libelle:     ctx.libelle("CA_RPC2", "RPC2 — Bonification supplémentaire (phase 2)"),
         base:        base2,
         taux_sal:    ts,
         montant_sal: (base2 * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (base2 * tp).round_dp(2),
         categorie:   "Retraite fédérale".into(),
-        explication: format!(
+        explication: ctx.expl("CA_RPC2",
             "Le RPC2 (phase 2 de la bonification du RPC) s'applique sur la tranche de gains \
-            comprise entre le MGA ({:.2} CAD/mois) et le MGAP2 ({:.2} CAD/mois). \
+            comprise entre le MGA ({mga} CAD/mois) et le MGAP2 ({mgap2} CAD/mois). \
             \n\n\
-            Gains supplémentaires {} : {:.2} CAD\n\
+            Gains supplémentaires {an} : {base2} CAD\n\
             Taux : 4,00 % salarié + 4,00 % employeur (sans exonération de base)\n\
             \n\
             Le RPC2 cible les travailleurs à revenus moyens-élevés qui cotisent déjà \
             au maximum du RPC de base. À terme, la pension RPC2 représentera \
             un remplacement de revenu supérieur au régime de base seul. \
-            Introduit par la Loi no 1 d'exécution du budget de 2018 (L.C. 2018, ch. 12).",
-            mga, mgap2, ctx.date_paie.year(), base2,
-        ),
-        loi_ref: Some("L.C. 2018, ch. 12, art. 5 — Règlement sur le MGAP2".into()),
+            Introduit par la Loi no 1 d'exécution du budget de 2018 (L.C. 2018, ch. 12).")
+            .replace("{mgap2}", &format!("{:.2}", mgap2))
+            .replace("{mga}", &format!("{:.2}", mga))
+            .replace("{an}", &ctx.date_paie.year().to_string())
+            .replace("{base2}", &format!("{:.2}", base2)),
+        loi_ref: Some(ctx.loi_ref("L.C. 2018, ch. 12, art. 5 — Règlement sur le MGAP2")),
     })
 }
 
@@ -142,29 +146,31 @@ pub fn ca_ae(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp    = ctx.taux_pat("CA_AE");
     LigneCotisation {
         code:        "CA_AE".into(),
-        libelle:     "AE — Assurance-emploi (régime général)".into(),
+        libelle:     ctx.libelle("CA_AE", "AE — Assurance-emploi (régime général)"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(2),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(2),
         categorie:   "Chômage fédéral".into(),
-        explication: format!(
+        explication: ctx.expl("CA_AE",
             "L'Assurance-emploi (AE / EI) est le régime fédéral d'indemnisation du chômage, \
             régi par la Loi sur l'assurance-emploi (L.C. 1996, ch. 23). \
             Elle verse des prestations régulières (chômage), spéciales (maladie, maternité, \
             paternité, soignants) et de travail partagé. \
             \n\n\
-            MAGA {} : {:.2} CAD/mois ({:.0} CAD/an)\n\
-            Taux salarié : {:.2} % — Taux employeur : {:.2} % (= salarié × 1,4)\n\
+            MAGA {an} : {maga} CAD/mois ({magaa} CAD/an)\n\
+            Taux salarié : {ts} % — Taux employeur : {tp} % (= salarié × 1,4)\n\
             \n\
             Le multiplicateur 1,4 est fixé par l'art. 68 de la LAE. L'employeur cotise \
             davantage pour financer le risque global assumé par le régime. \
             Les travailleurs québécois paient un taux réduit car le RQAP couvre \
-            leurs prestations parentales (voir taux QC_AE).",
-            ctx.date_paie.year(), maga, maga * dec!(12),
-            ts * dec!(100), tp * dec!(100),
-        ),
-        loi_ref: Some("L.C. 1996, ch. 23, art. 66-68 — Règlement sur l'assurance-emploi".into()),
+            leurs prestations parentales (voir taux QC_AE).")
+            .replace("{an}", &ctx.date_paie.year().to_string())
+            .replace("{magaa}", &format!("{:.0}", maga * dec!(12)))
+            .replace("{maga}", &format!("{:.2}", maga))
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("L.C. 1996, ch. 23, art. 66-68 — Règlement sur l'assurance-emploi")),
     }
 }

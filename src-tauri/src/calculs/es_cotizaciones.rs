@@ -58,40 +58,42 @@ pub fn contingencias_comunes(brut: Decimal, ctx: &ContextPaie) -> LigneCotisatio
     let base = assiette(brut, ctx);
     let ts   = ctx.taux_sal("ES_CC");
     let tp   = ctx.taux_pat("ES_CC");
+    let ms   = (base * ts).round_dp(2);
+    let mp   = (base * tp).round_dp(2);
     LigneCotisation {
         code:        "ES_CC".into(),
-        libelle:     "Contingencias Comunes — maladie, maternité, retraite".into(),
+        libelle:     ctx.libelle("ES_CC", "Contingencias Comunes — maladie, maternité, retraite"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(2),
+        montant_sal: ms,
         taux_pat:    tp,
-        montant_pat: (base * tp).round_dp(2),
+        montant_pat: mp,
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("ES_CC",
             "Cotisation principale du régime général de la Sécurité sociale espagnole. \
             Couvre : maladie commune (enfermedad común), maternité/paternité, \
             incapacité permanente, retraite (jubilación), décès et survie. \
             \n\n\
-            Assiette : salaire mensuel réel borné entre {base_min:.2} € (ES_BASE_MIN) \
-            et {base_max:.2} € (ES_BASE_MAX) en {annee}. \
-            Assiette retenue : {base:.2} €.\n\
-            Salarié : {ts_pct:.2} % × {base:.2} € = {ms:.2} €\n\
-            Employeur : {tp_pct:.2} % × {base:.2} € = {mp:.2} €\n\
-            Total : {total:.2} % — soit {tot:.2} €\n\
+            Assiette : salaire mensuel réel borné entre {base_min} € (ES_BASE_MIN) \
+            et {base_max} € (ES_BASE_MAX) en {annee}. \
+            Assiette retenue : {base} €.\n\
+            Salarié : {ts_pct} % × {base} € = {ms} €\n\
+            Employeur : {tp_pct} % × {base} € = {mp} €\n\
+            Total : {total} % — soit {tot} €\n\
             \n\
             Base légale : LGSS (RDL 8/2015) art. 143 et 144. \
-            Taux stables depuis 2015 : 4,70 % sal + 23,60 % pat = 28,30 % total.",
-            base_min  = es_base_min(ctx),
-            base_max  = es_base_max(ctx),
-            annee     = ctx.date_paie.year(),
-            ts_pct    = ts * dec!(100),
-            tp_pct    = tp * dec!(100),
-            ms        = (base * ts).round_dp(2),
-            mp        = (base * tp).round_dp(2),
-            total     = (ts + tp) * dec!(100),
-            tot       = ((base * ts) + (base * tp)).round_dp(2),
-        ),
-        loi_ref: Some("LGSS (RDL 8/2015) art. 143-144 — Ordenes de cotización annuelles MITES".into()),
+            Taux stables depuis 2015 : 4,70 % sal + 23,60 % pat = 28,30 % total.")
+            .replace("{base_min}", &format!("{:.2}", es_base_min(ctx)))
+            .replace("{base_max}", &format!("{:.2}", es_base_max(ctx)))
+            .replace("{annee}", &ctx.date_paie.year().to_string())
+            .replace("{base}", &format!("{:.2}", base))
+            .replace("{ts_pct}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", ms))
+            .replace("{mp}", &format!("{:.2}", mp))
+            .replace("{total}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ms + mp).round_dp(2))),
+        loi_ref: Some(ctx.loi_ref("LGSS (RDL 8/2015) art. 143-144 — Ordenes de cotización annuelles MITES")),
     }
 }
 
@@ -99,39 +101,42 @@ pub fn desempleo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let base = assiette(brut, ctx);
     let ts   = ctx.taux_sal("ES_DESEMPLEO");
     let tp   = ctx.taux_pat("ES_DESEMPLEO");
+    let ms   = (base * ts).round_dp(2);
+    let mp   = (base * tp).round_dp(2);
     LigneCotisation {
         code:        "ES_DESEMPLEO".into(),
-        libelle:     "Desempleo — assurance chômage (contrato indefinido)".into(),
+        libelle:     ctx.libelle("ES_DESEMPLEO", "Desempleo — assurance chômage (contrato indefinido)"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(2),
+        montant_sal: ms,
         taux_pat:    tp,
-        montant_pat: (base * tp).round_dp(2),
+        montant_pat: mp,
         categorie:   "Chômage".into(),
-        explication: format!(
+        explication: ctx.expl("ES_DESEMPLEO",
             "Cotisation chômage pour contrato indefinido (contrat à durée indéterminée). \
             Gérée par le SEPE (Servicio Público de Empleo Estatal). \
             Les taux pour contrato temporal sont différents (non couverts ici). \
             \n\n\
-            Salarié : {ts_pct:.2} % × {base:.2} € = {ms:.2} €\n\
-            Employeur : {tp_pct:.2} % × {base:.2} € = {mp:.2} €\n\
-            Total : {total:.2} % — soit {tot:.2} €\n\
+            Salarié : {ts_pct} % × {base} € = {ms} €\n\
+            Employeur : {tp_pct} % × {base} € = {mp} €\n\
+            Total : {total} % — soit {tot} €\n\
             \n\
-            Base légale : LGSS (RDL 8/2015) art. 270 + Ordenes annuelles.",
-            ts_pct = ts * dec!(100),
-            tp_pct = tp * dec!(100),
-            ms     = (base * ts).round_dp(2),
-            mp     = (base * tp).round_dp(2),
-            total  = (ts + tp) * dec!(100),
-            tot    = ((base * ts) + (base * tp)).round_dp(2),
-        ),
-        loi_ref: Some("LGSS (RDL 8/2015) art. 270".into()),
+            Base légale : LGSS (RDL 8/2015) art. 270 + Ordenes annuelles.")
+            .replace("{base}", &format!("{:.2}", base))
+            .replace("{ts_pct}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", ms))
+            .replace("{mp}", &format!("{:.2}", mp))
+            .replace("{total}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{tot}", &format!("{:.2}", (ms + mp).round_dp(2))),
+        loi_ref: Some(ctx.loi_ref("LGSS (RDL 8/2015) art. 270")),
     }
 }
 
 pub fn fogasa(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let base = assiette(brut, ctx);
     let tp   = ctx.taux_pat("ES_FOGASA");
+    let mp   = (base * tp).round_dp(2);
     LigneCotisation {
         code:        "ES_FOGASA".into(),
         libelle:     "FOGASA — Fondo de Garantía Salarial".into(),
@@ -139,21 +144,20 @@ pub fn fogasa(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    tp,
-        montant_pat: (base * tp).round_dp(2),
+        montant_pat: mp,
         categorie:   "Garantie salariale".into(),
-        explication: format!(
-            "Fonds de garantie des salaires impayés en cas d''insolvabilité ou faillite \
-            de l''employeur. Protège les travailleurs pour leurs salaires, congés payés \
+        explication: ctx.expl("ES_FOGASA",
+            "Fonds de garantie des salaires impayés en cas d'insolvabilité ou faillite \
+            de l'employeur. Protège les travailleurs pour leurs salaires, congés payés \
             et indemnités (dans des limites légales). \
-            Exclusivement à la charge de l''employeur : {tp_pct:.2} %.\n\
-            Montant employeur : {mp:.2} €.\n\
+            Exclusivement à la charge de l'employeur : {tp_pct} %.\n\
+            Montant employeur : {mp} €.\n\
             \n\
             Base légale : art. 33 Estatuto de los Trabajadores (RDL 2/2015) ; \
-            LGSS art. 33. Taux stable à 0,20 % depuis de nombreuses années.",
-            tp_pct = tp * dec!(100),
-            mp     = (base * tp).round_dp(2),
-        ),
-        loi_ref: Some("ET (RDL 2/2015) art. 33 — LGSS (RDL 8/2015)".into()),
+            LGSS art. 33. Taux stable à 0,20 % depuis de nombreuses années.")
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{mp}", &format!("{:.2}", mp)),
+        loi_ref: Some(ctx.loi_ref("ET (RDL 2/2015) art. 33 — LGSS (RDL 8/2015)")),
     }
 }
 
@@ -161,30 +165,31 @@ pub fn formacion_profesional(brut: Decimal, ctx: &ContextPaie) -> LigneCotisatio
     let base = assiette(brut, ctx);
     let ts   = ctx.taux_sal("ES_FP");
     let tp   = ctx.taux_pat("ES_FP");
+    let ms   = (base * ts).round_dp(2);
+    let mp   = (base * tp).round_dp(2);
     LigneCotisation {
         code:        "ES_FP".into(),
-        libelle:     "Formación Profesional — formation professionnelle continue".into(),
+        libelle:     ctx.libelle("ES_FP", "Formación Profesional — formation professionnelle continue"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(2),
+        montant_sal: ms,
         taux_pat:    tp,
-        montant_pat: (base * tp).round_dp(2),
+        montant_pat: mp,
         categorie:   "Formation professionnelle".into(),
-        explication: format!(
+        explication: ctx.expl("ES_FP",
             "Finance la formation professionnelle continue des salariés (FUNDAE). \
             La cotisation ouvre des droits à des crédits de formation annuels. \
-            Salarié : {ts_pct:.2} % — Employeur : {tp_pct:.2} %. \
-            Total : {total:.2} %.\n\
-            Salarié : {ms:.2} € — Employeur : {mp:.2} €.\n\
+            Salarié : {ts_pct} % — Employeur : {tp_pct} %. \
+            Total : {total} %.\n\
+            Salarié : {ms} € — Employeur : {mp} €.\n\
             \n\
-            Base légale : LGSS art. 7 et DA 19a.",
-            ts_pct = ts * dec!(100),
-            tp_pct = tp * dec!(100),
-            total  = (ts + tp) * dec!(100),
-            ms     = (base * ts).round_dp(2),
-            mp     = (base * tp).round_dp(2),
-        ),
-        loi_ref: Some("LGSS (RDL 8/2015) art. 7 et DA 19a".into()),
+            Base légale : LGSS art. 7 et DA 19a.")
+            .replace("{ts_pct}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{total}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", ms))
+            .replace("{mp}", &format!("{:.2}", mp)),
+        loi_ref: Some(ctx.loi_ref("LGSS (RDL 8/2015) art. 7 et DA 19a")),
     }
 }
 
@@ -198,32 +203,34 @@ pub fn mei(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     }
     let base = assiette(brut, ctx);
     let annee = ctx.date_paie.year();
+    let ms   = (base * ts).round_dp(2);
+    let mp   = (base * tp).round_dp(2);
     Some(LigneCotisation {
         code:        "ES_MEI".into(),
-        libelle:     format!("MEI — Mecanismo de Equidad Intergeneracional {annee}"),
+        libelle:     ctx.libelle("ES_MEI", "MEI — Mecanismo de Equidad Intergeneracional {annee}")
+                        .replace("{annee}", &annee.to_string()),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(2),
+        montant_sal: ms,
         taux_pat:    tp,
-        montant_pat: (base * tp).round_dp(2),
+        montant_pat: mp,
         categorie:   "Réserve retraite".into(),
-        explication: format!(
+        explication: ctx.expl("ES_MEI",
             "Cotisation additionnelle instaurée par la Ley 21/2021 pour alimenter \
             le Fondo de Reserva de la Seguridad Social (Fonds de réserve des retraites). \
             Objectif : couvrir le surcroît de retraites des générations baby-boom. \
-            Le taux progresse annuellement jusqu''en 2032.\n\n\
-            {annee} : salarié {ts_pct:.2} % + employeur {tp_pct:.2} % = {total:.2} % total.\n\
-            Salarié : {ms:.2} € — Employeur : {mp:.2} €.\n\
+            Le taux progresse annuellement jusqu'en 2032.\n\n\
+            {annee} : salarié {ts_pct} % + employeur {tp_pct} % = {total} % total.\n\
+            Salarié : {ms} € — Employeur : {mp} €.\n\
             \n\
             En vigueur depuis le 01/01/2023. \
-            Base légale : Ley 21/2021 art. 2 ; Ordenes de cotización annuelles.",
-            annee   = annee,
-            ts_pct  = ts * dec!(100),
-            tp_pct  = tp * dec!(100),
-            total   = (ts + tp) * dec!(100),
-            ms      = (base * ts).round_dp(2),
-            mp      = (base * tp).round_dp(2),
-        ),
-        loi_ref: Some("Ley 21/2021 art. 2 — Mecanismo de Equidad Intergeneracional".into()),
+            Base légale : Ley 21/2021 art. 2 ; Ordenes de cotización annuelles.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{ts_pct}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp_pct}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{total}", &format!("{:.2}", (ts + tp) * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", ms))
+            .replace("{mp}", &format!("{:.2}", mp)),
+        loi_ref: Some(ctx.loi_ref("Ley 21/2021 art. 2 — Mecanismo de Equidad Intergeneracional")),
     })
 }

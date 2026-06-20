@@ -36,16 +36,17 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let vsaoi_sal = (brut * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "LV_VSAOI".into(),
-        libelle: "VSAOI — Cotisations sociales obligatoires".into(),
+        libelle: ctx.libelle("LV_VSAOI", "VSAOI — Cotisations sociales obligatoires"),
         base: brut, taux_sal: ts, montant_sal: vsaoi_sal,
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "VSAOI — salarié {ts:.2} % / employeur {tp:.2} % (retraite, maladie, chômage, \
-            maternité, accidents). Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = vsaoi_sal,
-        ),
-        loi_ref: Some("Likums «Par valsts sociālo apdrošināšanu»".into()),
+        explication: ctx.expl("LV_VSAOI",
+            "VSAOI — salarié {ts} % / employeur {tp} % (retraite, maladie, chômage, \
+            maternité, accidents). Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", vsaoi_sal)),
+        loi_ref: Some(ctx.loi_ref("Likums «Par valsts sociālo apdrošināšanu»")),
     }];
 
     // IIN : base = brut − VSAOI salarié − minimum non imposable ; 25,5 % jusqu'à 8 775 €/mois, 33 % au-delà.
@@ -56,18 +57,21 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (iin / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "LV_IIN".into(),
-        libelle: "IIN — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("LV_IIN", "IIN — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: iin,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("LV_IIN",
             "Impôt sur le revenu {annee}.\n\n\
-            Base = brut − VSAOI {vs:.2} € − minimum non imposable {mni:.0} € = {b:.2} €\n\
-            Taux 25,5 % (jusqu'à 8 775 €/mois) puis 33 % au-delà → {iin:.2} €/mois.\n\n\
-            Source : Valsts ieņēmumu dienests.",
-            annee = annee, vs = vsaoi_sal, mni = min_non_imp, b = base, iin = iin,
-        ),
-        loi_ref: Some("Likums «Par iedzīvotāju ienākuma nodokli»".into()),
+            Base = brut − VSAOI {vs} € − minimum non imposable {mni} € = {b} €\n\
+            Taux 25,5 % (jusqu'à 8 775 €/mois) puis 33 % au-delà → {iin} €/mois.\n\n\
+            Source : Valsts ieņēmumu dienests.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{vs}", &format!("{:.2}", vsaoi_sal))
+            .replace("{mni}", &format!("{:.0}", min_non_imp))
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{iin}", &format!("{:.2}", iin)),
+        loi_ref: Some(ctx.loi_ref("Likums «Par iedzīvotāju ienākuma nodokli»")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

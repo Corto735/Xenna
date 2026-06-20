@@ -188,7 +188,7 @@ impl ContextPaie {
         if self.lang == "fr" {
             return fr.to_string();
         }
-        crate::i18n::cotisations::t_libelle(code, &self.lang)
+        crate::i18n::t_libelle(code, &self.lang)
             .unwrap_or(fr)
             .to_string()
     }
@@ -200,8 +200,17 @@ impl ContextPaie {
         if self.lang == "fr" {
             return fr.to_string();
         }
-        crate::i18n::cotisations::t_explication(key, &self.lang)
+        crate::i18n::t_explication(key, &self.lang)
             .unwrap_or(fr)
             .to_string()
+    }
+
+    /// Référence légale dont seuls les mots descriptifs (Loi, Décret, Convention…)
+    /// sont traduits ; les citations (numéros, articles) restent intactes.
+    pub fn loi_ref(&self, fr: &str) -> String {
+        if self.lang == "fr" {
+            return fr.to_string();
+        }
+        crate::i18n::t_loi_ref(fr, &self.lang)
     }
 }

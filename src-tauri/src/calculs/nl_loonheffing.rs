@@ -15,6 +15,7 @@
 
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
 /// Paramètres box 1 + heffingskortingen d'une année donnée (sous âge AOW).
@@ -150,7 +151,7 @@ fn arbeidskorting(revenu: Decimal, p: &NlParams) -> Decimal {
 }
 
 /// Ligne « loonheffing » mensuelle (côté salarié). `None` si l'année n'est pas sourcée.
-pub fn nl_loonheffing(brut: Decimal, annee: i32) -> Option<LigneCotisation> {
+pub fn nl_loonheffing(brut: Decimal, annee: i32, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let p = nl_parametres(annee)?;
     let rev_ann = brut * dec!(12);
 
@@ -189,6 +190,6 @@ pub fn nl_loonheffing(brut: Decimal, annee: i32) -> Option<LigneCotisation> {
             box1 = box1, ahk = ahk, ak = ak, ha = heffing_ann,
             mens = mensuel, teff = taux_eff * dec!(100),
         ),
-        loi_ref: Some("Wet IB 2001 — Belastingplan 2026".into()),
+        loi_ref: Some(ctx.loi_ref("Wet IB 2001 — Belastingplan 2026")),
     })
 }

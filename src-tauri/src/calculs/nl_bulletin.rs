@@ -12,25 +12,29 @@ fn cotisation_pat(
 ) -> LigneCotisation {
     let tp   = ctx.taux_pat(code);
     let base = brut.min(plafond_mensuel);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("NL_PAT_GENERIC",
+        "{libelle} — premie patronale (werkgeversheffing).\n\n\
+        Taux : {tp} %\n\
+        Assiette : {base} € (min(brut, maximumpremieloon mensuel {plaf} €))\n\
+        Employeur : {mp} €\n\n\
+        Base légale : Wfsv / Zorgverzekeringswet.")
+        .replace("{libelle}", &lib)
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+        .replace("{base}", &format!("{:.2}", base))
+        .replace("{plaf}", &format!("{:.2}", plafond_mensuel))
+        .replace("{mp}", &format!("{:.2}", (base * tp).round_dp(2)));
     LigneCotisation {
         code: code.into(),
-        libelle: libelle.into(),
+        libelle: lib,
         base,
         taux_sal: Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat: tp,
         montant_pat: (base * tp).round_dp(2),
         categorie: "Cotisations patronales".into(),
-        explication: format!(
-            "{libelle} — premie patronale (werkgeversheffing).\n\n\
-            Taux : {tp:.2} %\n\
-            Assiette : {base:.2} € (min(brut, maximumpremieloon mensuel {plaf:.2} €))\n\
-            Employeur : {mp:.2} €\n\n\
-            Base légale : Wfsv / Zorgverzekeringswet.",
-            tp = tp * dec!(100), base = base, plaf = plafond_mensuel,
-            mp = (base * tp).round_dp(2),
-        ),
-        loi_ref: Some("Wfsv / Zvw".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Wfsv / Zvw")),
     }
 }
 
@@ -42,16 +46,16 @@ pub fn generer_bulletin_nl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let Some(params) = nl_parametres(annee) else {
         let ligne = LigneCotisation {
             code: "NL_NON_COUVERT".into(),
-            libelle: "Pays-Bas — données indisponibles pour cette année".into(),
+            libelle: ctx.libelle("NL_NON_COUVERT", "Pays-Bas — données indisponibles pour cette année"),
             base: brut,
             taux_sal: Decimal::ZERO, montant_sal: Decimal::ZERO,
             taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
             categorie: "Information".into(),
-            explication: format!(
+            explication: ctx.expl("NL_NON_COUVERT",
                 "Les données néerlandaises ne sont disponibles que pour 2026 (pilote).\n\
                 L'année {annee} sera ajoutée après sourcing officiel (Belastingdienst).\n\
-                Aucun chiffre n'est inventé en l'absence de source."
-            ),
+                Aucun chiffre n'est inventé en l'absence de source.")
+                .replace("{annee}", &annee.to_string()),
             loi_ref: None,
         };
         return Bulletin {
@@ -71,7 +75,7 @@ pub fn generer_bulletin_nl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let mut cotisations = Vec::new();
     // Côté salarié : loonheffing (impôt + premies volksverzekeringen − crédits).
-    if let Some(l) = nl_loonheffing(brut, annee) {
+    if let Some(l) = nl_loonheffing(brut, annee, ctx) {
         cotisations.push(l);
     }
     // Côté patronal : werknemersverzekeringen + Zvw (plafonnées).

@@ -35,16 +35,20 @@ fn impot_etat(t: Decimal) -> Decimal {
 fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("FI_GENERIC",
+        "{libelle}. Salarié {ts} % / employeur {tp} %. Salarié : {ms} €.")
+        .replace("{libelle}", &lib)
+        .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+        .replace("{ms}", &format!("{:.2}", (base * ts).round_dp(2)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base,
+        code: code.into(), libelle: lib, base,
         taux_sal: ts, montant_sal: (base * ts).round_dp(2),
         taux_pat: tp, montant_pat: (base * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "{libelle}. Salarié {ts:.2} % / employeur {tp:.2} %. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = (base * ts).round_dp(2),
-        ),
-        loi_ref: Some("Lainsäädäntö (Finlande)".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Lainsäädäntö (Finlande)")),
     }
 }
 
@@ -68,15 +72,16 @@ pub fn generer_bulletin_fi(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let paiva_ts = ctx.taux_sal("FI_PAIVARAHA");
     let paiva_montant = if g >= dec!(17255) { (brut * paiva_ts).round_dp(2) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
-        code: "FI_PAIVARAHA".into(), libelle: "Päivärahamaksu — Indemnités journalières".into(),
+        code: "FI_PAIVARAHA".into(), libelle: ctx.libelle("FI_PAIVARAHA", "Päivärahamaksu — Indemnités journalières"),
         base: brut, taux_sal: if g >= dec!(17255) { paiva_ts } else { Decimal::ZERO },
         montant_sal: paiva_montant, taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("FI_PAIVARAHA",
             "Päivärahamaksu — 0,88 % (uniquement si revenu annuel ≥ 17 255 €). Déductible.\n\
-            Revenu annuel : {g:.0} € → {m:.2} €/mois.", g = g, m = paiva_montant,
-        ),
-        loi_ref: Some("Sairausvakuutuslaki".into()),
+            Revenu annuel : {g} € → {m} €/mois.")
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{m}", &format!("{:.2}", paiva_montant)),
+        loi_ref: Some(ctx.loi_ref("Sairausvakuutuslaki")),
     });
 
     cotisations.push(ligne_cot("FI_SAIRAANHOITO", "Sairaanhoitomaksu — Soins de santé", brut, ctx));
@@ -92,22 +97,26 @@ pub fn generer_bulletin_fi(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let impot_mens = ((etat + communal) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
-        code: "FI_TULOVERO".into(), libelle: "Tulovero — Impôt (État + communal)".into(),
+        code: "FI_TULOVERO".into(), libelle: ctx.libelle("FI_TULOVERO", "Tulovero — Impôt (État + communal)"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("FI_TULOVERO",
             "Impôt sur le revenu 2026 (annualisé).\n\n\
-            Revenu imposable : {g:.0} € − cotisations déductibles {ded:.0} € = {tx:.0} €\n\
+            Revenu imposable : {g} € − cotisations déductibles {ded} € = {tx} €\n\
             Barème d'État : 12,64 % / 19 % / 30,25 % / 33,25 % / 37,5 %\n\
-            (seuils 21 200 / 32 600 / 40 100 / 52 100 €) → {et:.0} €\n\
-            Impôt communal moyen 7,50 % → {co:.0} €\n\
-            = {im:.2} €/mois.\n\n\
+            (seuils 21 200 / 32 600 / 40 100 / 52 100 €) → {et} €\n\
+            Impôt communal moyen 7,50 % → {co} €\n\
+            = {im} €/mois.\n\n\
             Note : crédits työtulovähennys / perusvähennys non modélisés (net prudent).\n\
-            Base légale : Tuloverolaki.",
-            g = g, ded = ded_annuel, tx = taxable, et = etat, co = communal, im = impot_mens,
-        ),
-        loi_ref: Some("Tuloverolaki".into()),
+            Base légale : Tuloverolaki.")
+            .replace("{g}", &format!("{:.0}", g))
+            .replace("{ded}", &format!("{:.0}", ded_annuel))
+            .replace("{tx}", &format!("{:.0}", taxable))
+            .replace("{et}", &format!("{:.0}", etat))
+            .replace("{co}", &format!("{:.0}", communal))
+            .replace("{im}", &format!("{:.2}", impot_mens)),
+        loi_ref: Some(ctx.loi_ref("Tuloverolaki")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

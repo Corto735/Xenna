@@ -38,16 +38,19 @@ pub fn generer_bulletin_bg(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let osig_sal = (assiette * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "BG_OSIG".into(),
-        libelle: "Осигуровки — Cotisations sociales".into(),
+        libelle: ctx.libelle("BG_OSIG", "Осигуровки — Cotisations sociales"),
         base: assiette, taux_sal: ts, montant_sal: osig_sal,
         taux_pat: tp, montant_pat: (assiette * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "Cotisations sociales — salarié {ts:.2} % / employeur {tp:.2} % (retraite, \
-            maladie NZOK, 2ᵉ pilier). Assiette plafonnée à {pl:.2} {sym}/mois. Salarié : {ms:.2} {sym}.",
-            ts = ts * dec!(100), tp = tp * dec!(100), pl = plafond, sym = sym, ms = osig_sal,
-        ),
-        loi_ref: Some("Кодекс за социално осигуряване".into()),
+        explication: ctx.expl("BG_OSIG",
+            "Cotisations sociales — salarié {ts} % / employeur {tp} % (retraite, \
+            maladie NZOK, 2ᵉ pilier). Assiette plafonnée à {pl} {sym}/mois. Salarié : {ms} {sym}.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{pl}", &format!("{:.2}", plafond))
+            .replace("{ms}", &format!("{:.2}", osig_sal))
+            .replace("{sym}", sym),
+        loi_ref: Some(ctx.loi_ref("Кодекс за социално осигуряване")),
     }];
 
     // Impôt : base = brut − cotisations salariales ; 10 %.
@@ -56,17 +59,19 @@ pub fn generer_bulletin_bg(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "BG_DANAK".into(),
-        libelle: "Данък върху доходите — Impôt sur le revenu (10 %)".into(),
+        libelle: ctx.libelle("BG_DANAK", "Данък върху доходите — Impôt sur le revenu (10 %)"),
         base: brut, taux_sal: taux_imp, montant_sal: impot,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("BG_DANAK",
             "Impôt sur le revenu {annee} : 10 % proportionnel.\n\n\
-            Base = brut − cotisations salariales = {b:.2} {sym} → {im:.2} {sym}/mois.\n\n\
-            Source : НАП (NRA).",
-            annee = annee, b = base, sym = sym, im = impot,
-        ),
-        loi_ref: Some("Закон за данъците върху доходите на физическите лица".into()),
+            Base = brut − cotisations salariales = {b} {sym} → {im} {sym}/mois.\n\n\
+            Source : НАП (NRA).")
+            .replace("{annee}", &annee.to_string())
+            .replace("{b}", &format!("{:.2}", base))
+            .replace("{im}", &format!("{:.2}", impot))
+            .replace("{sym}", sym),
+        loi_ref: Some(ctx.loi_ref("Закон за данъците върху доходите на физическите лица")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

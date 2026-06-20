@@ -72,40 +72,41 @@ pub fn ca_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "CA_IMPOT_FED".into(),
-        libelle:     format!("Impôt fédéral — retenue {annee}"),
+        libelle:     ctx.libelle("CA_IMPOT_FED", "Impôt fédéral — retenue {annee}")
+            .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: impot_mens,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt fédéral".into(),
-        explication: format!(
+        explication: ctx.expl("CA_IMPOT_FED",
             "Retenue mensuelle d'impôt fédéral sur le revenu. L'employeur est \
             sostituto d'imposta (retenues à la source — formulaire TD1). \
             \n\n\
-            [ Calcul {} — barème fédéral ]\n\
-            Revenu annuel estimé    : {:.2} CAD\n\
-            Impôt brut annuel       : {:.2} CAD\n\
-            Crédit personnel (MPB)  : − {:.2} CAD\n\
-            Impôt net annuel        : {:.2} CAD\n\
-            Retenue mensuelle       : {:.2} CAD (÷ 12)\n\
-            Taux effectif           : {:.2} %\n\
+            [ Calcul {an} — barème fédéral ]\n\
+            Revenu annuel estimé    : {rev} CAD\n\
+            Impôt brut annuel       : {ib} CAD\n\
+            Crédit personnel (MPB)  : − {cred} CAD\n\
+            Impôt net annuel        : {inet} CAD\n\
+            Retenue mensuelle       : {mens} CAD (÷ 12)\n\
+            Taux effectif           : {teff} %\n\
             \n\
-            Barème {} : 15/20,5/26/29/33 %. \
-            Le Montant personnel de base ({} CAD) génère un crédit de 15 % = {:.2} CAD/an. \
-            Régularisation en décembre ou déclaration T1 annuelle.",
-            annee,
-            revenu_ann, impot_brut, credit_bpa,
-            impot_net, impot_mens,
-            taux_eff * dec!(100),
-            annee,
-            match annee {
+            Barème {an} : 15/20,5/26/29/33 %. \
+            Le Montant personnel de base ({mpb} CAD) génère un crédit de 15 % = {cred} CAD/an. \
+            Régularisation en décembre ou déclaration T1 annuelle.")
+            .replace("{an}", &annee.to_string())
+            .replace("{rev}", &format!("{:.2}", revenu_ann))
+            .replace("{ib}", &format!("{:.2}", impot_brut))
+            .replace("{cred}", &format!("{:.2}", credit_bpa))
+            .replace("{inet}", &format!("{:.2}", impot_net))
+            .replace("{mens}", &format!("{:.2}", impot_mens))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100)))
+            .replace("{mpb}", match annee {
                 i32::MIN..=2019 => "12 069", 2020 => "13 229", 2021 => "13 808",
                 2022 => "14 398", 2023 => "15 000", 2024 => "15 705", _ => "16 129"
-            },
-            credit_bpa,
-        ),
-        loi_ref: Some("L.R.C. 1985, ch. 1 (5e suppl.), art. 117-117.1 — Formulaire TD1".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("L.R.C. 1985, ch. 1 (5e suppl.), art. 117-117.1 — Formulaire TD1")),
     }
 }
 
@@ -132,32 +133,35 @@ pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "ON_IMPOT_PROV".into(),
-        libelle:     format!("Impôt provincial Ontario — retenue {annee}"),
+        libelle:     ctx.libelle("ON_IMPOT_PROV", "Impôt provincial Ontario — retenue {annee}")
+            .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: impot_mens,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt provincial".into(),
-        explication: format!(
+        explication: ctx.expl("ON_IMPOT_PROV",
             "Retenue mensuelle d'impôt provincial de l'Ontario (province de référence hors Québec). \
             Barème 2024 : 5,05/9,15/11,16/12,16/13,16 %. \
             MPB Ontario 2024 : 11 865 CAD → crédit de 599,18 CAD/an. \
             \n\n\
-            Revenu annuel estimé  : {:.2} CAD\n\
-            Impôt brut annuel     : {:.2} CAD\n\
+            Revenu annuel estimé  : {rev} CAD\n\
+            Impôt brut annuel     : {ib} CAD\n\
             Crédit MPB            : − 599,18 CAD\n\
-            Impôt net annuel      : {:.2} CAD\n\
-            Retenue mensuelle     : {:.2} CAD\n\
-            Taux effectif         : {:.2} %\n\
+            Impôt net annuel      : {inet} CAD\n\
+            Retenue mensuelle     : {mens} CAD\n\
+            Taux effectif         : {teff} %\n\
             \n\
             Note : non applicable au Québec (province ayant son propre impôt séparé). \
             Les autres provinces (CB, AB, QC excl.) ont leurs propres barèmes — \
-            utiliser Ontario comme approximation générale.",
-            revenu_ann, impot_brut, impot_net, impot_mens,
-            taux_eff * dec!(100),
-        ),
-        loi_ref: Some("L.O. 2007, ch. 11, ann. A — Formulaire TD1ON".into()),
+            utiliser Ontario comme approximation générale.")
+            .replace("{rev}", &format!("{:.2}", revenu_ann))
+            .replace("{ib}", &format!("{:.2}", impot_brut))
+            .replace("{inet}", &format!("{:.2}", impot_net))
+            .replace("{mens}", &format!("{:.2}", impot_mens))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("L.O. 2007, ch. 11, ann. A — Formulaire TD1ON")),
     }
 }
 
@@ -202,41 +206,43 @@ pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation 
 
     LigneCotisation {
         code:        "QC_IMPOT_PROV".into(),
-        libelle:     format!("Impôt provincial Québec — retenue {annee}"),
+        libelle:     ctx.libelle("QC_IMPOT_PROV", "Impôt provincial Québec — retenue {annee}")
+            .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: impot_mens,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt provincial".into(),
-        explication: format!(
+        explication: ctx.expl("QC_IMPOT_PROV",
             "Le Québec perçoit son propre impôt provincial directement (unique au Canada) \
             via Revenu Québec, contrairement aux autres provinces où l'ARC perçoit \
             les deux impôts conjointement. \
             \n\n\
-            Barème {} : 14/19/24/25,75 %. MPB Québec : {} CAD → crédit : {:.2} CAD/an.\n\
+            Barème {an} : 14/19/24/25,75 %. MPB Québec : {mpb} CAD → crédit : {cred} CAD/an.\n\
             \n\
             [ Calcul ]\n\
-            Revenu annuel estimé    : {:.2} CAD\n\
-            Impôt brut annuel       : {:.2} CAD\n\
-            Crédit MPB              : − {:.2} CAD\n\
-            Impôt net annuel        : {:.2} CAD\n\
-            Retenue mensuelle       : {:.2} CAD\n\
-            Taux effectif           : {:.2} %\n\
+            Revenu annuel estimé    : {rev} CAD\n\
+            Impôt brut annuel       : {ib} CAD\n\
+            Crédit MPB              : − {cred} CAD\n\
+            Impôt net annuel        : {inet} CAD\n\
+            Retenue mensuelle       : {mens} CAD\n\
+            Taux effectif           : {teff} %\n\
             \n\
             L'employeur produit le relevé 1 (RL-1) au lieu du T4. \
-            Le salarié québécois produit deux déclarations : T1 (fédéral) + TP-1 (provincial).",
-            annee,
-            match annee {
+            Le salarié québécois produit deux déclarations : T1 (fédéral) + TP-1 (provincial).")
+            .replace("{an}", &annee.to_string())
+            .replace("{mpb}", match annee {
                 i32::MIN..=2021 => "15 270", 2022 | 2023 => "16 143",
                 2024 => "17 183", _ => "17 600"
-            },
-            credit_bpa,
-            revenu_ann, impot_brut, credit_bpa,
-            impot_net, impot_mens,
-            taux_eff * dec!(100),
-        ),
-        loi_ref: Some("RLRQ, ch. I-3, art. 750 — Formulaire TP-1015.3 — Relevé 1 (RL-1)".into()),
+            })
+            .replace("{cred}", &format!("{:.2}", credit_bpa))
+            .replace("{rev}", &format!("{:.2}", revenu_ann))
+            .replace("{ib}", &format!("{:.2}", impot_brut))
+            .replace("{inet}", &format!("{:.2}", impot_net))
+            .replace("{mens}", &format!("{:.2}", impot_mens))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("RLRQ, ch. I-3, art. 750 — Formulaire TP-1015.3 — Relevé 1 (RL-1)")),
     }
 }
 
@@ -364,40 +370,42 @@ pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> 
     let impot_mens = (impot_net / dec!(12)).round_dp(2);
     let taux_eff   = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
 
+    let code = format!("{province}_IMPOT_PROV");
     LigneCotisation {
-        code:        format!("{province}_IMPOT_PROV"),
-        libelle:     format!("Impôt provincial {nom} — retenue {annee}"),
+        libelle:     ctx.libelle(&code, "Impôt provincial {nom} — retenue {annee}")
+            .replace("{nom}", nom)
+            .replace("{annee}", &annee.to_string()),
+        explication: ctx.expl(&code,
+            "Retenue mensuelle d'impôt provincial — {nom}.\n\
+            Barème {annee} : {tranches_desc}\n\
+            \n\
+            [ Calcul ]\n\
+            Revenu annuel estimé  : {revenu} CAD\n\
+            Impôt brut annuel     : {ib} CAD\n\
+            Crédit MPB            : − {bpa} CAD\n\
+            Impôt net annuel      : {inet} CAD\n\
+            Retenue mensuelle     : {mens} CAD (÷ 12)\n\
+            Taux effectif         : {teff} %\n\
+            \n\
+            Retenu conjointement avec l'impôt fédéral par l'employeur (sostituto d'imposta). \
+            Régularisation via déclaration T1 annuelle (ARC) et, si applicable, \
+            déclaration provinciale complémentaire.")
+            .replace("{nom}", nom)
+            .replace("{annee}", &annee.to_string())
+            .replace("{tranches_desc}", tranches_desc)
+            .replace("{revenu}", &format!("{:.2}", revenu_ann))
+            .replace("{ib}", &format!("{:.2}", impot_brut))
+            .replace("{bpa}", &format!("{:.2}", bpa_credit))
+            .replace("{inet}", &format!("{:.2}", impot_net))
+            .replace("{mens}", &format!("{:.2}", impot_mens))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        code,
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: impot_mens,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt provincial".into(),
-        explication: format!(
-            "Retenue mensuelle d'impôt provincial — {nom}.\n\
-            Barème {annee} : {tranches_desc}\n\
-            \n\
-            [ Calcul ]\n\
-            Revenu annuel estimé  : {revenu:.2} CAD\n\
-            Impôt brut annuel     : {ib:.2} CAD\n\
-            Crédit MPB            : − {bpa:.2} CAD\n\
-            Impôt net annuel      : {inet:.2} CAD\n\
-            Retenue mensuelle     : {mens:.2} CAD (÷ 12)\n\
-            Taux effectif         : {teff:.2} %\n\
-            \n\
-            Retenu conjointement avec l'impôt fédéral par l'employeur (sostituto d'imposta). \
-            Régularisation via déclaration T1 annuelle (ARC) et, si applicable, \
-            déclaration provinciale complémentaire.",
-            nom      = nom,
-            annee    = annee,
-            tranches_desc = tranches_desc,
-            revenu   = revenu_ann,
-            ib       = impot_brut,
-            bpa      = bpa_credit,
-            inet     = impot_net,
-            mens     = impot_mens,
-            teff     = taux_eff * dec!(100),
-        ),
-        loi_ref: Some(loi.into()),
+        loi_ref: Some(ctx.loi_ref(loi)),
     }
 }

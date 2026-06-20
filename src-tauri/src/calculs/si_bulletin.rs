@@ -62,16 +62,17 @@ pub fn generer_bulletin_si(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let prisp_sal = (brut * ts).round_dp(2);
     let mut cotisations = vec![LigneCotisation {
         code: "SI_PRISPEVKI".into(),
-        libelle: "Prispevki — Cotisations sociales".into(),
+        libelle: ctx.libelle("SI_PRISPEVKI", "Prispevki — Cotisations sociales"),
         base: brut, taux_sal: ts, montant_sal: prisp_sal,
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: "Sécurité sociale".into(),
-        explication: format!(
-            "Prispevki — salarié {ts:.2} % (retraite/invalidité 15,5 %, maladie 6,36 %, \
-            chômage 0,14 %, parental 0,10 %) / employeur {tp:.2} %. Salarié : {ms:.2} €.",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = prisp_sal,
-        ),
-        loi_ref: Some("ZPIZ-2 / ZZVZZ".into()),
+        explication: ctx.expl("SI_PRISPEVKI",
+            "Prispevki — salarié {ts} % (retraite/invalidité 15,5 %, maladie 6,36 %, \
+            chômage 0,14 %, parental 0,10 %) / employeur {tp} %. Salarié : {ms} €.")
+            .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+            .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+            .replace("{ms}", &format!("{:.2}", prisp_sal)),
+        loi_ref: Some(ctx.loi_ref("ZPIZ-2 / ZZVZZ")),
     }];
 
     // Dohodnina : base annuelle = (brut − cotisations salariales) × 12 − abattement général.
@@ -80,25 +81,27 @@ pub fn generer_bulletin_si(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "SI_DOHODNINA".into(),
-        libelle: "Dohodnina — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("SI_DOHODNINA", "Dohodnina — Impôt sur le revenu"),
         base: brut, taux_sal: taux_imp, montant_sal: impot_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("SI_DOHODNINA",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Base = (brut − cotisations) × 12 − abattement {ab:.0} € = {b:.0} €\n\
+            Base = (brut − cotisations) × 12 − abattement {ab} € = {b} €\n\
             Barème 16 / 26 / 33 / 39 / 50 % (seuils {seuils})\n\
-            → {im:.2} €/mois.\n\n\
+            → {im} €/mois.\n\n\
             Note : abattement majoré pour bas revenus non modélisé (net prudent).\n\
-            Source : FURS.",
-            annee = annee, ab = abattement, b = base_an, im = impot_mens,
-            seuils = if annee >= 2026 {
+            Source : FURS.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{ab}", &format!("{:.0}", abattement))
+            .replace("{b}", &format!("{:.0}", base_an))
+            .replace("{im}", &format!("{:.2}", impot_mens))
+            .replace("{seuils}", if annee >= 2026 {
                 "9 721 / 28 592 / 57 185 / 82 346 €"
             } else {
                 "9 210 / 27 089 / 54 179 / 78 016 €"
-            },
-        ),
-        loi_ref: Some("Zakon o dohodnini (ZDoh-2)".into()),
+            }),
+        loi_ref: Some(ctx.loi_ref("Zakon o dohodnini (ZDoh-2)")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

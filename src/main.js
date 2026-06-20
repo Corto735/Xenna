@@ -1,4 +1,4 @@
-import { STATIC_DICT } from './lang.js';
+import { STATIC_DICT, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
@@ -106,7 +106,7 @@ window.togglePaysExtra = function() {
   ['d', 'm'].forEach(p => {
     document.getElementById(`${p}-params`)?.classList.toggle('pays-all', _paysAllShown);
     const lk = document.getElementById(`${p}-pays-more`);
-    if (lk) lk.textContent = _paysAllShown ? '− masquer les autres pays' : '+ autres pays européens';
+    if (lk) lk.textContent = _paysAllShown ? '− masquer les autres pays' : '+ autres pays';
   });
 };
 
@@ -336,6 +336,17 @@ window.translateApp = async function(lang) {
       cache.set(orig, staticLang[trimmed]);
     }
   });
+
+  // Noms de pays / sous-régions — traductions curées (évite MyMemory).
+  const _ci = { en: 0, de: 1, nl: 2, it: 3, es: 4 }[lang];
+  if (_ci !== undefined) {
+    texts.forEach(orig => {
+      const trimmed = orig.trim();
+      if (COUNTRY_DICT[trimmed] && !cache.has(orig)) {
+        cache.set(orig, COUNTRY_DICT[trimmed][_ci]);
+      }
+    });
+  }
 
   const toFetch   = [...new Set(texts)].filter(t => !cache.has(t));
 
@@ -1345,7 +1356,7 @@ function renderDesktop(b) {
         <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
           <td>
             <span class="expand-icon">▶</span>
-            <span class="cat ${catCls}">[${c.categorie}]</span>
+            <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
             <span class="trad-skip">${c.libelle}</span>
           </td>
           <td class="r">${fmt(c.base)}</td>
@@ -1428,7 +1439,7 @@ function renderDesktop(b) {
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>
                 <span class="expand-icon">▶</span>
-                <span class="cat ${catCls}">[${c.categorie}]</span>
+                <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
                 <span class="trad-skip">${c.libelle}</span>
               </td>
               <td class="r">${fmt(c.base)}</td>

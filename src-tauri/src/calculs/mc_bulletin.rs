@@ -13,19 +13,23 @@ use crate::models::{Bulletin, LigneCotisation, Salarie};
 fn ligne(code: &str, libelle: &str, categorie: &str, brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("MC_GENERIC",
+        "{libelle} — Caisses Sociales de Monaco.\n\
+        Salarié {ts} % / employeur {tp} %. Salarié : {ms} €.\n\n\
+        Note : Monaco ne prélève pas d'impôt sur le revenu des résidents \
+        (sauf nationaux français — convention fiscale 1963).")
+        .replace("{libelle}", &lib)
+        .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
+        .replace("{ms}", &format!("{:.2}", (brut * ts).round_dp(2)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base: brut,
+        code: code.into(), libelle: lib, base: brut,
         taux_sal: ts, montant_sal: (brut * ts).round_dp(2),
         taux_pat: tp, montant_pat: (brut * tp).round_dp(2),
         categorie: categorie.into(),
-        explication: format!(
-            "{libelle} — Caisses Sociales de Monaco.\n\
-            Salarié {ts:.2} % / employeur {tp:.2} %. Salarié : {ms:.2} €.\n\n\
-            Note : Monaco ne prélève pas d'impôt sur le revenu des résidents \
-            (sauf nationaux français — convention fiscale 1963).",
-            ts = ts * dec!(100), tp = tp * dec!(100), ms = (brut * ts).round_dp(2),
-        ),
-        loi_ref: Some("Caisses Sociales de Monaco".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Caisses Sociales de Monaco")),
     }
 }
 

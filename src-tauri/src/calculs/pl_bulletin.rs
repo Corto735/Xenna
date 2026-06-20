@@ -53,18 +53,23 @@ fn pl_params(annee: i32) -> Option<PlParams> {
 fn ligne(code: &str, libelle: &str, categorie: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
+    let lib = ctx.libelle(code, libelle);
+    let explication = ctx.expl("PL_GENERIC",
+        "{libelle} — ZUS.\nTaux : {tsp} % sal / {tpp} % pat. Assiette : {base} PLN.\n\
+        Salarié : {ms} PLN | Employeur : {mp} PLN.\n\nBase légale : Ustawa o systemie ubezpieczeń społecznych.")
+        .replace("{libelle}", &lib)
+        .replace("{tsp}", &format!("{:.2}", ts * dec!(100)))
+        .replace("{tpp}", &format!("{:.2}", tp * dec!(100)))
+        .replace("{base}", &format!("{:.2}", base))
+        .replace("{ms}", &format!("{:.2}", (base * ts).round_dp(2)))
+        .replace("{mp}", &format!("{:.2}", (base * tp).round_dp(2)));
     LigneCotisation {
-        code: code.into(), libelle: libelle.into(), base,
+        code: code.into(), libelle: lib, base,
         taux_sal: ts, montant_sal: (base * ts).round_dp(2),
         taux_pat: tp, montant_pat: (base * tp).round_dp(2),
         categorie: categorie.into(),
-        explication: format!(
-            "{libelle} — ZUS.\nTaux : {tsp:.2} % sal / {tpp:.2} % pat. Assiette : {base:.2} PLN.\n\
-            Salarié : {ms:.2} PLN | Employeur : {mp:.2} PLN.\n\nBase légale : Ustawa o systemie ubezpieczeń społecznych.",
-            tsp = ts * dec!(100), tpp = tp * dec!(100), base = base,
-            ms = (base * ts).round_dp(2), mp = (base * tp).round_dp(2),
-        ),
-        loi_ref: Some("Ustawa o systemie ubezpieczeń społecznych".into()),
+        explication,
+        loi_ref: Some(ctx.loi_ref("Ustawa o systemie ubezpieczeń społecznych")),
     }
 }
 
@@ -100,17 +105,17 @@ pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let sante = (base_sante * p.sante_taux).round_dp(2);
     cotisations.push(LigneCotisation {
         code: "PL_ZDROWOTNE".into(),
-        libelle: "Składka zdrowotna — Assurance maladie (9 %)".into(),
+        libelle: ctx.libelle("PL_ZDROWOTNE", "Składka zdrowotna — Assurance maladie (9 %)"),
         base: base_sante, taux_sal: p.sante_taux, montant_sal: sante,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("PL_ZDROWOTNE",
             "Składka zdrowotna — 9 % de l'assiette (brut − ZUS social salarial).\n\
-            Assiette : {b:.2} PLN → {s:.2} PLN/mois. Non déductible du PIT depuis 2022.\n\n\
-            Base légale : Ustawa o świadczeniach opieki zdrowotnej.",
-            b = base_sante, s = sante,
-        ),
-        loi_ref: Some("Ustawa o świadczeniach opieki zdrowotnej".into()),
+            Assiette : {b} PLN → {s} PLN/mois. Non déductible du PIT depuis 2022.\n\n\
+            Base légale : Ustawa o świadczeniach opieki zdrowotnej.")
+            .replace("{b}", &format!("{:.2}", base_sante))
+            .replace("{s}", &format!("{:.2}", sante)),
+        loi_ref: Some(ctx.loi_ref("Ustawa o świadczeniach opieki zdrowotnej")),
     });
 
     // PIT (annualisé) : base = brut annuel − ZUS social annuel − KUP
@@ -127,21 +132,24 @@ pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let taux_pit = if brut > Decimal::ZERO { (pit_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "PL_PIT".into(),
-        libelle: "PIT — Impôt sur le revenu".into(),
+        libelle: ctx.libelle("PL_PIT", "PIT — Impôt sur le revenu"),
         base: brut, taux_sal: taux_pit, montant_sal: pit_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("PL_PIT",
             "Impôt sur le revenu (PIT) 2025 — annualisé.\n\n\
-            Revenu annuel : {ba:.0} PLN − ZUS social {za:.0} PLN − KUP {kup:.0} PLN\n\
-            = base imposable {tx:.0} PLN\n\
+            Revenu annuel : {ba} PLN − ZUS social {za} PLN − KUP {kup} PLN\n\
+            = base imposable {tx} PLN\n\
             Barème : 12 % jusqu'à 120 000 PLN, 32 % au-delà ; − montant réducteur 3 600 PLN.\n\
-            = {pa:.0} PLN/an / 12 = {pm:.2} PLN/mois.\n\n\
-            Base légale : Ustawa o PIT.",
-            ba = brut_ann, za = zus_social_ann, kup = p.kup_annuel,
-            tx = taxable, pa = pit_ann, pm = pit_mens,
-        ),
-        loi_ref: Some("Ustawa o PIT".into()),
+            = {pa} PLN/an / 12 = {pm} PLN/mois.\n\n\
+            Base légale : Ustawa o PIT.")
+            .replace("{ba}", &format!("{:.0}", brut_ann))
+            .replace("{za}", &format!("{:.0}", zus_social_ann))
+            .replace("{kup}", &format!("{:.0}", p.kup_annuel))
+            .replace("{tx}", &format!("{:.0}", taxable))
+            .replace("{pa}", &format!("{:.0}", pit_ann))
+            .replace("{pm}", &format!("{:.2}", pit_mens)),
+        loi_ref: Some(ctx.loi_ref("Ustawa o PIT")),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

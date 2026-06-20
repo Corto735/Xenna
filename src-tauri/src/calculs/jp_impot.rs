@@ -72,30 +72,34 @@ pub fn jp_shotokuzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_SHOTOKUZEI".into(),
-        libelle:     "所得税 — Impôt sur le revenu + surtaxe reconstruction".into(),
+        libelle:     ctx.libelle("JP_SHOTOKUZEI", "所得税 — Impôt sur le revenu + surtaxe reconstruction"),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("JP_SHOTOKUZEI",
             "所得税 — impôt national sur le revenu (retenue mensuelle 源泉徴収).\n\n\
-            Revenu brut annuel estimé : ¥{rev:.0}\n\
-            − 給与所得控除 (déduction emploi) : ¥{de:.0}\n\
-            − 基礎控除 (déduction de base) : ¥{db:.0}\n\
-            = Revenu imposable : ¥{ri:.0}\n\n\
-            所得税 brute : ¥{sz:.0}\n\
-            + 復興特別所得税 (2,1 %) : ¥{fk:.0}\n\
-            = Total annuel : ¥{ta:.0} / 12 = ¥{mens:.0}/mois\n\
-            Taux effectif : {teff:.2} %\n\n\
-            Base légale : 所得税法 art. 28, 89 ; 復興特別所得税法 (L. 02/12/2011).",
-            rev  = rev_ann, de = deduction_emploi,
-            db   = deduction_base, ri = revenu_imposable,
-            sz   = shotoku, fk = fukkoshuzei, ta = total_ann,
-            mens = mensuel, teff = taux_eff * dec!(100),
-        ),
-        loi_ref: Some("所得税法 — 復興特別所得税法".into()),
+            Revenu brut annuel estimé : ¥{rev}\n\
+            − 給与所得控除 (déduction emploi) : ¥{de}\n\
+            − 基礎控除 (déduction de base) : ¥{db}\n\
+            = Revenu imposable : ¥{ri}\n\n\
+            所得税 brute : ¥{sz}\n\
+            + 復興特別所得税 (2,1 %) : ¥{fk}\n\
+            = Total annuel : ¥{ta} / 12 = ¥{mens}/mois\n\
+            Taux effectif : {teff} %\n\n\
+            Base légale : 所得税法 art. 28, 89 ; 復興特別所得税法 (L. 02/12/2011).")
+            .replace("{rev}", &format!("{:.0}", rev_ann))
+            .replace("{de}", &format!("{:.0}", deduction_emploi))
+            .replace("{db}", &format!("{:.0}", deduction_base))
+            .replace("{ri}", &format!("{:.0}", revenu_imposable))
+            .replace("{sz}", &format!("{:.0}", shotoku))
+            .replace("{fk}", &format!("{:.0}", fukkoshuzei))
+            .replace("{ta}", &format!("{:.0}", total_ann))
+            .replace("{mens}", &format!("{:.0}", mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("所得税法 — 復興特別所得税法")),
     }
 }
 
@@ -117,26 +121,26 @@ pub fn jp_juminzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     LigneCotisation {
         code:        "JP_JUMINZEI".into(),
-        libelle:     "住民税 — Taxe locale (estimation)".into(),
+        libelle:     ctx.libelle("JP_JUMINZEI", "住民税 — Taxe locale (estimation)"),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Taxe locale".into(),
-        explication: format!(
+        explication: ctx.expl("JP_JUMINZEI",
             "住民税 — taxe locale prélevée par la collectivité (estimation mensuelle).\n\n\
             Taux appliqué : 10 % flat (8 % préfectoral + 2 % municipal — 地方税法).\n\
-            Assiette : revenu imposable estimé ¥{ri:.0} (brut − déd. emploi)\n\
-            = ¥{ta:.0}/an / 12 = ¥{mens:.0}/mois\n\
-            Taux effectif : {teff:.2} %\n\n\
+            Assiette : revenu imposable estimé ¥{ri} (brut − déd. emploi)\n\
+            = ¥{ta}/an / 12 = ¥{mens}/mois\n\
+            Taux effectif : {teff} %\n\n\
             Note : en pratique, la住民税 est calculée en juin N+1 sur les revenus N. \
             Cette estimation mensuelle est indicative.\n\
-            Base légale : 地方税法.",
-            ri   = revenu_imposable,
-            ta   = juminzei_ann,
-            mens = mensuel, teff = taux_eff * dec!(100),
-        ),
-        loi_ref: Some("地方税法".into()),
+            Base légale : 地方税法.")
+            .replace("{ri}", &format!("{:.0}", revenu_imposable))
+            .replace("{ta}", &format!("{:.0}", juminzei_ann))
+            .replace("{mens}", &format!("{:.0}", mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
+        loi_ref: Some(ctx.loi_ref("地方税法")),
     }
 }
