@@ -102,7 +102,9 @@ pub async fn generer_annee(
         // est recalculé sur la rémunération annuelle totale, comme
         // l'exige la méthode URSSAF de régularisation annuelle.
         brut_cumule  += brut_mois;
-        smic_cumule  += (ctx.smic_mensuel * etp_ratio).round_dp(2);
+        // Cumul du SMIC de référence Fillon (gelé au 1er janvier) : le coefficient
+        // annualisé ne doit pas tenir compte d'une revalorisation en cours d'année.
+        smic_cumule  += (ctx.smic_mensuel_fillon * etp_ratio).round_dp(2);
 
         let fillon_reg = fillon_regularise_mois(
             brut_cumule, smic_cumule, fillon_verse, &ctx,

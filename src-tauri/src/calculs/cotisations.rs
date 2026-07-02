@@ -276,10 +276,12 @@ pub fn fillon_coeff(smic: Decimal, brut: Decimal, ctx: &ContextPaie) -> Decimal 
 pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Option<LigneCotisation> {
     // §670 BOSS (CSS art. L241-13) : le SMIC est proratisé selon la durée contractuelle.
     // SMIC_proraté = SMIC_mensuel × (ETP / 100)
+    // On utilise le SMIC de référence Fillon (gelé au 1er janvier), pas le SMIC
+    // courant : une revalorisation en cours d'année ne modifie pas ce calcul.
     let ratio: Decimal = format!("{:.6}", (etp_pct / 100.0).clamp(0.0, 2.0))
         .parse()
         .unwrap_or(dec!(1));
-    let smic = (ctx.smic_mensuel * ratio).round_dp(2);
+    let smic = (ctx.smic_mensuel_fillon * ratio).round_dp(2);
 
     let coeff = fillon_coeff(smic, brut, ctx);
     if coeff == Decimal::ZERO {
@@ -299,6 +301,17 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
             .replace("{smic}", &smic.to_string())
     } else {
         String::new()
+    };
+
+    // Précision réglementaire : le SMIC retenu pour la réduction générale est celui
+    // en vigueur au 1er janvier de l'année (gelé), et non le SMIC courant. Le décret
+    // n°2026-509 du 12/06/2026 a formalisé ce gel pour 2026 (neutralisation de la
+    // revalorisation du SMIC au 1er juin) ; hors 2026 on ne cite que les articles.
+    let annee = ctx.date_paie.format("%Y").to_string();
+    let ref_smic = if annee == "2026" {
+        "\nRéf. : décret n°2026-509 du 12/06/2026 (JO 14/06/2026) — CSS art. L241-13 et D241-7."
+    } else {
+        "\nRéf. : CSS art. L241-13 et D241-7."
     };
 
     // Gabarit traduit (ou français natif), puis substitution des placeholders.
@@ -331,8 +344,11 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
             ────────────────────────────────────────────────────\n\
             \n\
             S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
+            Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}\n\
             Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires.")
             .replace("{etp_info}", &etp_info)
+            .replace("{ref_smic}", ref_smic)
+            .replace("{annee}", &annee)
             .replace("{inner_disp}", &inner_disp.to_string())
             .replace("{seuil_eur}", &seuil_eur.to_string())
             .replace("{tmin}", &tmin.to_string())
@@ -358,8 +374,11 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}")
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
+            Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}")
             .replace("{etp_info}", &etp_info)
+            .replace("{ref_smic}", ref_smic)
+            .replace("{annee}", &annee)
             .replace("{seuil_eur}", &seuil_eur.to_string())
             .replace("{tmax}", &tmax.to_string())
             .replace("{seuil}", &seuil.to_string())
@@ -379,7 +398,7 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
         montant_pat: -montant,
         categorie:   "Allègement".into(),
         explication,
-        loi_ref: Some(ctx.loi_ref("Loi n°2003-47 du 17/01/2003 (Fillon) — CSS art. L241-13")),
+        loi_ref: Some(ctx.loi_ref("Loi n°2003-47 du 17/01/2003 (Fillon) — CSS art. L241-13 et D241-7")),
     })
 }
 

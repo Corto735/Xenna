@@ -21,6 +21,13 @@ pub struct ContextPaie {
     pub pmss: Decimal,
     pub smic_mensuel: Decimal,
 
+    // SMIC de référence pour la réduction Fillon, gelé au SMIC en vigueur
+    // au 1er janvier de l'année (règle légale : la revalorisation en cours
+    // d'année est neutralisée pour le seul calcul de la réduction générale).
+    // Repli sur smic_mensuel si le code SMIC_FILLON est absent en base
+    // (années historiques sans revalo en cours d'année). Voir migration 0050.
+    pub smic_mensuel_fillon: Decimal,
+
     // Langue d'affichage des libellés/explications de cotisation (code menu :
     // "fr","en","de","nl","it","es"). "fr" = défaut natif du code (aucune
     // traduction appliquée). Voir crate::i18n::cotisations.
@@ -147,11 +154,16 @@ impl ContextPaie {
             None => (None, None, None, None),
         };
 
+        // Parsé avant le littéral pour servir de repli à smic_mensuel_fillon.
+        let smic_mensuel_val: Decimal = smic_str.parse().context("SMIC non parseable")?;
+
         Ok(ContextPaie {
             date_paie: date,
             lang: "fr".into(),
             pmss: pmss_str.parse().context("PMSS non parseable")?,
-            smic_mensuel: smic_str.parse().context("SMIC non parseable")?,
+            smic_mensuel: smic_mensuel_val,
+            // SMIC_FILLON figé au 1er janvier (migration 0050), repli sur le SMIC courant.
+            smic_mensuel_fillon: plafonds.get("SMIC_FILLON").copied().unwrap_or(smic_mensuel_val),
             taux,
             plafonds,
             fillon_coeff_max,
