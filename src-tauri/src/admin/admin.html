@@ -110,6 +110,17 @@
         <button class="btn btn-sm" onclick="loadDashboard()" style="margin-left:0.35rem;background:var(--bg3);color:var(--text);border:1px solid var(--dim)">↻ Actualiser</button>
       </div>
     </div>
+
+    <!-- MON MOT DE PASSE -->
+    <div class="panel" style="margin-bottom:1rem">
+      <div class="panel-title">MON MOT DE PASSE</div>
+      <div class="field"><label>MOT DE PASSE ACTUEL</label><input type="password" id="pw-current" autocomplete="current-password"></div>
+      <div class="field"><label>NOUVEAU MOT DE PASSE (min. 8 caractères)</label><input type="password" id="pw-new" autocomplete="new-password"></div>
+      <div class="field"><label>CONFIRMER LE NOUVEAU</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+      <button class="btn btn-sm btn-green" onclick="doChangePassword()">Changer le mot de passe</button>
+      <div id="pw-status" style="font-size:0.65rem;margin-top:0.6rem;min-height:1rem"></div>
+    </div>
+
     <div class="dash-grid">
       <div class="panel">
         <div class="panel-title">INSCRIPTIONS EN ATTENTE <span class="panel-count" id="inscr-count"></span></div>
@@ -184,6 +195,37 @@ function doLogout() {
   document.getElementById('dashboard-section').style.display = 'none';
   document.getElementById('login-section').style.display = 'block';
   document.getElementById('inp-pass').value = '';
+}
+
+function pwStatus(msg, cls) {
+  const el = document.getElementById('pw-status');
+  el.textContent = msg;
+  el.style.color = cls === 'ok' ? 'var(--green)' : cls === 'err' ? 'var(--red)' : 'var(--muted)';
+}
+
+async function doChangePassword() {
+  const cur  = document.getElementById('pw-current').value;
+  const nw   = document.getElementById('pw-new').value;
+  const nw2  = document.getElementById('pw-new2').value;
+  if (!cur || !nw) { pwStatus('Remplissez tous les champs.', 'err'); return; }
+  if (nw.length < 8) { pwStatus('Le nouveau mot de passe doit faire au moins 8 caractères.', 'err'); return; }
+  if (nw !== nw2) { pwStatus('La confirmation ne correspond pas.', 'err'); return; }
+  if (nw === cur) { pwStatus('Le nouveau mot de passe est identique à l\'ancien.', 'err'); return; }
+  pwStatus('Changement…', '');
+  try {
+    const r = await fetch('/admin/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ current_password: cur, new_password: nw }),
+    });
+    if (r.status === 401) { doLogout(); return; }          // session expirée
+    if (r.status === 403) { pwStatus(await r.text(), 'err'); return; }  // ancien code faux
+    if (!r.ok) { pwStatus('Erreur : ' + (await r.text()), 'err'); return; }
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-new2').value = '';
+    pwStatus('Mot de passe changé. Il sera demandé à la prochaine connexion.', 'ok');
+  } catch (e) { pwStatus('Erreur réseau', 'err'); }
 }
 
 function showDashboard(user) {

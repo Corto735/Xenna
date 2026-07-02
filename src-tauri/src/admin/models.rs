@@ -66,3 +66,11 @@ pub struct AproposPost {
     pub created_at:  String,
     pub destination: String,
 }
+
+// ── Changement de mot de passe admin ─────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordReq {
+    pub current_password: String,
+    pub new_password:     String,
+}

@@ -11,10 +11,10 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use super::auth::{generate_jwt, jwt_secret, verify_password, AdminAuth};
+use super::auth::{generate_jwt, hash_password, jwt_secret, verify_password, AdminAuth};
 use super::models::{
-    AproposPost, DashboardData, InscriptionAdmin, LoginReq, LoginResp, PublishAproposReq,
-    PublishAproposResp, QuizzSuggestionAdmin,
+    AproposPost, ChangePasswordReq, DashboardData, InscriptionAdmin, LoginReq, LoginResp,
+    PublishAproposReq, PublishAproposResp, QuizzSuggestionAdmin,
 };
 use crate::crypto::{decrypt_email, parse_encryption_key};
 
@@ -52,6 +52,47 @@ async fn login(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur JWT"))?;
 
     Ok(Json(LoginResp { token }))
+}
+
+// ── POST /admin/password ──────────────────────────────────────────────────────
+
+async fn change_password(
+    State(pool): State<Db>,
+    auth: AdminAuth,
+    Json(req): Json<ChangePasswordReq>,
+) -> Result<StatusCode, (StatusCode, &'static str)> {
+    // L'utilisateur est celui du JWT (claim `sub`) — on ne change QUE son propre mot de passe.
+    let username = auth.0.sub;
+
+    if req.new_password.len() < 8 {
+        return Err((StatusCode::BAD_REQUEST, "Le nouveau mot de passe doit faire au moins 8 caractères"));
+    }
+
+    let row = sqlx::query_as::<_, (String,)>(
+        "SELECT password_hash FROM admin_users WHERE username = ?",
+    )
+    .bind(&username)
+    .fetch_optional(&*pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur interne"))?;
+
+    let (hash,) = row.ok_or((StatusCode::UNAUTHORIZED, "Compte introuvable"))?;
+
+    // 403 (et non 401) : la session est valide, c'est le mot de passe actuel qui
+    // est faux. Permet au front de distinguer « session expirée » d'« ancien code faux ».
+    if !verify_password(&req.current_password, &hash) {
+        return Err((StatusCode::FORBIDDEN, "Mot de passe actuel incorrect"));
+    }
+
+    let new_hash = hash_password(&req.new_password);
+    sqlx::query("UPDATE admin_users SET password_hash = ? WHERE username = ?")
+        .bind(&new_hash)
+        .bind(&username)
+        .execute(&*pool)
+        .await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur DB"))?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ── GET /admin/dashboard ──────────────────────────────────────────────────────
@@ -239,6 +280,7 @@ pub fn admin_router() -> Router<Db> {
     Router::new()
         .route("/admin",                            get(admin_page))
         .route("/admin/login",                      post(login))
+        .route("/admin/password",                   post(change_password))
         .route("/admin/dashboard",                  get(dashboard))
         .route("/admin/inscription/{id}/approve",   post(approve_inscription))
         .route("/admin/inscription/{id}/reject",    post(reject_inscription))
