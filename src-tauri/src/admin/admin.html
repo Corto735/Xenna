@@ -68,7 +68,7 @@
   .hi-row { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
   .hi-stats { font-size: 0.62rem; color: var(--muted); margin-top: 0.4rem; }
   .hi-stats b { color: var(--yellow); }
-  #hi-replay {
+  #hi-replay, .hi-post-stage {
     display: none; margin-top: 0.7rem; background: var(--bg3); border: 1px solid var(--dim);
     padding: 0.7rem; font-size: 0.85rem; line-height: 1.7; color: var(--white);
     white-space: pre-wrap; word-break: break-word; min-height: 4rem;
@@ -121,16 +121,21 @@
       </div>
     </div>
 
-    <!-- HUMAN INPUT — PAGE À PROPOS -->
+    <!-- HUMAN INPUT — PAGE À PROPOS / CARNET DE BORD -->
     <div id="hi-section">
       <div class="panel">
-        <div class="panel-title">HUMAN INPUT — PAGE À PROPOS</div>
+        <div class="panel-title">HUMAN INPUT — À PROPOS / CARNET DE BORD</div>
         <p class="subtitle" style="margin-bottom:1rem">
-          Tapez un paragraphe (la frappe est enregistrée), puis publiez-le sur la page « À propos ».
+          Tapez un paragraphe (la frappe est enregistrée), choisissez la destination, puis publiez.
         </p>
         <textarea id="hi-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
         <div class="hi-stats">
           Frappes : <b id="hi-stat-keys">0</b> · Corrections : <b id="hi-stat-back">0</b> · Durée : <b id="hi-stat-dur">0s</b>
+        </div>
+        <div class="hi-row" style="margin:0.4rem 0 0.2rem">
+          <span style="color:var(--dim);font-size:0.8rem">Destination :</span>
+          <label style="cursor:pointer"><input type="radio" name="hi-dest" value="apropos" checked> À propos</label>
+          <label style="cursor:pointer"><input type="radio" name="hi-dest" value="carnet"> Carnet de bord</label>
         </div>
         <div class="hi-row">
           <button class="btn btn-sm" onclick="hiPreview()" style="background:var(--bg3);color:var(--text);border:1px solid var(--dim)">▶ Aperçu</button>
@@ -297,13 +302,17 @@ function hiSetStatus(msg, cls) {
   el.textContent = msg; el.className = cls || '';
 }
 
+// Durée d'affichage d'un caractère effacé (rouge barré) avant sa disparition.
+const HI_GHOST_MS = 3000;
+
 function hiBuildStates(evts) {
   const downs = evts.filter(e => e.type === 'down');
   let buffer = [], states = [];
   for (const ev of downs) {
     if (ev.key === 'Backspace') {
       for (let i = buffer.length - 1; i >= 0; i--) {
-        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+        // On horodate l'effacement : le caractère barré disparaîtra 3 s plus tard.
+        if (!buffer[i].deleted) { buffer[i].deleted = true; buffer[i].deletedAt = ev.t; break; }
       }
     } else if (ev.key.length === 1 || ev.key === 'Enter') {
       buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
@@ -313,9 +322,11 @@ function hiBuildStates(evts) {
   return states;
 }
 
-function hiRenderSnapshot(snapshot, target) {
+function hiRenderSnapshot(snapshot, target, now) {
   let parts = [], run = null;
   for (const c of snapshot) {
+    // Un caractère effacé disparaît HI_GHOST_MS après son effacement.
+    if (c.deleted && now != null && now - c.deletedAt >= HI_GHOST_MS) continue;
     if (!run || run.deleted !== c.deleted) { run = { deleted: c.deleted, chars: [] }; parts.push(run); }
     run.chars.push(c.char === '\n' ? '↵\n' : c.char);
   }
@@ -329,8 +340,19 @@ function hiStartReplay(evts, target) {
   hiTimers.forEach(clearTimeout); hiTimers = [];
   target.style.display = 'block';
   target.innerHTML = '<span class="cursor"></span>';
-  for (const { t, snapshot } of hiBuildStates(evts)) {
-    hiTimers.push(setTimeout(() => hiRenderSnapshot(snapshot, target), t));
+  const states = hiBuildStates(evts);
+  // Instants de rendu = chaque frappe + chaque échéance de disparition d'un ghost
+  // (effacement + HI_GHOST_MS), pour faire disparaître le caractère barré même sans
+  // frappe à cet instant.
+  const times = new Set(states.map(s => s.t));
+  const last = states[states.length - 1];
+  if (last) for (const c of last.snapshot) if (c.deleted) times.add(c.deletedAt + HI_GHOST_MS);
+  for (const t of [...times].sort((a, b) => a - b)) {
+    // Base = état de la dernière frappe à ou avant t ; les ghosts expirés sont filtrés au rendu.
+    let base = null;
+    for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
+    if (!base) continue;
+    hiTimers.push(setTimeout(() => hiRenderSnapshot(base, target, t), t));
   }
 }
 
@@ -353,20 +375,24 @@ function hiClear() {
 async function hiPublish() {
   const contenu = hiEditor.value.trim();
   if (!contenu) { hiSetStatus('Contenu vide.', 'err'); return; }
+  const destination = (document.querySelector('input[name="hi-dest"]:checked') || {}).value || 'apropos';
   hiSetStatus('Publication…', '');
   try {
     const r = await fetch('/admin/apropos/publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
-      body: JSON.stringify({ contenu, events: hiEvents }),
+      body: JSON.stringify({ contenu, events: hiEvents, destination }),
     });
     if (r.status === 401) { doLogout(); return; }
     if (!r.ok) { hiSetStatus('Erreur : ' + (await r.text()), 'err'); return; }
-    hiSetStatus('Publié sur la page À propos.', 'ok');
+    hiSetStatus(destination === 'carnet' ? 'Publié dans le Carnet de bord.' : 'Publié sur la page À propos.', 'ok');
     hiClear();
     hiLoadList();
   } catch(e) { hiSetStatus('Erreur réseau', 'err'); }
 }
+
+// Cache des frappes par post, pour pouvoir rejouer sans refetch.
+let hiPostEvents = {};
 
 async function hiLoadList() {
   const list = document.getElementById('hi-list');
@@ -375,15 +401,29 @@ async function hiLoadList() {
     const data = await r.json();
     document.getElementById('hi-count').textContent = `(${data.length})`;
     if (!data.length) { list.innerHTML = '<div class="empty">Aucun post publié</div>'; return; }
-    list.innerHTML = data.map(p => `
+    hiPostEvents = {};
+    data.forEach(p => { hiPostEvents[p.id] = p.events || []; });
+    list.innerHTML = data.map(p => {
+      const dest = (p.destination || 'apropos') === 'carnet' ? 'Carnet de bord' : 'À propos';
+      return `
       <div class="hi-post" id="hi-post-${p.id}">
-        <div class="hi-post-date">${new Date(p.created_at).toLocaleString('fr-FR')}
-          <button class="btn btn-sm btn-red" style="float:right" onclick="hiDelete('${p.id}')">× Retirer</button></div>
+        <div class="hi-post-date">${new Date(p.created_at).toLocaleString('fr-FR')} · <b>${dest}</b>
+          <button class="btn btn-sm btn-red" style="float:right" onclick="hiDelete('${p.id}')">× Retirer</button>
+          <button class="btn btn-sm" style="float:right;margin-right:0.4rem;background:var(--bg3);color:var(--text);border:1px solid var(--dim)" onclick="hiReplayPost('${p.id}')">▶ Rejouer</button></div>
         <div class="hi-post-text">${esc(p.contenu)}</div>
-      </div>`).join('');
+        <div class="hi-post-stage" id="hi-post-stage-${p.id}"></div>
+      </div>`;
+    }).join('');
   } catch(e) {
     list.innerHTML = '<div class="empty" style="color:var(--red)">Erreur de chargement</div>';
   }
+}
+
+// Rejoue les frappes d'un post publié dans sa propre scène (réutilise hiStartReplay).
+function hiReplayPost(id) {
+  const stage = document.getElementById('hi-post-stage-' + id);
+  if (!stage) return;
+  hiStartReplay(hiPostEvents[id] || [], stage);
 }
 
 async function hiDelete(id) {

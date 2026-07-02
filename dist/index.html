@@ -1307,6 +1307,7 @@
        VUES FORGE & À PROPOS
     ══════════════════════════════ */
     .view-apropos,
+    .view-carnet,
     .view-contact,
     .view-gaabrielle,
     .view-quizz   { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
@@ -1358,6 +1359,12 @@
     body.is-apropos .view-annuel  { display: none !important; }
     body.is-apropos .view-bar     { display: none !important; }
     body.is-apropos .view-apropos { display: block; }
+
+    body.is-carnet .view-desktop,
+    body.is-carnet .view-mobile,
+    body.is-carnet .view-annuel  { display: none !important; }
+    body.is-carnet .view-bar     { display: none !important; }
+    body.is-carnet .view-carnet  { display: block; }
 
     body.is-contact .view-desktop,
     body.is-contact .view-mobile,
@@ -1882,12 +1889,15 @@
       padding: 0.7rem; font-size: 0.78rem; line-height: 1.75; color: var(--white);
       white-space: pre-wrap; word-break: break-word; min-height: 3rem;
     }
-    .hi-replay-btn {
-      margin-top: 0.55rem; background: none; border: 1px solid var(--green); color: var(--green);
+    .hi-post-actions { display: flex; gap: 0.5rem; margin-top: 0.55rem; }
+    .hi-replay-btn, .hi-show-btn {
+      background: none; border: 1px solid var(--green); color: var(--green);
       font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em;
       padding: 0.3rem 0.7rem; cursor: pointer; transition: all 0.15s;
     }
-    .hi-replay-btn:hover { background: var(--green); color: var(--bg); }
+    .hi-replay-btn:hover, .hi-show-btn:hover { background: var(--green); color: var(--bg); }
+    .hi-show-btn { border-color: var(--muted); color: var(--muted); }
+    .hi-show-btn:hover { background: var(--muted); color: var(--bg); }
 
     /* ── Grille stack technique ── */
     .stack-grid {
@@ -2026,7 +2036,7 @@
     .hf-toggle.is-f .hf-end-f { color: var(--bg); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-wjg67CzC.js"></script>
+  <script type="module" crossorigin src="/assets/index-C2CQNn0c.js"></script>
 </head>
 <body>
 
@@ -2066,6 +2076,10 @@
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
           <span class="burger-item-icon">?</span>
           À propos
+        </button>
+        <button class="burger-item" onclick="setView('carnet'); closeBurger()">
+          <span class="burger-item-icon">▤</span>
+          Carnet de bord
         </button>
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
@@ -3313,6 +3327,20 @@
 
     </div>
 
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE CARNET DE BORD
+  ════════════════════════════════ -->
+  <div class="view-carnet">
+    <div class="about-head">
+      <div class="about-title">CARNET DE BORD</div>
+      <div class="about-sub">
+        Le journal de bord du projet — au fil des frappes.
+      </div>
+    </div>
+
+    <div id="carnet-posts" class="human-input"></div>
   </div>
 
   <!-- ════════════════════════════════

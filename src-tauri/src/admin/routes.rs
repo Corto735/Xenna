@@ -174,14 +174,20 @@ async fn publish_apropos(
     let events_json = serde_json::to_string(&req.events)
         .map_err(|_| (StatusCode::BAD_REQUEST, "Events invalides"))?;
     let now = Utc::now().to_rfc3339();
+    // Seules deux destinations sont valides ; toute autre valeur retombe sur "apropos".
+    let destination = match req.destination.as_deref() {
+        Some("carnet") => "carnet",
+        _ => "apropos",
+    };
 
     sqlx::query(
-        "INSERT INTO apropos_posts (id, contenu, events, created_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO apropos_posts (id, contenu, events, created_at, destination) VALUES (?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(contenu)
     .bind(&events_json)
     .bind(&now)
+    .bind(destination)
     .execute(&*pool)
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur DB"))?;
@@ -209,8 +215,8 @@ async fn delete_apropos(
 async fn list_apropos_posts(
     State(pool): State<Db>,
 ) -> Result<Json<Vec<AproposPost>>, (StatusCode, &'static str)> {
-    let rows = sqlx::query_as::<_, (String, String, String, String)>(
-        "SELECT id, contenu, events, created_at FROM apropos_posts ORDER BY created_at DESC",
+    let rows = sqlx::query_as::<_, (String, String, String, String, String)>(
+        "SELECT id, contenu, events, created_at, destination FROM apropos_posts ORDER BY created_at DESC",
     )
     .fetch_all(&*pool)
     .await
@@ -218,9 +224,9 @@ async fn list_apropos_posts(
 
     let posts = rows
         .into_iter()
-        .map(|(id, contenu, events, created_at)| {
+        .map(|(id, contenu, events, created_at, destination)| {
             let events = serde_json::from_str(&events).unwrap_or(serde_json::Value::Null);
-            AproposPost { id, contenu, events, created_at }
+            AproposPost { id, contenu, events, created_at, destination }
         })
         .collect();
 

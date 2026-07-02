@@ -47,6 +47,10 @@ pub struct DashboardData {
 pub struct PublishAproposReq {
     pub contenu: String,
     pub events:  serde_json::Value,
+    // Surface de destination : "apropos" (défaut) ou "carnet". Optionnel pour
+    // rester compatible avec un ancien client qui n'enverrait pas le champ.
+    #[serde(default)]
+    pub destination: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -56,8 +60,9 @@ pub struct PublishAproposResp {
 
 #[derive(Debug, Serialize)]
 pub struct AproposPost {
-    pub id:         String,
-    pub contenu:    String,
-    pub events:     serde_json::Value,
-    pub created_at: String,
+    pub id:          String,
+    pub contenu:     String,
+    pub events:      serde_json::Value,
+    pub created_at:  String,
+    pub destination: String,
 }

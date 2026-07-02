@@ -175,6 +175,9 @@ let events    = [];
 let startTime = null;
 let replayTimers = [];
 
+// Durée d'affichage d'un caractère effacé (rouge barré) avant sa disparition.
+const GHOST_MS = 3000;
+
 const editor    = document.getElementById('editor');
 const btnSave   = document.getElementById('btn-save');
 const btnReplay = document.getElementById('btn-replay');
@@ -259,9 +262,10 @@ function startReplay(evts) {
 
   for (const ev of downs) {
     if (ev.key === 'Backspace') {
-      // Marque le dernier char non supprimé comme supprimé
+      // Marque le dernier char non supprimé comme supprimé, et horodate l'effacement
+      // (le caractère barré disparaîtra GHOST_MS plus tard).
       for (let i = buffer.length - 1; i >= 0; i--) {
-        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+        if (!buffer[i].deleted) { buffer[i].deleted = true; buffer[i].deletedAt = ev.t; break; }
       }
     } else if (ev.key.length === 1 || ev.key === 'Enter') {
       buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
@@ -269,32 +273,38 @@ function startReplay(evts) {
     states.push({ t: ev.t, snapshot: buffer.map(c => ({ ...c })) });
   }
 
-  for (const { t, snapshot } of states) {
-    const timer = setTimeout(() => renderSnapshot(snapshot), t);
-    replayTimers.push(timer);
+  // Instants de rendu = chaque frappe + chaque échéance de disparition d'un ghost
+  // (effacement + GHOST_MS), pour faire disparaître le caractère barré même sans
+  // frappe à cet instant.
+  const times = new Set(states.map(s => s.t));
+  const last = states[states.length - 1];
+  if (last) for (const c of last.snapshot) if (c.deleted) times.add(c.deletedAt + GHOST_MS);
+  for (const t of [...times].sort((a, b) => a - b)) {
+    // Base = état de la dernière frappe à ou avant t ; les ghosts expirés sont filtrés au rendu.
+    let base = null;
+    for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
+    if (!base) continue;
+    replayTimers.push(setTimeout(() => renderSnapshot(base, t), t));
   }
 }
 
-function renderSnapshot(snapshot) {
+function renderSnapshot(snapshot, now) {
   // Regroupe les séquences continues de même état
-  let html = '<span class="cursor"></span>';
-  let i = snapshot.length - 1;
-  // Cherche la limite entre texte actif et suppressions trailing
-  // On affiche : texte actif | suppressions (barrées) | texte actif | …
   let parts = [];
   let run = null;
   for (const c of snapshot) {
+    // Un caractère effacé disparaît GHOST_MS après son effacement.
+    if (c.deleted && now != null && now - c.deletedAt >= GHOST_MS) continue;
     if (!run || run.deleted !== c.deleted) {
       run = { deleted: c.deleted, chars: [] };
       parts.push(run);
     }
     run.chars.push(c.char === '\n' ? '↵\n' : c.char);
   }
-  html = parts.map(p => {
+  replayStage.innerHTML = parts.map(p => {
     const txt = p.chars.join('').replace(/&/g,'&amp;').replace(/</g,'&lt;');
     return p.deleted ? `<span class="ghost">${txt}</span>` : txt;
   }).join('') + '<span class="cursor"></span>';
-  replayStage.innerHTML = html;
 }
 
 function stopReplay() {

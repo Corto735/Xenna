@@ -732,7 +732,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'apropos', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -744,6 +744,7 @@ window.setView = function (v) {
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
   if (v === 'apropos')  { _mecenatStart(); _humanInputLoad(); }
+  if (v === 'carnet')     _carnetLoad();
   if (v === 'meliinda')   meliindaInit();
 };
 
@@ -758,7 +759,8 @@ function _hiBuildStates(evts) {
   for (const ev of downs) {
     if (ev.key === 'Backspace') {
       for (let i = buffer.length - 1; i >= 0; i--) {
-        if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+        // On horodate l'effacement : le caractère barré disparaîtra 3 s plus tard.
+        if (!buffer[i].deleted) { buffer[i].deleted = true; buffer[i].deletedAt = ev.t; break; }
       }
     } else if (ev.key.length === 1 || ev.key === 'Enter') {
       buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
@@ -772,33 +774,70 @@ function _hiReplay(events, stage) {
   _hiStopReplay();
   stage.style.display = 'block';
   stage.innerHTML = '<span class="ml-cursor"></span>';
-  for (const { t, snapshot } of _hiBuildStates(events)) {
-    _hiTimers.push(setTimeout(() => mlRenderSnapshot(snapshot, stage), t));
+  const states = _hiBuildStates(events);
+  // Instants de rendu = chaque frappe + chaque échéance de disparition d'un ghost
+  // (effacement + ML_GHOST_MS), pour faire disparaître le caractère barré même sans
+  // frappe à cet instant.
+  const times = new Set(states.map(s => s.t));
+  const last = states[states.length - 1];
+  if (last) for (const c of last.snapshot) if (c.deleted) times.add(c.deletedAt + ML_GHOST_MS);
+  for (const t of [...times].sort((a, b) => a - b)) {
+    // Base = état de la dernière frappe à ou avant t ; les ghosts expirés sont filtrés au rendu.
+    let base = null;
+    for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
+    if (!base) continue;
+    _hiTimers.push(setTimeout(() => mlRenderSnapshot(base, stage, t), t));
   }
 }
 
-async function _humanInputLoad() {
-  const box = document.getElementById('apropos-human-input');
+// Les posts « human input » de la page À propos (destination 'apropos').
+async function _humanInputLoad() { await _hiLoadInto('apropos-human-input', 'apropos'); }
+
+// Les posts du Carnet de bord (destination 'carnet').
+async function _carnetLoad() { await _hiLoadInto('carnet-posts', 'carnet'); }
+
+// Charge tous les posts publiés, ne garde que ceux de la destination voulue, et
+// rend chacun avec DEUX boutons : « human input » (rejoue les frappes en temps réel)
+// et « affiche » (montre le message complet d'un seul coup). Le message est masqué
+// tant que le visiteur n'a pas choisi l'un des deux modes.
+async function _hiLoadInto(boxId, destination) {
+  const box = document.getElementById(boxId);
   if (!box) return;
   try {
     const res  = await fetch('/api/apropos/posts');
     const data = await res.json();
-    if (!data.length) {
+    const posts = data.filter(p => (p.destination || 'apropos') === destination);
+    if (!posts.length) {
       box.innerHTML = '<div class="hi-empty">Aucun message pour le moment.</div>';
       return;
     }
-    box.innerHTML = data.map((p, i) => `
+    box.innerHTML = posts.map((p, i) => `
       <div class="hi-post">
         <div class="hi-post-date">${new Date(p.created_at).toLocaleDateString('fr-FR', { year:'numeric', month:'long', day:'numeric' })}</div>
-        <div class="hi-post-text">${esc(p.contenu)}</div>
-        <button class="hi-replay-btn" data-i="${i}">▶ rejouer la frappe</button>
-        <div class="hi-stage" id="hi-stage-${i}"></div>
+        <div class="hi-post-actions">
+          <button class="hi-replay-btn" data-i="${i}">▶ human input</button>
+          <button class="hi-show-btn"   data-i="${i}">affiche</button>
+        </div>
+        <div class="hi-post-text" id="${boxId}-text-${i}" style="display:none">${esc(p.contenu)}</div>
+        <div class="hi-stage" id="${boxId}-stage-${i}"></div>
       </div>`).join('');
+    // « human input » : rejoue les frappes en temps réel (avec effacements barrés).
     box.querySelectorAll('.hi-replay-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const i = btn.dataset.i;
-        const events = data[i].events || [];
-        _hiReplay(events, document.getElementById('hi-stage-' + i));
+        document.getElementById(`${boxId}-text-${i}`).style.display = 'none';
+        _hiReplay(posts[i].events || [], document.getElementById(`${boxId}-stage-${i}`));
+      });
+    });
+    // « affiche » : montre le message complet d'un coup, sans animation.
+    box.querySelectorAll('.hi-show-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = btn.dataset.i;
+        _hiStopReplay();
+        const stage = document.getElementById(`${boxId}-stage-${i}`);
+        stage.style.display = 'none';
+        stage.innerHTML = '';
+        document.getElementById(`${boxId}-text-${i}`).style.display = 'block';
       });
     });
   } catch {
@@ -4660,7 +4699,8 @@ function meliindaInit() {
     for (const ev of downs) {
       if (ev.key === 'Backspace') {
         for (let i = buffer.length - 1; i >= 0; i--) {
-          if (!buffer[i].deleted) { buffer[i].deleted = true; break; }
+          // On horodate l'effacement : le caractère barré disparaîtra 3 s plus tard.
+          if (!buffer[i].deleted) { buffer[i].deleted = true; buffer[i].deletedAt = ev.t; break; }
         }
       } else if (ev.key.length === 1 || ev.key === 'Enter') {
         buffer.push({ char: ev.key === 'Enter' ? '\n' : ev.key, deleted: false });
@@ -4675,8 +4715,18 @@ function meliindaInit() {
     replayWrap.style.display = 'block';
     replayStage.innerHTML = '<span class="ml-cursor"></span>';
     const states = mlBuildStates(evts);
-    for (const { t, snapshot } of states) {
-      mlTimers.push(setTimeout(() => mlRenderSnapshot(snapshot, replayStage), t));
+    // Instants de rendu = chaque frappe + chaque échéance de disparition d'un ghost
+    // (effacement + ML_GHOST_MS). Ce rendu supplémentaire fait disparaître le caractère
+    // barré même si aucune frappe n'a lieu à ce moment-là (ex. dernière touche du replay).
+    const times = new Set(states.map(s => s.t));
+    const last = states[states.length - 1];
+    if (last) for (const c of last.snapshot) if (c.deleted) times.add(c.deletedAt + ML_GHOST_MS);
+    for (const t of [...times].sort((a, b) => a - b)) {
+      // Base = état de la dernière frappe à ou avant t ; les ghosts expirés sont filtrés au rendu.
+      let base = null;
+      for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
+      if (!base) continue;
+      mlTimers.push(setTimeout(() => mlRenderSnapshot(base, replayStage, t), t));
     }
   }
 
@@ -4690,9 +4740,14 @@ function meliindaInit() {
   mlLoadLibrary();
 }
 
-function mlRenderSnapshot(snapshot, target) {
+// Durée d'affichage d'un caractère effacé (rouge barré) avant sa disparition.
+const ML_GHOST_MS = 3000;
+
+function mlRenderSnapshot(snapshot, target, now) {
   let parts = [], run = null;
   for (const c of snapshot) {
+    // Un caractère effacé disparaît ML_GHOST_MS après son effacement.
+    if (c.deleted && now != null && now - c.deletedAt >= ML_GHOST_MS) continue;
     if (!run || run.deleted !== c.deleted) { run = { deleted: c.deleted, chars: [] }; parts.push(run); }
     run.chars.push(c.char === '\n' ? '↵\n' : c.char);
   }
