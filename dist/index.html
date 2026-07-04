@@ -652,6 +652,15 @@
     }
     .rem-absence-line .c-red   { color: #ff6b6b; font-weight: bold; }
     .rem-absence-line .c-green { color: var(--green); font-weight: bold; }
+    /* Lignes d'absence rendues en tableau : même colgroup que .ascii-tbl, marge
+       négative pour annuler le padding 0,9rem de .rem-section → les montants
+       s'alignent nativement sur la colonne PART SALARIÉ (4e colonne). */
+    .ascii-tbl.abs-embed { margin: 0 -0.9rem; width: calc(100% + 1.8rem); }
+    .ascii-tbl.abs-embed td { font-size: 0.68rem; color: var(--muted); padding: 0.2rem 0.75rem; }
+    .ascii-tbl.abs-embed td:first-child { padding-left: 1.7rem; }
+    .ascii-tbl.abs-embed td.r { text-align: right; font-variant-numeric: tabular-nums; }
+    .ascii-tbl.abs-embed td.c-red   { color: #ff6b6b; font-weight: bold; }
+    .ascii-tbl.abs-embed td.c-green { color: var(--green); font-weight: bold; }
     .absence-conv-row {
       display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem;
     }
@@ -2120,7 +2129,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-BP3Ez1WU.js"></script>
+  <script type="module" crossorigin src="/assets/index-DUNJJ-W9.js"></script>
 </head>
 <body>
 

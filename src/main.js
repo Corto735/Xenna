@@ -1214,6 +1214,23 @@ function buildDfpHsFormula(d) {
     <table class="fm-calc">${rows.join('')}</table>`;
 }
 
+// Lignes d'absence rendues dans la grille du tableau des cotisations (desktop) :
+// libellé sur les 3 premières colonnes, montant dans la 4e (PART SALARIÉ),
+// colonnes patronales vides → alignement natif sur la colonne salariale.
+const _ABS_COLGROUP = `<colgroup><col><col style="width:13%"><col style="width:9%"><col style="width:13%"><col style="width:9%"><col style="width:13%"></colgroup>`;
+
+function _absenceRow(label, cls, sign, amount, fmkey) {
+  return `<tr>
+      <td colspan="3">${label}</td>
+      <td class="r ${cls}" style="cursor:pointer" onclick="showFormula('${fmkey}')">${sign} ${fmt(amount)}${buildFormulaStar(fmkey)}</td>
+      <td colspan="2"></td>
+    </tr>`;
+}
+
+function _absenceEmbedTable(rows) {
+  return `<table class="ascii-tbl abs-embed">${_ABS_COLGROUP}<tbody>${rows}</tbody></table>`;
+}
+
 // ── Formules des lignes d'absence maladie (retenue, maintien, IJSS, garantie
 // du net) — même squelette que les autres panneaux f(x). Toutes les valeurs
 // intermédiaires viennent du backend (AbsenceResult) : raisonnement transparent.
@@ -1564,7 +1581,7 @@ function renderDesktop(b) {
   const ijssReintSection = ijssNet > 0 ? `
     <div class="tbl-section-head">── IJSS — SUBROGATION ──────────────────────────────────────────────</div>
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
-      <div class="rem-absence-line" style="margin-left:0"><span style="flex:1">IJSS nettes (subrogation) — reversées au salarié</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_IJSS_REINT')">+ ${fmt(ijssNet)}${buildFormulaStar('ABS_IJSS_REINT')}</span></div>
+      ${_absenceEmbedTable(_absenceRow('IJSS nettes (subrogation) — reversées au salarié', 'c-green', '+', ijssNet, 'ABS_IJSS_REINT'))}
     </div>` : '';
 
   // IS suisse — extrait pour l'afficher séparément dans la barre récap
@@ -2790,11 +2807,13 @@ function buildRemSection() {
     _fmStore['ABS_IJSS']     = { type: 'absence', which: 'ijss',       a: absInfo };
     _fmStore['ABS_AJUST']    = { type: 'absence', which: 'ajustement', a: absInfo };
   }
-  const absenceLine = absInfo ? `
-    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_RETENUE')">− ${fmt(absInfo.retenue)}${buildFormulaStar('ABS_RETENUE')}</span></div>
-    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)})</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_MAINTIEN')">+ ${fmt(absInfo.maintien)}${buildFormulaStar('ABS_MAINTIEN')}</span></div>` : ''}
-    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_IJSS')">− ${fmt(absInfo.ijss_brut)}${buildFormulaStar('ABS_IJSS')}</span></div>` : ''}
-    ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '';
+  const absRows = absInfo ? [
+    _absenceRow(`Retenue absence (${esc(absInfo.libelle)})`, 'c-red', '−', absInfo.retenue, 'ABS_RETENUE'),
+    parseFloat(absInfo.maintien) > 0 ? _absenceRow(`Maintien de salaire (${esc(absInfo.convention)})`, 'c-green', '+', absInfo.maintien, 'ABS_MAINTIEN') : '',
+    parseFloat(absInfo.ijss_brut) > 0 ? _absenceRow('IJSS brutes (subrogation)', 'c-red', '−', absInfo.ijss_brut, 'ABS_IJSS') : '',
+    parseFloat(absInfo.ajustement_net) > 0 ? _absenceRow('Ajustement du net (garantie du net)', 'c-red', '−', absInfo.ajustement_net, 'ABS_AJUST') : '',
+  ].join('') : '';
+  const absenceLine = absRows ? _absenceEmbedTable(absRows) : '';
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex">
