@@ -26,6 +26,7 @@ pub mod divers; // pays « mono-fichier » (AD, AT, BG, CY, CZ, DK, EE, FI, GR, 
 pub mod kr;     // Corée du Sud
 pub mod jp;     // Japon
 pub mod de;     // Allemagne
+pub mod us;     // États-Unis
 pub mod non_couvert; // messages « année non couverte » par pays
 pub mod refs;
 
@@ -49,6 +50,7 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
         "KR" => kr::t_libelle(code, lang),
         "JP" => jp::t_libelle(code, lang),
         "DE" => de::t_libelle(code, lang),
+        "US" => us::t_libelle(code, lang),
         "AD" | "AT" | "BG" | "CY" | "CZ" | "DK" | "EE" | "FI" | "GR" | "HR" | "HU"
         | "IE" | "LV" | "LT" | "MT" | "SI" | "SE" | "RO" | "PL" | "SK" | "NZ" | "NL"
         | "MC" | "CN" | "UK" | "AU" | "BE"
@@ -70,6 +72,7 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
         "KR" => kr::t_explication(key, lang),
         "JP" => jp::t_explication(key, lang),
         "DE" => de::t_explication(key, lang),
+        "US" => us::t_explication(key, lang),
         "AD" | "AT" | "BG" | "CY" | "CZ" | "DK" | "EE" | "FI" | "GR" | "HR" | "HU"
         | "IE" | "LV" | "LT" | "MT" | "SI" | "SE" | "RO" | "PL" | "SK" | "NZ" | "NL"
         | "MC" | "CN" | "UK" | "AU" | "BE"

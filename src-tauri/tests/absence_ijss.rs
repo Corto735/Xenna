@@ -66,6 +66,7 @@ fn salarie_france(brut: &str) -> Salarie {
         salaire_base: None,
         effectif: Some("moins20".into()),
         anciennete: None,
+        us_state: None,
     }
 }
 

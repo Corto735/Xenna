@@ -131,6 +131,10 @@ pub enum Pays {
     /// Salariés bulgares : cotisations 13,78 % sal (plafonnées) + impôt 10 %.
     /// Devise BGN (euro au 01/01/2026). Données : 2025.
     Bulgarie,
+    /// Salariés américains : FICA (Social Security 6,2 % plafonné, Medicare 1,45 %
+    /// + 0,9 % surtaxe), impôt fédéral progressif + impôt d'État selon `us_state`.
+    /// Devise USD. Données : 2025.
+    EtatsUnis,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,6 +170,10 @@ pub struct Salarie {
     /// Non utilisé pour Pays::Quebec (régime distinct).
     #[serde(default)]
     pub province: Option<String>,
+    /// Code État américain à 2 lettres (TX, FL, WA, IL, CO, PA, CA, NY).
+    /// Détermine l'impôt d'État pour Pays::EtatsUnis. Défaut : "TX".
+    #[serde(default)]
+    pub us_state: Option<String>,
     /// Steuerklasse allemande (1-6). Défaut : 1 (célibataire).
     #[serde(default)]
     pub steuerklasse: Option<u8>,

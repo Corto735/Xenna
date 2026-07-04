@@ -42,6 +42,7 @@ use super::hr_bulletin::generer_bulletin_hr;
 use super::ie_bulletin::generer_bulletin_ie;
 use super::ro_bulletin::generer_bulletin_ro;
 use super::bg_bulletin::generer_bulletin_bg;
+use super::us_bulletin::generer_bulletin_us;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     match salarie.pays {
@@ -83,6 +84,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         Pays::Irlande           => return generer_bulletin_ie(salarie, ctx),
         Pays::Roumanie          => return generer_bulletin_ro(salarie, ctx),
         Pays::Bulgarie          => return generer_bulletin_bg(salarie, ctx),
+        Pays::EtatsUnis         => return generer_bulletin_us(salarie, ctx),
         Pays::France            => {}
     }
 

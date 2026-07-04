@@ -2129,7 +2129,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DUNJJ-W9.js"></script>
+  <script type="module" crossorigin src="/assets/index-D5ZBsSh2.js"></script>
 </head>
 <body>
 
@@ -2590,6 +2590,22 @@
               <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
             </label>
           </div>
+          <label class="param-item">
+            <input type="checkbox" id="d-etatsunis" onchange="syncParam('etatsunis', this.checked); onTogglePays('etatsunis', this.checked)" />
+            <span class="flag-emoji">🇺🇸</span> États-Unis
+          </label>
+          <div id="d-us-state-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+            <select id="d-us-state" onchange="syncParam('us-state', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <option value="TX">Texas (sans impôt d'État)</option>
+              <option value="FL">Floride (sans impôt d'État)</option>
+              <option value="WA">Washington (sans impôt d'État)</option>
+              <option value="IL">Illinois (forfait 4,95 %)</option>
+              <option value="CO">Colorado (forfait 4,40 %)</option>
+              <option value="PA">Pennsylvanie (forfait 3,07 %)</option>
+              <option value="CA">Californie (progressif + SDI)</option>
+              <option value="NY">New York (progressif)</option>
+            </select>
+          </div>
           <div class="param-group-title">Asie</div>
           <label class="param-item">
             <input type="checkbox" id="d-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
@@ -3021,6 +3037,22 @@
                 <input type="checkbox" id="m-quebec" onchange="syncParam('quebec', this.checked); onTogglePays('quebec', this.checked)" />
                 <img class="flag-img" src="/Quebec.png" alt="Québec" /> Québec
               </label>
+            </div>
+            <label class="param-item">
+              <input type="checkbox" id="m-etatsunis" onchange="syncParam('etatsunis', this.checked); onTogglePays('etatsunis', this.checked)" />
+              <span class="flag-emoji">🇺🇸</span> États-Unis
+            </label>
+            <div id="m-us-state-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+              <select id="m-us-state" onchange="syncParam('us-state', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="TX">Texas (sans impôt d'État)</option>
+                <option value="FL">Floride (sans impôt d'État)</option>
+                <option value="WA">Washington (sans impôt d'État)</option>
+                <option value="IL">Illinois (forfait 4,95 %)</option>
+                <option value="CO">Colorado (forfait 4,40 %)</option>
+                <option value="PA">Pennsylvanie (forfait 3,07 %)</option>
+                <option value="CA">Californie (progressif + SDI)</option>
+                <option value="NY">New York (progressif)</option>
+              </select>
             </div>
             <div class="param-group-title">Asie</div>
             <label class="param-item">

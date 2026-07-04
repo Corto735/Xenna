@@ -66,6 +66,9 @@ pub mod hr_bulletin;
 pub mod ie_bulletin;
 pub mod ro_bulletin;
 pub mod bg_bulletin;
+pub mod us_cotisations;
+pub mod us_impot;
+pub mod us_bulletin;
 
 pub use bulletin::generer_bulletin;
 pub use annee::generer_annee;
