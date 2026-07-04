@@ -58,7 +58,8 @@ pub fn generer_bulletin_fi(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if annee != 2026 {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Finlande : données disponibles pour 2026.");
+            salarie, brut, "EUR", "FI",
+            "Finlande : données disponibles pour 2026.", ctx);
     }
 
     let g = brut * dec!(12);

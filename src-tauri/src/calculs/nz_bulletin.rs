@@ -72,9 +72,8 @@ pub fn generer_bulletin_nz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let Some(paye_an) = paye_annuel(rev_ann, annee) else {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "NZD",
-            "Nouvelle-Zélande : données disponibles pour les années fiscales 2014-15 à 2025-26.",
-        );
+            salarie, brut, "NZD", "NZ",
+            "Nouvelle-Zélande : données disponibles pour les années fiscales 2014-15 à 2025-26.", ctx);
     };
 
     // PAYE (impôt sur le revenu)

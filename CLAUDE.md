@@ -36,6 +36,7 @@ cargo clippy                          # Lint Rust code
 **Tests de fiabilité (Phase 1) :**
 ```bash
 cargo test --test fiabilite          # filet de sécurité multi-pays + golden France
+cargo test --test i18n               # couverture des 6 langues (libellés, explications, réfs légales)
 ```
 `src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 39 pays (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
 

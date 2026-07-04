@@ -27,7 +27,8 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Slovaquie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "SK",
+            "Slovaquie : données disponibles pour 2025 et 2026.", ctx);
     }
     // Part non imposable mensuelle et seuil 25 % selon l'année.
     let nczd = if annee >= 2026 { dec!(497.23) } else { dec!(479.48) };

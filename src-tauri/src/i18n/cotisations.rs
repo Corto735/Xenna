@@ -148,6 +148,22 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Deducción a tanto alzado del empleador (horas extra)",
             _ => return None,
         },
+        "FPT_CNRACL" => match lang {
+            "en" => "CNRACL — Main pension (local civil service)",
+            "de" => "CNRACL — Hauptrente (kommunaler öffentlicher Dienst)",
+            "nl" => "CNRACL — Hoofdpensioen (lokale ambtenaren)",
+            "it" => "CNRACL — Pensione principale (funzione pubblica territoriale)",
+            "es" => "CNRACL — Pensión principal (función pública territorial)",
+            _ => return None,
+        },
+        "PAYS_NON_COUVERT" => match lang {
+            "en" => "Data unavailable for this year",
+            "de" => "Keine Daten für dieses Jahr verfügbar",
+            "nl" => "Geen gegevens beschikbaar voor dit jaar",
+            "it" => "Dati non disponibili per quest'anno",
+            "es" => "Datos no disponibles para este año",
+            _ => return None,
+        },
         _ => return None,
     })
 }
@@ -750,6 +766,96 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 de la Seguridad Social art. L241-18): 1,50 € en empresas de menos de 20 trabajadores, \
                 0,50 € a partir de 20. Reduce el coste real del empleador, sin efecto sobre el neto \
                 del trabajador.",
+            _ => return None,
+        },
+        // Dynamique — placeholders {ts_pct} {tp_pct}
+        "FPT_CNRACL" => match lang {
+            "en" => "The CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
+                Locales) is the mandatory pension scheme for established local civil servants. \
+                It replaces both the general scheme's old-age insurance (CARSAT) and the \
+                AGIRC-ARRCO supplementary pension — the civil servant therefore contributes to a \
+                single fund for both basic and supplementary pension.\n\n\
+                Notable differences from the private sector:\n\
+                • Pension computed on the last 6 months (index-based salary), not on the best \
+                25 years as in the private sector\n\
+                • Target replacement rate: 75 % after 41 years and 3 quarters (2016)\n\
+                • No funding: pay-as-you-go scheme\n\n\
+                Phase-in 2012-2019 (decree no. 2011-291):\n\
+                2016: 10.29 % — 2017: 10.56 % — 2018: 10.83 % — 2019+: 11.10 %\n\
+                Stable employer (local authority) rate: 30.65 % (vs ≈ 16 % total in the private \
+                sector)\n\n\
+                Applied rates: employee {ts_pct} % — employer {tp_pct} %.",
+            "de" => "Die CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
+                Locales) ist das Pflichtrentensystem der verbeamteten Bediensteten der \
+                Gebietskörperschaften. Sie ersetzt sowohl die Altersversicherung des \
+                Allgemeinsystems (CARSAT) als auch die Zusatzrente AGIRC-ARRCO — der Beamte zahlt \
+                also für Grund- und Zusatzrente in eine einzige Kasse ein.\n\n\
+                Wesentliche Unterschiede zum Privatsektor:\n\
+                • Rente auf Basis der letzten 6 Monate (Besoldung), nicht der besten 25 Jahre wie \
+                im Privatsektor\n\
+                • Ziel-Ersatzquote: 75 % nach 41 Jahren und 3 Quartalen (2016)\n\
+                • Keine Kapitaldeckung: Umlagesystem\n\n\
+                Stufenweiser Anstieg 2012-2019 (Dekret Nr. 2011-291):\n\
+                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Stabiler Satz der Körperschaft: 30,65 % (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
+                Angewandte Sätze: Bediensteter {ts_pct} % — Körperschaft {tp_pct} %.",
+            "nl" => "De CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
+                Locales) is het verplichte pensioenstelsel van de vastbenoemde ambtenaren van de \
+                lokale besturen. Het vervangt zowel de ouderdomsverzekering van het algemene \
+                stelsel (CARSAT) als het aanvullend pensioen AGIRC-ARRCO — de ambtenaar draagt dus \
+                bij aan één enkele kas voor basis- en aanvullend pensioen.\n\n\
+                Belangrijke verschillen met de privésector:\n\
+                • Pensioen berekend op de laatste 6 maanden (weddeschaal), niet op de beste \
+                25 jaar zoals in de privé\n\
+                • Beoogde vervangingsratio: 75 % na 41 jaar en 3 kwartalen (2016)\n\
+                • Geen kapitalisatie: repartitiestelsel\n\n\
+                Geleidelijke stijging 2012-2019 (decreet nr. 2011-291):\n\
+                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Stabiel tarief bestuur: 30,65 % (vs ≈ 16 % totaal in de privé)\n\n\
+                Toegepaste tarieven: ambtenaar {ts_pct} % — bestuur {tp_pct} %.",
+            "it" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
+                Locales) è il regime pensionistico obbligatorio dei funzionari territoriali di \
+                ruolo. Sostituisce sia l'assicurazione vecchiaia del regime generale (CARSAT) sia \
+                la pensione complementare AGIRC-ARRCO — il funzionario versa quindi a un'unica \
+                cassa per la pensione di base e complementare.\n\n\
+                Differenze notevoli rispetto al settore privato:\n\
+                • Pensione calcolata sugli ultimi 6 mesi (trattamento indiciario), non sui \
+                25 anni migliori come nel privato\n\
+                • Tasso di sostituzione obiettivo: 75 % dopo 41 anni e 3 trimestri (2016)\n\
+                • Nessuna capitalizzazione: sistema a ripartizione\n\n\
+                Aumento graduale 2012-2019 (decreto n. 2011-291):\n\
+                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Aliquota ente stabile: 30,65 % (vs ≈ 16 % totale nel privato)\n\n\
+                Aliquote applicate: agente {ts_pct} % — ente {tp_pct} %.",
+            "es" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
+                Locales) es el régimen obligatorio de jubilación de los funcionarios territoriales \
+                titulares. Sustituye a la vez al seguro de vejez del régimen general (CARSAT) y a \
+                la pensión complementaria AGIRC-ARRCO — el funcionario cotiza por tanto a una sola \
+                caja para su pensión básica y complementaria.\n\n\
+                Diferencias notables con el sector privado:\n\
+                • Pensión calculada sobre los últimos 6 meses (salario indiciario), no sobre los \
+                25 mejores años como en el privado\n\
+                • Tasa de sustitución objetivo: 75 % tras 41 años y 3 trimestres (2016)\n\
+                • Sin capitalización: sistema de reparto\n\n\
+                Subida progresiva 2012-2019 (decreto n.º 2011-291):\n\
+                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Tipo de la entidad estable: 30,65 % (vs ≈ 16 % total en el privado)\n\n\
+                Tipos aplicados: agente {ts_pct} % — entidad {tp_pct} %.",
+            _ => return None,
+        },
+        // Phrase générique « lacune assumée » (la 1re ligne, par pays, vit dans
+        // i18n::non_couvert).
+        "PAYS_NON_COUVERT" => match lang {
+            "en" => "No figures are applied in the absence of an official source for this date \
+                (acknowledged gap, nothing invented).",
+            "de" => "Mangels amtlicher Quelle für dieses Datum werden keine Zahlen angewendet \
+                (eingestandene Lücke, nichts erfunden).",
+            "nl" => "Bij gebrek aan een officiële bron voor deze datum worden geen cijfers \
+                toegepast (erkende leemte, niets verzonnen).",
+            "it" => "In assenza di una fonte ufficiale per questa data non viene applicata alcuna \
+                cifra (lacuna dichiarata, nulla di inventato).",
+            "es" => "A falta de fuente oficial para esta fecha no se aplica ninguna cifra \
+                (laguna asumida, nada inventado).",
             _ => return None,
         },
         _ => return None,

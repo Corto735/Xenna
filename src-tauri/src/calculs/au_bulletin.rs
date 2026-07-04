@@ -62,9 +62,8 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let Some(impot_an) = impot_annuel(brut * dec!(12), annee) else {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "AUD",
-            "Australie : données disponibles pour les exercices 2014-15 à 2025-26.",
-        );
+            salarie, brut, "AUD", "AU",
+            "Australie : données disponibles pour les exercices 2014-15 à 2025-26.", ctx);
     };
 
     let rev_ann = brut * dec!(12);

@@ -79,7 +79,8 @@ pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let Some(p) = pl_params(annee) else {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "PLN", "Pologne : données disponibles pour 2025.");
+            salarie, brut, "PLN", "PL",
+            "Pologne : données disponibles pour 2025.", ctx);
     };
 
     // Plafond mensuel emerytalne + rentowe (annualisation du 30-krotność).

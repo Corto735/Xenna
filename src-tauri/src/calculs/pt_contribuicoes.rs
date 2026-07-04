@@ -18,7 +18,7 @@ pub fn seguranca_social(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("PT_SS");
     LigneCotisation {
         code:        "PT_SS".into(),
-        libelle:     "Segurança Social — Taxa Social Única (TSU)".into(),
+        libelle:     ctx.libelle("PT_SS", "Segurança Social — Taxa Social Única (TSU)"),
         base:        brut,
         taux_sal:    ts,
         montant_sal: (brut * ts).round_dp(2),
@@ -79,7 +79,7 @@ pub fn fct(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("PT_FCT");
     LigneCotisation {
         code:        "PT_FCT".into(),
-        libelle:     "FCT — Fundo de Compensação do Trabalho".into(),
+        libelle:     ctx.libelle("PT_FCT", "FCT — Fundo de Compensação do Trabalho"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
@@ -104,7 +104,7 @@ pub fn fgct(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("PT_FGCT");
     LigneCotisation {
         code:        "PT_FGCT".into(),
-        libelle:     "FGCT — Fundo de Garantia de Compensação do Trabalho".into(),
+        libelle:     ctx.libelle("PT_FGCT", "FGCT — Fundo de Garantia de Compensação do Trabalho"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,

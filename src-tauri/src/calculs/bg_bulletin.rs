@@ -23,7 +23,8 @@ pub fn generer_bulletin_bg(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "BGN", "Bulgarie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "BGN", "BG",
+            "Bulgarie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     // Euro adopté au 01/01/2026 ; plafond d'assurance converti.

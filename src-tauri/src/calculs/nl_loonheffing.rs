@@ -164,32 +164,40 @@ pub fn nl_loonheffing(brut: Decimal, annee: i32, ctx: &ContextPaie) -> Option<Li
 
     Some(LigneCotisation {
         code:        "NL_LOONHEFFING".into(),
-        libelle:     "Loonheffing — Impôt sur le revenu + premies volksverzekeringen".into(),
+        libelle:     ctx.libelle("NL_LOONHEFFING", "Loonheffing — Impôt sur le revenu + premies volksverzekeringen"),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("NL_LOONHEFFING",
             "Loonheffing {annee} (salarié sous l'âge AOW) — retenue à la source mensuelle.\n\n\
-            Revenu annuel estimé : {rev:.0} €\n\n\
+            Revenu annuel estimé : {rev} €\n\n\
             Barème box 1 :\n\
-            • tranche 1 (0 → {b1p:.0} €) : {b1t:.2} % (dont premies volksverzekeringen {pvv:.2} %)\n\
-            • tranche 2 ({b1p:.0} → {b2p:.0} €) : {b2t:.2} %\n\
-            • tranche 3 (> {b2p:.0} €) : {b3t:.2} %\n\
-            = impôt + premies bruts : {box1:.0} €/an\n\n\
-            − algemene heffingskorting : {ahk:.0} €\n\
-            − arbeidskorting : {ak:.0} €\n\
-            = loonheffing : {ha:.0} €/an / 12 = {mens:.2} €/mois\n\
-            Taux effectif : {teff:.2} %\n\n\
-            Base légale : Wet IB 2001 ; Belastingplan {annee}.",
-            rev = rev_ann,
-            b1p = p.b1_plafond, b1t = p.b1_taux * dec!(100), pvv = p.premie_vv * dec!(100),
-            b2p = p.b2_plafond, b2t = p.b2_taux * dec!(100), b3t = p.b3_taux * dec!(100),
-            box1 = box1, ahk = ahk, ak = ak, ha = heffing_ann,
-            mens = mensuel, teff = taux_eff * dec!(100),
-        ),
+            • tranche 1 (0 → {b1p} €) : {b1t} % (dont premies volksverzekeringen {pvv} %)\n\
+            • tranche 2 ({b1p} → {b2p} €) : {b2t} %\n\
+            • tranche 3 (> {b2p} €) : {b3t} %\n\
+            = impôt + premies bruts : {box1} €/an\n\n\
+            − algemene heffingskorting : {ahk} €\n\
+            − arbeidskorting : {ak} €\n\
+            = loonheffing : {ha} €/an / 12 = {mens} €/mois\n\
+            Taux effectif : {teff} %\n\n\
+            Base légale : Wet IB 2001 ; Belastingplan {annee}.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{rev}",  &format!("{:.0}", rev_ann))
+            .replace("{b1p}",  &format!("{:.0}", p.b1_plafond))
+            .replace("{b1t}",  &format!("{:.2}", p.b1_taux * dec!(100)))
+            .replace("{pvv}",  &format!("{:.2}", p.premie_vv * dec!(100)))
+            .replace("{b2p}",  &format!("{:.0}", p.b2_plafond))
+            .replace("{b2t}",  &format!("{:.2}", p.b2_taux * dec!(100)))
+            .replace("{b3t}",  &format!("{:.2}", p.b3_taux * dec!(100)))
+            .replace("{box1}", &format!("{:.0}", box1))
+            .replace("{ahk}",  &format!("{:.0}", ahk))
+            .replace("{ak}",   &format!("{:.0}", ak))
+            .replace("{ha}",   &format!("{:.0}", heffing_ann))
+            .replace("{mens}", &format!("{:.2}", mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
         loi_ref: Some(ctx.loi_ref("Wet IB 2001 — Belastingplan 2026")),
     })
 }

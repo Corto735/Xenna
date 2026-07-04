@@ -38,7 +38,8 @@ pub fn generer_bulletin_mt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Malte : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "MT",
+            "Malte : données disponibles pour 2025 et 2026.", ctx);
     }
 
     // SSC sur assiette plafonnée (2 306,58 €/mois en 2025, 2 423,67 € en 2026).

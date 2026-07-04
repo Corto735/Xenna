@@ -62,31 +62,35 @@ pub fn uk_ni_sal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let montant = (tranche_principale * ts + tranche_haute * dec!(0.02)).round_dp(2);
     let taux_eff = if brut > Decimal::ZERO { (montant / brut).round_dp(4) } else { Decimal::ZERO };
 
+    let fy = format!("{annee}/{}", annee + 1 - 2000);
     LigneCotisation {
         code:        "UK_NI_SAL".into(),
-        libelle:     format!("National Insurance Class 1 — salarié {annee}/{}", annee + 1 - 2000),
+        libelle:     ctx.libelle("UK_NI_SAL", "National Insurance Class 1 — salarié {fy}")
+            .replace("{fy}", &fy),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: montant,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("UK_NI_SAL",
             "National Insurance Class 1 — part salariale.\n\n\
-            Tranche [PT – UEL] ({ts_pct:.0} %) : £{pt:.2} – £{uel:.2}/mois\n\
-            → base {tp:.2} × {ts_pct:.0} % = £{m1:.2}\n\
-            Tranche haute (> UEL, 2 %) : £{uel:.2}/mois\n\
-            → base {th:.2} × 2 % = £{m2:.2}\n\n\
-            Total NI salarié : £{tot:.2}\n\
-            Taux effectif : {teff:.2} %\n\n\
-            Base légale : NIA 2014 ; Finance Act 2024.",
-            ts_pct = ts * dec!(100),
-            pt  = s.pt, uel = s.uel,
-            tp  = tranche_principale, th = tranche_haute,
-            m1  = (tranche_principale * ts).round_dp(2),
-            m2  = (tranche_haute * dec!(0.02)).round_dp(2),
-            tot = montant, teff = taux_eff * dec!(100),
-        ),
+            Tranche [PT – UEL] ({ts_pct} %) : £{pt} – £{uel}/mois\n\
+            → base {tp} × {ts_pct} % = £{m1}\n\
+            Tranche haute (> UEL, 2 %) : £{uel}/mois\n\
+            → base {th} × 2 % = £{m2}\n\n\
+            Total NI salarié : £{tot}\n\
+            Taux effectif : {teff} %\n\n\
+            Base légale : NIA 2014 ; Finance Act 2024.")
+            .replace("{ts_pct}", &format!("{:.0}", ts * dec!(100)))
+            .replace("{pt}",  &format!("{:.2}", s.pt))
+            .replace("{uel}", &format!("{:.2}", s.uel))
+            .replace("{tp}", &format!("{:.2}", tranche_principale))
+            .replace("{th}",  &format!("{:.2}", tranche_haute))
+            .replace("{m1}",  &format!("{:.2}", (tranche_principale * ts).round_dp(2)))
+            .replace("{m2}",  &format!("{:.2}", (tranche_haute * dec!(0.02)).round_dp(2)))
+            .replace("{tot}", &format!("{:.2}", montant))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
         loi_ref: Some(ctx.loi_ref("National Insurance Contributions Act 2014 — Finance Act 2024")),
     }
 }
@@ -105,25 +109,29 @@ pub fn uk_ni_pat(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let montant = (base * tp).round_dp(2);
     let taux_eff = if brut > Decimal::ZERO { (montant / brut).round_dp(4) } else { Decimal::ZERO };
 
+    let fy = format!("{annee}/{}", annee + 1 - 2000);
     LigneCotisation {
         code:        "UK_NI_PAT".into(),
-        libelle:     format!("National Insurance Class 1 — employeur {annee}/{}", annee + 1 - 2000),
+        libelle:     ctx.libelle("UK_NI_PAT", "National Insurance Class 1 — employeur {fy}")
+            .replace("{fy}", &fy),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
         taux_pat:    taux_eff,
         montant_pat: montant,
         categorie:   "Sécurité sociale".into(),
-        explication: format!(
+        explication: ctx.expl("UK_NI_PAT",
             "National Insurance Class 1 — part employeur.\n\n\
-            Taux : {tp_pct:.1} % sur salaire > ST (£{st:.2}/mois)\n\
-            Base imposable : £{base:.2} × {tp_pct:.1} % = £{tot:.2}\n\
+            Taux : {tp_pct} % sur salaire > ST (£{st}/mois)\n\
+            Base imposable : £{base} × {tp_pct} % = £{tot}\n\
             Pas de plafond supérieur côté employeur.\n\
-            Taux effectif sur salaire brut : {teff:.2} %\n\n\
-            Base légale : NIA 2014 ; Finance Act 2024.",
-            tp_pct = tp * dec!(100), st = s.st,
-            base = base, tot = montant, teff = taux_eff * dec!(100),
-        ),
+            Taux effectif sur salaire brut : {teff} %\n\n\
+            Base légale : NIA 2014 ; Finance Act 2024.")
+            .replace("{tp_pct}", &format!("{:.1}", tp * dec!(100)))
+            .replace("{st}",   &format!("{:.2}", s.st))
+            .replace("{base}", &format!("{:.2}", base))
+            .replace("{tot}",  &format!("{:.2}", montant))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
         loi_ref: Some(ctx.loi_ref("National Insurance Contributions Act 2014 — Finance Act 2024")),
     }
 }
@@ -170,38 +178,44 @@ pub fn uk_income_tax(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let taux_eff       = if brut > Decimal::ZERO { (impot_mensuel / brut).round_dp(4) } else { Decimal::ZERO };
 
     let tranche_libelle = if revenu_annuel <= s.pa * dec!(12) {
-        "dans la Personal Allowance (0 %)".into()
+        ctx.expl("UK_TL_PA", "dans la Personal Allowance (0 %)")
     } else if revenu_annuel <= s.br_max * dec!(12) {
-        format!("Basic Rate (20 %)")
+        "Basic Rate (20 %)".into() // nom officiel, identique dans les 6 langues
     } else if revenu_annuel <= s.hr_max * dec!(12) {
-        format!("Higher Rate partielle (40 %)")
+        ctx.expl("UK_TL_HIGHER_PARTIAL", "Higher Rate partielle (40 %)")
     } else {
-        format!("Additional Rate (45 %)")
+        "Additional Rate (45 %)".into() // nom officiel, identique dans les 6 langues
     };
 
+    let fy = format!("{annee}/{}", annee + 1 - 2000);
     LigneCotisation {
         code:        "UK_INCOME_TAX".into(),
-        libelle:     format!("Income Tax PAYE — retenue {annee}/{}", annee + 1 - 2000),
+        libelle:     ctx.libelle("UK_INCOME_TAX", "Income Tax PAYE — retenue {fy}")
+            .replace("{fy}", &fy),
         base:        brut,
         taux_sal:    taux_eff,
         montant_sal: impot_mensuel,
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt sur le revenu".into(),
-        explication: format!(
+        explication: ctx.expl("UK_INCOME_TAX",
             "Income Tax PAYE (retenue à la source mensuelle).\n\n\
-            Revenu annuel estimé : £{rev:.2} → tranche : {tl}\n\
-            Personal Allowance : £{pa:.0}/an (exonéré)\n\
-            Basic Rate 20 % : jusqu'à £{br:.0}/an\n\
-            Higher Rate 40 % : £{br:.0} – £{hr:.0}/an\n\
-            Additional Rate 45 % : au-delà de £{hr:.0}/an\n\n\
-            Impôt annuel estimé : £{ia:.2} / 12 = £{im:.2}/mois\n\
-            Taux effectif mensuel : {teff:.2} %\n\n\
-            Base légale : Income Tax Act 2007 ; Finance Act 2024.",
-            rev = revenu_annuel, tl = tranche_libelle,
-            pa  = s.pa * dec!(12), br = s.br_max * dec!(12), hr = s.hr_max * dec!(12),
-            ia  = impot_annuel, im = impot_mensuel, teff = taux_eff * dec!(100),
-        ),
+            Revenu annuel estimé : £{rev} → tranche : {tl}\n\
+            Personal Allowance : £{pa}/an (exonéré)\n\
+            Basic Rate 20 % : jusqu'à £{br}/an\n\
+            Higher Rate 40 % : £{br} – £{hr}/an\n\
+            Additional Rate 45 % : au-delà de £{hr}/an\n\n\
+            Impôt annuel estimé : £{ia} / 12 = £{im}/mois\n\
+            Taux effectif mensuel : {teff} %\n\n\
+            Base légale : Income Tax Act 2007 ; Finance Act 2024.")
+            .replace("{rev}", &format!("{:.2}", revenu_annuel))
+            .replace("{tl}",  &tranche_libelle)
+            .replace("{pa}",  &format!("{:.0}", s.pa * dec!(12)))
+            .replace("{br}",  &format!("{:.0}", s.br_max * dec!(12)))
+            .replace("{hr}",  &format!("{:.0}", s.hr_max * dec!(12)))
+            .replace("{ia}",  &format!("{:.2}", impot_annuel))
+            .replace("{im}",  &format!("{:.2}", impot_mensuel))
+            .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
         loi_ref: Some(ctx.loi_ref("Income Tax Act 2007 — Finance Act 2024")),
     }
 }

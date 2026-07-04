@@ -42,7 +42,8 @@ pub fn generer_bulletin_cz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "CZK", "Tchéquie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "CZK", "CZ",
+            "Tchéquie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     let mut cotisations = vec![

@@ -54,7 +54,7 @@ pub fn it_ivs(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         .replace("{annuel}", &format!("{:.2}", massimale * dec!(12)));
     LigneCotisation {
         code:        "IT_IVS".into(),
-        libelle:     "IVS — Invalidità, Vecchiaia, Superstiti".into(),
+        libelle:     ctx.libelle("IT_IVS", "IVS — Invalidità, Vecchiaia, Superstiti"),
         base,
         taux_sal:    ts,
         montant_sal: (base * ts).round_dp(2),
@@ -187,7 +187,7 @@ pub fn it_fondo_garanzia(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let tp = ctx.taux_pat("IT_FONDO_GARANZIA");
     LigneCotisation {
         code:        "IT_FONDO_GARANZIA".into(),
-        libelle:     "Fondo di Garanzia TFR — INPS (L. 297/1982)".into(),
+        libelle:     ctx.libelle("IT_FONDO_GARANZIA", "Fondo di Garanzia TFR — INPS (L. 297/1982)"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
@@ -230,7 +230,7 @@ pub fn it_inail(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         .replace("{taux}", &format!("{:.2}", tp * dec!(100)));
     LigneCotisation {
         code:        "IT_INAIL".into(),
-        libelle:     "INAIL — Assicurazione Infortuni e Malattie Professionali".into(),
+        libelle:     ctx.libelle("IT_INAIL", "INAIL — Assicurazione Infortuni e Malattie Professionali"),
         base:        brut,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,

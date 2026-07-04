@@ -25,7 +25,8 @@ pub fn generer_bulletin_hr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Croatie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "HR",
+            "Croatie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     // Retraite salarié 20 % ; santé 16,5 % employeur.

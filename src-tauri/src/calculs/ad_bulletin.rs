@@ -29,8 +29,8 @@ pub fn generer_bulletin_ad(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // (Les bonifications transitoires des toutes premières années ne sont pas modélisées.)
     if !(2015..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR",
-            "Andorre : données disponibles à partir de 2015 (création de l'IRPF).");
+            salarie, brut, "EUR", "AD",
+            "Andorre : données disponibles à partir de 2015 (création de l'IRPF).", ctx);
     }
 
     // CASS (taux en base)

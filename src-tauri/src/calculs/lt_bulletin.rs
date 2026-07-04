@@ -51,7 +51,8 @@ pub fn generer_bulletin_lt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Lituanie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "LT",
+            "Lituanie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     // Sodra salarié + patronal (taux lus en base).

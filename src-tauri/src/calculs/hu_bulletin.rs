@@ -24,7 +24,8 @@ pub fn generer_bulletin_hu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "HUF", "Hongrie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "HUF", "HU",
+            "Hongrie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     let ts = ctx.taux_sal("HU_TB");

@@ -40,7 +40,8 @@ pub fn generer_bulletin_ro(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2018..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "RON", "Roumanie : données disponibles depuis 2018 (réforme OUG 79/2017).");
+            salarie, brut, "RON", "RO",
+            "Roumanie : données disponibles depuis 2018 (réforme OUG 79/2017).", ctx);
     }
 
     let mut cotisations = vec![

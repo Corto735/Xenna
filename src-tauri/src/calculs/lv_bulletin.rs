@@ -25,7 +25,8 @@ pub fn generer_bulletin_lv(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Lettonie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "LV",
+            "Lettonie : données disponibles pour 2025 et 2026.", ctx);
     }
     // Minimum non imposable mensuel : 510 € (2025), 550 € (2026).
     let min_non_imp = if annee >= 2026 { dec!(550) } else { dec!(510) };

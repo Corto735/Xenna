@@ -40,7 +40,8 @@ pub fn generer_bulletin_mc(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // CAR 6,85 % et chômage 2,4 % (salariés) stables depuis ~2019 ; pas d'IR → net constant.
     if !(2020..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Monaco : données disponibles pour 2020-2026.");
+            salarie, brut, "EUR", "MC",
+            "Monaco : données disponibles pour 2020-2026.", ctx);
     }
 
     let cotisations = vec![

@@ -139,7 +139,7 @@ pub fn fogasa(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let mp   = (base * tp).round_dp(2);
     LigneCotisation {
         code:        "ES_FOGASA".into(),
-        libelle:     "FOGASA — Fondo de Garantía Salarial".into(),
+        libelle:     ctx.libelle("ES_FOGASA", "FOGASA — Fondo de Garantía Salarial"),
         base,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,

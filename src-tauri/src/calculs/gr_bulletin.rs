@@ -57,7 +57,8 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Grèce : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "GR",
+            "Grèce : données disponibles pour 2025 et 2026.", ctx);
     }
 
     // EFKA sur assiette plafonnée (7 572,62 €/mois en 2025, 7 761,94 € en 2026).

@@ -28,7 +28,8 @@ pub fn generer_bulletin_dk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         2025 => (dec!(51600), dec!(0.251),   dec!(611800)),
         2026 => (dec!(54100), dec!(0.25049), dec!(641200)), // seuil = entrée mellemskat
         _ => return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "DKK", "Danemark : données disponibles pour 2024-2026."),
+            salarie, brut, "DKK", "DK",
+            "Danemark : données disponibles pour 2024-2026.", ctx),
     };
     let personfradrag_m = personfradrag_an / dec!(12);
     let bund_kommune    = dec!(0.1201) + kommune;

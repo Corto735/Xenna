@@ -27,6 +27,22 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Formación Profesional — formación profesional continua",
             _ => return None,
         },
+        "ES_FOGASA" => match lang {
+            "en" => "FOGASA — Wage Guarantee Fund",
+            "de" => "FOGASA — Lohngarantiefonds",
+            "nl" => "FOGASA — Loongarantiefonds",
+            "it" => "FOGASA — Fondo di garanzia salariale",
+            "es" => "FOGASA — Fondo de Garantía Salarial",
+            _ => return None,
+        },
+        "ES_MEI" => match lang {
+            "en" => "MEI — Intergenerational Equity Mechanism {annee}",
+            "de" => "MEI — Mechanismus der Generationengerechtigkeit {annee}",
+            "nl" => "MEI — Intergenerationeel gelijkheidsmechanisme {annee}",
+            "it" => "MEI — Meccanismo di equità intergenerazionale {annee}",
+            "es" => "MEI — Mecanismo de Equidad Intergeneracional {annee}",
+            _ => return None,
+        },
         _ => return None,
     })
 }

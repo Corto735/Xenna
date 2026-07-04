@@ -20,6 +20,30 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "IRS — Retención en origen {annee}",
             _ => return None,
         },
+        "PT_SS" => match lang {
+            "en" => "Segurança Social — Single Social Tax (TSU)",
+            "de" => "Segurança Social — Einheitliche Sozialabgabe (TSU)",
+            "nl" => "Segurança Social — Enige sociale bijdrage (TSU)",
+            "it" => "Segurança Social — Tassa sociale unica (TSU)",
+            "es" => "Segurança Social — Tasa Social Única (TSU)",
+            _ => return None,
+        },
+        "PT_FCT" => match lang {
+            "en" => "FCT — Labour Compensation Fund",
+            "de" => "FCT — Arbeitsausgleichsfonds",
+            "nl" => "FCT — Arbeidscompensatiefonds",
+            "it" => "FCT — Fondo di compensazione del lavoro",
+            "es" => "FCT — Fondo de Compensación del Trabajo",
+            _ => return None,
+        },
+        "PT_FGCT" => match lang {
+            "en" => "FGCT — Labour Compensation Guarantee Fund",
+            "de" => "FGCT — Garantiefonds für Arbeitsausgleich",
+            "nl" => "FGCT — Garantiefonds arbeidscompensatie",
+            "it" => "FGCT — Fondo di garanzia della compensazione del lavoro",
+            "es" => "FGCT — Fondo de Garantía de Compensación del Trabajo",
+            _ => return None,
+        },
         _ => return None,
     })
 }

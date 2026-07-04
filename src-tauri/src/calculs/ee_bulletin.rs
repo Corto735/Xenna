@@ -62,7 +62,8 @@ pub fn generer_bulletin_ee(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "EUR", "Estonie : données disponibles pour 2025 et 2026.");
+            salarie, brut, "EUR", "EE",
+            "Estonie : données disponibles pour 2025 et 2026.", ctx);
     }
 
     let g = brut * dec!(12);

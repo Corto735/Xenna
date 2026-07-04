@@ -1,4 +1,4 @@
-import { STATIC_DICT, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
+import { trStatic, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
@@ -329,11 +329,11 @@ window.translateApp = async function(lang) {
   const cache = _tradCache[lang];
 
   // Dictionnaire statique — pré-remplit le cache sans appel réseau
-  const staticLang = STATIC_DICT[lang] || {};
   texts.forEach(orig => {
     const trimmed = orig.trim();
-    if (staticLang[trimmed] !== undefined && !cache.has(orig)) {
-      cache.set(orig, staticLang[trimmed]);
+    const tr = trStatic(trimmed, lang);
+    if (tr !== undefined && !cache.has(orig)) {
+      cache.set(orig, tr);
     }
   });
 

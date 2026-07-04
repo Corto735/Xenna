@@ -81,7 +81,8 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // base), LTC 13,14 % de la prime santé ; barème d'impôt inchangé.
     if !(2024..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "KRW", "Corée du Sud : données disponibles pour 2024-2026.");
+            salarie, brut, "KRW", "KR",
+            "Corée du Sud : données disponibles pour 2024-2026.", ctx);
     }
     // Taux dépendance (장기요양) = part de la prime santé, relevé en 2026.
     let ltc_taux = if annee >= 2026 { dec!(0.1314) } else { dec!(0.1295) };

@@ -26,6 +26,7 @@ pub mod divers; // pays « mono-fichier » (AD, AT, BG, CY, CZ, DK, EE, FI, GR, 
 pub mod kr;     // Corée du Sud
 pub mod jp;     // Japon
 pub mod de;     // Allemagne
+pub mod non_couvert; // messages « année non couverte » par pays
 pub mod refs;
 
 /// Préfixe pays d'un code de cotisation (`IT_IVS` → `IT`).

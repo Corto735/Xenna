@@ -97,6 +97,30 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Recargo regional del IRPEF — {libelle_region}",
             _ => return None,
         },
+        "IT_IVS" => match lang {
+            "en" => "IVS — Disability, old-age and survivors' pension",
+            "de" => "IVS — Invaliditäts-, Alters- und Hinterbliebenenrente",
+            "nl" => "IVS — Invaliditeits-, ouderdoms- en nabestaandenpensioen",
+            "it" => "IVS — Invalidità, Vecchiaia, Superstiti",
+            "es" => "IVS — Invalidez, vejez y supervivencia",
+            _ => return None,
+        },
+        "IT_FONDO_GARANZIA" => match lang {
+            "en" => "TFR Guarantee Fund — INPS (L. 297/1982)",
+            "de" => "TFR-Garantiefonds — INPS (G. 297/1982)",
+            "nl" => "TFR-garantiefonds — INPS (W. 297/1982)",
+            "it" => "Fondo di Garanzia TFR — INPS (L. 297/1982)",
+            "es" => "Fondo de Garantía TFR — INPS (L. 297/1982)",
+            _ => return None,
+        },
+        "IT_INAIL" => match lang {
+            "en" => "INAIL — Occupational accident and disease insurance",
+            "de" => "INAIL — Arbeitsunfall- und Berufskrankheitenversicherung",
+            "nl" => "INAIL — Arbeidsongevallen- en beroepsziekteverzekering",
+            "it" => "INAIL — Assicurazione Infortuni e Malattie Professionali",
+            "es" => "INAIL — Seguro de accidentes y enfermedades profesionales",
+            _ => return None,
+        },
         _ => return None,
     })
 }
