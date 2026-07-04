@@ -321,7 +321,7 @@ function _getTranslatableNodes() {
   // par le backend : on ne les repasse PAS par MyMemory, sinon double traduction
   // qui massacre le texte juridique. Voir crate::i18n côté Rust.
   const SKIP = 'script,style,input,select,textarea,.mob-val,.sb-val,.fm-val,.a11y-float,.trad-panel,#a11y-panel'
-    + ',.trad-skip,.expl-txt,.expl-ref,.mob-exp-txt,.mob-exp-loi,.mob-cot-lbl,.fm-fillon,#fm-title';
+    + ',.trad-skip,.expl-txt,.expl-ref,.mob-exp-txt,.mob-exp-loi,.mob-cot-lbl,.fm-fillon,.fm-chiffres,#fm-title';
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode(n) {
       const t = n.textContent.trim();
@@ -1091,6 +1091,20 @@ window.togglePasDetail = function(expandId) {
   if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
 };
 
+// Décompose un calcul dans l'encadré noir en 3 temps successifs, pour lever
+// toute ambiguïté : (1) la formule avec le nom de chaque terme, (2) les mêmes
+// termes remplacés par leurs valeurs, (3) le regroupement chiffré jusqu'au
+// résultat. `steps` = [{ label, sym, num, grp }] : une ou plusieurs
+// sous-formules empilées (ex. SJB puis IJ puis IJSS). Les `=` sont alignés.
+function fmDecomp(steps) {
+  const w = Math.max(...steps.map(s => s.label.length));
+  const body = steps.map(s => {
+    const pad = ' '.repeat(w);
+    return `${s.label.padEnd(w)}  =  ${s.sym}\n${pad}  =  ${s.num}\n${pad}  =  ${s.grp}`;
+  }).join('\n\n');
+  return `<div class="fm-chiffres">${body}</div>`;
+}
+
 function buildAidePosteFormulaContent(d) {
   const forfaitAnnuel  = parseFloat(d.forfait_annuel);
   const forfaitMensuel = parseFloat(d.forfait_mensuel);
@@ -1122,8 +1136,29 @@ function buildAidePosteFormulaContent(d) {
   }
   rows.push(`<tr class="fm-result fm-sep"><td>Aide au poste mensuelle</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(aide)}</td></tr>`);
 
+  const steps = [{
+    label: 'Forfait mensuel',
+    sym: `Forfait annuel  ÷  12`,
+    num: `${fmt(forfaitAnnuel)}  ÷  12`,
+    grp: `${fmt(forfaitMensuel)}`,
+  }];
+  if (frac > 0) {
+    steps.push({
+      label: 'Base mensuelle',
+      sym: `Part travaillée  +  Part en arrêt (30 % SMIC)`,
+      num: `${fmt(partTravaillee)}  +  ${fmt(partAbsente)}`,
+      grp: `${fmt(baseAvantEtp)}`,
+    });
+  }
+  steps.push({
+    label: 'Aide au poste',
+    sym: `Base mensuelle  ×  Quotité ETP`,
+    num: `${fmt(baseAvantEtp)}  ×  ${etpRatio.toLocaleString('fr-FR')}`,
+    grp: `${fmt(aide)}`,
+  });
   return `
     <div class="fm-generic">Forfait annuel  ÷ 12  ×  ETP</div>
+    ${fmDecomp(steps)}
     <div class="fm-base-note">Aide forfaitaire de l'État (ASP) versée à l'employeur d'une entreprise adaptée
     au titre d'un travailleur RQTH. Elle ne touche ni le brut ni le net du salarié&nbsp;:
     elle <b>vient en déduction du coût employeur</b> (ligne patronale négative).</div>
@@ -1144,6 +1179,12 @@ function buildReducSalHsFormula(d) {
   rows.push(`<tr class="fm-result fm-sep"><td>Réduction salariale</td><td class="fm-op">=</td><td class="fm-val c-alleg">+ ${fmt(reduc)}</td></tr>`);
   return `
     <div class="fm-generic">Rémunération HS/HC  ×  min(taux vieillesse, ${fmtPct(plafond)})</div>
+    ${fmDecomp([{
+      label: 'Réduction',
+      sym: `Rémunération HS/HC  ×  Taux${plafonne ? ' (plafonné)' : ''}`,
+      num: `${fmt(gain)}  ×  ${fmtPct(taux)}`,
+      grp: `${fmt(reduc)}`,
+    }])}
     <div class="fm-base-note">Réduction des cotisations salariales d'assurance vieillesse sur les heures
     supplémentaires/complémentaires (loi du 24/12/2018). Elle <b>vient en déduction des cotisations
     salariales</b> : elle augmente le net à payer, sans changer le brut.</div>
@@ -1161,10 +1202,165 @@ function buildDfpHsFormula(d) {
   rows.push(`<tr class="fm-result fm-sep"><td>Déduction patronale</td><td class="fm-op">=</td><td class="fm-val c-alleg">− ${fmt(ded)}</td></tr>`);
   return `
     <div class="fm-generic">Heures supp.  ×  tarif (€/h)</div>
+    ${fmDecomp([{
+      label: 'Déduction',
+      sym: `Heures supplémentaires  ×  Tarif forfaitaire`,
+      num: `${heures.toLocaleString('fr-FR')} h  ×  ${fmt(tarif)} €/h`,
+      grp: `${fmt(ded)}`,
+    }])}
     <div class="fm-base-note">Déduction forfaitaire de cotisations patronales par heure supplémentaire
     (1,50 € si &lt; 20 salariés, 0,50 € à partir de 20). Elle <b>réduit le coût employeur</b>,
     sans effet sur le net du salarié.</div>
     <table class="fm-calc">${rows.join('')}</table>`;
+}
+
+// ── Formules des lignes d'absence maladie (retenue, maintien, IJSS, garantie
+// du net) — même squelette que les autres panneaux f(x). Toutes les valeurs
+// intermédiaires viennent du backend (AbsenceResult) : raisonnement transparent.
+function buildAbsenceFormulaContent(which, a, b) {
+  const n = v => parseFloat(v) || 0;
+  // Base des calculs d'absence = le brut mensuel plein réellement utilisé par
+  // le backend : brut saisi, ou brut RECONSTITUÉ (« Brut ») si l'utilisateur a
+  // saisi un net (mode paie inversée).
+  const baseRef = n(a.brut_mensuel) || (n(a.retenue) * n(a.diviseur_retenue) / (a.jours_absence || 1));
+
+  if (which === 'retenue') {
+    const div = n(a.diviseur_retenue);
+    return `
+      <div class="fm-generic">Retenue  =  Brut mensuel  ×  Jours d'absence  ÷  Diviseur mensuel</div>
+      ${fmDecomp([{
+        label: 'Retenue',
+        sym: `Brut mensuel  ×  Jours d'absence  ÷  Diviseur`,
+        num: `${fmt(baseRef)}  ×  ${a.jours_absence}  ÷  ${div}`,
+        grp: `${fmt(baseRef * a.jours_absence)}  ÷  ${div}  =  ${fmt(a.retenue)}`,
+      }])}
+      <div class="fm-base-note">Base : Brut mensuel plein${_modeSaisie === 'net' ? ' (reconstitué à partir du net saisi)' : ''}.
+      Méthode : ${esc(a.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou jours réels).</div>
+      <table class="fm-calc">
+        <tr><td>Brut mensuel</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(baseRef)}</td></tr>
+        <tr><td>Jours d'absence comptés</td><td class="fm-op">×</td><td class="fm-val c-taux">${a.jours_absence}</td></tr>
+        <tr><td>Diviseur mensuel</td><td class="fm-op">÷</td><td class="fm-val c-taux">${n(a.diviseur_retenue)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Retenue absence</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.retenue)}</td></tr>
+      </table>`;
+  }
+
+  if (which === 'maintien') {
+    const perDay = n(a.per_day_maintien);
+    const m1 = Math.round(a.jours_maintien_t1 * n(a.taux_maintien_t1) * perDay * 100) / 100;
+    const m2 = Math.round((n(a.maintien) - m1) * 100) / 100;
+    const t2 = a.jours_maintien_t2 > 0;
+    return `
+      <div class="fm-generic">Maintien  =  Σ  Jours indemnisés  ×  Taux  ×  Salaire journalier perdu</div>
+      ${fmDecomp([{
+        label: 'Maintien',
+        sym: `( Jours T1 × Taux T1${t2 ? ' + Jours T2 × Taux T2' : ''} )  ×  Salaire journalier perdu`,
+        num: `( ${a.jours_maintien_t1} × ${fmtPct(a.taux_maintien_t1)}${t2 ? ` + ${a.jours_maintien_t2} × ${fmtPct(a.taux_maintien_t2)}` : ''} )  ×  ${fmt(perDay)}`,
+        grp: `${fmt(m1)}${t2 ? `  +  ${fmt(m2)}` : ''}  =  ${fmt(a.maintien)}`,
+      }])}
+      <div class="fm-base-note">Régime : ${esc(a.convention)} — carence de ${a.carence_maintien} jours d'arrêt.
+      ${a.am_local
+        ? `Alsace-Moselle (droit local, art. L1226-23 du Code du travail, ex-art. 616 du code civil local) :
+           100 % du salaire dès le 1er jour, sans carence ni condition d'ancienneté, pendant 6 semaines (42 jours),
+           puis relais du droit commun. IJSS déduites (l'employeur complète jusqu'à 100 %).`
+        : `Barème selon l'ancienneté : &lt; 1 an aucun maintien · 1 à 3 ans régime légal (90 % 30 j puis 66,66 % 30 j, carence 7 j) ·
+           ≥ 3 ans régime conventionnel IDCC 0016 (100 % puis 75 % dès le 6e jour, périodes allongées à 5 et 10 ans d'ancienneté).`}</div>
+      <table class="fm-calc">
+        <tr><td>Salaire journalier perdu (retenue ÷ ${a.jours_absence} j)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(perDay)}</td></tr>
+        <tr><td>Tranche 1 : ${a.jours_maintien_t1} j × ${fmtPct(a.taux_maintien_t1)}</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(m1)}</td></tr>
+        ${a.jours_maintien_t2 > 0 ? `<tr><td>Tranche 2 : ${a.jours_maintien_t2} j × ${fmtPct(a.taux_maintien_t2)}</td><td class="fm-op">+</td><td class="fm-val c-taux">${fmt(m2)}</td></tr>` : ''}
+        <tr class="fm-result fm-sep"><td>Maintien de salaire</td><td class="fm-op">=</td><td class="fm-val c-alleg">+ ${fmt(a.maintien)}</td></tr>
+      </table>`;
+  }
+
+  if (which === 'ijss') {
+    return `
+      <div class="fm-generic">IJ  =  50 %  ×  SJB      avec      SJB  =  Salaire de référence  ×  3  ÷  91,25</div>
+      ${fmDecomp([
+        {
+          label: 'SJB',
+          sym: `Salaire de référence  ×  3  ÷  91,25`,
+          num: `${fmt(a.salaire_ref_ijss)}  ×  3  ÷  91,25`,
+          grp: `${fmt(n(a.salaire_ref_ijss) * 3)}  ÷  91,25  =  ${fmt(a.sjb)}`,
+        },
+        {
+          label: 'IJ journalière',
+          sym: `50 %  ×  SJB`,
+          num: `50 %  ×  ${fmt(a.sjb)}`,
+          grp: `${fmt(a.ijss_jour)}`,
+        },
+        {
+          label: 'IJSS brutes',
+          sym: `IJ journalière  ×  Jours indemnisés`,
+          num: `${fmt(a.ijss_jour)}  ×  ${a.jours_ijss}`,
+          grp: `${fmt(a.ijss_brut)}`,
+        },
+      ])}
+      <div class="fm-base-note">Salaire de référence plafonné à ${n(a.coeff_plafond_ijss)} × SMIC mensuel (CSS art. R323-4).
+      Carence Sécurité sociale : 3 jours calendaires — IJ versée par jour calendaire dès le 4e jour.</div>
+      <table class="fm-calc">
+        <tr><td>Salaire de référence (min(brut ; ${n(a.coeff_plafond_ijss)} × SMIC))</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.salaire_ref_ijss)}</td></tr>
+        <tr><td>SJB (× 3 ÷ 91,25)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.sjb)}</td></tr>
+        <tr><td>IJ journalière (50 %)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.ijss_jour)}</td></tr>
+        <tr><td>Jours indemnisés (${a.jours_ijss + 3} cal. − 3 j de carence)</td><td class="fm-op">×</td><td class="fm-val c-taux">${a.jours_ijss}</td></tr>
+        <tr class="fm-result fm-sep"><td>IJSS brutes</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.ijss_brut)}</td></tr>
+      </table>
+      <div class="fm-base-note">Déduites du brut soumis à cotisations (subrogation : l'employeur les perçoit de la CPAM).
+      La CPAM précompte CSG 6,2 % + CRDS 0,5 % : le salarié reçoit en bas de bulletin les IJSS NETTES
+      = ${fmt(a.ijss_brut)} × 0,933 = ${fmt(a.ijss_net)}.</div>`;
+  }
+
+  if (which === 'ajustement') {
+    const assiette = n(b?.brut);
+    const netApresCotis = n(b?.net_a_payer) - n(a.ijss_net);
+    return `
+      <div class="fm-generic">Les IJSS brutes déduites du brut échappent aux cotisations salariales : sans correction,
+      le net dépasserait celui du bulletin de référence. L'ajustement retenu en haut de bulletin est résolu
+      par dichotomie (paie inversée, ≈ 60 itérations) pour que :  net(assiette)  +  IJSS nettes  =  Net de référence.</div>
+      ${fmDecomp([{
+        label: 'Ajustement',
+        sym: `Assiette de référence  −  IJSS brutes  −  Assiette résolue`,
+        num: `${fmt(a.assiette_ref)}  −  ${fmt(a.ijss_brut)}  −  ${fmt(assiette)}`,
+        grp: `${fmt(n(a.assiette_ref) - n(a.ijss_brut))}  −  ${fmt(assiette)}  =  ${fmt(a.ajustement_net)}`,
+      }])}
+      <table class="fm-calc">
+        <tr><td>Assiette de référence (salaire − retenue + maintien)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.assiette_ref)}</td></tr>
+        <tr><td>Net de référence = net(assiette de référence)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.net_cible)}</td></tr>
+        <tr><td>Cible hors IJSS (net de référence − IJSS nettes)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(n(a.net_cible) - n(a.ijss_net))}</td></tr>
+        <tr><td>Assiette résolue par dichotomie</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(assiette)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Ajustement (réf. − IJSS brutes − assiette)</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.ajustement_net)}</td></tr>
+      </table>
+      <div class="fm-base-note">Vérification : net(assiette) ${fmt(netApresCotis)} + IJSS nettes ${fmt(a.ijss_net)} = ${fmt(n(b?.net_a_payer))} = net de référence — la subrogation est neutre pour le salarié.</div>`;
+  }
+
+  // which === 'reintegration' — IJSS NETTES réintégrées en bas de bulletin.
+  const netApresCotis = n(b?.net_a_payer) - n(a.ijss_net);
+  return `
+    <div class="fm-generic">Subrogation : l'employeur perçoit les IJSS de la CPAM (nettes de CSG/CRDS déjà précomptées)
+    et les reverse au salarié en bas de bulletin. En les ajoutant au net après cotisations, on obtient
+    le NET À PAYER AVANT IMPÔT (le prélèvement à la source est ensuite retranché de ce montant).</div>
+    ${fmDecomp([
+      {
+        label: 'IJSS nettes',
+        sym: `IJSS brutes  ×  0,933   (− CSG 6,2 % − CRDS 0,5 %)`,
+        num: `${fmt(a.ijss_brut)}  ×  0,933`,
+        grp: `${fmt(a.ijss_net)}`,
+      },
+      {
+        label: 'Net avant impôt',
+        sym: `Net après cotisations  +  IJSS nettes`,
+        num: `${fmt(netApresCotis)}  +  ${fmt(a.ijss_net)}`,
+        grp: `${fmt(n(b?.net_a_payer))}`,
+      },
+    ])}
+    <table class="fm-calc">
+      <tr><td>IJSS brutes</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.ijss_brut)}</td></tr>
+      <tr><td>Coefficient net (− CSG 6,2 % − CRDS 0,5 %)</td><td class="fm-op">×</td><td class="fm-val c-taux">0,933</td></tr>
+      <tr><td>IJSS nettes reversées</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(a.ijss_net)}</td></tr>
+      <tr><td>Net après cotisations (Brut − Cotisations)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(netApresCotis)}</td></tr>
+      <tr class="fm-result fm-sep"><td>Net à payer avant impôt</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(n(b?.net_a_payer))}</td></tr>
+    </table>
+    <div class="fm-base-note">Volet fiscal : IJSS imposables sur les 60 premiers jours d'arrêt → ${fmt(a.ijss_imposable)}
+    intégrées au net imposable (base du prélèvement à la source).</div>`;
 }
 
 function buildFormulaContent(c, type) {
@@ -1280,6 +1476,22 @@ window.showFormula = function(key) {
     return;
   }
 
+  if (entry.type === 'absence') {
+    const meta = {
+      retenue:       ['Retenue pour absence maladie',        '── Retenue sur salaire ──────────────────────', 'fm-type-sal'],
+      maintien:      ['Maintien de salaire employeur',       '── Indemnité complémentaire employeur ───────', 'fm-type-alleg'],
+      ijss:          ['IJSS brutes (Sécurité sociale)',      '── Indemnités journalières — subrogation ────', 'fm-type-sal'],
+      ajustement:    ['Ajustement du net (garantie du net)', '── Neutralisation du gain de cotisations ────', 'fm-type-sal'],
+      reintegration: ['IJSS nettes réintégrées',             '── Subrogation — bas de bulletin ────────────', 'fm-type-alleg'],
+    }[entry.which];
+    document.getElementById('fm-title').textContent = meta[0];
+    document.getElementById('fm-badge').textContent = meta[1];
+    fmBody.className = meta[2];
+    fmBody.innerHTML = buildAbsenceFormulaContent(entry.which, entry.a, lastBulletin);
+    document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+    return;
+  }
   const { c, type } = entry;
   const isSal = type === 'sal';
   const badge = c.code === 'REDUCTION_FILLON'
@@ -1340,10 +1552,20 @@ function renderDesktop(b) {
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
-  // IJSS nettes réintégrées au net à payer (subrogation maladie).
-  const ijssNet  = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
-  const netPayer = parseFloat(b.net_a_payer) - pas.total + ijssNet;
+  // IJSS NETTES réintégrées au net à payer (subrogation : la CPAM précompte
+  // CSG/CRDS, l'employeur reverse le net) — déjà incluses dans net_a_payer côté
+  // backend ; affichées ici à titre informatif.
+  const ijssNet = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
+  if (ijssNet > 0) _fmStore['ABS_IJSS_REINT'] = { type: 'absence', which: 'reintegration', a: b.absence };
+  const netPayer = parseFloat(b.net_a_payer) - pas.total;
   if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
+
+  // Section IJSS réintégrées — bas de bulletin, avant les allègements.
+  const ijssReintSection = ijssNet > 0 ? `
+    <div class="tbl-section-head">── IJSS — SUBROGATION ──────────────────────────────────────────────</div>
+    <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
+      <div class="rem-absence-line" style="margin-left:0"><span style="flex:1">IJSS nettes (subrogation) — reversées au salarié</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_IJSS_REINT')">+ ${fmt(ijssNet)}${buildFormulaStar('ABS_IJSS_REINT')}</span></div>
+    </div>` : '';
 
   // IS suisse — extrait pour l'afficher séparément dans la barre récap
   const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;
@@ -1375,7 +1597,7 @@ function renderDesktop(b) {
         <div class="sb-ded">
           <div class="sb-ded-row">
             <span>Cot. salariales</span>
-            <span style="color:var(--red)">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
+            <span style="color:#ffe033">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
           </div>
           ${isChCot ? `<div class="sb-ded-row">
             <span>Impôt à la source (${(isChTaux * 100).toFixed(1)} %)</span>
@@ -1401,10 +1623,6 @@ function renderDesktop(b) {
             <span>Total retenues</span>
             <span style="color:var(--red)">− ${fmt(totalSal + pas.total)}</span>
           </div>
-          ${ijssNet > 0 ? `<div class="sb-ded-row">
-            <span>IJSS nettes (subrogation)</span>
-            <span style="color:var(--green)">+ ${fmt(ijssNet)}</span>
-          </div>` : ''}
         </div>
       </div>
       <div class="sb-cell">
@@ -1417,7 +1635,7 @@ function renderDesktop(b) {
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ SUPER BRUT</div>
-        <div class="sb-val c-yellow">${fmt(parseFloat(b.brut) + totalPat)}</div>
+        <div class="sb-val c-eblue">${fmt(parseFloat(b.brut) + totalPat)}</div>
       </div>
     </div>`;
 
@@ -1560,7 +1778,7 @@ function renderDesktop(b) {
 
   el.innerHTML = simBanner + summaryBar
     + `<div id="rem-result-d">${buildRemSection()}</div>`
-    + `<div class="tbl-wrap">${tableAll}${tableAlleg}</div>`;
+    + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${tableAlleg}</div>`;
 }
 
 // ─── Accordéon mobile ───────────────────────────────────────────────────────
@@ -1626,9 +1844,11 @@ function renderMobile(b) {
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
-  // IJSS nettes réintégrées au net à payer (subrogation maladie).
+  // IJSS NETTES réintégrées au net à payer (subrogation : CSG/CRDS précomptées
+  // par la CPAM) — déjà incluses dans net_a_payer côté backend ; informatif.
   const ijssNet   = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
-  const netPayer  = parseFloat(b.net_a_payer) - pas.total + ijssNet;
+  if (ijssNet > 0) _fmStore['ABS_IJSS_REINT'] = { type: 'absence', which: 'reintegration', a: b.absence };
+  const netPayer  = parseFloat(b.net_a_payer) - pas.total;
   const superBrut = parseFloat(b.brut) + totalPat;
 
   // IS suisse — extrait pour l'afficher en accordéon dédié (comme PAS pour la France)
@@ -1781,7 +2001,7 @@ function renderMobile(b) {
       <!-- IJSS nettes (subrogation) -->
       ${ijssNet > 0 ? `<div class="mob-row">
         <span class="mob-lbl">IJSS nettes (subrogation)</span>
-        <span class="mob-val c-green">+ ${fmt(ijssNet)}</span>
+        <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('ABS_IJSS_REINT')">+ ${fmt(ijssNet)}${buildFormulaStar('ABS_IJSS_REINT')}</span>
       </div>` : ''}
 
       <!-- Net à payer -->
@@ -1806,7 +2026,7 @@ function renderMobile(b) {
       <!-- Super brut -->
       <div class="mob-row superbrut">
         <span class="mob-lbl">SUPER BRUT (coût employeur)</span>
-        <span class="mob-val c-blue">${fmt(superBrut)}</span>
+        <span class="mob-val c-eblue">${fmt(superBrut)}</span>
       </div>
 
     </div>`;
@@ -1914,6 +2134,9 @@ async function calculate(source) {
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
   const effectif       = document.getElementById(isM ? "m-effectif"     : "d-effectif")?.value || "moins20";
+  // Ancienneté (années entières 0-100) — conditionne le maintien de salaire maladie.
+  const ancienneteRaw  = parseInt(document.getElementById(isM ? "m-anciennete" : "d-anciennete")?.value ?? "1", 10);
+  const anciennete     = isNaN(ancienneteRaw) ? 1 : Math.min(100, Math.max(0, ancienneteRaw));
   const remHeures      = getRemHeures();
 
   // ── Validation côté JS ────────────────────────────────────────────────────
@@ -1989,6 +2212,7 @@ async function calculate(source) {
         kirchenmitglied: isAllemagne ? kirchenmitglied : null,
         land:         isAllemagne ? deLand : null,
         region_be:    isBelgique ? beRegion : null,
+        anciennete,
       },
       datePaie,
       lang: _currentLang,
@@ -1999,14 +2223,19 @@ async function calculate(source) {
     };
     const bulletin = await api("calculer_bulletin", _lastCalcReq);
     lastBulletin = bulletin;
-    // Mode net : la ligne « Salaire de base » (section RÉMUNÉRATION) doit
-    // refléter le brut reconstitué — hors majoration HS/HC, qui reste
-    // décomposée en dessous — et non le net saisi dans le champ.
+    // Mode net : la ligne « Salaire de base » (section RÉMUNÉRATION) et l'aperçu
+    // de retenue d'absence doivent reposer sur le BRUT RECONSTITUÉ plein, pas
+    // sur le net saisi. En cas d'absence, ce brut plein est `absence.brut_mensuel`
+    // (bulletin.brut n'est alors que l'assiette après retenue/maintien/IJSS).
     if (_modeSaisie === 'net') {
-      const gainHs = bulletin.heures_sup
-        ? (parseFloat(bulletin.heures_sup.gain_hs) || 0) + (parseFloat(bulletin.heures_sup.gain_hc) || 0)
-        : 0;
-      _remBase = Math.max(0, (parseFloat(bulletin.brut) || 0) - gainHs);
+      if (bulletin.absence) {
+        _remBase = parseFloat(bulletin.absence.brut_mensuel) || 0;
+      } else {
+        const gainHs = bulletin.heures_sup
+          ? (parseFloat(bulletin.heures_sup.gain_hs) || 0) + (parseFloat(bulletin.heures_sup.gain_hc) || 0)
+          : 0;
+        _remBase = Math.max(0, (parseFloat(bulletin.brut) || 0) - gainHs);
+      }
     }
     renderAll(bulletin);
     _afficherBrutReconstitue(bulletin);
@@ -2071,7 +2300,7 @@ function renderAnnuel(sim) {
       <td class="c-alleg">− ${fmt(r.fillon_regularise)}</td>
       <td>${deltaTxt}</td>
       <td class="c-green">${fmt(r.net_a_payer)}</td>
-      <td class="c-yellow">${fmt(r.cout_employeur)}</td>
+      <td class="c-eblue">${fmt(r.cout_employeur)}</td>
     </tr>`;
   }).join("");
 
@@ -2085,7 +2314,7 @@ function renderAnnuel(sim) {
       <td class="c-alleg">− ${fmt(sim.total_fillon)}</td>
       <td></td>
       <td class="c-green">${fmt(sim.total_net)}</td>
-      <td class="c-yellow">${fmt(sim.total_cout)}</td>
+      <td class="c-eblue">${fmt(sim.total_cout)}</td>
     </tr>`;
 
   // Récap pédagogique
@@ -2105,7 +2334,7 @@ function renderAnnuel(sim) {
       </div>
       <div style="border:1px solid var(--border);padding:0.5rem 0.9rem;background:var(--bg3)">
         <div style="color:var(--muted)">COÛT EMPLOYEUR ANNUEL</div>
-        <div style="color:var(--yellow);font-size:1.1rem;font-weight:bold">${fmt(sim.total_cout)}</div>
+        <div style="color:var(--electric-blue);font-size:1.1rem;font-weight:bold">${fmt(sim.total_cout)}</div>
       </div>
     </div>`;
 
@@ -2555,10 +2784,17 @@ function buildRemSection() {
     : '';
   const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(false) : '';
   const absInfo = (_absence?.active && lastBulletin?.absence) ? lastBulletin.absence : null;
+  if (absInfo) {
+    _fmStore['ABS_RETENUE']  = { type: 'absence', which: 'retenue',    a: absInfo };
+    _fmStore['ABS_MAINTIEN'] = { type: 'absence', which: 'maintien',   a: absInfo };
+    _fmStore['ABS_IJSS']     = { type: 'absence', which: 'ijss',       a: absInfo };
+    _fmStore['ABS_AJUST']    = { type: 'absence', which: 'ajustement', a: absInfo };
+  }
   const absenceLine = absInfo ? `
-    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
-    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
-    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
+    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_RETENUE')">− ${fmt(absInfo.retenue)}${buildFormulaStar('ABS_RETENUE')}</span></div>
+    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)})</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_MAINTIEN')">+ ${fmt(absInfo.maintien)}${buildFormulaStar('ABS_MAINTIEN')}</span></div>` : ''}
+    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_IJSS')">− ${fmt(absInfo.ijss_brut)}${buildFormulaStar('ABS_IJSS')}</span></div>` : ''}
+    ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '';
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex">
@@ -2591,10 +2827,17 @@ function buildRemSectionMobile() {
     : '';
   const absencePanel = (_absence !== null && isFrance) ? _buildAbsencePanel(true) : '';
   const absInfo = (_absence?.active && lastBulletin?.absence) ? lastBulletin.absence : null;
+  if (absInfo) {
+    _fmStore['ABS_RETENUE']  = { type: 'absence', which: 'retenue',    a: absInfo };
+    _fmStore['ABS_MAINTIEN'] = { type: 'absence', which: 'maintien',   a: absInfo };
+    _fmStore['ABS_IJSS']     = { type: 'absence', which: 'ijss',       a: absInfo };
+    _fmStore['ABS_AJUST']    = { type: 'absence', which: 'ajustement', a: absInfo };
+  }
   const absenceLine = absInfo ? `
-    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red">− ${fmt(absInfo.retenue)}</span></div>
-    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)} — 90 % / 66,66 %)</span><span class="c-green">+ ${fmt(absInfo.maintien)}</span></div>` : ''}
-    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red">− ${fmt(absInfo.ijss_brut)}</span></div>` : ''}` : '';
+    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_RETENUE')">− ${fmt(absInfo.retenue)}${buildFormulaStar('ABS_RETENUE')}</span></div>
+    ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)})</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_MAINTIEN')">+ ${fmt(absInfo.maintien)}${buildFormulaStar('ABS_MAINTIEN')}</span></div>` : ''}
+    ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_IJSS')">− ${fmt(absInfo.ijss_brut)}${buildFormulaStar('ABS_IJSS')}</span></div>` : ''}
+    ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '';
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
@@ -2603,7 +2846,7 @@ function buildRemSectionMobile() {
     </div>` : '';
   return `
     <div class="mob-row section"><span class="mob-lbl">── RÉMUNÉRATION ──</span></div>
-    <div class="rem-section" style="padding:0.3rem 0.5rem 0.4rem">
+    <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       <div class="rem-base-row">
         ${addBtn}
         ${absenceBtn}
@@ -2845,8 +3088,10 @@ function _buildAbsencePanel(isMob) {
   const stats      = _absence?.dateDebut && _absence?.dateFin
     ? _absenceStats({ ..._absence, methode, joursType: jType }) : null;
 
+  const baseNet = _modeSaisie === 'net';
   const previewHtml = stats ? `
     <div class="absence-preview">
+      <span>Base : <b>${fmt(_remBase)}</b> ${baseNet ? '(brut reconstitué)' : '(brut)'}</span>
       <span>Jours calendaires : <b>${stats.cal}</b> &nbsp;|&nbsp; Ouvrables : <b>${stats.ouv}</b> &nbsp;|&nbsp; Ouvrés : <b>${stats.ouvr}</b></span>
       <span>Salaire horaire : <b>${fmt(stats.salaireH)}</b> &nbsp;|&nbsp; Salaire journalier : <b>${fmt(stats.salaireJ)}</b></span>
       <span>Retenue estimée : <b class="retenue-val">− ${fmt(retenue)}</b></span>

@@ -77,6 +77,7 @@ pub async fn generer_annee(
             heures_comp: 0.0,
             salaire_base: None,
             effectif: None,
+            anciennete: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx, None);
 

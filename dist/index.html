@@ -25,6 +25,7 @@
       --muted:  #4a6a8a;
       --text:   #c8daf0;
       --blue:   #38bdf8;
+      --electric-blue: #2f81ff;
       --green:  #4ade80;
       --red:    #f87171;
       --orange: #fb923c;
@@ -291,6 +292,7 @@
       --border: #000000; --blue:   #000000; --red:    #000000;
       --orange: #000000; --green:  #000000; --purple: #000000;
       --gray:   #000000; --yellow: #000000; --white:  #000000;
+      --electric-blue: #000000;
     }
     /* Zébrures mobile — deux gris très clairs, texte noir partout */
     body.bw-mode .mob-row:nth-child(odd)  { background: #ffffff !important; }
@@ -357,6 +359,7 @@
       --dim:    #aaaaaa;
       --border: #ffffff;
       --blue:   #00d4ff;
+      --electric-blue: #4d94ff;
       --red:    #ff7070;
       --orange: #ffb347;
       --green:  #66ff66;
@@ -518,6 +521,7 @@
     .sb-val.c-red    { color: var(--red); }
     .sb-val.c-orange { color: var(--orange); }
     .sb-val.c-yellow { color: var(--yellow); }
+    .sb-val.c-eblue  { color: var(--electric-blue); }
 
     /* ── Table cotisations bureau ── */
     .tbl-wrap { width: 100%; }
@@ -629,6 +633,23 @@
       display: flex; align-items: center; gap: 0.5rem;
       font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: var(--muted);
     }
+    /* Montants alignés en colonne tabulaire, cohérente avec les autres lignes
+       (Salaire de base, Total brut, .mob-val) — pas collés au bord droit. */
+    .rem-absence-line .c-red,
+    .rem-absence-line .c-green {
+      min-width: 7rem; text-align: right; font-variant-numeric: tabular-nums;
+    }
+    /* Formule posée en chiffres réels dans les panneaux f(x) d'absence. */
+    .fm-chiffres {
+      margin: 0.35rem 0 0.5rem;
+      padding: 0.3rem 0.55rem;
+      background: var(--bg3);
+      border-left: 2px solid var(--blue);
+      color: var(--white);
+      font-size: 0.74rem;
+      font-variant-numeric: tabular-nums;
+      white-space: pre-wrap;
+    }
     .rem-absence-line .c-red   { color: #ff6b6b; font-weight: bold; }
     .rem-absence-line .c-green { color: var(--green); font-weight: bold; }
     .absence-conv-row {
@@ -660,7 +681,7 @@
     .ascii-tbl tbody tr.data-row.open  { background: #060a14; }
     .ascii-tbl td { padding: 0.38rem 0.75rem; font-size: 0.78rem; }
     .ascii-tbl td.r { text-align: right; font-variant-numeric: tabular-nums; }
-    .ascii-tbl td.c-sal  { color: var(--red);    }
+    .ascii-tbl td.c-sal  { color: #ffe033;        }
     .ascii-tbl td.c-pat  { color: var(--orange); }
     .ascii-tbl td.c-dim  { color: var(--dim);    }
     .ascii-tbl tr.tbl-total td {
@@ -798,7 +819,7 @@
       background: #0a1628;
       font-weight: bold;
       font-size: 0.9rem;
-      border-top: 2px solid var(--blue);
+      border-top: 2px solid var(--electric-blue);
     }
     /* Zébrures neutres — fond alterné gris légèrement plus clair que --bg */
     .mob-stripe-sal-a .mob-row,
@@ -826,6 +847,7 @@
     .mob-val.c-orange { color: var(--orange); }
     .mob-val.c-purple { color: var(--purple); }
     .mob-val.c-blue   { color: var(--blue);   }
+    .mob-val.c-eblue  { color: var(--electric-blue); }
     .mob-val.c-yellow { color: var(--yellow); }
     .mob-val.c-white  { color: var(--white);  }
 
@@ -914,6 +936,7 @@
     .ann-tbl tbody tr:hover { background: var(--bg3); }
     .ann-tbl td { padding: 0.32rem 0.6rem; text-align: right; font-variant-numeric: tabular-nums; }
     .ann-tbl td:first-child { text-align: left; color: var(--blue); font-weight: bold; }
+    .ann-tbl td.c-eblue { color: var(--electric-blue); }
     .ann-tbl tr.ann-total td {
       background: var(--bg2); border-top: 1px solid var(--border);
       font-weight: bold; font-size: 0.82rem;
@@ -964,6 +987,9 @@
     }
     .formula-star {
       visibility: hidden;
+      opacity: 0;
+      /* Disparition douce 1 s après la fin du survol (apparition immédiate). */
+      transition: opacity 0.25s ease 1s, visibility 0s linear 1.25s;
       pointer-events: none;
       cursor: pointer;
       color: var(--blue);
@@ -982,10 +1008,15 @@
       color: var(--purple);
       text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent);
     }
-    /* Apparaît au survol de la valeur (td ou span.fm-val) — desktop uniquement */
+    /* Apparaît au survol de la valeur (td, span.fm-val ou ligne d'absence) ;
+       reste visible 1 s après la sortie du survol puis s'efface. */
     td:hover .formula-star,
-    .fm-val:hover .formula-star {
+    .fm-val:hover .formula-star,
+    .rem-absence-line:hover .formula-star,
+    .mob-row:hover .formula-star {
       visibility: visible;
+      opacity: 1;
+      transition-delay: 0s, 0s;
     }
 
     /* ── Modal formule ───────────────────────────────────────── */
@@ -2089,7 +2120,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DELbnmCJ.js"></script>
+  <script type="module" crossorigin src="/assets/index-BP3Ez1WU.js"></script>
 </head>
 <body>
 
@@ -2574,9 +2605,9 @@
           </label>
         </div>
 
-        <!-- Durée de travail -->
+        <!-- Paramètres (durée de travail, effectif, ancienneté…) -->
         <button class="btn-params-toggle" id="d-duree-toggle" onclick="toggleDuree('d')" type="button">
-          <span class="chevron">▼</span> DURÉE DE TRAVAIL
+          <span class="chevron">▼</span> PARAMÈTRES
         </button>
         <div class="params-panel" id="d-duree" style="display:none">
           <div class="duree-row">
@@ -2611,6 +2642,11 @@
               <option value="20_249">20 à 249</option>
               <option value="250p">≥ 250</option>
             </select>
+          </div>
+          <div class="duree-row">
+            <label title="Ancienneté dans l'entreprise — conditionne le maintien de salaire en cas de maladie : < 1 an aucun, 1 à 3 ans régime légal (90 % / 66,66 %), ≥ 3 ans régime conventionnel IDCC 0016 (100 % / 75 %)">Ancienneté</label>
+            <input type="number" id="d-anciennete" value="1" min="0" max="100" step="1" onchange="syncParam('anciennete', this.value); _triggerRecalculate()" />
+            <span class="duree-unit">ans</span>
           </div>
           <label class="chk-apply-brut">
             <input type="checkbox" id="d-apply-brut-chk" onchange="onApplyBrutChk('d')" />
@@ -3001,9 +3037,9 @@
             </label>
           </div>
 
-          <!-- Durée de travail mobile -->
+          <!-- Paramètres mobile (durée de travail, effectif, ancienneté…) -->
           <button class="btn-params-toggle" id="m-duree-toggle" onclick="toggleDuree('m')" type="button" style="grid-column:1/-1">
-            <span class="chevron">▼</span> DURÉE DE TRAVAIL
+            <span class="chevron">▼</span> PARAMÈTRES
           </button>
           <div class="params-panel" id="m-duree" style="display:none;grid-column:1/-1">
             <div class="duree-row">
@@ -3038,6 +3074,11 @@
                 <option value="20_249">20 à 249</option>
                 <option value="250p">≥ 250</option>
               </select>
+            </div>
+            <div class="duree-row">
+              <label title="Ancienneté dans l'entreprise — conditionne le maintien de salaire en cas de maladie : < 1 an aucun, 1 à 3 ans régime légal (90 % / 66,66 %), ≥ 3 ans régime conventionnel IDCC 0016 (100 % / 75 %)">Ancienneté</label>
+              <input type="number" id="m-anciennete" value="1" min="0" max="100" step="1" onchange="syncParam('anciennete', this.value); _triggerRecalculate()" />
+              <span class="duree-unit">ans</span>
             </div>
             <label class="chk-apply-brut" style="grid-column:1/-1">
               <input type="checkbox" id="m-apply-brut-chk" onchange="onApplyBrutChk('m')" />

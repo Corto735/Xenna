@@ -210,6 +210,12 @@ pub struct Salarie {
     /// "moins20" | "20_249" | "250p". Défaut "moins20".
     #[serde(default)]
     pub effectif: Option<String>,
+    /// Ancienneté dans l'entreprise en années entières (0-100). Conditionne le
+    /// maintien de salaire en cas d'absence maladie : < 1 an aucun maintien,
+    /// 1 à < 3 ans régime légal de mensualisation, ≥ 3 ans régime conventionnel
+    /// IDCC 0016 (plus favorable). Défaut : 1 an (régime légal).
+    #[serde(default)]
+    pub anciennete: Option<i64>,
 }
 
 fn etp_default() -> f64 { 100.0 }
@@ -247,6 +253,44 @@ pub struct AbsenceResult {
     #[serde(with = "rust_decimal::serde::str")] pub maintien:  Decimal,
     #[serde(with = "rust_decimal::serde::str")] pub ijss_brut: Decimal,
     #[serde(with = "rust_decimal::serde::str")] pub ijss_net:  Decimal,
+    /// Brut mensuel plein réellement utilisé pour les calculs d'absence : le
+    /// brut saisi, ou le brut RECONSTITUÉ quand l'utilisateur a saisi un net
+    /// (mode paie inversée). Sert de base « Brut » aux panneaux f(x).
+    #[serde(with = "rust_decimal::serde::str")] pub brut_mensuel: Decimal,
+    /// IJSS imposables (base PAS) : jours indemnisés des 60 premiers jours
+    /// d'arrêt (60 − 3 j de carence = 57 j max).
+    #[serde(with = "rust_decimal::serde::str")] pub ijss_imposable: Decimal,
+    /// Ajustement du net (garantie du net) : retenue supplémentaire sur le brut
+    /// neutralisant le gain de cotisations créé par la déduction des IJSS.
+    /// Calculé par dichotomie dans le bulletin France (0 si pas d'IJSS).
+    #[serde(with = "rust_decimal::serde::str")] pub ajustement_net: Decimal,
+    // ── Intermédiaires de calcul (transparence des formules f(x) côté front) ──
+    /// Diviseur mensuel de la retenue (jours du mois, 26, 21,67 ou jours réels).
+    #[serde(with = "rust_decimal::serde::str")] pub diviseur_retenue: Decimal,
+    /// Salaire journalier perdu (retenue ÷ jours comptés) — base du maintien.
+    #[serde(with = "rust_decimal::serde::str")] pub per_day_maintien: Decimal,
+    /// Carence du maintien en jours (7 légal, 5 conventionnel, 0 si aucun).
+    pub carence_maintien: i64,
+    /// Jours indemnisés et taux de chaque tranche du maintien (0 si aucune).
+    pub jours_maintien_t1: i64,
+    pub jours_maintien_t2: i64,
+    #[serde(with = "rust_decimal::serde::str")] pub taux_maintien_t1: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub taux_maintien_t2: Decimal,
+    /// Régime local Alsace-Moselle appliqué (100 % dès le 1er jour, art. L1226-23).
+    #[serde(default)]
+    pub am_local: bool,
+    /// Salaire de référence IJSS = min(brut mensuel ; coeff × SMIC).
+    #[serde(with = "rust_decimal::serde::str")] pub salaire_ref_ijss: Decimal,
+    /// Coefficient de plafonnement du salaire de référence (1,4 ou 1,8 SMIC).
+    #[serde(with = "rust_decimal::serde::str")] pub coeff_plafond_ijss: Decimal,
+    /// Salaire journalier de base SS = salaire de référence × 3 ÷ 91,25.
+    #[serde(with = "rust_decimal::serde::str")] pub sjb: Decimal,
+    /// Indemnité journalière = 50 % du SJB (arrondie au centime).
+    #[serde(with = "rust_decimal::serde::str")] pub ijss_jour: Decimal,
+    /// Assiette de référence de la garantie du net (base − retenue + maintien),
+    /// et net cible correspondant. Remplis par le bulletin France (0 sinon).
+    #[serde(with = "rust_decimal::serde::str")] pub assiette_ref: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub net_cible: Decimal,
     pub jours_absence:  i64,
     pub jours_ijss:     i64,
     pub jours_maintien: i64,

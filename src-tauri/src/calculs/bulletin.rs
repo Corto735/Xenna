@@ -1,7 +1,9 @@
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
-use crate::models::{AbsenceInput, Bulletin, Pays, Salarie};
+use crate::models::{AbsenceInput, AbsenceResult, Bulletin, LigneCotisation, Pays, Salarie};
 use super::cotisations::*;
+use super::heures_sup::HeuresSup;
 use super::ch_bulletin::generer_bulletin_ch;
 use super::lu_bulletin::generer_bulletin_lu;
 use super::fpt_bulletin::generer_bulletin_fpt;
@@ -86,7 +88,8 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
 
     // Brut mensuel plein = référence pour le SJB des IJSS et le per-day du maintien.
     let base_ref = salarie.salaire_brut;
-    let absence_res = absence.and_then(|a| super::absence::compute_absence(base_ref, a, ctx));
+    let anciennete = salarie.anciennete.unwrap_or(1).clamp(0, 100);
+    let mut absence_res = absence.and_then(|a| super::absence::compute_absence(base_ref, a, anciennete, salarie.alsace_moselle, ctx));
 
     // Heures supplémentaires / complémentaires : majoration ajoutée au brut, puis
     // réduction salariale, déduction patronale et exonération d'impôt. Le gain majoré
@@ -94,51 +97,59 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     let hs = super::heures_sup::calculer(&salarie, ctx);
     let gain_hs_total = hs.as_ref().map(|h| h.gain_total).unwrap_or(Decimal::ZERO);
 
-    // Assiette de cotisations du mois : brut plein − retenue + maintien − IJSS brutes,
-    // + majoration des heures supp/compl.
-    // Toutes les cotisations (Fillon, tranches, plafonds) tournent sur cette assiette.
-    let brut = match &absence_res {
-        Some(r) => (base_ref - r.retenue + r.maintien - r.ijss_brut).max(Decimal::ZERO) + gain_hs_total,
+    // Assiette de RÉFÉRENCE : brut plein − retenue + maintien (+ HS), AVANT
+    // déduction des IJSS. C'est le bulletin « neutre » qui fixe le net cible de
+    // la garantie du net : la subrogation ne doit ni enrichir ni appauvrir.
+    let assiette_ref = match &absence_res {
+        Some(r) => (base_ref - r.retenue + r.maintien).max(Decimal::ZERO) + gain_hs_total,
         None    => base_ref + gain_hs_total,
     };
-    let mut cotisations = Vec::new();
+    let ijss_brut = absence_res.as_ref().map(|r| r.ijss_brut).unwrap_or(Decimal::ZERO);
+    let ijss_net = absence_res.as_ref().map(|r| r.ijss_net).unwrap_or(Decimal::ZERO);
 
-    cotisations.push(ss_maladie(brut, ctx));
-    cotisations.push(ss_vieillesse_plafonnee(brut, salarie.etp, ctx));
-    cotisations.push(ss_vieillesse_deplafonnee(brut, ctx));
-    cotisations.push(famille(brut, ctx));
-    cotisations.push(accident_travail(brut, ctx));
-    cotisations.push(chomage(brut, salarie.etp, ctx));
-    cotisations.extend(csg_contributions(brut, ctx));
-    cotisations.extend(retraite_complementaire(brut, &salarie.statut, salarie.etp, ctx));
+    // Ajustement du net (garantie du net) : les IJSS brutes déduites du brut
+    // échappent aux cotisations salariales → sans correction, le salarié
+    // percevrait un net supérieur au bulletin de référence. On retient donc en
+    // haut de bulletin un « ajustement » tel que, une fois les IJSS NETTES
+    // (brutes − CSG/CRDS 6,7 % précomptées par la CPAM) réintégrées en bas de
+    // bulletin, net(assiette) + IJSS nettes = net(assiette_ref).
+    // Résolution par dichotomie à absence FIGÉE (seule l'assiette varie) —
+    // le net France est strictement croissant en l'assiette.
+    let mut net_cible_gn = Decimal::ZERO; // exposé dans AbsenceResult (transparence f(x))
+    let ajustement = if ijss_brut > Decimal::ZERO {
+        let lignes_ref = lignes_france(assiette_ref, &salarie, ctx, &hs, &absence_res, base_ref);
+        let net_cible = net_de(assiette_ref, &lignes_ref);
+        net_cible_gn = net_cible.round_dp(2);
+        let cible_hors_ijss = net_cible - ijss_net;
 
-    if salarie.alsace_moselle {
-        if let Some(am) = maladie_alsace_moselle(brut, ctx) {
-            cotisations.push(am);
+        let mut lo = cible_hors_ijss.max(Decimal::ZERO); // invariant net ≤ assiette
+        let mut hi = (assiette_ref - ijss_brut).max(lo);
+        for _ in 0..60 {
+            if hi - lo <= dec!(0.005) {
+                break;
+            }
+            let mid = ((lo + hi) / dec!(2)).round_dp(4);
+            let lignes = lignes_france(mid, &salarie, ctx, &hs, &absence_res, base_ref);
+            if net_de(mid, &lignes) < cible_hors_ijss {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
         }
+        (assiette_ref - ijss_brut - hi).round_dp(2).max(Decimal::ZERO)
+    } else {
+        Decimal::ZERO
+    };
+    if let Some(r) = absence_res.as_mut() {
+        r.ajustement_net = ajustement;
+        r.assiette_ref = assiette_ref.round_dp(2);
+        r.net_cible = net_cible_gn;
     }
 
-    if let Some(fillon) = reduction_fillon(brut, salarie.etp, ctx) {
-        cotisations.push(fillon);
-    }
-
-    // Entreprise adaptée : aide au poste (État/ASP) au titre d'un salarié RQTH.
-    // Aide versée à l'employeur → ligne patronale négative, n'affecte pas le net.
-    if salarie.entreprise_adaptee {
-        let absent_fraction = match &absence_res {
-            Some(r) if base_ref > Decimal::ZERO => (r.retenue / base_ref).min(Decimal::ONE),
-            _ => Decimal::ZERO,
-        };
-        if let Some(aide) = super::ea::aide_poste_ea(&salarie, base_ref, absent_fraction, ctx) {
-            cotisations.push(aide);
-        }
-    }
-
-    // Lignes heures supp/compl : réduction salariale (négatif salarial) + déduction
-    // forfaitaire patronale (négatif patronal). Poussées avant les totaux.
-    if let Some(h) = &hs {
-        cotisations.extend(h.lignes.iter().cloned());
-    }
+    // Assiette de cotisations du mois : référence − IJSS brutes − ajustement.
+    // Toutes les cotisations (Fillon, tranches, plafonds) tournent sur cette assiette.
+    let brut = (assiette_ref - ijss_brut - ajustement).max(Decimal::ZERO);
+    let cotisations = lignes_france(brut, &salarie, ctx, &hs, &absence_res, base_ref);
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
@@ -150,8 +161,13 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         .map(|c| c.montant_sal)
         .sum();
 
-    let mut net_imposable = (brut - total_sal + csg_non_ded_et_crds).round_dp(2);
-    let net_a_payer   = (brut - total_sal).round_dp(2);
+    // IJSS réintégrées : NETTES dans le net à payer (bas de bulletin — la CPAM
+    // précompte CSG 6,2 % + CRDS 0,5 % avant de verser à l'employeur subrogé) ;
+    // imposables (60 premiers jours d'arrêt) dans le net imposable (base PAS).
+    let ijss_imposable = absence_res.as_ref().map(|r| r.ijss_imposable).unwrap_or(Decimal::ZERO);
+
+    let mut net_imposable = (brut - total_sal + csg_non_ded_et_crds + ijss_imposable).round_dp(2);
+    let net_a_payer   = (brut - total_sal + ijss_net).round_dp(2);
 
     // Exonération d'impôt sur le revenu des HS/HC : retranchée du net imposable
     // (base PAS), plafonnée à l'enveloppe annuelle (mois isolé = plafond plein).
@@ -175,4 +191,63 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         heures_sup,
         salarie,
     }
+}
+
+/// Lignes de cotisations françaises pour une assiette donnée. Fonction pure de
+/// l'assiette (absence et HS figées) : c'est elle que la dichotomie de la
+/// garantie du net sonde à répétition.
+fn lignes_france(
+    assiette: Decimal,
+    salarie: &Salarie,
+    ctx: &ContextPaie,
+    hs: &Option<HeuresSup>,
+    absence_res: &Option<AbsenceResult>,
+    base_ref: Decimal,
+) -> Vec<LigneCotisation> {
+    let mut cotisations = Vec::new();
+
+    cotisations.push(ss_maladie(assiette, ctx));
+    cotisations.push(ss_vieillesse_plafonnee(assiette, salarie.etp, ctx));
+    cotisations.push(ss_vieillesse_deplafonnee(assiette, ctx));
+    cotisations.push(famille(assiette, ctx));
+    cotisations.push(accident_travail(assiette, ctx));
+    cotisations.push(chomage(assiette, salarie.etp, ctx));
+    cotisations.extend(csg_contributions(assiette, ctx));
+    cotisations.extend(retraite_complementaire(assiette, &salarie.statut, salarie.etp, ctx));
+
+    if salarie.alsace_moselle {
+        if let Some(am) = maladie_alsace_moselle(assiette, ctx) {
+            cotisations.push(am);
+        }
+    }
+
+    if let Some(fillon) = reduction_fillon(assiette, salarie.etp, ctx) {
+        cotisations.push(fillon);
+    }
+
+    // Entreprise adaptée : aide au poste (État/ASP) au titre d'un salarié RQTH.
+    // Aide versée à l'employeur → ligne patronale négative, n'affecte pas le net.
+    if salarie.entreprise_adaptee {
+        let absent_fraction = match absence_res {
+            Some(r) if base_ref > Decimal::ZERO => (r.retenue / base_ref).min(Decimal::ONE),
+            _ => Decimal::ZERO,
+        };
+        if let Some(aide) = super::ea::aide_poste_ea(salarie, base_ref, absent_fraction, ctx) {
+            cotisations.push(aide);
+        }
+    }
+
+    // Lignes heures supp/compl : réduction salariale (négatif salarial) + déduction
+    // forfaitaire patronale (négatif patronal). Poussées avant les totaux.
+    if let Some(h) = hs {
+        cotisations.extend(h.lignes.iter().cloned());
+    }
+
+    cotisations
+}
+
+/// Net à payer (hors IJSS réintégrées) d'une assiette : assiette − cotisations salariales.
+fn net_de(assiette: Decimal, lignes: &[LigneCotisation]) -> Decimal {
+    let total_sal: Decimal = lignes.iter().map(|c| c.montant_sal).sum();
+    assiette - total_sal
 }

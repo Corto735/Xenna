@@ -137,9 +137,10 @@ fn diviseur(methode: &str, kind: TypeJour, debut: NaiveDate, heures_mois: f64) -
 // ── Calcul principal ──────────────────────────────────────────────────────────
 
 /// Calcule retenue + maintien + IJSS pour une absence maladie.
-/// `base_brut` = brut mensuel plein (référence SJB et per-day). Retourne None
-/// si les dates sont absentes/invalides ou si la période est vide.
-pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, ctx: &ContextPaie) -> Option<AbsenceResult> {
+/// `base_brut` = brut mensuel plein (référence SJB et per-day). `anciennete` en
+/// années entières — pilote le régime de maintien (voir bareme ci-dessous).
+/// Retourne None si les dates sont absentes/invalides ou si la période est vide.
+pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, alsace_moselle: bool, ctx: &ContextPaie) -> Option<AbsenceResult> {
     let debut = NaiveDate::parse_from_str(&abs.date_debut, "%Y-%m-%d").ok()?;
     let fin   = NaiveDate::parse_from_str(&abs.date_fin,   "%Y-%m-%d").ok()?;
     if fin < debut { return None; }
@@ -160,21 +161,66 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, ctx: &ContextPaie
     if div <= Decimal::ZERO { return None; }
     let retenue = (base_brut * Decimal::from(nb_jours) / div).round_dp(2);
 
-    // ── Maintien IDCC 0016 (90 % puis 66,66 %), carence conventionnelle 7 j ──
+    // ── Maintien employeur (maladie non professionnelle) ──
+    // Barème DROIT COMMUN par ancienneté / IDCC 0016 (= (carence, fin1, taux1,
+    // fin2, taux2), bornes en index calendaire 1-based depuis le début) :
+    //   < 1 an : aucun maintien.
+    //   1 à < 3 ans : régime légal de mensualisation (CT art. L1226-1 / D1226-1)
+    //     — carence 7 j, 90 % pendant 30 j puis 66,66 % pendant 30 j.
+    //   ≥ 3 ans : conventionnel IDCC 0016, dès le 6e jour :
+    //     ≥ 3 ans  : 100 % j6-40,  puis 75 % j41-70 ;
+    //     ≥ 5 ans  : 100 % j6-70,  puis 75 % j71-130 ;
+    //     ≥ 10 ans : 100 % j6-100, puis 75 % j101-190.
+    let bareme_dc: Option<(i64, i64, Decimal, i64, Decimal)> =
+        if idcc == "0016" && abs.type_arret != "pro" {
+            if      anciennete >= 10 { Some((5, 100, dec!(1.00), 190, dec!(0.75))) }
+            else if anciennete >= 5  { Some((5, 70,  dec!(1.00), 130, dec!(0.75))) }
+            else if anciennete >= 3  { Some((5, 40,  dec!(1.00), 70,  dec!(0.75))) }
+            else if anciennete >= 1  { Some((7, 37,  dec!(0.90), 67,  dec!(0.6666))) }
+            else { None }
+        } else {
+            None
+        };
+
+    // Alsace-Moselle (droit local, art. L1226-23, ex-art. 616 code civil local) :
+    // 100 % du salaire dès le 1er jour, SANS carence ni condition d'ancienneté,
+    // pendant 42 jours calendaires (6 semaines), puis relais du droit commun.
+    let am = alsace_moselle && abs.type_arret != "pro";
+
+    // Taux du jour = max(Alsace-Moselle, droit commun). Le max réalise le relais :
+    // jours 1-42 à 100 % (AM l'emporte et efface la carence du droit commun),
+    // au-delà le droit commun reprend (75 % / 66,66 %).
+    let dc_rate = |idx: i64| -> Decimal {
+        match bareme_dc {
+            Some((carence, fin1, taux1, fin2, taux2)) if idx > carence => {
+                if idx <= fin1 { taux1 } else if idx <= fin2 { taux2 } else { Decimal::ZERO }
+            }
+            _ => Decimal::ZERO,
+        }
+    };
+    let am_rate = |idx: i64| -> Decimal {
+        if am && idx <= 42 { dec!(1.00) } else { Decimal::ZERO }
+    };
+
     // per_day = gross moyen perdu par jour compté → indépendant de la méthode.
     let per_day = retenue / Decimal::from(nb_jours);
     let mut maintien = Decimal::ZERO;
     let mut jours_maintien = 0i64;
-    if idcc == "0016" && abs.type_arret != "pro" {
+    // Paliers (taux, nb jours) — au plus 2 taux distincts (100 % puis 75 %/66,66 %).
+    let mut paliers: Vec<(Decimal, i64)> = Vec::new();
+    {
         let mut cur = debut;
         let mut idx = 1i64; // index calendaire 1-based depuis le début de l'arrêt
         while cur <= fin {
-            if est_compte(cur, kind, &feries) && idx > 7 {
-                let j = idx - 7; // position dans la période indemnisée
-                let rate = if j <= 30 { dec!(0.90) } else if j <= 60 { dec!(0.6666) } else { Decimal::ZERO };
+            if est_compte(cur, kind, &feries) {
+                let rate = am_rate(idx).max(dc_rate(idx));
                 if rate > Decimal::ZERO {
                     maintien += rate * per_day;
                     jours_maintien += 1;
+                    match paliers.iter_mut().find(|(t, _)| *t == rate) {
+                        Some(p) => p.1 += 1,
+                        None => paliers.push((rate, 1)),
+                    }
                 }
             }
             cur += Duration::days(1);
@@ -182,6 +228,25 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, ctx: &ContextPaie
         }
     }
     let maintien = maintien.round_dp(2);
+    // Deux tranches pour le panneau f(x) : taux décroissant (t1 = plus élevé).
+    paliers.sort_by(|a, b| b.0.cmp(&a.0));
+    let (taux_maintien_t1, jours_maintien_t1) = paliers.first().copied().unwrap_or((Decimal::ZERO, 0));
+    let (taux_maintien_t2, jours_maintien_t2) = paliers.get(1).copied().unwrap_or((Decimal::ZERO, 0));
+    let carence_maintien = if am { 0 } else { bareme_dc.map(|(c, ..)| c).unwrap_or(0) };
+
+    // Libellé du régime appliqué (affiché sur la ligne « Maintien de salaire »).
+    let regime: String = if am {
+        let mut s = "Alsace-Moselle — droit local 100 % (6 sem.), art. L1226-23".to_string();
+        if jours_maintien_t2 > 0 { s.push_str(" + relais droit commun"); }
+        s
+    } else {
+        match bareme_dc {
+            Some((5, ..)) => "conventionnel 100 % / 75 %",
+            Some(_)       => "légal 90 % / 66,66 %",
+            None if anciennete < 1 => "sans maintien — ancienneté < 1 an",
+            None          => "sans maintien",
+        }.to_string()
+    };
 
     // ── IJSS (carence SS 3 j, par jour calendaire) ──
     let jours_cal = (fin - debut).num_days() + 1;
@@ -197,6 +262,10 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, ctx: &ContextPaie
     let ijss_jour = (dec!(0.5) * sjb).round_dp(2);
     let ijss_brut = (ijss_jour * Decimal::from(jours_ijss)).round_dp(2);
     let ijss_net  = (ijss_brut * IJSS_NET_COEFF).round_dp(2);
+    // IJSS imposables (base PAS) : maladie imposable sur les 60 premiers jours
+    // d'arrêt uniquement → 60 − 3 j de carence = 57 jours indemnisés au plus.
+    let jours_imposables = jours_ijss.min(57);
+    let ijss_imposable = (ijss_jour * Decimal::from(jours_imposables)).round_dp(2).min(ijss_brut);
 
     let libelle = format!("maladie · {}", libelle_methode(methode, kind));
 
@@ -205,11 +274,29 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, ctx: &ContextPaie
         maintien,
         ijss_brut,
         ijss_net,
+        brut_mensuel: base_brut.round_dp(2),
+        ijss_imposable,
+        // Rempli par le bulletin France après résolution de la garantie du net.
+        ajustement_net: Decimal::ZERO,
+        diviseur_retenue: div,
+        per_day_maintien: per_day.round_dp(2),
+        carence_maintien,
+        jours_maintien_t1,
+        jours_maintien_t2,
+        taux_maintien_t1,
+        taux_maintien_t2,
+        am_local: am,
+        salaire_ref_ijss: salaire_ref.round_dp(2),
+        coeff_plafond_ijss: coeff_plafond,
+        sjb: sjb.round_dp(2),
+        ijss_jour,
+        assiette_ref: Decimal::ZERO, // rempli par le bulletin France
+        net_cible: Decimal::ZERO,    // rempli par le bulletin France
         jours_absence: nb_jours,
         jours_ijss,
         jours_maintien,
         libelle,
-        convention: format!("IDCC {idcc}"),
+        convention: format!("IDCC {idcc} · {regime}"),
     })
 }
 
