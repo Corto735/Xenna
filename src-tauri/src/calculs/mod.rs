@@ -41,6 +41,7 @@ pub mod cn_bulletin;
 pub mod nl_loonheffing;
 pub mod nl_bulletin;
 pub mod pays_non_couvert;
+pub mod paye_inverse;
 pub mod au_bulletin;
 pub mod nz_bulletin;
 pub mod pl_bulletin;

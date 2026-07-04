@@ -12,7 +12,7 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use crate::{
     AppState,
-    calculs::{generer_bulletin, generer_annee},
+    calculs::{generer_bulletin, generer_annee, paye_inverse},
     db::ContextPaie,
     models::{AbsenceInput, Bulletin, Salarie, SimulationAnnuelle, Statut},
 };
@@ -27,6 +27,9 @@ pub async fn calculer_bulletin(
     lang: Option<String>,
     // Absence maladie éventuelle (retenue + maintien + IJSS).
     absence: Option<AbsenceInput>,
+    // Paye inversée : net souhaité AVANT impôt à la source (JS : netCible).
+    // Si présent, salaire_brut est ignoré et le brut est reconstitué par dichotomie.
+    net_cible: Option<String>,
 ) -> Result<Bulletin, String> {
     // La date est validée ici pour renvoyer un message lisible plutôt que
     // laisser SQLx échouer avec une erreur opaque sur la requête.
@@ -40,7 +43,18 @@ pub async fn calculer_bulletin(
         .map_err(|e| e.to_string())?;
     ctx.lang = lang.unwrap_or_else(|| "fr".into());
 
-    Ok(generer_bulletin(salarie, &ctx, absence.as_ref()))
+    match net_cible {
+        Some(n) => {
+            let net: Decimal = n
+                .parse()
+                .map_err(|_| format!("Net cible invalide : '{n}'"))?;
+            if net <= Decimal::ZERO {
+                return Err("Net cible invalide — saisir un montant positif.".into());
+            }
+            Ok(paye_inverse::resoudre_brut_pour_net(net, &salarie, &ctx, absence.as_ref()))
+        }
+        None => Ok(generer_bulletin(salarie, &ctx, absence.as_ref())),
+    }
 }
 
 #[tauri::command]

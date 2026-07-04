@@ -33,6 +33,17 @@ export const STATIC_DICT = {
   'BRUT (CAD)':             ['GROSS (CAD)', 'BRUTTO (CAD)', 'BRUTO (CAD)', 'LORDO (CAD)', 'BRUTO (CAD)'],
   'SALAIRE BRUT (CHF)':     ['GROSS SALARY (CHF)', 'BRUTTOGEHALT (CHF)', 'BRUTOLOON (CHF)', 'RETRIBUZIONE LORDA (CHF)', 'SALARIO BRUTO (CHF)'],
   'BRUT (CHF)':             ['GROSS (CHF)', 'BRUTTO (CHF)', 'BRUTO (CHF)', 'LORDO (CHF)', 'BRUTO (CHF)'],
+
+  // Paye inversée (switch Brut/Net + libellés du champ en mode net)
+  'Brut':                   ['Gross', 'Brutto', 'Bruto', 'Lordo', 'Bruto'],
+  'Net':                    ['Net', 'Netto', 'Netto', 'Netto', 'Neto'],
+  'SALAIRE NET (€)':        ['NET SALARY (€)', 'NETTOGEHALT (€)', 'NETTOLOON (€)', 'RETRIBUZIONE NETTA (€)', 'SALARIO NETO (€)'],
+  'NET (€)':                ['NET (€)', 'NETTO (€)', 'NETTO (€)', 'NETTO (€)', 'NETO (€)'],
+  'SALAIRE NET (CAD)':      ['NET SALARY (CAD)', 'NETTOGEHALT (CAD)', 'NETTOLOON (CAD)', 'RETRIBUZIONE NETTA (CAD)', 'SALARIO NETO (CAD)'],
+  'NET (CAD)':              ['NET (CAD)', 'NETTO (CAD)', 'NETTO (CAD)', 'NETTO (CAD)', 'NETO (CAD)'],
+  'SALAIRE NET (CHF)':      ['NET SALARY (CHF)', 'NETTOGEHALT (CHF)', 'NETTOLOON (CHF)', 'RETRIBUZIONE NETTA (CHF)', 'SALARIO NETO (CHF)'],
+  'NET (CHF)':              ['NET (CHF)', 'NETTO (CHF)', 'NETTO (CHF)', 'NETTO (CHF)', 'NETO (CHF)'],
+  'Brut reconstitué :':     ['Reconstructed gross:', 'Rekonstruiertes Brutto:', 'Gereconstrueerd bruto:', 'Lordo ricostruito:', 'Bruto reconstruido:'],
   'STATUT':                 ['STATUS', 'STATUS', 'STATUUT', 'INQUADRAMENTO', 'CATEGORÍA'],
   'Non-cadre':              ['Non-executive', 'Nicht-leitend', 'Bediende', 'Impiegato', 'No ejecutivo'],
   'Cadre':                  ['Executive', 'Leitend', 'Kader', 'Quadro', 'Ejecutivo'],
@@ -178,12 +189,12 @@ export const STATIC_DICT = {
   'Retenue':                 ['Deduction', 'Einbehalt', 'Inhouding', 'Trattenuta', 'Retención'],
 
   // ── App meta ─────────────────────────────────────────────────────────────
-  'simulateur pédagogique · bulletin de paye français · v0.1.8': [
-    'educational simulator · French payslip · v0.1.8',
-    'pädagogischer Simulator · Französische Gehaltsabrechnung · v0.1.8',
-    'educatieve simulator · Franse loonbrief · v0.1.8',
-    'simulatore didattico · busta paga francese · v0.1.8',
-    'simulador pedagógico · nómina francesa · v0.1.8',
+  '// simulateur pédagogique de bulletin de paye français et international · v0.1.8': [
+    '// educational simulator for French and international payslips · v0.1.8',
+    '// pädagogischer Simulator für französische und internationale Gehaltsabrechnungen · v0.1.8',
+    '// educatieve simulator voor Franse en internationale loonbrieven · v0.1.8',
+    '// simulatore didattico di buste paga francesi e internazionali · v0.1.8',
+    '// simulador pedagógico de nóminas francesas e internacionales · v0.1.8',
   ],
   'paye ton bulletin':       ['your payslip', 'Deine Gehaltsabrechnung', 'Jouw loonbrief', 'la tua busta paga', 'tu nómina'],
 
@@ -209,6 +220,13 @@ export const STATIC_DICT = {
     '⚠ Ongeldig brutoloon — voer een positief bedrag in.',
     '⚠ Retribuzione lorda non valida — inserire un importo positivo.',
     '⚠ Salario bruto no válido — introduzca un importe positivo.',
+  ],
+  'Salaire net invalide — saisir un montant positif.': [
+    'Invalid net salary — enter a positive amount.',
+    'Ungültiger Nettolohn — Bitte einen positiven Betrag eingeben.',
+    'Ongeldig nettoloon — voer een positief bedrag in.',
+    'Retribuzione netta non valida — inserire un importo positivo.',
+    'Salario neto no válido — introduzca un importe positivo.',
   ],
   '⚠ Année invalide.':       ['⚠ Invalid year.', '⚠ Ungültiges Jahr.', '⚠ Ongeldig jaar.', '⚠ Anno non valido.', '⚠ Año no válido.'],
   'ERREUR :':                ['ERROR :', 'FEHLER :', 'FOUT :', 'ERRORE :', 'ERROR :'],

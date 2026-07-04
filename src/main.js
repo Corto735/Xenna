@@ -239,6 +239,61 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ── Bascule Brut / Net (paye inversée) ────────────────────────────────────────
+// En mode « net », la valeur saisie est le NET souhaité AVANT impôt à la source ;
+// le backend reconstitue le brut par dichotomie (netCible) et renvoie le bulletin
+// complet calculé dessus.
+let _modeSaisie = 'brut';   // 'brut' | 'net'
+let _labelsSalaire = { brut: 'SALAIRE BRUT (€)', brutM: 'BRUT (€)' };
+
+// Applique le libellé du champ salaire selon la devise (posée par onTogglePays)
+// ET le mode de saisie (BRUT ↔ NET).
+function _appliquerLabelSalaire() {
+  const net  = _modeSaisie === 'net';
+  const lab  = net ? _labelsSalaire.brut.replace('BRUT', 'NET')  : _labelsSalaire.brut;
+  const labM = net ? _labelsSalaire.brutM.replace('BRUT', 'NET') : _labelsSalaire.brutM;
+  const dBrut = document.getElementById('d-brut');
+  if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = lab; }
+  const mBrut = document.getElementById('m-brut');
+  if (mBrut) { const l = mBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labM; }
+}
+
+// Ligne « Brut reconstitué : X € » sous le champ (mode net uniquement).
+function _afficherBrutReconstitue(bulletin) {
+  ['d-brut-reconst', 'm-brut-reconst'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!bulletin || _modeSaisie !== 'net') { el.hidden = true; return; }
+    const b = el.querySelector('b');
+    if (b) b.textContent = `${parseFloat(bulletin.brut).toFixed(2)} ${bulletin.devise}`;
+    el.hidden = false;
+  });
+}
+
+function _syncBnUI() {
+  const net = _modeSaisie === 'net';
+  ['d-bn', 'm-bn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('is-brut', !net);
+    el.classList.toggle('is-net', net);
+    el.setAttribute('aria-checked', net ? 'true' : 'false');
+  });
+  // Le seuil min (SMIC) du champ desktop n'a pas de sens pour une saisie de net.
+  const dBrut = document.getElementById('d-brut');
+  if (dBrut) {
+    if (net) { dBrut.dataset.minBrut = dBrut.min || ''; dBrut.removeAttribute('min'); }
+    else if (dBrut.dataset.minBrut) { dBrut.min = dBrut.dataset.minBrut; }
+  }
+  if (!net) _afficherBrutReconstitue(null);
+  _appliquerLabelSalaire();
+}
+
+window.toggleBrutNet = function () {
+  _modeSaisie = _modeSaisie === 'net' ? 'brut' : 'net';
+  _syncBnUI();
+};
+
 // ── Accessibilité ────────────────────────────────────────────────────────────
 // ── Traduction ────────────────────────────────────────────────────────────────
 let _currentLang = 'fr';
@@ -1868,7 +1923,9 @@ async function calculate(source) {
   _remBase = brutVal || 0;
   const totalBrut = getRemTotal();
   if (!brut || isNaN(brutVal) || brutVal <= 0) {
-    showInputError("Salaire brut invalide — saisir un montant positif.");
+    showInputError(_modeSaisie === 'net'
+      ? "Salaire net invalide — saisir un montant positif."
+      : "Salaire brut invalide — saisir un montant positif.");
     return;
   }
   // La date est forcée à TODAY si vide, mais on vérifie le format ISO au cas où.
@@ -1936,10 +1993,23 @@ async function calculate(source) {
       datePaie,
       lang: _currentLang,
       absence: getAbsencePayload(),
+      // Paye inversée : la saisie devient la cible de net (avant impôt à la
+      // source) ; le backend ignore alors salaire_brut et reconstitue le brut.
+      ...(_modeSaisie === 'net' ? { netCible: brutVal.toString() } : {}),
     };
     const bulletin = await api("calculer_bulletin", _lastCalcReq);
     lastBulletin = bulletin;
+    // Mode net : la ligne « Salaire de base » (section RÉMUNÉRATION) doit
+    // refléter le brut reconstitué — hors majoration HS/HC, qui reste
+    // décomposée en dessous — et non le net saisi dans le champ.
+    if (_modeSaisie === 'net') {
+      const gainHs = bulletin.heures_sup
+        ? (parseFloat(bulletin.heures_sup.gain_hs) || 0) + (parseFloat(bulletin.heures_sup.gain_hc) || 0)
+        : 0;
+      _remBase = Math.max(0, (parseFloat(bulletin.brut) || 0) - gainHs);
+    }
     renderAll(bulletin);
+    _afficherBrutReconstitue(bulletin);
     _updateAnnuelBtn();
   } catch (e) {
     // console.error permet de voir l'objet brut dans DevTools (F12 → Console)
@@ -2153,10 +2223,10 @@ window.onTogglePays = function(pays, checked) {
   const isBulgarie    = document.getElementById('d-bulgarie')?.checked;
   const labelBrut  = isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : isSuede ? 'SALAIRE BRUT (SEK)' : isTchequie ? 'SALAIRE BRUT (CZK)' : isHongrie ? 'SALAIRE BRUT (HUF)' : isRoumanie ? 'SALAIRE BRUT (RON)' : isBulgarie ? 'SALAIRE BRUT (BGN)' : 'SALAIRE BRUT (€)';
   const labelBrutM = isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : isSuede ? 'BRUT (SEK)'         : isTchequie ? 'BRUT (CZK)'         : isHongrie ? 'BRUT (HUF)'         : isRoumanie ? 'BRUT (RON)'         : isBulgarie ? 'BRUT (BGN)'         : 'BRUT (€)';
-  const dBrut = document.getElementById('d-brut');
-  if (dBrut) { const l = dBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrut; }
-  const mBrut = document.getElementById('m-brut');
-  if (mBrut) { const l = mBrut.closest('.field')?.querySelector('label'); if (l) l.textContent = labelBrutM; }
+  // Mémorise les libellés devise et laisse _appliquerLabelSalaire arbitrer
+  // l'affichage BRUT/NET selon le mode de saisie courant.
+  _labelsSalaire = { brut: labelBrut, brutM: labelBrutM };
+  _appliquerLabelSalaire();
 
   // Affiche/masque le bloc IS Suisse (et réinitialise si on décoche Suisse)
   ['d', 'm'].forEach(p => {

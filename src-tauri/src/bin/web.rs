@@ -43,6 +43,10 @@ struct BulletinReq {
     // Absence maladie éventuelle (retenue + maintien + IJSS).
     #[serde(default)]
     absence: Option<AbsenceInput>,
+    // Paye inversée : net souhaité AVANT impôt à la source. Si présent,
+    // salaire_brut est ignoré et le brut est reconstitué par dichotomie.
+    #[serde(default, rename = "netCible")]
+    net_cible: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -133,7 +137,20 @@ async fn handle_bulletin(
         })?;
     ctx.lang = req.lang.unwrap_or_else(|| "fr".into());
 
-    Ok(Json(generer_bulletin(req.salarie, &ctx, req.absence.as_ref())))
+    match req.net_cible {
+        Some(n) => {
+            let net: rust_decimal::Decimal = n
+                .parse()
+                .map_err(|_| ApiError(format!("Net cible invalide : '{n}'")))?;
+            if net <= rust_decimal::Decimal::ZERO {
+                return Err(ApiError("Net cible invalide — saisir un montant positif.".into()));
+            }
+            Ok(Json(xenna_paie_lib::calculs::paye_inverse::resoudre_brut_pour_net(
+                net, &req.salarie, &ctx, req.absence.as_ref(),
+            )))
+        }
+        None => Ok(Json(generer_bulletin(req.salarie, &ctx, req.absence.as_ref()))),
+    }
 }
 
 async fn handle_annee(
