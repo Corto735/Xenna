@@ -73,6 +73,8 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         effectif: Some("moins20".into()),
         anciennete: None,
         us_state: None,
+        inde_regime: None,
+        emirati_national: None,
     }
 }
 
@@ -86,7 +88,8 @@ fn tous_les_pays() -> Vec<Pays> {
         Pays::Suede, Pays::Estonie, Pays::Lettonie, Pays::Lituanie, Pays::Autriche,
         Pays::Tchequie, Pays::Slovaquie, Pays::Hongrie, Pays::Slovenie, Pays::Grece,
         Pays::Chypre, Pays::Malte, Pays::Croatie, Pays::Irlande, Pays::Roumanie,
-        Pays::Bulgarie, Pays::EtatsUnis,
+        Pays::Bulgarie, Pays::EtatsUnis, Pays::Mexique,
+        Pays::Bresil, Pays::Emirats, Pays::Inde,
     ]
 }
 
@@ -112,6 +115,8 @@ fn libelle_identique_ok(code: &str, lang: &str) -> bool {
         | ("RO_CAS", "en") // « Pension » identique en anglais
         // Noms propres américains (Social Security, Medicare, SDI) — invariants.
         | ("US_SS", _) | ("US_MEDICARE", _) | ("US_ADD_MEDICARE", _) | ("US_CA_SDI", _)
+        // Mexique : « IMSS — Cuotas obrero » est déjà en espagnol côté français.
+        | ("MX_IMSS", "es")
     ) || (code.starts_with("IT_ADD_REG") && lang == "it")
 }
 

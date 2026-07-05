@@ -65,6 +65,8 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         effectif: Some("moins20".into()),
         anciennete: None,
         us_state: None,
+        inde_regime: None,
+        emirati_national: None,
     }
 }
 

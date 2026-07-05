@@ -135,6 +135,18 @@ pub enum Pays {
     /// + 0,9 % surtaxe), impôt fédéral progressif + impôt d'État selon `us_state`.
     /// Devise USD. Données : 2025.
     EtatsUnis,
+    /// Salariés mexicains : IMSS obrero ~2,375 % + ISR (art. 96 LISR) − subsidio ;
+    /// INFONAVIT 5 % + retiro 2 % employeur. Devise MXN. Données : 2025.
+    Mexique,
+    /// Salariés brésiliens (CLT) : INSS progressif plafonné + IRRF ; FGTS 8 % +
+    /// INSS patronal 20 % employeur. Devise BRL. Données : 2025.
+    Bresil,
+    /// Salariés des Émirats arabes unis : aucun impôt. Expatrié → net = brut ;
+    /// national (GPSSA) → 5 % sal + 12,5 % pat. Devise AED. Données : 2025.
+    Emirats,
+    /// Salariés indiens : EPF 12 %, ESI 0,75 % (si ≤ 21 000 ₹), Professional Tax ;
+    /// impôt ancien/nouveau régime (sec. 115BAC). Devise INR. Données : 2025-26.
+    Inde,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,6 +186,13 @@ pub struct Salarie {
     /// Détermine l'impôt d'État pour Pays::EtatsUnis. Défaut : "TX".
     #[serde(default)]
     pub us_state: Option<String>,
+    /// Régime d'impôt indien : "nouveau" (défaut, sec. 115BAC) | "ancien".
+    #[serde(default)]
+    pub inde_regime: Option<String>,
+    /// Émirats : vrai si le salarié est un national émirati (→ GPSSA).
+    /// Défaut/false : expatrié, aucune cotisation, net = brut.
+    #[serde(default)]
+    pub emirati_national: Option<bool>,
     /// Steuerklasse allemande (1-6). Défaut : 1 (célibataire).
     #[serde(default)]
     pub steuerklasse: Option<u8>,

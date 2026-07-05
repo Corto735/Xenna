@@ -79,6 +79,8 @@ pub async fn generer_annee(
             effectif: None,
             anciennete: None,
             us_state: None,
+            inde_regime: None,
+            emirati_national: None,
         };
         let bulletin = generer_bulletin(dummy, &ctx, None);
 

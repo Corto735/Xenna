@@ -92,6 +92,8 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         effectif: Some("moins20".into()),
         anciennete: None,
         us_state: None,
+        inde_regime: None,
+        emirati_national: None,
     }
 }
 
@@ -114,7 +116,8 @@ fn tous_les_pays() -> Vec<Pays> {
         Pays::Suede, Pays::Estonie, Pays::Lettonie, Pays::Lituanie, Pays::Autriche,
         Pays::Tchequie, Pays::Slovaquie, Pays::Hongrie, Pays::Slovenie, Pays::Grece,
         Pays::Chypre, Pays::Malte, Pays::Croatie, Pays::Irlande, Pays::Roumanie,
-        Pays::Bulgarie, Pays::EtatsUnis,
+        Pays::Bulgarie, Pays::EtatsUnis, Pays::Mexique,
+        Pays::Bresil, Pays::Emirats, Pays::Inde,
     ]
 }
 
@@ -132,7 +135,8 @@ fn _exhaustivite_pays(p: Pays) {
         | Pays::Suede | Pays::Estonie | Pays::Lettonie | Pays::Lituanie | Pays::Autriche
         | Pays::Tchequie | Pays::Slovaquie | Pays::Hongrie | Pays::Slovenie | Pays::Grece
         | Pays::Chypre | Pays::Malte | Pays::Croatie | Pays::Irlande | Pays::Roumanie
-        | Pays::Bulgarie | Pays::EtatsUnis => {}
+        | Pays::Bulgarie | Pays::EtatsUnis | Pays::Mexique
+        | Pays::Bresil | Pays::Emirats | Pays::Inde => {}
     }
 }
 
