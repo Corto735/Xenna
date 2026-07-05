@@ -178,3 +178,45 @@ async fn pays_non_couvert_trivial() {
 
     nettoyer(&path);
 }
+
+/// Paye inversée + absence : la cible est le net du salaire de base PLEIN.
+/// L'absence s'applique ENSUITE et ne doit pas gonfler le brut reconstitué —
+/// le salaire de base (brut_mensuel) reste identique avec ou sans absence.
+#[tokio::test]
+async fn france_absence_ne_change_pas_le_salaire_de_base() {
+    use xenna_paie_lib::models::AbsenceInput;
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+
+    let cible = dec!(2500);
+    let s = salarie_base(Pays::France, "1.00");
+
+    // Référence : brut reconstitué pour le mois plein (sans absence).
+    let base_ref = resoudre_brut_pour_net(cible, &s, &ctx, None).brut;
+
+    let abs = AbsenceInput {
+        type_arret: "maladie".into(),
+        date_debut: "2026-03-09".into(),
+        date_fin: "2026-03-20".into(),
+        methode: "moyens".into(),
+        jours_type: "ouvres".into(),
+        heures_mois: None,
+        convention_idcc: Some("0016".into()),
+    };
+    let avec_abs = resoudre_brut_pour_net(cible, &s, &ctx, Some(&abs));
+    let a = avec_abs.absence.as_ref().expect("bloc absence attendu");
+
+    // Le salaire de base (brut mensuel plein) ne bouge pas d'un centime.
+    assert!(
+        proche(a.brut_mensuel, base_ref),
+        "brut_mensuel avec absence = {} ≠ base plein {}", a.brut_mensuel, base_ref
+    );
+    // L'absence réduit bien le net du mois (retenue non nulle → net ≤ cible).
+    assert!(a.retenue > dec!(0), "l'absence doit générer une retenue");
+    assert!(
+        avec_abs.net_a_payer <= cible,
+        "avec absence, le net du mois ({}) doit être ≤ à la cible plein ({cible})", avec_abs.net_a_payer
+    );
+
+    nettoyer(&path);
+}

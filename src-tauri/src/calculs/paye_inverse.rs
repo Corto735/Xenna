@@ -7,6 +7,12 @@
 // le bulletin renvoyé. En France, aucun impôt n'étant modélisé, la cible
 // coïncide avec `net_a_payer`.
 //
+// Une absence maladie éventuelle est EXCLUE de l'inversion : la cible est le net
+// du salaire de base plein. La dichotomie tourne sur le mois complet (sans
+// absence), puis l'absence est appliquée sur le brut trouvé dans le bulletin
+// final. Ainsi le salaire de base (brut reconstitué) ne bouge pas quand on
+// ajoute une absence — c'est le net du mois qui diminue.
+//
 // Méthode : `generer_bulletin` est une fonction pure et synchrone du
 // (Salarie, &ContextPaie, absence) — le contexte est préchargé, aucune I/O.
 // On inverse donc net(brut) par dichotomie (~60 itérations en mémoire).
@@ -73,11 +79,14 @@ pub fn resoudre_brut_pour_net(
     let cible = net_cible.round_dp(2);
     let tol = dec!(0.005);
 
-    // Borne basse : invariant net ≤ brut → le brut solution est ≥ cible.
-    // Si la cible est déjà atteinte à brut = cible (net = brut : pays non
-    // couvert, ou cotisations nulles), c'est la solution exacte.
+    // La cible est le net du salaire de base PLEIN (mois complet). Une absence
+    // éventuelle NE doit PAS gonfler le brut reconstitué : sinon le brut serait
+    // remonté pour que le net *après* absence tombe sur la cible, faisant bondir
+    // le salaire de base. On reconstitue donc le brut sur le mois plein (absence
+    // = None dans tous les sondages), puis l'absence s'applique sur ce brut dans
+    // le bulletin final — elle réduit alors le net du mois, salaire de base figé.
     let lo_initial = cible;
-    if (net_avant_impot(&bulletin_pour(lo_initial, salarie, ctx, absence)) - cible).abs() <= tol {
+    if (net_avant_impot(&bulletin_pour(lo_initial, salarie, ctx, None)) - cible).abs() <= tol {
         return bulletin_pour(lo_initial, salarie, ctx, absence);
     }
 
@@ -86,7 +95,7 @@ pub fn resoudre_brut_pour_net(
     let mut lo = lo_initial;
     let mut hi = cible * dec!(2);
     for _ in 0..4 {
-        if net_avant_impot(&bulletin_pour(hi, salarie, ctx, absence)) >= cible {
+        if net_avant_impot(&bulletin_pour(hi, salarie, ctx, None)) >= cible {
             break;
         }
         hi *= dec!(2);
@@ -98,7 +107,7 @@ pub fn resoudre_brut_pour_net(
             break;
         }
         let mid = ((lo + hi) / dec!(2)).round_dp(4);
-        if net_avant_impot(&bulletin_pour(mid, salarie, ctx, absence)) < cible {
+        if net_avant_impot(&bulletin_pour(mid, salarie, ctx, None)) < cible {
             lo = mid;
         } else {
             hi = mid;
