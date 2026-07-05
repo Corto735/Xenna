@@ -2828,20 +2828,27 @@ function buildRemSection() {
   ].join('') : '';
   const absenceLine = absRows ? _absenceEmbedTable(absRows) : '';
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
-  const totalRow = (_remLines.length > 0 || _absence?.active) ? `
-    <div class="rem-total-row" style="display:flex">
-      <span class="rem-total-lbl">Total brut</span>
-      <span class="rem-total-val">${fmt(total)}</span>
-    </div>` : '';
+  // Salaire de base et Total brut rendus en tableau embed (même colgroup que
+  // .ascii-tbl) : leurs montants tombent dans la 4ᵉ colonne, alignés sur la
+  // colonne PART SALARIÉ du tableau des cotisations ci-dessous.
+  const baseRow = `<table class="ascii-tbl abs-embed rem-embed">${_ABS_COLGROUP}<tbody>
+      <tr>
+        <td colspan="3"><div class="rem-embed-head">${addBtn}${absenceBtn}<span class="rem-base-lbl">Salaire de base</span></div></td>
+        <td class="r rem-embed-val">${fmt(_remBase)}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody></table>`;
+  const totalRow = (_remLines.length > 0 || _absence?.active) ? `<table class="ascii-tbl abs-embed rem-embed rem-embed-total">${_ABS_COLGROUP}<tbody>
+      <tr>
+        <td colspan="3"><span class="rem-total-lbl">Total brut</span></td>
+        <td class="r rem-total-val">${fmt(total)}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody></table>` : '';
   return `
     <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
     <div class="rem-section">
-      <div class="rem-base-row">
-        ${addBtn}
-        ${absenceBtn}
-        <span class="rem-base-lbl">Salaire de base</span>
-        <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
-      </div>
+      ${baseRow}
       ${absencePanel}${lines}${absenceLine}${totalRow}
     </div>`;
 }
