@@ -6,7 +6,7 @@
   <title>Xenna Paye</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <!-- Détection mobile synchrone — avant tout rendu, évite le flash vue bureau -->
   <script>
     document.documentElement.classList.add(
@@ -33,6 +33,9 @@
       --purple: #c084fc;
       --gray:   #7a9ab8;
       --white:  #e8f4ff;
+      /* Police unique : Roboto Regular partout (libellés, tableaux, SVG).
+         `--font-mono` conserve son nom historique mais pointe sur Roboto. */
+      --font-mono: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     }
 
     @font-face {
@@ -45,7 +48,7 @@
     }
 
     body {
-      font-family: 'Fira Code', 'Courier New', 'Consolas', monospace;
+      font-family: var(--font-mono);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -661,6 +664,14 @@
     .ascii-tbl.abs-embed td.r { text-align: right; font-variant-numeric: tabular-nums; }
     .ascii-tbl.abs-embed td.c-red   { color: #ff6b6b; font-weight: bold; }
     .ascii-tbl.abs-embed td.c-green { color: var(--green); font-weight: bold; }
+    /* Salaire de base / Total brut : mêmes rails que abs-embed, mais 1re cellule
+       non indentée (boutons +/− au bord) et montant en couleur texte pleine. */
+    .ascii-tbl.rem-embed td:first-child { padding-left: 0.75rem; }
+    .rem-embed-head { display: flex; align-items: center; gap: 0.5rem; }
+    .ascii-tbl.rem-embed td.rem-embed-val { color: var(--fg); }
+    .ascii-tbl.rem-embed-total { border-top: 1px solid var(--border); }
+    .ascii-tbl.rem-embed-total td { font-weight: bold; }
+    .ascii-tbl.rem-embed-total td.rem-total-val { color: var(--fg); }
     .absence-conv-row {
       display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem;
     }
@@ -2129,7 +2140,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-D5ZBsSh2.js"></script>
+  <script type="module" crossorigin src="/assets/index-DkrqVqAx.js"></script>
 </head>
 <body>
 
@@ -2606,6 +2617,14 @@
               <option value="NY">New York (progressif)</option>
             </select>
           </div>
+          <label class="param-item">
+            <input type="checkbox" id="d-mexique" onchange="syncParam('mexique', this.checked); onTogglePays('mexique', this.checked)" />
+            <span class="flag-emoji">🇲🇽</span> Mexique
+          </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-bresil" onchange="syncParam('bresil', this.checked); onTogglePays('bresil', this.checked)" />
+            <span class="flag-emoji">🇧🇷</span> Brésil
+          </label>
           <div class="param-group-title">Asie</div>
           <label class="param-item">
             <input type="checkbox" id="d-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
@@ -2619,6 +2638,26 @@
             <input type="checkbox" id="d-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
             <span class="flag-emoji">🇰🇷</span> Corée du Sud
           </label>
+          <label class="param-item">
+            <input type="checkbox" id="d-emirats" onchange="syncParam('emirats', this.checked); onTogglePays('emirats', this.checked)" />
+            <span class="flag-emoji">🇦🇪</span> Émirats arabes unis
+          </label>
+          <div id="d-ae-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+            <label class="param-item">
+              <input type="checkbox" id="d-emirati-national" onchange="syncParam('emirati-national', this.checked)" />
+              National émirati (GPSSA)
+            </label>
+          </div>
+          <label class="param-item">
+            <input type="checkbox" id="d-inde" onchange="syncParam('inde', this.checked); onTogglePays('inde', this.checked)" />
+            <span class="flag-emoji">🇮🇳</span> Inde
+          </label>
+          <div id="d-in-regime-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+            <select id="d-inde-regime" onchange="syncParam('inde-regime', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <option value="nouveau">Nouveau régime (défaut)</option>
+              <option value="ancien">Ancien régime</option>
+            </select>
+          </div>
           <div class="param-group-title">Océanie</div>
           <label class="param-item">
             <input type="checkbox" id="d-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
@@ -3054,6 +3093,14 @@
                 <option value="NY">New York (progressif)</option>
               </select>
             </div>
+            <label class="param-item">
+              <input type="checkbox" id="m-mexique" onchange="syncParam('mexique', this.checked); onTogglePays('mexique', this.checked)" />
+              <span class="flag-emoji">🇲🇽</span> Mexique
+            </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-bresil" onchange="syncParam('bresil', this.checked); onTogglePays('bresil', this.checked)" />
+              <span class="flag-emoji">🇧🇷</span> Brésil
+            </label>
             <div class="param-group-title">Asie</div>
             <label class="param-item">
               <input type="checkbox" id="m-japon" onchange="syncParam('japon', this.checked); onTogglePays('japon', this.checked)" />
@@ -3067,6 +3114,26 @@
               <input type="checkbox" id="m-coree" onchange="syncParam('coree', this.checked); onTogglePays('coree', this.checked)" />
               <span class="flag-emoji">🇰🇷</span> Corée du Sud
             </label>
+            <label class="param-item">
+              <input type="checkbox" id="m-emirats" onchange="syncParam('emirats', this.checked); onTogglePays('emirats', this.checked)" />
+              <span class="flag-emoji">🇦🇪</span> Émirats arabes unis
+            </label>
+            <div id="m-ae-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+              <label class="param-item">
+                <input type="checkbox" id="m-emirati-national" onchange="syncParam('emirati-national', this.checked)" />
+                National émirati (GPSSA)
+              </label>
+            </div>
+            <label class="param-item">
+              <input type="checkbox" id="m-inde" onchange="syncParam('inde', this.checked); onTogglePays('inde', this.checked)" />
+              <span class="flag-emoji">🇮🇳</span> Inde
+            </label>
+            <div id="m-in-regime-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
+              <select id="m-inde-regime" onchange="syncParam('inde-regime', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="nouveau">Nouveau régime (défaut)</option>
+                <option value="ancien">Ancien régime</option>
+              </select>
+            </div>
             <div class="param-group-title">Océanie</div>
             <label class="param-item">
               <input type="checkbox" id="m-australie" onchange="syncParam('australie', this.checked); onTogglePays('australie', this.checked)" />
@@ -3662,6 +3729,7 @@
         <button class="qz-pays-btn"    data-pays="it"  onclick="quizzSetPays('it')">🇮🇹 Italie</button>
         <button class="qz-pays-btn"    data-pays="ca"  onclick="quizzSetPays('ca')">🇨🇦 Canada</button>
         <button class="qz-pays-btn"    data-pays="qc"  onclick="quizzSetPays('qc')">🍁 Québec</button>
+        <button class="qz-pays-btn"    data-pays="frh" onclick="quizzSetPays('frh')">📜 Histoire sociale</button>
       </div>
 
       <!-- Bouton démarrer (localisé) -->

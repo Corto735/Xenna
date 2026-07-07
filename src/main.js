@@ -4534,12 +4534,60 @@ const QUIZZ_DATA = [
     rep: "8 jours", mr: ["24 heures", "15 jours", "48 heures"], src: "CSS, art. R1221-1" },
   { id:214, pays:'fr', q: "Quel est le délai de carence légal de la Sécurité sociale avant versement des indemnités journalières maladie ?",
     rep: "3 jours", mr: ["1 jour", "5 jours", "7 jours"], src: "CSS, art. L323-1" },
+
+  // ── France — histoire sociale & politique ──────────────────────────────────
+  //    15 avancées sociales + 5 reculs sociaux, avec leurs protagonistes.
+
+  // ─ Avancées sociales ─
+  { id:215, pays:'frh', q: "Quel chef du gouvernement du Front populaire fait voter les premiers congés payés en 1936 ?",
+    rep: "Léon Blum", mr: ["Édouard Daladier", "Pierre Laval", "Raymond Poincaré"], src: "Loi du 20 juin 1936" },
+  { id:216, pays:'frh', q: "Quel ministre communiste du Travail est le père de la Sécurité sociale en 1945 ?",
+    rep: "Ambroise Croizat", mr: ["Maurice Thorez", "Benoît Frachon", "Jacques Duclos"], src: "Ordonnances des 4 et 19 octobre 1945" },
+  { id:217, pays:'frh', q: "Sous quel gouvernement les femmes obtiennent-elles le droit de vote en 1944 ?",
+    rep: "Le GPRF de Charles de Gaulle", mr: ["Le Front populaire de Léon Blum", "La IIIe République de Poincaré", "Le régime de Vichy"], src: "Ordonnance du 21 avril 1944" },
+  { id:218, pays:'frh', q: "Quel garde des Sceaux fait abolir la peine de mort en 1981 ?",
+    rep: "Robert Badinter", mr: ["Michel Debré", "Jean Foyer", "Alain Peyrefitte"], src: "Loi du 9 octobre 1981" },
+  { id:219, pays:'frh', q: "Quelle ministre de la Santé fait dépénaliser l'avortement (IVG) en 1975 ?",
+    rep: "Simone Veil", mr: ["Gisèle Halimi", "Simone de Beauvoir", "Yvette Roudy"], src: "Loi du 17 janvier 1975" },
+  { id:220, pays:'frh', q: "Quel député fait légaliser la contraception (pilule) en 1967 ?",
+    rep: "Lucien Neuwirth", mr: ["Robert Boulin", "Jean Foyer", "Bernard Chenot"], src: "Loi du 28 décembre 1967" },
+  { id:221, pays:'frh', q: "Quel président instaure la retraite à 60 ans en 1982 ?",
+    rep: "François Mitterrand", mr: ["Valéry Giscard d'Estaing", "Georges Pompidou", "Charles de Gaulle"], src: "Ordonnance du 26 mars 1982" },
+  { id:222, pays:'frh', q: "Sous quel Premier ministre est instaurée la cinquième semaine de congés payés en 1982 ?",
+    rep: "Pierre Mauroy", mr: ["Raymond Barre", "Jacques Chirac", "Laurent Fabius"], src: "Ordonnance du 16 janvier 1982" },
+  { id:223, pays:'frh', q: "Quel ministre du Travail donne son nom aux lois de 1982 renforçant les droits des salariés dans l'entreprise ?",
+    rep: "Jean Auroux", mr: ["Jean-Pierre Soisson", "Robert Boulin", "Michel Delebarre"], src: "Lois Auroux, 1982" },
+  { id:224, pays:'frh', q: "Quelle ministre porte les lois sur les 35 heures (1998-2000) ?",
+    rep: "Martine Aubry", mr: ["Élisabeth Guigou", "Ségolène Royal", "Nicole Notat"], src: "Lois Aubry I et II" },
+  { id:225, pays:'frh', q: "Quel Premier ministre crée le Revenu minimum d'insertion (RMI) en 1988 ?",
+    rep: "Michel Rocard", mr: ["Laurent Fabius", "Pierre Bérégovoy", "Lionel Jospin"], src: "Loi du 1er décembre 1988" },
+  { id:226, pays:'frh', q: "Sous quel Premier ministre est créée la Couverture maladie universelle (CMU) en 1999 ?",
+    rep: "Lionel Jospin", mr: ["Alain Juppé", "Édouard Balladur", "Jean-Pierre Raffarin"], src: "Loi du 27 juillet 1999" },
+  { id:227, pays:'frh', q: "Quelle garde des Sceaux défend en 2013 la loi ouvrant le mariage aux couples de même sexe ?",
+    rep: "Christiane Taubira", mr: ["Rachida Dati", "Nicole Belloubet", "Élisabeth Guigou"], src: "Loi du 17 mai 2013" },
+  { id:228, pays:'frh', q: "Quel ministre rend l'école primaire gratuite, laïque et obligatoire au début des années 1880 ?",
+    rep: "Jules Ferry", mr: ["Léon Gambetta", "Jules Grévy", "Jean Jaurès"], src: "Lois Ferry, 1881-1882" },
+  { id:229, pays:'frh', q: "Quelle loi de 1884 autorise à nouveau les syndicats professionnels ?",
+    rep: "La loi Waldeck-Rousseau", mr: ["La loi Le Chapelier", "La loi Ferry", "La loi Combes"], src: "Loi du 21 mars 1884" },
+
+  // ─ Reculs sociaux ─
+  { id:230, pays:'frh', q: "Quelle loi de 1791 interdit les corporations, les coalitions ouvrières et la grève ?",
+    rep: "La loi Le Chapelier", mr: ["La loi Waldeck-Rousseau", "La loi Ollivier", "La loi Ferry"], src: "Loi des 14-17 juin 1791" },
+  { id:231, pays:'frh', q: "Quel régime supprime les syndicats libres avec la Charte du travail en 1941 ?",
+    rep: "Le régime de Vichy (Pétain)", mr: ["La IIIe République", "Le Front populaire", "Le GPRF"], src: "Loi du 4 octobre 1941" },
+  { id:232, pays:'frh', q: "Quel ministre du Travail porte la réforme repoussant l'âge de la retraite de 60 à 62 ans en 2010 ?",
+    rep: "Éric Woerth", mr: ["Xavier Bertrand", "Jean-Louis Borloo", "François Fillon"], src: "Loi du 9 novembre 2010" },
+  { id:233, pays:'frh', q: "Quelle ministre du Travail porte les ordonnances de 2017 (barème prud'homal, CSE) réformant le Code du travail ?",
+    rep: "Muriel Pénicaud", mr: ["Myriam El Khomri", "Élisabeth Borne", "Marisol Touraine"], src: "Ordonnances du 22 septembre 2017" },
+  { id:234, pays:'frh', q: "Quelle Première ministre fait adopter par 49.3 le report de l'âge de la retraite à 64 ans en 2023 ?",
+    rep: "Élisabeth Borne", mr: ["Édith Cresson", "Ségolène Royal", "Aurélie Filippetti"], src: "Loi du 14 avril 2023" },
 ];
 
 const QZ_SESSION_KEY = 'xenna-qz-pending';
 const QZ_START_LABELS = {
   fr: 'Démarrer', fpt: 'Démarrer', ch: 'Starten',
   lu: 'Ufänken',  it: 'Inizia',    ca: 'Start', qc: 'Commencer',
+  frh: 'Démarrer',
 };
 
 let _qzPays       = 'fr';
@@ -4813,6 +4861,7 @@ window.quizzFiftyFifty  = quizzFiftyFifty;
 const QZ_PAYS_LABELS = {
   fr:'FRANCE', fpt:'FONCTION PUBLIQUE', ch:'SUISSE',
   lu:'LUXEMBOURG', it:'ITALIE', ca:'CANADA', qc:'QUÉBEC',
+  frh:'HISTOIRE SOCIALE',
 };
 let _qzLbOpen = false, _qzSuggOpen = false;
 

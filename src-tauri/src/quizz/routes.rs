@@ -12,7 +12,7 @@ use sqlx::SqlitePool;
 
 type Db = Arc<SqlitePool>;
 
-const PAYS_VALIDES: &[&str] = &["fr", "fpt", "ch", "lu", "it", "ca", "qc"];
+const PAYS_VALIDES: &[&str] = &["fr", "fpt", "ch", "lu", "it", "ca", "qc", "frh"];
 
 // ── Sanitisation ──────────────────────────────────────────────────────────────
 // Seul du texte brut est accepté : on retire les balises HTML (<>),
