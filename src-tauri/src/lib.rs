@@ -7,6 +7,7 @@ pub mod db;
 pub mod i18n;
 pub mod forge;
 pub mod quizz;
+pub mod ratelimit;
 pub mod models;
 
 #[cfg(feature = "desktop")]

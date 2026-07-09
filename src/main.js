@@ -171,7 +171,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const prenom = (_noms[_genre].prenom || '').trim();
       const isLeeloo = prenom.toLowerCase() === 'leeloo';
       document.getElementById('burger-login')?.style && (document.getElementById('burger-login').style.display = isLeeloo ? '' : 'none');
-      document.getElementById('burger-admin')?.style && (document.getElementById('burger-admin').style.display = isLeeloo ? '' : 'none');
+      const bAdmin = document.getElementById('burger-admin');
+      if (bAdmin) {
+        bAdmin.style.display = isLeeloo ? '' : 'none';
+        // URL admin encodée : un scraper qui greppe les chemins dans le
+        // bundle ne la voit pas en clair (le préfixe vit dans admin/routes.rs).
+        bAdmin.onclick = () => { window.location.href = atob('L2FyY2hpdmVzLWJhcmVtZS0xOTk3'); window.closeBurger(); };
+      }
     });
   });
 

@@ -12,7 +12,7 @@ use sqlx::SqlitePool;
 use super::auth::{member_jwt_secret, member_profile_id, MemberAuth};
 use super::models::*;
 use crate::{
-    admin::auth::verify_password,
+    admin::auth::{dummy_hash, verify_password},
     crypto::{email_hash, parse_encryption_key},
     forge::models::{CcnExpertise, CcnLevel, PaysExpertise},
 };
@@ -44,6 +44,11 @@ async fn login(
     let enc_key = parse_encryption_key();
     let e_hash  = email_hash(&req.email, &enc_key);
 
+    let cle = format!("membre:{e_hash}");
+    if !crate::ratelimit::tentative_autorisee(&cle) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Trop de tentatives. Réessayez dans 15 minutes."));
+    }
+
     let row = sqlx::query_as::<_, (i64, Option<String>, i64, String, String)>(
         "SELECT u.id, u.password_hash, u.email_verified, cp.status, cp.pseudo
          FROM users u
@@ -53,23 +58,34 @@ async fn login(
     .bind(&e_hash)
     .fetch_optional(&*pool)
     .await
-    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur interne"))?
-    .ok_or((StatusCode::UNAUTHORIZED, "Email ou mot de passe incorrect"))?;
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur interne"))?;
 
-    let (user_id, pwd_hash_opt, email_verified, status, pseudo) = row;
+    // Mot de passe vérifié EN PREMIER (hash factice si compte inconnu) :
+    // ni le message ni le temps de réponse ne doivent révéler si un email
+    // existe. Les statuts (email non vérifié, compte en attente) ne sont
+    // divulgués qu'à qui connaît le mot de passe.
+    let valide = match row.as_ref().and_then(|(_, h, _, _, _)| h.as_deref()) {
+        Some(hash) => verify_password(&req.password, hash),
+        None => {
+            verify_password(&req.password, dummy_hash());
+            false
+        }
+    };
+
+    if !valide {
+        crate::ratelimit::enregistrer_echec(&cle);
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        return Err((StatusCode::UNAUTHORIZED, "Email ou mot de passe incorrect"));
+    }
+    crate::ratelimit::reinitialiser(&cle);
+
+    let (user_id, _pwd_hash, email_verified, status, pseudo) = row.unwrap();
 
     if email_verified == 0 {
         return Err((StatusCode::FORBIDDEN, "Email non vérifié. Vérifiez votre boîte mail."));
     }
     if status != "approved" {
         return Err((StatusCode::FORBIDDEN, "Votre compte est en attente de validation."));
-    }
-
-    let pwd_hash = pwd_hash_opt
-        .ok_or((StatusCode::UNAUTHORIZED, "Email ou mot de passe incorrect"))?;
-
-    if !verify_password(&req.password, &pwd_hash) {
-        return Err((StatusCode::UNAUTHORIZED, "Email ou mot de passe incorrect"));
     }
 
     // Sub = profile_id
@@ -140,9 +156,21 @@ async fn update_me(
 ) -> Result<StatusCode, (StatusCode, &'static str)> {
     let profile_id = member_profile_id(&auth)?;
 
-    if req.poste.trim().is_empty() || req.poste.len() > 100 {
+    let poste = sanitiser(&req.poste);
+    if poste.is_empty() || poste.len() > 100 {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "Poste : 1 à 100 caractères"));
     }
+    // Même règle qu'à la création : http(s) uniquement, sinon un lien
+    // javascript: stocké deviendrait un XSS sur la page profil.
+    let linkedin_url = match req.linkedin_url.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(u) => {
+            if !(u.starts_with("https://") || u.starts_with("http://")) || u.len() > 300 {
+                return Err((StatusCode::UNPROCESSABLE_ENTITY, "URL LinkedIn invalide (doit commencer par https://)"));
+            }
+            Some(u.to_string())
+        }
+        None => None,
+    };
     if req.expertises.len() > 20 {
         return Err((StatusCode::UNPROCESSABLE_ENTITY, "Maximum 20 CCN"));
     }
@@ -166,9 +194,9 @@ async fn update_me(
          SET poste = ?, poste_est_actuel = ?, linkedin_url = ?, paie_fr_niveau = ?
          WHERE id = ?",
     )
-    .bind(req.poste.trim())
+    .bind(&poste)
     .bind(req.poste_est_actuel)
-    .bind(req.linkedin_url.as_deref())
+    .bind(linkedin_url.as_deref())
     .bind(req.paie_fr_niveau.as_deref())
     .bind(profile_id)
     .execute(&mut *tx)

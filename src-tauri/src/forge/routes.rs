@@ -22,12 +22,20 @@ use crate::{
 
 type Db = Arc<SqlitePool>;
 
+// Texte brut uniquement : retire <>, les caractères de contrôle, et trime.
+fn sanitiser(s: &str) -> String {
+    s.chars()
+        .filter(|c| !matches!(c, '<' | '>') && (!c.is_control() || matches!(c, '\n' | '\r' | '\t' | ' ')))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
 // ── Erreurs métier ─────────────────────────────────────────────────────────────
 
 enum ForgeError {
     Introuvable(String),
     DejaVote,
-    AutoVote,
     Conflit(String),
     Validation(String),
     Db(sqlx::Error),
@@ -40,11 +48,6 @@ impl IntoResponse for ForgeError {
             ForgeError::DejaVote => {
                 (StatusCode::CONFLICT, "Vous avez déjà voté pour ce sujet").into_response()
             }
-            ForgeError::AutoVote => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "Impossible de voter pour son propre sujet",
-            )
-                .into_response(),
             ForgeError::Conflit(msg) => (StatusCode::CONFLICT, msg).into_response(),
             ForgeError::Validation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response(),
             ForgeError::Db(e) => {
@@ -177,12 +180,13 @@ async fn creer_profil(
         }
     }
 
-    // 2. Validation des champs
-    let pseudo = req.pseudo.trim();
+    // 2. Validation des champs (versions sanitisées : ce sont ELLES qui sont insérées)
+    let pseudo = sanitiser(&req.pseudo);
     if pseudo.is_empty() || pseudo.len() > 50 {
         return Err(ForgeError::Validation("Pseudo : 1 à 50 caractères".into()));
     }
-    if req.poste.len() > 100 {
+    let poste = sanitiser(&req.poste);
+    if poste.len() > 100 {
         return Err(ForgeError::Validation("Poste : 100 caractères maximum".into()));
     }
     if !req.email.contains('@') || req.email.len() > 254 {
@@ -200,13 +204,17 @@ async fn creer_profil(
     if req.pays.len() > 20 {
         return Err(ForgeError::Validation("Maximum 20 pays par profil".into()));
     }
-    if let Some(ref url) = req.linkedin_url {
-        if !url.is_empty() && !url.starts_with("https://") && !url.starts_with("http://") {
-            return Err(ForgeError::Validation(
-                "URL LinkedIn invalide (doit commencer par https://)".into(),
-            ));
+    let linkedin_url = match req.linkedin_url.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(url) => {
+            if !(url.starts_with("https://") || url.starts_with("http://")) || url.len() > 300 {
+                return Err(ForgeError::Validation(
+                    "URL LinkedIn invalide (doit commencer par https://)".into(),
+                ));
+            }
+            Some(url.to_string())
         }
-    }
+        None => None,
+    };
     if let Some(ref n) = req.paie_fr_niveau {
         CcnLevel::try_from(n.as_str()).map_err(ForgeError::Validation)?;
     }
@@ -262,9 +270,9 @@ async fn creer_profil(
          VALUES (?, ?, ?, ?, ?, ?, 'pending')",
     )
     .bind(user_id)
-    .bind(&req.pseudo)
-    .bind(&req.poste)
-    .bind(req.linkedin_url.as_deref())
+    .bind(&pseudo)
+    .bind(&poste)
+    .bind(linkedin_url.as_deref())
     .bind(req.poste_est_actuel)
     .bind(req.paie_fr_niveau.as_deref())
     .execute(&mut *tx)
@@ -337,7 +345,7 @@ async fn creer_profil(
     Ok((
         StatusCode::ACCEPTED,
         Json(serde_json::json!({
-            "pseudo": req.pseudo,
+            "pseudo": pseudo,
             "status": "pending",
             "message": msg
         })),
@@ -441,45 +449,15 @@ async fn verifier_email(
     ))
 }
 
-// ── POST /forge/voter ──────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct VoteReq {
-    voter_pseudo:  String,
-    auteur_pseudo: String,
-    topic_id:      i64,
-}
-
-async fn handle_voter(
-    State(pool): State<Db>,
-    Json(req): Json<VoteReq>,
-) -> Result<StatusCode, ForgeError> {
-    let voter  = profil_par_pseudo(&pool, &req.voter_pseudo).await?;
-    let auteur = profil_par_pseudo(&pool, &req.auteur_pseudo).await?;
-
-    if voter.id == auteur.id {
-        return Err(ForgeError::AutoVote);
-    }
-
-    sqlx::query(
-        "INSERT INTO forge_votes (voter_id, topic_author_id, topic_id) VALUES (?, ?, ?)",
-    )
-    .bind(voter.id)
-    .bind(auteur.id)
-    .bind(req.topic_id)
-    .execute(&*pool)
-    .await?;
-
-    Ok(StatusCode::NO_CONTENT)
-}
-
 // ── Router exporté ─────────────────────────────────────────────────────────────
+// NB : l'ancien POST /forge/voter (vote par pseudo, sans authentification) a été
+// supprimé : n'importe qui pouvait voter au nom de n'importe quel profil. Le vote
+// authentifié vit dans membre::routes (POST /la_forge/forum/topic/:id/vote).
 
 pub fn forge_router() -> Router<Db> {
     Router::new()
         .route("/profil/{pseudo}",           get(get_profil))
         .route("/forge/contributeurs",       get(liste_contributeurs))
         .route("/forge/profil",              post(creer_profil))
-        .route("/forge/voter",               post(handle_voter))
         .route("/forge/verifier-email",      get(verifier_email))
 }

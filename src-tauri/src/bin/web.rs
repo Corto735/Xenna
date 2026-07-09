@@ -69,6 +69,41 @@ impl IntoResponse for ApiError {
     }
 }
 
+// ── Vérification des secrets au démarrage ─────────────────────────────────────
+// Chaque secret absent avait un repli de développement silencieux (JWT forgeable,
+// emails chiffrés avec une clé nulle, captcha désactivé). En production on
+// refuse de démarrer plutôt que de tourner vulnérable.
+fn verifier_secrets_ou_quitter() {
+    const REQUIS: [&str; 4] = ["ADMIN_JWT_SECRET", "MEMBER_JWT_SECRET", "ENCRYPTION_KEY", "ALTCHA_SECRET"];
+    let manquants: Vec<&str> = REQUIS
+        .iter()
+        .copied()
+        .filter(|v| std::env::var(v).map(|s| s.trim().is_empty()).unwrap_or(true))
+        .collect();
+
+    if manquants.is_empty() {
+        // Valide aussi le format (base64, 32 octets) : panique ici plutôt qu'à
+        // la première inscription.
+        let _ = xenna_paie_lib::crypto::parse_encryption_key();
+        return;
+    }
+
+    if std::env::var("XENNA_DEV_MODE").is_ok() {
+        tracing::warn!(
+            "XENNA_DEV_MODE actif — secrets manquants tolérés (JAMAIS en production) : {manquants:?}"
+        );
+        return;
+    }
+
+    eprintln!(
+        "ERREUR : variables d'environnement de sécurité manquantes : {manquants:?}\n\
+         Générer chaque valeur avec : openssl rand -base64 32\n\
+         (ENCRYPTION_KEY doit décoder exactement 32 octets)\n\
+         Pour un poste de développement local uniquement : XENNA_DEV_MODE=1."
+    );
+    std::process::exit(1);
+}
+
 // ── Middleware : redirection HTTP → HTTPS (via X-Forwarded-Proto) ─────────────
 async fn https_redirect(req: Request, next: Next) -> Response {
     if req.headers()
@@ -76,9 +111,15 @@ async fn https_redirect(req: Request, next: Next) -> Response {
         .and_then(|v| v.to_str().ok())
         == Some("http")
     {
+        // Hôte issu d'une allowlist : un en-tête Host arbitraire ne doit pas
+        // transformer la redirection en open redirect.
         let host = req.headers()
             .get("host")
             .and_then(|v| v.to_str().ok())
+            .filter(|h| {
+                matches!(*h, "www.payetonbulletin.fr" | "payetonbulletin.fr")
+                    || h.ends_with(".cleverapps.io")
+            })
             .unwrap_or("www.payetonbulletin.fr");
         let path_query = req.uri().path_and_query()
             .map(|pq| pq.as_str())
@@ -187,6 +228,8 @@ async fn main() {
                 .unwrap_or_else(|_| "xenna_paie=info,warn".parse().unwrap()),
         )
         .init();
+
+    verifier_secrets_ou_quitter();
 
     let db_path: PathBuf = std::env::var("DATABASE_PATH")
         .map(PathBuf::from)

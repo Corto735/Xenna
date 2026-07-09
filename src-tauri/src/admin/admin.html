@@ -177,6 +177,9 @@
 
 </div>
 <script>
+// Préfixe des routes admin dérivé de l'URL de la page : renommer le
+// préfixe côté Rust (PREFIXE_ADMIN) suffit, rien à changer ici.
+const BASE = location.pathname.replace(/\/+$/, '');
 let TOKEN = sessionStorage.getItem('xenna_admin_token');
 
 function esc(s) {
@@ -190,7 +193,7 @@ async function doLogin() {
   err.textContent = '';
   if (!user || !pass) { err.textContent = 'Identifiant et mot de passe requis'; return; }
   try {
-    const r = await fetch('/admin/login', {
+    const r = await fetch(BASE + '/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, password: pass }),
@@ -227,7 +230,7 @@ async function doChangePassword() {
   if (nw === cur) { pwStatus('Le nouveau mot de passe est identique à l\'ancien.', 'err'); return; }
   pwStatus('Changement…', '');
   try {
-    const r = await fetch('/admin/password', {
+    const r = await fetch(BASE + '/password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
       body: JSON.stringify({ current_password: cur, new_password: nw }),
@@ -253,7 +256,7 @@ function showDashboard(user) {
 async function loadDashboard() {
   document.getElementById('dash-subtitle').textContent = 'chargement…';
   try {
-    const r = await fetch('/admin/dashboard', {
+    const r = await fetch(BASE + '/dashboard', {
       headers: { 'Authorization': 'Bearer ' + TOKEN }
     });
     if (r.status === 401) { doLogout(); return; }
@@ -301,7 +304,7 @@ function renderQuizz(list) {
 }
 
 async function actionInscription(id, action) {
-  const r = await fetch(`/admin/inscription/${id}/${action}`, {
+  const r = await fetch(`${BASE}/inscription/${id}/${action}`, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + TOKEN }
   });
@@ -315,7 +318,7 @@ async function actionInscription(id, action) {
 }
 
 async function actionQuizz(id, action) {
-  const r = await fetch(`/admin/quizz/${id}/${action}`, {
+  const r = await fetch(`${BASE}/quizz/${id}/${action}`, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + TOKEN }
   });
@@ -434,7 +437,7 @@ async function hiPublish() {
   const destination = (document.querySelector('input[name="hi-dest"]:checked') || {}).value || 'apropos';
   hiSetStatus('Publication…', '');
   try {
-    const r = await fetch('/admin/apropos/publish', {
+    const r = await fetch(BASE + '/apropos/publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
       body: JSON.stringify({ contenu, events: hiEvents, destination }),
@@ -483,7 +486,7 @@ function hiReplayPost(id) {
 }
 
 async function hiDelete(id) {
-  const r = await fetch('/admin/apropos/' + id, {
+  const r = await fetch(BASE + '/apropos/' + id, {
     method: 'DELETE',
     headers: { 'Authorization': 'Bearer ' + TOKEN }
   });

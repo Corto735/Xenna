@@ -11,7 +11,7 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use super::auth::{generate_jwt, hash_password, jwt_secret, verify_password, AdminAuth};
+use super::auth::{dummy_hash, generate_jwt, hash_password, jwt_secret, verify_password, AdminAuth};
 use super::models::{
     AproposPost, ChangePasswordReq, DashboardData, InscriptionAdmin, LoginReq, LoginResp,
     PublishAproposReq, PublishAproposResp, QuizzSuggestionAdmin,
@@ -34,6 +34,11 @@ async fn login(
     State(pool): State<Db>,
     Json(req): Json<LoginReq>,
 ) -> Result<Json<LoginResp>, (StatusCode, &'static str)> {
+    let cle = format!("admin:{}", req.username.to_lowercase());
+    if !crate::ratelimit::tentative_autorisee(&cle) {
+        return Err((StatusCode::TOO_MANY_REQUESTS, "Trop de tentatives. Réessayez dans 15 minutes."));
+    }
+
     let row = sqlx::query_as::<_, (String,)>(
         "SELECT password_hash FROM admin_users WHERE username = ?",
     )
@@ -42,11 +47,22 @@ async fn login(
     .await
     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur interne"))?;
 
-    let (hash,) = row.ok_or((StatusCode::UNAUTHORIZED, "Identifiants incorrects"))?;
+    // Vérification systématique (hash factice si compte inconnu) : le temps de
+    // réponse ne doit pas révéler l'existence d'un identifiant.
+    let valide = match &row {
+        Some((hash,)) => verify_password(&req.password, hash),
+        None => {
+            verify_password(&req.password, dummy_hash());
+            false
+        }
+    };
 
-    if !verify_password(&req.password, &hash) {
+    if !valide {
+        crate::ratelimit::enregistrer_echec(&cle);
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         return Err((StatusCode::UNAUTHORIZED, "Identifiants incorrects"));
     }
+    crate::ratelimit::reinitialiser(&cle);
 
     let token = generate_jwt(&req.username, &jwt_secret())
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur JWT"))?;
@@ -276,17 +292,26 @@ async fn list_apropos_posts(
 
 // ── Router exporté ────────────────────────────────────────────────────────────
 
+// NB : préfixe volontairement trompeur (« archives-bareme-1997 » — une page
+// d'archives poussiéreuse qui n'intéresse ni les bots ni les curieux) pour
+// réduire le bruit des scanners qui cherchent /admin. Ce n'est PAS une
+// protection : c'est le JWT (AdminAuth) qui protège les routes.
+// admin.html dérive son préfixe de location.pathname : renommer ici suffit
+// (plus le lien base64 dans src/main.js, côté burger Leeloo).
+const PREFIXE_ADMIN: &str = "/archives-bareme-1997";
+
 pub fn admin_router() -> Router<Db> {
+    let p = |suffixe: &str| format!("{PREFIXE_ADMIN}{suffixe}");
     Router::new()
-        .route("/admin",                            get(admin_page))
-        .route("/admin/login",                      post(login))
-        .route("/admin/password",                   post(change_password))
-        .route("/admin/dashboard",                  get(dashboard))
-        .route("/admin/inscription/{id}/approve",   post(approve_inscription))
-        .route("/admin/inscription/{id}/reject",    post(reject_inscription))
-        .route("/admin/quizz/{id}/approve",         post(approve_quizz))
-        .route("/admin/quizz/{id}/reject",          post(reject_quizz))
-        .route("/admin/apropos/publish",            post(publish_apropos))
-        .route("/admin/apropos/{id}",               delete(delete_apropos))
-        .route("/api/apropos/posts",                get(list_apropos_posts))
+        .route(&p(""),                            get(admin_page))
+        .route(&p("/login"),                      post(login))
+        .route(&p("/password"),                   post(change_password))
+        .route(&p("/dashboard"),                  get(dashboard))
+        .route(&p("/inscription/{id}/approve"),   post(approve_inscription))
+        .route(&p("/inscription/{id}/reject"),    post(reject_inscription))
+        .route(&p("/quizz/{id}/approve"),         post(approve_quizz))
+        .route(&p("/quizz/{id}/reject"),          post(reject_quizz))
+        .route(&p("/apropos/publish"),            post(publish_apropos))
+        .route(&p("/apropos/{id}"),               delete(delete_apropos))
+        .route("/api/apropos/posts",              get(list_apropos_posts))
 }

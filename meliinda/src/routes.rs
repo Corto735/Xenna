@@ -27,6 +27,15 @@ pub async fn record(
     State(pool): State<Db>,
     Json(req): Json<RecordRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // Bornes anti-abus : l'endpoint est public, sans elles n'importe qui
+    // remplit la base avec des séquences arbitraires.
+    if req.events.is_empty() || req.events.len() > 10_000 {
+        return Err(ApiError("Séquence invalide : 1 à 10 000 événements".into()));
+    }
+    if req.label.as_deref().is_some_and(|l| l.len() > 120) {
+        return Err(ApiError("Label : 120 caractères maximum".into()));
+    }
+
     let id = Uuid::new_v4();
     let events_json = serde_json::to_string(&req.events)
         .map_err(|e| ApiError(e.to_string()))?;

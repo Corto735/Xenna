@@ -21,6 +21,13 @@ pub fn hash_password(password: &str) -> String {
         .to_string()
 }
 
+/// Hash factice : vérifié quand le compte n'existe pas, pour que le temps de
+/// réponse ne révèle pas si un identifiant est valide (anti-énumération).
+pub fn dummy_hash() -> &'static str {
+    static H: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    H.get_or_init(|| hash_password("xenna_dummy_password_egalisation_timing"))
+}
+
 pub fn verify_password(password: &str, hash: &str) -> bool {
     let parsed = match PasswordHash::new(hash) {
         Ok(h) => h,
