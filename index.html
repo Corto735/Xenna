@@ -475,10 +475,17 @@
     .empty-ascii {
       padding: 2rem 2.5rem;
       color: var(--dim);
-      white-space: pre;
       font-size: 0.78rem;
       line-height: 1.7;
     }
+    /* Encadré d'accueil : bordure CSS (l'ancien cadre en caractères ┌─┐
+       supposait une chasse fixe ; Roboto est proportionnelle). */
+    .empty-box {
+      max-width: 34rem;
+      border: 1px solid var(--dim);
+      padding: 1.1rem 1.4rem;
+    }
+    .empty-box p + p { margin-top: 0.9rem; }
 
     /* ── Ligne récap ── */
     .summary-bar {
@@ -2723,16 +2730,12 @@
 
     <!-- Résultat bureau -->
     <div class="result-panel" id="res-desktop">
-      <div class="empty-ascii">  ┌──────────────────────────────────────────┐
-  │                                          │
-  │   Saisissez un salaire et cliquez sur    │
-  │   [ CALCULER ] pour générer le bulletin  │
-  │                                          │
-  │   ▶ Cliquez sur une ligne de cotisation  │
-  │     pour afficher son explication        │
-  │     historique et la référence légale    │
-  │                                          │
-  └──────────────────────────────────────────┘</div>
+      <div class="empty-ascii">
+        <div class="empty-box">
+          <p>Saisissez un salaire et cliquez sur [ CALCULER ] pour générer le bulletin</p>
+          <p>▶ Cliquez sur une ligne de cotisation pour afficher son explication historique et la référence légale</p>
+        </div>
+      </div>
     </div>
 
   </div><!-- /view-desktop -->

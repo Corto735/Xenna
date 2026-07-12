@@ -1650,7 +1650,7 @@ function renderDesktop(b) {
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
-            <span style="color:var(--red)">− ${fmt(totalSal + pas.total)}</span>
+            <span style="color:#ffe033">− ${fmt(totalSal + pas.total)}</span>
           </div>
         </div>
       </div>
