@@ -99,7 +99,19 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     // Brut mensuel plein = référence pour le SJB des IJSS et le per-day du maintien.
     let base_ref = salarie.salaire_brut;
     let anciennete = salarie.anciennete.unwrap_or(1).clamp(0, 100);
-    let mut absence_res = absence.and_then(|a| super::absence::compute_absence(base_ref, a, anciennete, salarie.alsace_moselle, ctx));
+    // Dispatch par type d'arrêt : "conge" → congés payés (retenue + indemnité
+    // max maintien/dixième, sans IJSS) ; sinon → compute_absence, qui gère
+    // "maladie" (IJSS + maintien), "pro" (AT/MP : IJSS 60 %/80 % sans carence,
+    // maintien sans carence) et "sans_solde" (retenue sèche).
+    let est_conge = absence.map(|a| a.type_arret == "conge").unwrap_or(false);
+    let conges_res = if est_conge {
+        absence.and_then(|a| super::conges_payes::compute_conges(base_ref, a))
+    } else {
+        None
+    };
+    let mut absence_res = if est_conge { None } else {
+        absence.and_then(|a| super::absence::compute_absence(base_ref, a, anciennete, salarie.alsace_moselle, ctx))
+    };
 
     // Heures supplémentaires / complémentaires : majoration ajoutée au brut, puis
     // réduction salariale, déduction patronale et exonération d'impôt. Le gain majoré
@@ -110,9 +122,12 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     // Assiette de RÉFÉRENCE : brut plein − retenue + maintien (+ HS), AVANT
     // déduction des IJSS. C'est le bulletin « neutre » qui fixe le net cible de
     // la garantie du net : la subrogation ne doit ni enrichir ni appauvrir.
-    let assiette_ref = match &absence_res {
-        Some(r) => (base_ref - r.retenue + r.maintien).max(Decimal::ZERO) + gain_hs_total,
-        None    => base_ref + gain_hs_total,
+    let assiette_ref = match (&absence_res, &conges_res) {
+        (Some(r), _) => (base_ref - r.retenue + r.maintien).max(Decimal::ZERO) + gain_hs_total,
+        // Congés payés : retenue − puis indemnité + (max maintien/dixième).
+        // Pas d'IJSS → la garantie du net ci-dessous ne s'active pas.
+        (None, Some(c)) => (base_ref - c.retenue + c.indemnite).max(Decimal::ZERO) + gain_hs_total,
+        _ => base_ref + gain_hs_total,
     };
     let ijss_brut = absence_res.as_ref().map(|r| r.ijss_brut).unwrap_or(Decimal::ZERO);
     let ijss_net = absence_res.as_ref().map(|r| r.ijss_net).unwrap_or(Decimal::ZERO);
@@ -199,6 +214,7 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         devise: "EUR".into(),
         absence: absence_res,
         heures_sup,
+        conges: conges_res,
         salarie,
     }
 }

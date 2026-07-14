@@ -48,7 +48,7 @@ pub fn bulletin_non_couvert(
         cout_total_employeur: brut,
         devise: devise.into(),
         absence: None,
-        heures_sup: None,
+        heures_sup: None, conges: None,
         salarie,
     }
 }

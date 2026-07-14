@@ -40,7 +40,7 @@ pub fn generer_bulletin_qc(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "CAD".into(),
         absence: None,
-        heures_sup: None,
+        heures_sup: None, conges: None,
         salarie,
     }
 }

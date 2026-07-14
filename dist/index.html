@@ -475,10 +475,17 @@
     .empty-ascii {
       padding: 2rem 2.5rem;
       color: var(--dim);
-      white-space: pre;
       font-size: 0.78rem;
       line-height: 1.7;
     }
+    /* Encadré d'accueil : bordure CSS (l'ancien cadre en caractères ┌─┐
+       supposait une chasse fixe ; Roboto est proportionnelle). */
+    .empty-box {
+      max-width: 34rem;
+      border: 1px solid var(--dim);
+      padding: 1.1rem 1.4rem;
+    }
+    .empty-box p + p { margin-top: 0.9rem; }
 
     /* ── Ligne récap ── */
     .summary-bar {
@@ -2140,7 +2147,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-B8jYLOIh.js"></script>
+  <script type="module" crossorigin src="/assets/index-BjGt_-zj.js"></script>
 </head>
 <body>
 
@@ -2197,7 +2204,7 @@
           <span class="burger-item-icon">⬡</span>
           La Forge <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">connexion</span>
         </button>
-        <button id="burger-admin" class="burger-item" style="display:none" onclick="window.location.href='/admin'; closeBurger()">
+        <button id="burger-admin" class="burger-item" style="display:none">
           <span class="burger-item-icon">⚷</span>
           Admin <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">modération</span>
         </button>
@@ -2724,16 +2731,12 @@
 
     <!-- Résultat bureau -->
     <div class="result-panel" id="res-desktop">
-      <div class="empty-ascii">  ┌──────────────────────────────────────────┐
-  │                                          │
-  │   Saisissez un salaire et cliquez sur    │
-  │   [ CALCULER ] pour générer le bulletin  │
-  │                                          │
-  │   ▶ Cliquez sur une ligne de cotisation  │
-  │     pour afficher son explication        │
-  │     historique et la référence légale    │
-  │                                          │
-  └──────────────────────────────────────────┘</div>
+      <div class="empty-ascii">
+        <div class="empty-box">
+          <p>Saisissez un salaire et cliquez sur [ CALCULER ] pour générer le bulletin</p>
+          <p>▶ Cliquez sur une ligne de cotisation pour afficher son explication historique et la référence légale</p>
+        </div>
+      </div>
     </div>
 
   </div><!-- /view-desktop -->

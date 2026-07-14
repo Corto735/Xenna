@@ -252,7 +252,8 @@ fn etp_default() -> f64 { 100.0 }
 /// pour rester rétro-compatible.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbsenceInput {
-    /// Type d'arrêt. Seule "maladie" (non professionnelle) est gérée pour l'instant.
+    /// Type d'arrêt : "maladie" (non professionnelle) | "conge" (congés payés)
+    /// | "sans_solde" (congé sans solde) | "pro" (accident du travail / MP).
     #[serde(default)]
     pub type_arret: String,
     /// Dates ISO YYYY-MM-DD.
@@ -312,8 +313,26 @@ pub struct AbsenceResult {
     #[serde(with = "rust_decimal::serde::str")] pub coeff_plafond_ijss: Decimal,
     /// Salaire journalier de base SS = salaire de référence × 3 ÷ 91,25.
     #[serde(with = "rust_decimal::serde::str")] pub sjb: Decimal,
-    /// Indemnité journalière = 50 % du SJB (arrondie au centime).
+    /// Indemnité journalière de la tranche 1 (50 % du SJB en maladie ;
+    /// 60 % du SJR les 28 premiers jours en AT/MP), arrondie au centime.
     #[serde(with = "rust_decimal::serde::str")] pub ijss_jour: Decimal,
+    // ── Spécifique AT/MP (IJ à deux tranches, sans carence) — zéro en maladie ──
+    /// Type d'arrêt du calcul ("maladie" | "sans_solde" | "pro") — branche les
+    /// panneaux f(x) côté front sans parser le libellé.
+    #[serde(default)]
+    pub type_arret: String,
+    /// IJ journalière tranche 2 (80 % du SJR dès le 29e jour, AT/MP).
+    #[serde(default, with = "rust_decimal::serde::str")] pub ijss_jour_t2: Decimal,
+    /// Jours indemnisés par tranche (maladie : t1 = jours_ijss, t2 = 0).
+    #[serde(default)]
+    pub jours_ijss_t1: i64,
+    #[serde(default)]
+    pub jours_ijss_t2: i64,
+    /// Taux des tranches (0,50 maladie ; 0,60/0,80 AT/MP).
+    #[serde(default, with = "rust_decimal::serde::str")] pub taux_ijss_t1: Decimal,
+    #[serde(default, with = "rust_decimal::serde::str")] pub taux_ijss_t2: Decimal,
+    /// Plafond du salaire journalier de référence AT/MP (0,834 % du PASS).
+    #[serde(default, with = "rust_decimal::serde::str")] pub plafond_sjr_ijss: Decimal,
     /// Assiette de référence de la garantie du net (base − retenue + maintien),
     /// et net cible correspondant. Remplis par le bulletin France (0 sinon).
     #[serde(with = "rust_decimal::serde::str")] pub assiette_ref: Decimal,
@@ -325,6 +344,44 @@ pub struct AbsenceResult {
     pub libelle:    String,
     /// Ex. "IDCC 0016".
     pub convention: String,
+}
+
+/// Résultat de la prise de congés payés : retenue sur le brut + indemnité de
+/// congés payés = MAX(maintien de salaire ; méthode du dixième), art. L3141-24
+/// C. trav. Voir crate::calculs::conges_payes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CongesPayesResult {
+    /// Retenue pour absence (ligne négative sur le brut).
+    #[serde(with = "rust_decimal::serde::str")] pub retenue:   Decimal,
+    /// Indemnité de congés payés = max(maintien ; dixième) — L3141-24 III.
+    #[serde(with = "rust_decimal::serde::str")] pub indemnite: Decimal,
+    /// Méthode retenue pour l'indemnité : "maintien" | "dixieme".
+    pub methode_indemnite: String,
+    /// Maintien de salaire (L3141-24 II) = montant de la retenue.
+    #[serde(with = "rust_decimal::serde::str")] pub montant_maintien: Decimal,
+    /// Méthode du dixième (L3141-24 I), proratisée aux jours pris.
+    #[serde(with = "rust_decimal::serde::str")] pub montant_dixieme:  Decimal,
+    // ── Intermédiaires de calcul (transparence des formules f(x) côté front) ──
+    /// Brut mensuel plein (saisi, ou reconstitué en paie inversée).
+    #[serde(with = "rust_decimal::serde::str")] pub brut_mensuel: Decimal,
+    /// Diviseur mensuel de la retenue (jours du mois, 26, 21,67 ou jours réels).
+    #[serde(with = "rust_decimal::serde::str")] pub diviseur_retenue: Decimal,
+    /// Jours comptés pour la retenue (selon la méthode choisie).
+    pub jours_pris: i64,
+    /// Assiette du dixième : 13 × brut mensuel — hypothèse du simulateur
+    /// (salaire constant + 13e mois inclus ; la jurisprudence l'exclut
+    /// normalement, Cass. soc. 8 juin 2011, n° 09-71056).
+    #[serde(with = "rust_decimal::serde::str")] pub assiette_dixieme: Decimal,
+    /// Dixième total de la période de référence = assiette ÷ 10.
+    #[serde(with = "rust_decimal::serde::str")] pub dixieme_total: Decimal,
+    /// Jours pris comptés pour le prorata du dixième (ouvrés/ouvrables).
+    pub jours_pris_dixieme: i64,
+    /// Congés acquis annuels du prorata : 30 ouvrables | 25 ouvrés.
+    pub jours_acquis: i64,
+    /// Unité du prorata du dixième : "ouvres" | "ouvrables".
+    pub unite_dixieme: String,
+    /// Ex. "congés payés · ÷21,67 ouvrés".
+    pub libelle: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -399,6 +456,10 @@ pub struct Bulletin {
     /// si des heures sont saisies. Absent du JSON sinon. France uniquement.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heures_sup: Option<HeuresSupResult>,
+    /// Détail congés payés (retenue + indemnité max maintien/dixième) si un CP
+    /// est saisi. Absent du JSON sinon. France uniquement.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conges: Option<CongesPayesResult>,
 }
 
 /// Résultat du calcul des heures supplémentaires/complémentaires (gains majorés

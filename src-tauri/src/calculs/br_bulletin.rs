@@ -168,6 +168,6 @@ pub fn generer_bulletin_br(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cotisations, brut,
         net_imposable: net_a_payer, net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
-        devise: "BRL".into(), absence: None, heures_sup: None, salarie,
+        devise: "BRL".into(), absence: None, heures_sup: None, conges: None, salarie,
     }
 }

@@ -51,6 +51,24 @@ export const STATIC_DICT = {
   'IJSS brutes (subrogation)': ['Gross IJSS daily benefits (subrogation)', 'IJSS-Tagegelder brutto (Subrogation)', 'Bruto IJSS-uitkeringen (subrogatie)', 'IJSS lorde (surrogazione)', 'IJSS brutas (subrogación)'],
   'Ajustement du net (garantie du net)': ['Net adjustment (net guarantee)', 'Netto-Ausgleich (Nettogarantie)', 'Netto-aanpassing (nettogarantie)', 'Aggiustamento del netto (garanzia del netto)', 'Ajuste del neto (garantía del neto)'],
 
+  // Congés payés (retenue + indemnité MAX maintien/dixième, art. L3141-24)
+  'Congé payé':                ['Paid leave', 'Bezahlter Urlaub', 'Betaald verlof', 'Ferie retribuite', 'Vacaciones pagadas'],
+  'Retenue congés payés':      ['Paid-leave deduction', 'Urlaubsabzug', 'Inhouding betaald verlof', 'Trattenuta ferie', 'Retención por vacaciones'],
+  'Indemnité de congés payés': ['Paid-leave allowance', 'Urlaubsentgelt', 'Vakantiegeld', 'Indennità di ferie', 'Indemnización por vacaciones'],
+  'Indemnité congés payés':    ['Paid-leave allowance', 'Urlaubsentgelt', 'Vakantiegeld', 'Indennità di ferie', 'Indemnización por vacaciones'],
+  'règle du 1/10e':            ['1/10th rule', '1/10-Regel', '1/10e-regel', 'regola del decimo', 'regla del décimo'],
+  'maintien de salaire':       ['salary maintenance', 'Lohnfortzahlung', 'loondoorbetaling', 'mantenimento salariale', 'mantenimiento salarial'],
+  'Jours de congé comptés':    ['Leave days counted', 'Gezählte Urlaubstage', 'Getelde verlofdagen', 'Giorni di ferie conteggiati', 'Días de vacaciones contados'],
+  'Maintien de salaire (L3141-24 II)': ['Salary maintenance (L3141-24 II)', 'Lohnfortzahlung (L3141-24 II)', 'Loondoorbetaling (L3141-24 II)', 'Mantenimento salariale (L3141-24 II)', 'Mantenimiento salarial (L3141-24 II)'],
+  'Indemnité CP estimée :':    ['Estimated leave allowance:', 'Geschätztes Urlaubsentgelt:', 'Geschat vakantiegeld:', 'Indennità di ferie stimata:', 'Indemnización por vacaciones estimada:'],
+
+  // Congé sans solde + accident du travail / maladie professionnelle
+  'Congé sans solde':          ['Unpaid leave', 'Unbezahlter Urlaub', 'Onbetaald verlof', 'Congedo non retribuito', 'Permiso sin sueldo'],
+  'Accident du travail / MP':  ['Work accident / occupational disease', 'Arbeitsunfall / Berufskrankheit', 'Arbeidsongeval / beroepsziekte', 'Infortunio sul lavoro / malattia professionale', 'Accidente laboral / enfermedad profesional'],
+  'Aucune indemnité — retenue sèche (ni maintien, ni IJSS)': ['No allowance — plain deduction (no maintenance, no IJSS)', 'Keine Leistung — reiner Abzug (weder Fortzahlung noch IJSS)', 'Geen uitkering — droge inhouding (geen doorbetaling, geen IJSS)', 'Nessuna indennità — sola trattenuta (né mantenimento né IJSS)', 'Sin indemnización — retención seca (ni mantenimiento ni IJSS)'],
+  'IJSS AT/MP (60 %/80 % sans carence) et maintien calculés avec le bulletin': ['Work-accident IJSS (60 %/80 %, no waiting period) and maintenance computed with the payslip', 'AT/MP-IJSS (60 %/80 %, ohne Karenz) und Fortzahlung mit der Abrechnung berechnet', 'AT/MP-IJSS (60 %/80 %, zonder wachttijd) en doorbetaling berekend met de loonbrief', 'IJSS infortunio (60 %/80 %, senza carenza) e mantenimento calcolati con la busta paga', 'IJSS accidente (60 %/80 %, sin carencia) y mantenimiento calculados con la nómina'],
+  'SJR (brut ÷ 30,42, plafonné)': ['Reference daily wage (gross ÷ 30.42, capped)', 'Referenz-Tageslohn (Brutto ÷ 30,42, gedeckelt)', 'Referentiedagloon (bruto ÷ 30,42, geplafonneerd)', 'Salario giornaliero di riferimento (lordo ÷ 30,42, con tetto)', 'Salario diario de referencia (bruto ÷ 30,42, con tope)'],
+
   // Panneaux f(x) des lignes d'absence
   'Salaire mensuel':          ['Monthly salary', 'Monatsgehalt', 'Maandloon', 'Retribuzione mensile', 'Salario mensual'],
   'Jours d\'absence comptés': ['Absence days counted', 'Gezählte Abwesenheitstage', 'Getelde afwezigheidsdagen', 'Giorni di assenza conteggiati', 'Días de ausencia contados'],

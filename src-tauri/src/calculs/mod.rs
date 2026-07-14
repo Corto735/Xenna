@@ -1,6 +1,7 @@
 pub mod annee;
 pub mod absence;
 pub mod bulletin;
+pub mod conges_payes;
 pub mod cotisations;
 pub mod ea;
 pub mod heures_sup;

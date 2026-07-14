@@ -126,6 +126,6 @@ pub fn generer_bulletin_lt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cotisations, brut,
         net_imposable: net_a_payer, net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
-        devise: "EUR".into(), absence: None, heures_sup: None, salarie,
+        devise: "EUR".into(), absence: None, heures_sup: None, conges: None, salarie,
     }
 }

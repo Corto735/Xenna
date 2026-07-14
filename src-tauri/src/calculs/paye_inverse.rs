@@ -7,11 +7,11 @@
 // le bulletin renvoyé. En France, aucun impôt n'étant modélisé, la cible
 // coïncide avec `net_a_payer`.
 //
-// Une absence maladie éventuelle est EXCLUE de l'inversion : la cible est le net
-// du salaire de base plein. La dichotomie tourne sur le mois complet (sans
-// absence), puis l'absence est appliquée sur le brut trouvé dans le bulletin
-// final. Ainsi le salaire de base (brut reconstitué) ne bouge pas quand on
-// ajoute une absence — c'est le net du mois qui diminue.
+// Une absence éventuelle (maladie ou congés payés) est EXCLUE de l'inversion :
+// la cible est le net du salaire de base plein. La dichotomie tourne sur le
+// mois complet (sans absence), puis l'absence est appliquée sur le brut trouvé
+// dans le bulletin final. Ainsi le salaire de base (brut reconstitué) ne bouge
+// pas quand on ajoute une absence — c'est le net du mois qui varie.
 //
 // Méthode : `generer_bulletin` est une fonction pure et synchrone du
 // (Salarie, &ContextPaie, absence) — le contexte est préchargé, aucune I/O.

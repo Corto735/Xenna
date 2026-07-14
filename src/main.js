@@ -1290,8 +1290,13 @@ function buildAbsenceFormulaContent(which, a, b) {
       ${a.am_local
         ? `Alsace-Moselle (droit local, art. L1226-23 du Code du travail, ex-art. 616 du code civil local) :
            100 % du salaire dès le 1er jour, sans carence ni condition d'ancienneté, pendant 6 semaines (42 jours),
-           puis relais du droit commun. IJSS déduites (l'employeur complète jusqu'à 100 %).`
-        : `Barème selon l'ancienneté : &lt; 1 an aucun maintien · 1 à 3 ans régime légal (90 % 30 j puis 66,66 % 30 j, carence 7 j) ·
+           puis relais du droit commun. IJSS déduites (l'employeur complète jusqu'à 100 %). Couvre toute absence
+           sans faute du salarié — accident du travail inclus.`
+        : a.type_arret === 'pro'
+          ? `AT/MP : maintien SANS carence (art. D1226-3 du Code du travail). Barème : &lt; 1 an aucun maintien ·
+             1 à 3 ans régime légal dès le 1er jour (90 % 30 j puis 66,66 % 30 j) · ≥ 3 ans garantie de ressources
+             IDCC 0016 (100 % puis 75 % dès le 1er jour, périodes allongées à 5 et 10 ans d'ancienneté).`
+          : `Barème selon l'ancienneté : &lt; 1 an aucun maintien · 1 à 3 ans régime légal (90 % 30 j puis 66,66 % 30 j, carence 7 j) ·
            ≥ 3 ans régime conventionnel IDCC 0016 (100 % puis 75 % dès le 6e jour, périodes allongées à 5 et 10 ans d'ancienneté).`}</div>
       <table class="fm-calc">
         <tr><td>Salaire journalier perdu (retenue ÷ ${a.jours_absence} j)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(perDay)}</td></tr>
@@ -1299,6 +1304,47 @@ function buildAbsenceFormulaContent(which, a, b) {
         ${a.jours_maintien_t2 > 0 ? `<tr><td>Tranche 2 : ${a.jours_maintien_t2} j × ${fmtPct(a.taux_maintien_t2)}</td><td class="fm-op">+</td><td class="fm-val c-taux">${fmt(m2)}</td></tr>` : ''}
         <tr class="fm-result fm-sep"><td>Maintien de salaire</td><td class="fm-op">=</td><td class="fm-val c-alleg">+ ${fmt(a.maintien)}</td></tr>
       </table>`;
+  }
+
+  if (which === 'ijss' && a.type_arret === 'pro') {
+    const t1 = Math.round(n(a.ijss_jour) * a.jours_ijss_t1 * 100) / 100;
+    const t2 = Math.round(n(a.ijss_jour_t2) * a.jours_ijss_t2 * 100) / 100;
+    const aT2 = a.jours_ijss_t2 > 0;
+    return `
+      <div class="fm-generic">IJ  =  60 %  ×  SJR  (j1–j28)   puis   80 %  ×  SJR  (dès j29)      avec      SJR  =  Brut mensuel  ÷  30,42</div>
+      ${fmDecomp([
+        {
+          label: 'SJR',
+          sym: `min( Brut mensuel  ÷  30,42  ;  Plafond 0,834 % du PASS )`,
+          num: `min( ${fmt(a.salaire_ref_ijss)}  ÷  30,42  ;  ${fmt(a.plafond_sjr_ijss)} )`,
+          grp: `${fmt(a.sjb)}`,
+        },
+        {
+          label: 'Tranche 1 (60 %)',
+          sym: `IJ 60 %  ×  Jours (≤ 28)`,
+          num: `${fmt(a.ijss_jour)}  ×  ${a.jours_ijss_t1}`,
+          grp: `${fmt(t1)}`,
+        },
+        ...(aT2 ? [{
+          label: 'Tranche 2 (80 %)',
+          sym: `IJ 80 %  ×  Jours (dès j29)`,
+          num: `${fmt(a.ijss_jour_t2)}  ×  ${a.jours_ijss_t2}`,
+          grp: `${fmt(t2)}`,
+        }] : []),
+      ])}
+      <div class="fm-base-note">AT/MP : AUCUNE carence — IJ versées par jour calendaire dès le 1er jour d'arrêt
+      (le jour de l'accident lui-même est payé intégralement par l'employeur).
+      SJR = brut du mois précédent ÷ 30,42, plafonné à 0,834 % du PASS annuel (${fmt(a.plafond_sjr_ijss)}).</div>
+      <table class="fm-calc">
+        <tr><td>SJR (brut ÷ 30,42, plafonné)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.sjb)}</td></tr>
+        <tr><td>Tranche 1 : ${a.jours_ijss_t1} j × 60 % (${fmt(a.ijss_jour)}/j)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(t1)}</td></tr>
+        ${aT2 ? `<tr><td>Tranche 2 : ${a.jours_ijss_t2} j × 80 % (${fmt(a.ijss_jour_t2)}/j)</td><td class="fm-op">+</td><td class="fm-val c-taux">${fmt(t2)}</td></tr>` : ''}
+        <tr class="fm-result fm-sep"><td>IJSS brutes</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.ijss_brut)}</td></tr>
+      </table>
+      <div class="fm-base-note">Déduites du brut soumis à cotisations (subrogation : l'employeur les perçoit de la CPAM).
+      La CPAM précompte CSG 6,2 % + CRDS 0,5 % : le salarié reçoit en bas de bulletin les IJSS NETTES
+      = ${fmt(a.ijss_brut)} × 0,933 = ${fmt(a.ijss_net)}.
+      Volet fiscal : les IJ AT/MP sont imposables à 50 % de leur montant → ${fmt(a.ijss_imposable)} au net imposable.</div>`;
   }
 
   if (which === 'ijss') {
@@ -1388,8 +1434,70 @@ function buildAbsenceFormulaContent(which, a, b) {
       <tr><td>Net après cotisations (Brut − Cotisations)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(netApresCotis)}</td></tr>
       <tr class="fm-result fm-sep"><td>Net à payer avant impôt</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(n(b?.net_a_payer))}</td></tr>
     </table>
-    <div class="fm-base-note">Volet fiscal : IJSS imposables sur les 60 premiers jours d'arrêt → ${fmt(a.ijss_imposable)}
+    <div class="fm-base-note">Volet fiscal : ${a.type_arret === 'pro'
+      ? `IJ AT/MP imposables à 50 % de leur montant`
+      : `IJSS imposables sur les 60 premiers jours d'arrêt`} → ${fmt(a.ijss_imposable)}
     intégrées au net imposable (base du prélèvement à la source).</div>`;
+}
+
+// ── Formules des lignes de congés payés (retenue, indemnité = MAX maintien /
+// dixième, art. L3141-24 C. trav.) — même squelette que les panneaux d'absence.
+// Toutes les valeurs intermédiaires viennent du backend (CongesPayesResult).
+function buildCongesFormulaContent(which, c) {
+  const n = v => parseFloat(v) || 0;
+  const baseRef = n(c.brut_mensuel);
+
+  if (which === 'retenue') {
+    const div = n(c.diviseur_retenue);
+    return `
+      <div class="fm-generic">Retenue  =  Brut mensuel  ×  Jours de congé pris  ÷  Diviseur mensuel</div>
+      ${fmDecomp([{
+        label: 'Retenue',
+        sym: `Brut mensuel  ×  Jours pris  ÷  Diviseur`,
+        num: `${fmt(baseRef)}  ×  ${c.jours_pris}  ÷  ${div}`,
+        grp: `${fmt(baseRef * c.jours_pris)}  ÷  ${div}  =  ${fmt(c.retenue)}`,
+      }])}
+      <div class="fm-base-note">Base : Brut mensuel plein${_modeSaisie === 'net' ? ' (reconstitué à partir du net saisi)' : ''}.
+      Méthode : ${esc(c.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou jours réels).</div>
+      <table class="fm-calc">
+        <tr><td>Brut mensuel</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(baseRef)}</td></tr>
+        <tr><td>Jours de congé comptés</td><td class="fm-op">×</td><td class="fm-val c-taux">${c.jours_pris}</td></tr>
+        <tr><td>Diviseur mensuel</td><td class="fm-op">÷</td><td class="fm-val c-taux">${div}</td></tr>
+        <tr class="fm-result fm-sep"><td>Retenue congés payés</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(c.retenue)}</td></tr>
+      </table>`;
+  }
+
+  // which === 'indemnite' — comparaison des deux méthodes légales.
+  const gagnant = c.methode_indemnite === 'dixieme' ? 'règle du 1/10e' : 'maintien de salaire';
+  const unite = c.unite_dixieme === 'ouvrables' ? 'ouvrables' : 'ouvrés';
+  return `
+    <div class="fm-generic">Indemnité  =  MAX( Maintien de salaire ; Méthode du dixième )</div>
+    ${fmDecomp([
+      {
+        label: 'Maintien',
+        sym: `Rémunération qu'aurait perçue le salarié  (=  la retenue)`,
+        num: `${fmt(baseRef)}  ×  ${c.jours_pris}  ÷  ${n(c.diviseur_retenue)}`,
+        grp: `${fmt(c.montant_maintien)}`,
+      },
+      {
+        label: 'Dixième',
+        sym: `13 × Brut mensuel  ÷  10  ×  Jours pris  ÷  Congés acquis`,
+        num: `${fmt(c.assiette_dixieme)}  ÷  10  ×  ${c.jours_pris_dixieme}  ÷  ${c.jours_acquis}`,
+        grp: `${fmt(c.dixieme_total)}  ×  ${c.jours_pris_dixieme}  ÷  ${c.jours_acquis}  =  ${fmt(c.montant_dixieme)}`,
+      },
+    ])}
+    <table class="fm-calc">
+      <tr><td>Maintien de salaire (L3141-24 II)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(c.montant_maintien)}</td></tr>
+      <tr><td>Méthode du dixième (L3141-24 I) — ${c.jours_pris_dixieme} j ${unite} sur ${c.jours_acquis} acquis</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(c.montant_dixieme)}</td></tr>
+      <tr class="fm-result fm-sep"><td>Indemnité congés payés — ${gagnant}</td><td class="fm-op">=</td><td class="fm-val c-alleg">+ ${fmt(c.indemnite)}</td></tr>
+    </table>
+    <div class="fm-base-note">Art. L3141-24 C. trav. — I : indemnité = 1/10 de la rémunération brute totale
+    de la période de référence ; II : elle ne peut être inférieure à la rémunération qu'aurait perçue le
+    salarié s'il avait continué à travailler (maintien) ; III : la règle la plus favorable s'applique.</div>
+    <div class="fm-base-note">Hypothèse du simulateur : assiette du dixième = 13 × brut mensuel (salaire
+    constant + 13e mois versé en décembre, inclus dans l'assiette). La jurisprudence exclut normalement un
+    13e mois rémunérant indistinctement périodes de travail et de congés (Cass. soc. 8 juin 2011,
+    n° 09-71056) — inclusion assumée ici à titre pédagogique.</div>`;
 }
 
 function buildFormulaContent(c, type) {
@@ -1517,6 +1625,20 @@ window.showFormula = function(key) {
     document.getElementById('fm-badge').textContent = meta[1];
     fmBody.className = meta[2];
     fmBody.innerHTML = buildAbsenceFormulaContent(entry.which, entry.a, lastBulletin);
+    document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+    return;
+  }
+
+  if (entry.type === 'conges') {
+    const meta = {
+      retenue:   ['Retenue congés payés',      '── Retenue sur salaire ──────────────────────', 'fm-type-sal'],
+      indemnite: ['Indemnité de congés payés', '── MAX(maintien ; dixième) — L3141-24 ───────', 'fm-type-alleg'],
+    }[entry.which];
+    document.getElementById('fm-title').textContent = meta[0];
+    document.getElementById('fm-badge').textContent = meta[1];
+    fmBody.className = meta[2];
+    fmBody.innerHTML = buildCongesFormulaContent(entry.which, entry.c);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
     return;
@@ -2868,7 +2990,16 @@ function buildRemSection() {
     parseFloat(absInfo.ijss_brut) > 0 ? _absenceRow('IJSS brutes (subrogation)', 'c-red', '−', absInfo.ijss_brut, 'ABS_IJSS') : '',
     parseFloat(absInfo.ajustement_net) > 0 ? _absenceRow('Ajustement du net (garantie du net)', 'c-red', '−', absInfo.ajustement_net, 'ABS_AJUST') : '',
   ].join('') : '';
-  const absenceLine = absRows ? _absenceEmbedTable(absRows) : '';
+  const cpInfo = (_absence?.active && lastBulletin?.conges) ? lastBulletin.conges : null;
+  if (cpInfo) {
+    _fmStore['CP_RETENUE']   = { type: 'conges', which: 'retenue',   c: cpInfo };
+    _fmStore['CP_INDEMNITE'] = { type: 'conges', which: 'indemnite', c: cpInfo };
+  }
+  const cpRows = cpInfo ? [
+    _absenceRow(`Retenue absence (${esc(cpInfo.libelle)})`, 'c-red', '−', cpInfo.retenue, 'CP_RETENUE'),
+    _absenceRow(`Indemnité congés payés (${cpInfo.methode_indemnite === 'dixieme' ? 'règle du 1/10e' : 'maintien de salaire'})`, 'c-green', '+', cpInfo.indemnite, 'CP_INDEMNITE'),
+  ].join('') : '';
+  const absenceLine = (absRows || cpRows) ? _absenceEmbedTable(absRows + cpRows) : '';
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   // Salaire de base et Total brut rendus en tableau embed (même colgroup que
   // .ascii-tbl) : leurs montants tombent dans la 4ᵉ colonne, alignés sur la
@@ -2914,11 +3045,19 @@ function buildRemSectionMobile() {
     _fmStore['ABS_IJSS']     = { type: 'absence', which: 'ijss',       a: absInfo };
     _fmStore['ABS_AJUST']    = { type: 'absence', which: 'ajustement', a: absInfo };
   }
-  const absenceLine = absInfo ? `
+  const cpInfo = (_absence?.active && lastBulletin?.conges) ? lastBulletin.conges : null;
+  if (cpInfo) {
+    _fmStore['CP_RETENUE']   = { type: 'conges', which: 'retenue',   c: cpInfo };
+    _fmStore['CP_INDEMNITE'] = { type: 'conges', which: 'indemnite', c: cpInfo };
+  }
+  const cpLine = cpInfo ? `
+    <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(cpInfo.libelle)})</span><span class="c-red" style="cursor:pointer" onclick="showFormula('CP_RETENUE')">− ${fmt(cpInfo.retenue)}${buildFormulaStar('CP_RETENUE')}</span></div>
+    <div class="rem-absence-line"><span style="flex:1">Indemnité congés payés (${cpInfo.methode_indemnite === 'dixieme' ? 'règle du 1/10e' : 'maintien de salaire'})</span><span class="c-green" style="cursor:pointer" onclick="showFormula('CP_INDEMNITE')">+ ${fmt(cpInfo.indemnite)}${buildFormulaStar('CP_INDEMNITE')}</span></div>` : '';
+  const absenceLine = (absInfo ? `
     <div class="rem-absence-line"><span style="flex:1">Retenue absence (${esc(absInfo.libelle)})</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_RETENUE')">− ${fmt(absInfo.retenue)}${buildFormulaStar('ABS_RETENUE')}</span></div>
     ${parseFloat(absInfo.maintien) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Maintien de salaire (${esc(absInfo.convention)})</span><span class="c-green" style="cursor:pointer" onclick="showFormula('ABS_MAINTIEN')">+ ${fmt(absInfo.maintien)}${buildFormulaStar('ABS_MAINTIEN')}</span></div>` : ''}
     ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_IJSS')">− ${fmt(absInfo.ijss_brut)}${buildFormulaStar('ABS_IJSS')}</span></div>` : ''}
-    ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '';
+    ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '') + cpLine;
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
   const totalRow = (_remLines.length > 0 || _absence?.active) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
@@ -3129,6 +3268,24 @@ function _calcRetenue(brut, abs) {
   return Math.round(brut * nbJours / diviseur * 100) / 100;
 }
 
+// Indemnité de congés payés estimée côté client (miroir de conges_payes.rs) :
+// MAX(maintien = retenue ; dixième = 13 × brut ÷ 10 × jours pris ÷ jours acquis).
+// Le prorata du dixième se compte toujours en jours ouvrés (25/an) ou
+// ouvrables (30/an), jamais en calendaire.
+function _calcIndemniteCP(brut, abs) {
+  if (!abs || !abs.dateDebut || !abs.dateFin) return null;
+  const maintien = _calcRetenue(brut, abs);
+  const ouvrables = abs.joursType === 'ouvrables';
+  const jours10 = ouvrables
+    ? _countJoursOuvrables(abs.dateDebut, abs.dateFin)
+    : _countJoursOuvres(abs.dateDebut, abs.dateFin);
+  const acquis = ouvrables ? 30 : 25;
+  const dixieme = Math.round(brut * 13 / 10 * jours10 / acquis * 100) / 100;
+  return dixieme > maintien
+    ? { maintien, dixieme, indemnite: dixieme, methode: 'dixieme' }
+    : { maintien, dixieme, indemnite: maintien, methode: 'maintien' };
+}
+
 function _absenceStats(abs) {
   if (!abs || !abs.dateDebut || !abs.dateFin) return null;
   const cal  = _countJoursCalendaires(abs.dateDebut, abs.dateFin);
@@ -3147,11 +3304,12 @@ function _absenceStats(abs) {
 
 function _absenceLibelle(abs) {
   if (!abs) return '';
+  const prefixe = { maladie: 'maladie', conge: 'congés payés', sans_solde: 'congé sans solde', pro: 'AT/MP' }[abs.type] || 'maladie';
   if (abs.methode === 'moyens') {
-    return `maladie · ${abs.joursType === 'ouvrables' ? '÷26 ouvrables' : '÷21,67 ouvrés'}`;
+    return `${prefixe} · ${abs.joursType === 'ouvrables' ? '÷26 ouvrables' : '÷21,67 ouvrés'}`;
   }
   const labels = { calendaire: 'jours cal.', ouvrables: '÷26 ouvrables', ouvres: '÷21,67 ouvrés', heures: 'heures réelles' };
-  return `maladie · ${labels[abs.methode] || abs.methode}`;
+  return `${prefixe} · ${labels[abs.methode] || abs.methode}`;
 }
 
 function _buildAbsencePanel(isMob) {
@@ -3170,12 +3328,17 @@ function _buildAbsencePanel(isMob) {
     ? _absenceStats({ ..._absence, methode, joursType: jType }) : null;
 
   const baseNet = _modeSaisie === 'net';
+  const cpPrev = (type === 'conge' && stats)
+    ? _calcIndemniteCP(_remBase, { ..._absence, methode, joursType: jType }) : null;
   const previewHtml = stats ? `
     <div class="absence-preview">
       <span>Base : <b>${fmt(_remBase)}</b> ${baseNet ? '(brut reconstitué)' : '(brut)'}</span>
       <span>Jours calendaires : <b>${stats.cal}</b> &nbsp;|&nbsp; Ouvrables : <b>${stats.ouv}</b> &nbsp;|&nbsp; Ouvrés : <b>${stats.ouvr}</b></span>
       <span>Salaire horaire : <b>${fmt(stats.salaireH)}</b> &nbsp;|&nbsp; Salaire journalier : <b>${fmt(stats.salaireJ)}</b></span>
       <span>Retenue estimée : <b class="retenue-val">− ${fmt(retenue)}</b></span>
+      ${cpPrev ? `<span>Indemnité CP estimée : <b class="c-green">+ ${fmt(cpPrev.indemnite)}</b> (${cpPrev.methode === 'dixieme' ? 'règle du 1/10e' : 'maintien de salaire'})</span>` : ''}
+      ${type === 'sans_solde' ? `<span>Aucune indemnité — retenue sèche (ni maintien, ni IJSS)</span>` : ''}
+      ${type === 'pro' ? `<span>IJSS AT/MP (60 %/80 % sans carence) et maintien calculés avec le bulletin</span>` : ''}
     </div>` : '';
 
   const toggleHtml = (methode !== 'calendaire') ? `
@@ -3191,21 +3354,23 @@ function _buildAbsencePanel(isMob) {
     <div class="absence-panel" id="absence-panel-${p}">
       <div class="absence-type-row">
         <label><input type="radio" name="abs-type-${p}" value="maladie" ${type==='maladie'?'checked':''} onchange="onAbsenceTypeChange('${p}','maladie')"> Absence maladie ordinaire</label>
-        <label style="opacity:0.45" title="Bientôt disponible"><input type="radio" name="abs-type-${p}" value="conge" disabled> Congé payé</label>
+        <label><input type="radio" name="abs-type-${p}" value="conge" ${type==='conge'?'checked':''} onchange="onAbsenceTypeChange('${p}','conge')"> Congé payé</label>
+        <label><input type="radio" name="abs-type-${p}" value="sans_solde" ${type==='sans_solde'?'checked':''} onchange="onAbsenceTypeChange('${p}','sans_solde')"> Congé sans solde</label>
+        <label><input type="radio" name="abs-type-${p}" value="pro" ${type==='pro'?'checked':''} onchange="onAbsenceTypeChange('${p}','pro')"> Accident du travail / MP</label>
       </div>
-      ${type === 'maladie' ? `
       <div class="absence-dates-row">
         <span>Du</span>
         <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
         <span>au</span>
         <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" oninput="onAbsenceChange('${p}')">
       </div>
+      ${(type === 'maladie' || type === 'pro') ? `
       <div class="absence-conv-row">
         <span>Convention collective (maintien) :</span>
         <select id="abs-conv-${p}" onchange="onAbsenceConvention('${p}', this.value)">
           <option value="0016" ${conv==='0016'?'selected':''}>IDCC 0016 — Transport routier</option>
         </select>
-      </div>
+      </div>` : ''}
       <div class="absence-methode-row">
         ${[
           ['calendaire', `Jours calendaires (÷ ${abs.dateDebut ? _joursCalMois(abs.dateDebut) : 'jours du mois'})`],
@@ -3220,7 +3385,7 @@ function _buildAbsencePanel(isMob) {
       <div class="absence-actions">
         <button class="btn-absence-apply" onclick="appliquerAbsence('${p}')">Appliquer</button>
         <button class="btn-absence-clear" onclick="effacerAbsence()">Effacer</button>
-      </div>` : ''}
+      </div>
     </div>`;
 }
 

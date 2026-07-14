@@ -222,7 +222,7 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cout_total_employeur: (brut + total_pat).round_dp(0),
         devise: "KRW".into(),
         absence: None,
-        heures_sup: None,
+        heures_sup: None, conges: None,
         salarie,
     }
 }

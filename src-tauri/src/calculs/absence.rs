@@ -1,15 +1,16 @@
-// Absence maladie : retenue sur salaire, maintien de salaire conventionnel
-// (indemnité complémentaire employeur) et IJSS (indemnités journalières SS).
+// Absences : retenue sur salaire, maintien de salaire (indemnité complémentaire
+// employeur) et IJSS (indemnités journalières SS) selon le type d'arrêt :
+//   - "maladie" (non professionnelle) : IJSS 50 % dès le 4e jour (carence SS
+//     3 j), maintien légal/conventionnel IDCC 0016 avec carence ;
+//   - "pro" (accident du travail / maladie professionnelle) : IJSS SANS carence
+//     (60 % du SJR j1-28 puis 80 %, SJR = brut ÷ 30,42 plafonné à 0,834 % du
+//     PASS), maintien sans carence (D1226-3), imposables à 50 % ;
+//   - "sans_solde" : retenue sèche, ni maintien ni IJSS ;
+//   - "conge" : traité par crate::calculs::conges_payes (retourne None ici).
 //
-// Calcul purement synchrone à partir du ContextPaie (SMIC + date de paie).
-// Hypothèses v1 (validées) : maladie NON professionnelle, salarié > 1 an
-// d'ancienneté, subrogation (l'employeur perçoit les IJSS et les réintègre
-// au net). Voir le plan pour les simplifications assumées.
-//
-// Modèle de carence « complet » :
-//   - IJSS : versées par jour calendaire dès le 4e jour (carence SS de 3 j).
-//   - Maintien employeur (IDCC 0016) : dès le 8e jour (carence conv. de 7 j),
-//     90 % pendant 30 jours puis 66,66 % les 30 jours suivants.
+// Calcul purement synchrone à partir du ContextPaie (SMIC + PMSS + date de
+// paie). Hypothèse commune : subrogation (l'employeur perçoit les IJSS et les
+// réintègre au net, garantie du net résolue dans bulletin.rs).
 
 use chrono::{Datelike, Duration, NaiveDate, Weekday};
 use rust_decimal::Decimal;
@@ -42,7 +43,7 @@ fn paques(annee: i32) -> NaiveDate {
 }
 
 /// Jours fériés français (métropole) pour une année donnée.
-fn jours_feries(annee: i32) -> Vec<NaiveDate> {
+pub(crate) fn jours_feries(annee: i32) -> Vec<NaiveDate> {
     let ymd = |m, d| NaiveDate::from_ymd_opt(annee, m, d).unwrap();
     let p = paques(annee);
     vec![
@@ -63,10 +64,10 @@ fn jours_feries(annee: i32) -> Vec<NaiveDate> {
 // ── Comptage des jours ────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq)]
-enum TypeJour { Calendaire, Ouvres, Ouvrables }
+pub(crate) enum TypeJour { Calendaire, Ouvres, Ouvrables }
 
 /// Détermine le type de jour à compter selon la méthode et le sous-choix.
-fn type_jour(methode: &str, jours_type: &str) -> TypeJour {
+pub(crate) fn type_jour(methode: &str, jours_type: &str) -> TypeJour {
     match methode {
         "calendaire"          => TypeJour::Calendaire,
         "ouvrables"           => TypeJour::Ouvrables,
@@ -78,7 +79,7 @@ fn type_jour(methode: &str, jours_type: &str) -> TypeJour {
 }
 
 /// Un jour donné est-il compté pour ce type de jour ?
-fn est_compte(d: NaiveDate, kind: TypeJour, feries: &[NaiveDate]) -> bool {
+pub(crate) fn est_compte(d: NaiveDate, kind: TypeJour, feries: &[NaiveDate]) -> bool {
     match kind {
         TypeJour::Calendaire => true,
         TypeJour::Ouvres => {
@@ -91,7 +92,7 @@ fn est_compte(d: NaiveDate, kind: TypeJour, feries: &[NaiveDate]) -> bool {
 }
 
 /// Nombre de jours comptés (du type donné) entre deux dates incluses.
-fn compter(debut: NaiveDate, fin: NaiveDate, kind: TypeJour) -> i64 {
+pub(crate) fn compter(debut: NaiveDate, fin: NaiveDate, kind: TypeJour) -> i64 {
     if fin < debut { return 0; }
     // Les fériés peuvent chevaucher deux années (rare) : on charge les deux.
     let mut feries = jours_feries(debut.year());
@@ -106,7 +107,7 @@ fn compter(debut: NaiveDate, fin: NaiveDate, kind: TypeJour) -> i64 {
 }
 
 /// Nombre de jours dans le mois d'une date.
-fn jours_du_mois(d: NaiveDate) -> i64 {
+pub(crate) fn jours_du_mois(d: NaiveDate) -> i64 {
     let (y, m) = (d.year(), d.month());
     let premier_suivant = if m == 12 {
         NaiveDate::from_ymd_opt(y + 1, 1, 1).unwrap()
@@ -117,7 +118,7 @@ fn jours_du_mois(d: NaiveDate) -> i64 {
 }
 
 /// Diviseur mensuel selon la méthode (cf. _calcRetenue côté front).
-fn diviseur(methode: &str, kind: TypeJour, debut: NaiveDate, heures_mois: f64) -> Decimal {
+pub(crate) fn diviseur(methode: &str, kind: TypeJour, debut: NaiveDate, heures_mois: f64) -> Decimal {
     match methode {
         "calendaire" => Decimal::from(jours_du_mois(debut)),
         "ouvrables"  => dec!(26),
@@ -136,11 +137,14 @@ fn diviseur(methode: &str, kind: TypeJour, debut: NaiveDate, heures_mois: f64) -
 
 // ── Calcul principal ──────────────────────────────────────────────────────────
 
-/// Calcule retenue + maintien + IJSS pour une absence maladie.
-/// `base_brut` = brut mensuel plein (référence SJB et per-day). `anciennete` en
-/// années entières — pilote le régime de maintien (voir bareme ci-dessous).
+/// Calcule retenue + maintien + IJSS pour une absence : maladie, AT/MP ("pro")
+/// ou congé sans solde (les congés payés retournent None, voir conges_payes).
+/// `base_brut` = brut mensuel plein (référence SJB/SJR et per-day). `anciennete`
+/// en années entières — pilote le régime de maintien (voir bareme ci-dessous).
 /// Retourne None si les dates sont absentes/invalides ou si la période est vide.
 pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, alsace_moselle: bool, ctx: &ContextPaie) -> Option<AbsenceResult> {
+    // Les congés payés ont leur propre valorisation (crate::calculs::conges_payes).
+    if abs.type_arret == "conge" { return None; }
     let debut = NaiveDate::parse_from_str(&abs.date_debut, "%Y-%m-%d").ok()?;
     let fin   = NaiveDate::parse_from_str(&abs.date_fin,   "%Y-%m-%d").ok()?;
     if fin < debut { return None; }
@@ -161,9 +165,54 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     if div <= Decimal::ZERO { return None; }
     let retenue = (base_brut * Decimal::from(nb_jours) / div).round_dp(2);
 
-    // ── Maintien employeur (maladie non professionnelle) ──
-    // Barème DROIT COMMUN par ancienneté / IDCC 0016 (= (carence, fin1, taux1,
-    // fin2, taux2), bornes en index calendaire 1-based depuis le début) :
+    // ── Congé sans solde : retenue sèche, sans maintien ni IJSS ──
+    // Stricte proportionnalité (Cass. soc. 11 févr. 1982 ; 24 juin 1992 — la
+    // méthode des heures réelles est la seule exacte, les autres sont tolérées).
+    if abs.type_arret == "sans_solde" {
+        return Some(AbsenceResult {
+            retenue,
+            maintien: Decimal::ZERO,
+            ijss_brut: Decimal::ZERO,
+            ijss_net: Decimal::ZERO,
+            brut_mensuel: base_brut.round_dp(2),
+            ijss_imposable: Decimal::ZERO,
+            ajustement_net: Decimal::ZERO,
+            diviseur_retenue: div,
+            per_day_maintien: Decimal::ZERO,
+            carence_maintien: 0,
+            jours_maintien_t1: 0,
+            jours_maintien_t2: 0,
+            taux_maintien_t1: Decimal::ZERO,
+            taux_maintien_t2: Decimal::ZERO,
+            am_local: false,
+            salaire_ref_ijss: Decimal::ZERO,
+            coeff_plafond_ijss: Decimal::ZERO,
+            sjb: Decimal::ZERO,
+            ijss_jour: Decimal::ZERO,
+            type_arret: abs.type_arret.clone(),
+            ijss_jour_t2: Decimal::ZERO,
+            jours_ijss_t1: 0,
+            jours_ijss_t2: 0,
+            taux_ijss_t1: Decimal::ZERO,
+            taux_ijss_t2: Decimal::ZERO,
+            plafond_sjr_ijss: Decimal::ZERO,
+            assiette_ref: Decimal::ZERO,
+            net_cible: Decimal::ZERO,
+            jours_absence: nb_jours,
+            jours_ijss: 0,
+            jours_maintien: 0,
+            libelle: format!("congé sans solde · {}", libelle_methode(methode, kind)),
+            convention: String::new(),
+        });
+    }
+    let est_at = abs.type_arret == "pro";
+
+    // ── Maintien employeur ──
+    // Barème = (carence, fin1, taux1, fin2, taux2), bornes en index calendaire
+    // 1-based depuis le début de l'arrêt, avec son libellé de régime et un
+    // indicateur « barème conventionnel » (préfixe IDCC sur le bulletin).
+    //
+    // Maladie non professionnelle (IDCC 0016) :
     //   < 1 an : aucun maintien.
     //   1 à < 3 ans : régime légal de mensualisation (CT art. L1226-1 / D1226-1)
     //     — carence 7 j, 90 % pendant 30 j puis 66,66 % pendant 30 j.
@@ -171,21 +220,35 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     //     ≥ 3 ans  : 100 % j6-40,  puis 75 % j41-70 ;
     //     ≥ 5 ans  : 100 % j6-70,  puis 75 % j71-130 ;
     //     ≥ 10 ans : 100 % j6-100, puis 75 % j101-190.
-    let bareme_dc: Option<(i64, i64, Decimal, i64, Decimal)> =
-        if idcc == "0016" && abs.type_arret != "pro" {
-            if      anciennete >= 10 { Some((5, 100, dec!(1.00), 190, dec!(0.75))) }
-            else if anciennete >= 5  { Some((5, 70,  dec!(1.00), 130, dec!(0.75))) }
-            else if anciennete >= 3  { Some((5, 40,  dec!(1.00), 70,  dec!(0.75))) }
-            else if anciennete >= 1  { Some((7, 37,  dec!(0.90), 67,  dec!(0.6666))) }
-            else { None }
-        } else {
-            None
-        };
+    //
+    // AT/MP : SANS carence (CT art. D1226-3), ancienneté ≥ 1 an (L1226-1).
+    //   1 à < 3 ans : légal 90 % pendant 30 j puis 66,66 % pendant 30 j, dès j1.
+    //   ≥ 3 ans : garantie de ressources AT IDCC 0016 (personnel ouvrier) :
+    //     ≥ 3 ans  : 100 % j1-30, puis 75 % j31-90 ;
+    //     ≥ 5 ans  : 100 % j1-60, puis 75 % j61-150 ;
+    //     ≥ 10 ans : 100 % j1-90, puis 75 % j91-210.
+    type Bareme = Option<(i64, i64, Decimal, i64, Decimal)>;
+    let (bareme_dc, regime_dc, conventionnel): (Bareme, &str, bool) = if est_at {
+        if      anciennete >= 10 { (Some((0, 90, dec!(1.00), 210, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if anciennete >= 5  { (Some((0, 60, dec!(1.00), 150, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if anciennete >= 3  { (Some((0, 30, dec!(1.00), 90,  dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if anciennete >= 1  { (Some((0, 30, dec!(0.90), 60,  dec!(0.6666))), "légal AT 90 %/66,66 % sans carence", false) }
+        else { (None, "sans maintien — ancienneté < 1 an", false) }
+    } else if idcc == "0016" {
+        if      anciennete >= 10 { (Some((5, 100, dec!(1.00), 190, dec!(0.75))), "conventionnel 100 % / 75 %", true) }
+        else if anciennete >= 5  { (Some((5, 70,  dec!(1.00), 130, dec!(0.75))), "conventionnel 100 % / 75 %", true) }
+        else if anciennete >= 3  { (Some((5, 40,  dec!(1.00), 70,  dec!(0.75))), "conventionnel 100 % / 75 %", true) }
+        else if anciennete >= 1  { (Some((7, 37,  dec!(0.90), 67,  dec!(0.6666))), "légal 90 % / 66,66 %", false) }
+        else { (None, "sans maintien — ancienneté < 1 an", false) }
+    } else {
+        (None, "sans maintien", false)
+    };
 
     // Alsace-Moselle (droit local, art. L1226-23, ex-art. 616 code civil local) :
     // 100 % du salaire dès le 1er jour, SANS carence ni condition d'ancienneté,
     // pendant 42 jours calendaires (6 semaines), puis relais du droit commun.
-    let am = alsace_moselle && abs.type_arret != "pro";
+    // Couvre toute absence sans faute du salarié : maladie ET accident du travail.
+    let am = alsace_moselle;
 
     // Taux du jour = max(Alsace-Moselle, droit commun). Le max réalise le relais :
     // jours 1-42 à 100 % (AM l'emporte et efface la carence du droit commun),
@@ -240,34 +303,72 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         if jours_maintien_t2 > 0 { s.push_str(" + relais droit commun"); }
         s
     } else {
-        match bareme_dc {
-            Some((5, ..)) => "conventionnel 100 % / 75 %",
-            Some(_)       => "légal 90 % / 66,66 %",
-            None if anciennete < 1 => "sans maintien — ancienneté < 1 an",
-            None          => "sans maintien",
-        }.to_string()
+        regime_dc.to_string()
     };
-
-    // ── IJSS (carence SS 3 j, par jour calendaire) ──
-    let jours_cal = (fin - debut).num_days() + 1;
-    let jours_ijss = (jours_cal - 3).max(0);
-    // Plafond : 1,4 SMIC depuis le 01/04/2025, 1,8 avant.
-    let coeff_plafond = if ctx.date_paie >= NaiveDate::from_ymd_opt(2025, 4, 1).unwrap() {
-        dec!(1.4)
+    // Préfixe IDCC seulement quand un barème conventionnel (ou le droit local)
+    // s'applique — « légal » et « sans maintien » ne relèvent pas de la convention.
+    let convention = if am || conventionnel {
+        format!("IDCC {idcc} · {regime}")
     } else {
-        dec!(1.8)
+        regime.clone()
     };
-    let salaire_ref = base_brut.min(coeff_plafond * ctx.smic_mensuel);
-    let sjb = salaire_ref * dec!(3) / dec!(91.25);
-    let ijss_jour = (dec!(0.5) * sjb).round_dp(2);
-    let ijss_brut = (ijss_jour * Decimal::from(jours_ijss)).round_dp(2);
-    let ijss_net  = (ijss_brut * IJSS_NET_COEFF).round_dp(2);
-    // IJSS imposables (base PAS) : maladie imposable sur les 60 premiers jours
-    // d'arrêt uniquement → 60 − 3 j de carence = 57 jours indemnisés au plus.
-    let jours_imposables = jours_ijss.min(57);
-    let ijss_imposable = (ijss_jour * Decimal::from(jours_imposables)).round_dp(2).min(ijss_brut);
 
-    let libelle = format!("maladie · {}", libelle_methode(methode, kind));
+    // ── IJSS (par jour calendaire) ──
+    let jours_cal = (fin - debut).num_days() + 1;
+    let (jours_ijss, sjb, salaire_ref, coeff_plafond, plafond_sjr,
+         ijss_jour, ijss_jour_t2, jours_t1, jours_t2, taux_t1, taux_t2,
+         ijss_brut, ijss_imposable);
+    if est_at {
+        // AT/MP : SANS carence — IJ dès le 1er jour (CSS, versement dès le
+        // lendemain de l'accident ; le jour même est payé par l'employeur, la
+        // période saisie démarre au 1er jour indemnisé).
+        jours_ijss = jours_cal;
+        // SJR = brut mensuel ÷ 30,42, plafonné à 0,834 % du PASS annuel
+        // (12 × PMSS) → IJ max 2026 : 240,49 € (60 %) / 320,66 € (80 %).
+        plafond_sjr = ctx.pmss * dec!(12) * dec!(0.00834);
+        let sjr = (base_brut / dec!(30.42)).min(plafond_sjr);
+        sjb = sjr;
+        salaire_ref = base_brut;
+        coeff_plafond = Decimal::ZERO; // plafond SMIC : sans objet en AT/MP
+        taux_t1 = dec!(0.60); // j1 à j28
+        taux_t2 = dec!(0.80); // dès le 29e jour
+        ijss_jour    = (taux_t1 * sjr).round_dp(2);
+        ijss_jour_t2 = (taux_t2 * sjr).round_dp(2);
+        jours_t1 = jours_ijss.min(28);
+        jours_t2 = (jours_ijss - 28).max(0);
+        ijss_brut = (ijss_jour * Decimal::from(jours_t1)
+                   + ijss_jour_t2 * Decimal::from(jours_t2)).round_dp(2);
+        // IJ AT/MP imposables à hauteur de 50 % de leur montant (pas de règle
+        // des 60 jours, contrairement à la maladie).
+        ijss_imposable = (ijss_brut * dec!(0.5)).round_dp(2);
+    } else {
+        // Maladie : carence SS de 3 jours calendaires.
+        jours_ijss = (jours_cal - 3).max(0);
+        // Plafond : 1,4 SMIC depuis le 01/04/2025, 1,8 avant.
+        coeff_plafond = if ctx.date_paie >= NaiveDate::from_ymd_opt(2025, 4, 1).unwrap() {
+            dec!(1.4)
+        } else {
+            dec!(1.8)
+        };
+        salaire_ref = base_brut.min(coeff_plafond * ctx.smic_mensuel);
+        sjb = salaire_ref * dec!(3) / dec!(91.25);
+        taux_t1 = dec!(0.5);
+        taux_t2 = Decimal::ZERO;
+        plafond_sjr = Decimal::ZERO;
+        ijss_jour = (taux_t1 * sjb).round_dp(2);
+        ijss_jour_t2 = Decimal::ZERO;
+        jours_t1 = jours_ijss;
+        jours_t2 = 0;
+        ijss_brut = (ijss_jour * Decimal::from(jours_ijss)).round_dp(2);
+        // IJSS imposables (base PAS) : maladie imposable sur les 60 premiers jours
+        // d'arrêt uniquement → 60 − 3 j de carence = 57 jours indemnisés au plus.
+        let jours_imposables = jours_ijss.min(57);
+        ijss_imposable = (ijss_jour * Decimal::from(jours_imposables)).round_dp(2).min(ijss_brut);
+    }
+    let ijss_net = (ijss_brut * IJSS_NET_COEFF).round_dp(2);
+
+    let prefixe = if est_at { "AT/MP" } else { "maladie" };
+    let libelle = format!("{prefixe} · {}", libelle_methode(methode, kind));
 
     Some(AbsenceResult {
         retenue,
@@ -290,17 +391,24 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         coeff_plafond_ijss: coeff_plafond,
         sjb: sjb.round_dp(2),
         ijss_jour,
+        type_arret: abs.type_arret.clone(),
+        ijss_jour_t2,
+        jours_ijss_t1: jours_t1,
+        jours_ijss_t2: jours_t2,
+        taux_ijss_t1: taux_t1,
+        taux_ijss_t2: taux_t2,
+        plafond_sjr_ijss: plafond_sjr.round_dp(2),
         assiette_ref: Decimal::ZERO, // rempli par le bulletin France
         net_cible: Decimal::ZERO,    // rempli par le bulletin France
         jours_absence: nb_jours,
         jours_ijss,
         jours_maintien,
         libelle,
-        convention: format!("IDCC {idcc} · {regime}"),
+        convention,
     })
 }
 
-fn libelle_methode(methode: &str, kind: TypeJour) -> String {
+pub(crate) fn libelle_methode(methode: &str, kind: TypeJour) -> String {
     match methode {
         "calendaire" => "jours cal.".into(),
         "heures"     => "heures réelles".into(),
