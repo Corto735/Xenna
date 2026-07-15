@@ -216,6 +216,33 @@ async fn paye_inverse_avec_conges() {
     nettoyer(&path);
 }
 
+/// Méthode « heures réelles » : le diviseur est l'horaire mensuel contractuel
+/// (151,67 h temps plein), PAS les jours de référence réels du mois. Retenue =
+/// brut × (jours × 7 h) ÷ 151,67 — indépendante du calendrier du mois.
+#[tokio::test]
+async fn heures_reelles_divise_par_151_67() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2025-06-30")).await.unwrap();
+
+    // Lun 16 → ven 20 juin 2025 : 5 jours ouvrés (et 5 ouvrables), aucun férié.
+    let cp = conge("2025-06-16", "2025-06-20", "heures", "ouvres");
+    let b = generer_bulletin(salarie_france("3000.00"), &ctx, Some(&cp));
+    let c = b.conges.as_ref().expect("congés payés calculés");
+
+    assert_eq!(c.diviseur_retenue, d("151.67"), "diviseur = horaire mensuel");
+    // 3000 × (5 j × 7,0002 h) ÷ 151,67 = 3000 × 5 × 12 ÷ 260 = 692,31.
+    assert_eq!(c.retenue, d("692.31"), "3000 × 35 h ÷ 151,67");
+
+    // Ouvrables : 35 h hebdo réparties sur 6 jours (5,83 h/j), même diviseur.
+    let cp = conge("2025-06-16", "2025-06-20", "heures", "ouvrables");
+    let b = generer_bulletin(salarie_france("3000.00"), &ctx, Some(&cp));
+    let c = b.conges.as_ref().expect("congés payés calculés");
+    assert_eq!(c.diviseur_retenue, d("151.67"));
+    assert_eq!(c.retenue, d("576.92"), "3000 × 29,17 h ÷ 151,67 (≡ 5/26)");
+
+    nettoyer(&path);
+}
+
 /// Invariants structurels du résultat CP.
 #[tokio::test]
 async fn invariants_conges_payes() {

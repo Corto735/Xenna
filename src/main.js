@@ -1243,6 +1243,14 @@ function _absenceEmbedTable(rows) {
   return `<table class="ascii-tbl abs-embed">${_ABS_COLGROUP}<tbody>${rows}</tbody></table>`;
 }
 
+// Méthode « heures réelles » : les unités rapportées au diviseur (151,67 h)
+// sont des heures — jours comptés × 7 h (ouvrés) ou 35/6 h (ouvrables).
+function _unitesRetenue(libelle, jours, div) {
+  if (!/heures réelles/.test(libelle || '')) return { unites: jours, enHeures: false };
+  const hJour = div * 12 / 52 / ((_absence?.joursType === 'ouvrables') ? 6 : 5);
+  return { unites: Math.round(jours * hJour * 100) / 100, enHeures: true };
+}
+
 // ── Formules des lignes d'absence maladie (retenue, maintien, IJSS, garantie
 // du net) — même squelette que les autres panneaux f(x). Toutes les valeurs
 // intermédiaires viennent du backend (AbsenceResult) : raisonnement transparent.
@@ -1255,19 +1263,21 @@ function buildAbsenceFormulaContent(which, a, b) {
 
   if (which === 'retenue') {
     const div = n(a.diviseur_retenue);
+    const { unites, enHeures } = _unitesRetenue(a.libelle, a.jours_absence, div);
+    const uniteLbl = enHeures ? "Heures d'absence" : "Jours d'absence";
     return `
-      <div class="fm-generic">Retenue  =  Brut mensuel  ×  Jours d'absence  ÷  Diviseur mensuel</div>
+      <div class="fm-generic">Retenue  =  Brut mensuel  ×  ${uniteLbl}  ÷  Diviseur mensuel</div>
       ${fmDecomp([{
         label: 'Retenue',
-        sym: `Brut mensuel  ×  Jours d'absence  ÷  Diviseur`,
-        num: `${fmt(baseRef)}  ×  ${a.jours_absence}  ÷  ${div}`,
-        grp: `${fmt(baseRef * a.jours_absence)}  ÷  ${div}  =  ${fmt(a.retenue)}`,
+        sym: `Brut mensuel  ×  ${uniteLbl}  ÷  Diviseur`,
+        num: `${fmt(baseRef)}  ×  ${unites}  ÷  ${div}`,
+        grp: `${fmt(baseRef * unites)}  ÷  ${div}  =  ${fmt(a.retenue)}`,
       }])}
       <div class="fm-base-note">Base : Brut mensuel plein${_modeSaisie === 'net' ? ' (reconstitué à partir du net saisi)' : ''}.
-      Méthode : ${esc(a.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou jours réels).</div>
+      Méthode : ${esc(a.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou 151,67 h).</div>
       <table class="fm-calc">
         <tr><td>Brut mensuel</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(baseRef)}</td></tr>
-        <tr><td>Jours d'absence comptés</td><td class="fm-op">×</td><td class="fm-val c-taux">${a.jours_absence}</td></tr>
+        <tr><td>${enHeures ? `Heures d'absence (${a.jours_absence} j)` : `Jours d'absence comptés`}</td><td class="fm-op">×</td><td class="fm-val c-taux">${unites}</td></tr>
         <tr><td>Diviseur mensuel</td><td class="fm-op">÷</td><td class="fm-val c-taux">${n(a.diviseur_retenue)}</td></tr>
         <tr class="fm-result fm-sep"><td>Retenue absence</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.retenue)}</td></tr>
       </table>`;
@@ -1449,19 +1459,21 @@ function buildCongesFormulaContent(which, c) {
 
   if (which === 'retenue') {
     const div = n(c.diviseur_retenue);
+    const { unites, enHeures } = _unitesRetenue(c.libelle, c.jours_pris, div);
+    const uniteLbl = enHeures ? "Heures de congé" : "Jours de congé pris";
     return `
-      <div class="fm-generic">Retenue  =  Brut mensuel  ×  Jours de congé pris  ÷  Diviseur mensuel</div>
+      <div class="fm-generic">Retenue  =  Brut mensuel  ×  ${uniteLbl}  ÷  Diviseur mensuel</div>
       ${fmDecomp([{
         label: 'Retenue',
-        sym: `Brut mensuel  ×  Jours pris  ÷  Diviseur`,
-        num: `${fmt(baseRef)}  ×  ${c.jours_pris}  ÷  ${div}`,
-        grp: `${fmt(baseRef * c.jours_pris)}  ÷  ${div}  =  ${fmt(c.retenue)}`,
+        sym: `Brut mensuel  ×  ${enHeures ? 'Heures prises' : 'Jours pris'}  ÷  Diviseur`,
+        num: `${fmt(baseRef)}  ×  ${unites}  ÷  ${div}`,
+        grp: `${fmt(baseRef * unites)}  ÷  ${div}  =  ${fmt(c.retenue)}`,
       }])}
       <div class="fm-base-note">Base : Brut mensuel plein${_modeSaisie === 'net' ? ' (reconstitué à partir du net saisi)' : ''}.
-      Méthode : ${esc(c.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou jours réels).</div>
+      Méthode : ${esc(c.libelle)} — le diviseur dépend de la méthode de décompte choisie (jours du mois, 26 ouvrables, 21,67 ouvrés ou 151,67 h).</div>
       <table class="fm-calc">
         <tr><td>Brut mensuel</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(baseRef)}</td></tr>
-        <tr><td>Jours de congé comptés</td><td class="fm-op">×</td><td class="fm-val c-taux">${c.jours_pris}</td></tr>
+        <tr><td>${enHeures ? `Heures de congé (${c.jours_pris} j)` : `Jours de congé comptés`}</td><td class="fm-op">×</td><td class="fm-val c-taux">${unites}</td></tr>
         <tr><td>Diviseur mensuel</td><td class="fm-op">÷</td><td class="fm-val c-taux">${div}</td></tr>
         <tr class="fm-result fm-sep"><td>Retenue congés payés</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(c.retenue)}</td></tr>
       </table>`;
@@ -1476,7 +1488,7 @@ function buildCongesFormulaContent(which, c) {
       {
         label: 'Maintien',
         sym: `Rémunération qu'aurait perçue le salarié  (=  la retenue)`,
-        num: `${fmt(baseRef)}  ×  ${c.jours_pris}  ÷  ${n(c.diviseur_retenue)}`,
+        num: `${fmt(baseRef)}  ×  ${_unitesRetenue(c.libelle, c.jours_pris, n(c.diviseur_retenue)).unites}  ÷  ${n(c.diviseur_retenue)}`,
         grp: `${fmt(c.montant_maintien)}`,
       },
       {
@@ -3244,21 +3256,15 @@ function _calcRetenue(brut, abs) {
       diviseur = 21.67;
       break;
     case 'heures': {
-      const joursRef = abs.joursType === 'ouvrables'
+      // Heures réelles : retenue = brut × heures d'absence ÷ horaire mensuel
+      // (151,67 h temps plein) — 7 h/jour ouvré, 35/6 h/jour ouvrable.
+      const ouvrables = abs.joursType === 'ouvrables';
+      const joursAbs = ouvrables
         ? _countJoursOuvrables(abs.dateDebut, abs.dateFin)
         : _countJoursOuvres(abs.dateDebut, abs.dateFin);
-      nbJours  = joursRef;
-      diviseur = abs.joursType === 'ouvrables'
-        ? _countJoursOuvrables(
-            `${new Date(abs.dateDebut).getFullYear()}-${String(new Date(abs.dateDebut).getMonth()+1).padStart(2,'0')}-01`,
-            new Date(new Date(abs.dateDebut).getFullYear(), new Date(abs.dateDebut).getMonth()+1, 0).toISOString().slice(0,10)
-          )
-        : _countJoursOuvres(
-            `${new Date(abs.dateDebut).getFullYear()}-${String(new Date(abs.dateDebut).getMonth()+1).padStart(2,'0')}-01`,
-            new Date(new Date(abs.dateDebut).getFullYear(), new Date(abs.dateDebut).getMonth()+1, 0).toISOString().slice(0,10)
-          );
-      // retenue = (brut / diviseur_jours) × jours_absence = brut / heuresMois × heures_absence
-      // Équivalent : (brut × joursAbsence) / joursRefMois
+      const hJour = heuresMois * 12 / 52 / (ouvrables ? 6 : 5);
+      nbJours  = joursAbs * hJour; // heures d'absence
+      diviseur = heuresMois;
       break;
     }
     default:
@@ -3297,7 +3303,7 @@ function _absenceStats(abs) {
                    : abs.methode === 'moyens'     ? (abs.joursType === 'ouvrables' ? 26 : 21.67)
                    : abs.methode === 'ouvrables'  ? 26
                    : abs.methode === 'ouvres'     ? 21.67
-                   : (abs.joursType === 'ouvrables' ? ouv : ouvr); // heures : diviseur = jours ref mois
+                   : (abs.joursType === 'ouvrables' ? 26 : 65 / 3); // heures : ÷151,67 h ⇔ 26 ouvrables / 21,67 ouvrés
   const salaireJ   = diviseurJ > 0 ? Math.round(_remBase / diviseurJ * 100) / 100 : 0;
   return { cal, ouv, ouvr, salaireH: Math.round(salaireH * 100) / 100, salaireJ };
 }
@@ -3375,7 +3381,7 @@ function _buildAbsencePanel(isMob) {
         ${[
           ['calendaire', `Jours calendaires (÷ ${abs.dateDebut ? _joursCalMois(abs.dateDebut) : 'jours du mois'})`],
           ['moyens',     `Jours moyens (÷ ${jType === 'ouvrables' ? '26' : '21,67'})`],
-          ['heures',     `Heures réelles (÷ ${Math.round(heuresMois)} h/mois)`],
+          ['heures',     `Heures réelles (÷ ${heuresMois.toLocaleString('fr-FR')} h/mois)`],
         ].map(([v, lbl]) =>
           `<label><input type="radio" name="abs-methode-${p}" value="${v}" ${methode===v?'checked':''} onchange="onAbsenceChange('${p}')"> ${lbl}</label>`
         ).join('')}

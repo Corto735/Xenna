@@ -124,14 +124,37 @@ pub(crate) fn diviseur(methode: &str, kind: TypeJour, debut: NaiveDate, heures_m
         "ouvrables"  => dec!(26),
         "ouvres"     => dec!(21.67),
         "moyens"     => if kind == TypeJour::Ouvrables { dec!(26) } else { dec!(21.67) },
-        // "heures" : diviseur = jours de référence réels du mois (cf. front).
+        // "heures" : diviseur = horaire mensuel contractuel en heures
+        // (151,67 h temps plein), PAS les jours réels du mois. round_dp(4)
+        // gomme le bruit binaire du f64 (151,6699999…).
         "heures" => {
-            let prem = NaiveDate::from_ymd_opt(debut.year(), debut.month(), 1).unwrap();
-            let dern = prem + Duration::days(jours_du_mois(debut) - 1);
-            let n = compter(prem, dern, kind);
-            if n > 0 { Decimal::from(n) } else { Decimal::from_f64_retain(heures_mois).unwrap_or(dec!(151.67)) }
+            let hm = Decimal::from_f64_retain(heures_mois)
+                .map(|d| d.round_dp(4))
+                .unwrap_or(dec!(151.67));
+            if hm > Decimal::ZERO { hm } else { dec!(151.67) }
         }
         _ => Decimal::from(jours_du_mois(debut)),
+    }
+}
+
+/// Heures par jour compté pour la méthode "heures réelles" : horaire
+/// hebdomadaire (horaire mensuel × 12 ÷ 52) réparti sur 5 jours ouvrés ou
+/// 6 ouvrables — 151,67 h/mois → 7 h/jour ouvré.
+pub(crate) fn heures_par_jour(kind: TypeJour, heures_mois: Decimal) -> Decimal {
+    let semaine = heures_mois * dec!(12) / dec!(52);
+    match kind {
+        TypeJour::Ouvrables => semaine / dec!(6),
+        _                   => semaine / dec!(5),
+    }
+}
+
+/// Unités d'absence rapportées au diviseur : des heures (jours × heures/jour)
+/// pour la méthode "heures", des jours comptés pour toutes les autres.
+pub(crate) fn unites_absence(methode: &str, kind: TypeJour, nb_jours: i64, div: Decimal) -> Decimal {
+    if methode == "heures" {
+        Decimal::from(nb_jours) * heures_par_jour(kind, div)
+    } else {
+        Decimal::from(nb_jours)
     }
 }
 
@@ -163,7 +186,7 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     if nb_jours == 0 { return None; }
     let div = diviseur(methode, kind, debut, heures_mois);
     if div <= Decimal::ZERO { return None; }
-    let retenue = (base_brut * Decimal::from(nb_jours) / div).round_dp(2);
+    let retenue = (base_brut * unites_absence(methode, kind, nb_jours, div) / div).round_dp(2);
 
     // ── Congé sans solde : retenue sèche, sans maintien ni IJSS ──
     // Stricte proportionnalité (Cass. soc. 11 févr. 1982 ; 24 juin 1992 — la
