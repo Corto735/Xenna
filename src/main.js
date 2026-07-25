@@ -1524,8 +1524,9 @@ function buildAbsenceFormulaContent(which, a, b) {
       <div class="fm-base-note">AT/MP : AUCUNE carence — IJ versées par jour calendaire dès le 1er jour d'arrêt
       (le jour de l'accident lui-même est payé intégralement par l'employeur).
       SJR = brut du mois précédent ÷ 30,42, plafonné à 0,834 % du PASS annuel (${fmt(a.plafond_sjr_ijss)}).
-      <b>Subrogation</b> : les IJSS ne figurent au bulletin que pendant le maintien de salaire. Dès la fin du
-      maintien (ou en son absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
+      <b>Subrogation</b> : les IJSS figurent au bulletin de la carence Sécurité sociale jusqu'à la <b>fin du
+      maintien</b> de salaire (la carence de maintien ne les suspend pas). Passé la fin du maintien (ou en son
+      absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
       <table class="fm-calc">
         <tr><td>SJR (brut ÷ 30,42, plafonné)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.sjb)}</td></tr>
         <tr><td>Tranche 1 : ${a.jours_ijss_t1} j × 60 % (${fmt(a.ijss_jour)}/j)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(t1)}</td></tr>
@@ -1563,8 +1564,9 @@ function buildAbsenceFormulaContent(which, a, b) {
       ])}
       <div class="fm-base-note">Salaire de référence plafonné à ${n(a.coeff_plafond_ijss)} × SMIC mensuel (CSS art. R323-4).
       Carence Sécurité sociale : 3 jours calendaires — IJ versée par jour calendaire dès le 4e jour.
-      <b>Subrogation</b> : les IJSS ne figurent au bulletin que pendant le maintien de salaire. Dès la fin du
-      maintien (ou en son absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
+      <b>Subrogation</b> : les IJSS figurent au bulletin de la carence Sécurité sociale jusqu'à la <b>fin du
+      maintien</b> de salaire (la carence de maintien ne les suspend pas). Passé la fin du maintien (ou en son
+      absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
       <table class="fm-calc">
         <tr><td>Salaire de référence (min(brut ; ${n(a.coeff_plafond_ijss)} × SMIC))</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.salaire_ref_ijss)}</td></tr>
         <tr><td>SJB (× 3 ÷ 91,25)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.sjb)}</td></tr>

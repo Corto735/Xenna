@@ -342,6 +342,27 @@ async fn net_imposable_inclut_ijss() {
     nettoyer(&path);
 }
 
+/// Subrogation — bornes : pendant la carence de maintien (début), les IJSS sont
+/// DÉJÀ versées (la carence SS n'est que de 3 jours). Les IJSS courent donc de la
+/// carence SS jusqu'à la FIN du maintien. Maladie légale anc 1 (carence maintien 7,
+/// maintien j8-37) sur un arrêt de 10 j : IJSS = jours 4 à 10 (7 j), alors même que
+/// le maintien ne débute qu'au 8e jour.
+#[tokio::test]
+async fn ijss_versees_pendant_carence_maintien() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
+
+    let b = generer_bulletin(
+        salarie_france("3000.00"), &ctx, Some(&absence("2026-03-02", "2026-03-11")));
+    let a = b.absence.as_ref().unwrap();
+
+    assert_eq!(a.carence_maintien, 7, "carence de maintien légale 7 j");
+    assert_eq!(a.jours_maintien, 3, "maintien = jours 8 à 10 (3 j)");
+    assert_eq!(a.jours_ijss, 7, "IJSS jours 4 à 10 : versées dès la carence SS, carence de maintien incluse");
+
+    nettoyer(&path);
+}
+
 /// Choix du régime de maintien : droit du travail GÉNÉRAL (mensualisation légale)
 /// vs CONVENTION IDCC 0016 (transport routier). À ancienneté ≥ 3 ans, le droit
 /// général reste au barème légal (90 %/66,66 %, carence 7 j) tandis que l'IDCC 16

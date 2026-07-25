@@ -379,20 +379,21 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let idx_lo = (eff_debut - debut).num_days() + 1;
     let idx_hi = (eff_fin - debut).num_days() + 1;
     // ── Fenêtre de subrogation ──
-    // Les IJSS ne figurent sur le bulletin que pendant le MAINTIEN de salaire : la
-    // subrogation cesse dès la fin du maintien ; au-delà (et s'il n'y a aucun
-    // maintien), la CPAM verse les IJSS directement au salarié — elles ne passent
-    // plus par le bulletin. Bornes en index calendaire depuis le début de l'arrêt :
-    //   début = 1er jour de maintien (carence de maintien + 1) ;
+    // Les IJSS figurent sur le bulletin de la fin de la carence SS JUSQU'À LA FIN DU
+    // MAINTIEN de salaire. La carence de maintien (début) ne les suspend PAS : la
+    // carence SS n'étant que de 3 jours, les IJSS sont déjà versées pendant la
+    // carence de maintien. C'est seulement à la FIN du maintien que la subrogation
+    // cesse ; au-delà (et s'il n'y a aucun maintien), la CPAM verse directement au
+    // salarié — les IJSS ne passent plus par le bulletin. Bornes en index calendaire :
+    //   début = fin de carence SS (jour 4 en maladie, jour 1 en AT/MP) ;
     //   fin   = dernier jour de maintien (fin de tranche 2 du barème ; Alsace-Moselle :
-    //           42 jours, ou relais du droit commun au-delà).
+    //           42 jours, ou relais du droit commun au-delà). Pas de maintien → fin 0 → 0.
     let dc_fin2 = bareme_dc.map(|(_, _, _, f2, _)| f2).unwrap_or(0);
-    let maintien_start_idx = carence_maintien + 1;
     let maintien_end_idx = if am { dc_fin2.max(42) } else { dc_fin2 };
-    // Carence SS (3 j en maladie, aucune en AT/MP). Fenêtre effective des IJSS sur
-    // le bulletin = mois ∩ subrogation ∩ post-carence SS (vide → aucune IJSS).
+    // Carence SS (3 j en maladie, aucune en AT/MP). Fenêtre des IJSS sur le bulletin
+    // = mois ∩ post-carence SS ∩ [1 ; fin du maintien] (vide → aucune IJSS).
     let ss_carence = if est_at { 0 } else { 3 };
-    let ijss_lo = idx_lo.max(maintien_start_idx).max(ss_carence + 1);
+    let ijss_lo = idx_lo.max(ss_carence + 1);
     let ijss_hi = idx_hi.min(maintien_end_idx);
     let (jours_ijss, sjb, salaire_ref, coeff_plafond, plafond_sjr,
          ijss_jour, ijss_jour_t2, jours_t1, jours_t2, taux_t1, taux_t2,
@@ -412,9 +413,9 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         taux_t2 = dec!(0.80); // dès le 29e jour
         ijss_jour    = (taux_t1 * sjr).round_dp(2);
         ijss_jour_t2 = (taux_t2 * sjr).round_dp(2);
-        // Tranches par index global (60 % j1-28, 80 % dès j29), bornées à la fenêtre
-        // mois ∩ subrogation : hors période de maintien, la CPAM verse directement et
-        // ces jours ne figurent pas sur le bulletin. Sans maintien → fenêtre vide → 0.
+        // Tranches par index global (60 % j1-28, 80 % dès j29), bornées au mois et à la
+        // FIN du maintien : au-delà, la CPAM verse directement et ces jours ne figurent
+        // pas sur le bulletin. Sans maintien → fenêtre vide → 0.
         jours_t1 = (ijss_hi.min(28) - ijss_lo.max(1) + 1).max(0);
         jours_t2 = (ijss_hi - ijss_lo.max(29) + 1).max(0);
         jours_ijss = jours_t1 + jours_t2;
@@ -438,9 +439,9 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         plafond_sjr = Decimal::ZERO;
         ijss_jour = (taux_t1 * sjb).round_dp(2);
         ijss_jour_t2 = Decimal::ZERO;
-        // Jours indemnisés sur le bulletin = fenêtre mois ∩ subrogation ∩ post-carence
-        // SS. Hors maintien (carence de maintien, ou au-delà de la fin du maintien), la
-        // CPAM verse directement → ces jours ne figurent pas ici. Pas de maintien → 0.
+        // Jours indemnisés sur le bulletin = post-carence SS jusqu'à la fin du maintien
+        // (∩ mois). Au-delà de la fin du maintien (ou sans maintien), la CPAM verse
+        // directement → ces jours ne figurent pas ici. Pas de maintien → fenêtre vide.
         jours_ijss = (ijss_hi - ijss_lo + 1).max(0);
         jours_t1 = jours_ijss;
         jours_t2 = 0;
@@ -478,13 +479,13 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         }
     }
     // IJSS : jours calendaires purs, classés par index GLOBAL (indépendant du mois
-    // de paie ; le front encadre les jours effectivement retenus ce mois). Une IJSS
-    // n'apparaît (subrogation) que pendant la période de MAINTIEN : hors de cette
-    // fenêtre, la CPAM verse directement → "hors" (grisé). Maladie : carence 3 j puis
-    // 50 % ; AT/MP : 60 % j1-28 puis 80 % dès j29.
+    // de paie ; le front encadre les jours effectivement retenus ce mois). Les IJSS
+    // apparaissent de la carence SS JUSQU'À LA FIN DU MAINTIEN (subrogation) ; au-delà
+    // (ou sans maintien), la CPAM verse directement → "hors" (grisé). Maladie :
+    // carence 3 j puis 50 % ; AT/MP : 60 % j1-28 puis 80 % dès j29.
     let mut frise_ijss: Vec<String> = Vec::with_capacity(jours_cal as usize);
     for idx in 1..=jours_cal {
-        let subroge = idx >= maintien_start_idx && idx <= maintien_end_idx;
+        let subroge = idx <= maintien_end_idx; // la subrogation cesse à la fin du maintien
         let code = if est_at {
             if subroge {
                 if idx <= 28 { "ijss1" } else { "ijss2" }
