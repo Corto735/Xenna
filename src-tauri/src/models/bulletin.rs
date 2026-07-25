@@ -340,6 +340,26 @@ pub struct AbsenceResult {
     pub jours_absence:  i64,
     pub jours_ijss:     i64,
     pub jours_maintien: i64,
+    /// Frise du maintien : un code par jour CALENDAIRE de l'arrêt (du 1er au
+    /// dernier), pour la visualisation front. Valeurs : "carence" | "t1" (taux
+    /// fort) | "t2" (taux réduit) | "hors" (week-end/férié non compté ou au-delà
+    /// du barème). Vide pour un congé sans solde.
+    #[serde(default)]
+    pub frise_maintien: Vec<String>,
+    /// Frise des IJSS : un code par jour calendaire. Valeurs : "carence" (3 j en
+    /// maladie) | "ijss1" | "ijss2" (tranche 80 % AT/MP) | "hors".
+    #[serde(default)]
+    pub frise_ijss: Vec<String>,
+    /// Net avant impôt (net à payer) du bulletin de RÉFÉRENCE : plein mois sans
+    /// absence, même brut. Rempli par le bulletin France (0 sinon). Sert à
+    /// estimer la perte de salaire du salarié (net_reference − net_a_payer).
+    #[serde(default, with = "rust_decimal::serde::str")]
+    pub net_reference: Decimal,
+    /// Coût total employeur du bulletin de RÉFÉRENCE (plein mois sans absence).
+    /// Rempli par le bulletin France (0 sinon). Sert au coût réel employeur de
+    /// l'absence (cout_reference − cout_total_employeur).
+    #[serde(default, with = "rust_decimal::serde::str")]
+    pub cout_reference: Decimal,
     /// Ex. "maladie · ÷21,67 ouvrés".
     pub libelle:    String,
     /// Ex. "IDCC 0016".

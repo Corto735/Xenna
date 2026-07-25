@@ -69,6 +69,23 @@ export const STATIC_DICT = {
   'IJSS AT/MP (60 %/80 % sans carence) et maintien calculés avec le bulletin': ['Work-accident IJSS (60 %/80 %, no waiting period) and maintenance computed with the payslip', 'AT/MP-IJSS (60 %/80 %, ohne Karenz) und Fortzahlung mit der Abrechnung berechnet', 'AT/MP-IJSS (60 %/80 %, zonder wachttijd) en doorbetaling berekend met de loonbrief', 'IJSS infortunio (60 %/80 %, senza carenza) e mantenimento calcolati con la busta paga', 'IJSS accidente (60 %/80 %, sin carencia) y mantenimiento calculados con la nómina'],
   'SJR (brut ÷ 30,42, plafonné)': ['Reference daily wage (gross ÷ 30.42, capped)', 'Referenz-Tageslohn (Brutto ÷ 30,42, gedeckelt)', 'Referentiedagloon (bruto ÷ 30,42, geplafonneerd)', 'Salario giornaliero di riferimento (lordo ÷ 30,42, con tetto)', 'Salario diario de referencia (bruto ÷ 30,42, con tope)'],
 
+  // Frises visuelles du maintien / IJSS (en-tête, titres, légendes, indicateurs)
+  'Indemnités journalières (IJSS)': ['Daily benefits (IJSS)', 'Krankengeld (IJSS)', 'Dagvergoedingen (IJSS)', 'Indennità giornaliere (IJSS)', 'Prestaciones diarias (IJSS)'],
+  'Début de l\'arrêt':          ['Start of sick leave', 'Beginn der Krankschreibung', 'Begin van het ziekteverlof', 'Inizio dell\'assenza', 'Inicio de la baja'],
+  'Carence de maintien':        ['Employer waiting period', 'Karenzzeit der Lohnfortzahlung', 'Wachttijd loondoorbetaling', 'Periodo di carenza del mantenimento', 'Periodo de carencia del mantenimiento'],
+  'Maintien à':                 ['Maintenance at', 'Fortzahlung zu', 'Doorbetaling tegen', 'Mantenimento al', 'Mantenimiento al'],
+  'Non indemnisé (week-end/férié ou hors barème)': ['Not compensated (weekend/holiday or beyond scale)', 'Nicht vergütet (Wochenende/Feiertag oder außerhalb des Satzes)', 'Niet vergoed (weekend/feestdag of buiten schaal)', 'Non indennizzato (weekend/festivo o fuori tabella)', 'No indemnizado (fin de semana/festivo o fuera de baremo)'],
+  'Non indemnisé':              ['Not compensated', 'Nicht vergütet', 'Niet vergoed', 'Non indennizzato', 'No indemnizado'],
+  'Carence IJSS (3 jours)':     ['IJSS waiting period (3 days)', 'IJSS-Karenzzeit (3 Tage)', 'IJSS-wachttijd (3 dagen)', 'Carenza IJSS (3 giorni)', 'Carencia IJSS (3 días)'],
+  'IJSS à':                     ['IJSS at', 'IJSS zu', 'IJSS tegen', 'IJSS al', 'IJSS al'],
+  'du SJB':                     ['of the daily base wage', 'des Tagesgrundlohns', 'van het dagloon', 'del salario giornaliero base', 'del salario diario base'],
+  'du SJR':                     ['of the reference daily wage', 'des Referenz-Tageslohns', 'van het referentiedagloon', 'del salario giornaliero di riferimento', 'del salario diario de referencia'],
+  'Perte de salaire (net avant impôt)': ['Salary loss (net before tax)', 'Lohnverlust (Netto vor Steuer)', 'Loonverlies (netto vóór belasting)', 'Perdita salariale (netto ante imposte)', 'Pérdida salarial (neto antes de impuestos)'],
+  'Coût réel employeur de l\'absence': ['Real employer cost of absence', 'Tatsächliche Arbeitgeberkosten der Abwesenheit', 'Werkelijke werkgeverskosten van het verzuim', 'Costo reale datore di lavoro dell\'assenza', 'Coste real del empleador por la ausencia'],
+  'Arrêt à cheval sur plusieurs mois': ['Sick leave spanning several months', 'Krankschreibung über mehrere Monate', 'Ziekteverlof over meerdere maanden', 'Assenza a cavallo di più mesi', 'Baja a caballo entre varios meses'],
+  'Jours retenus sur ce bulletin': ['Days retained on this payslip', 'Auf dieser Abrechnung berücksichtigte Tage', 'Op deze loonbrief opgenomen dagen', 'Giorni conteggiati su questa busta', 'Días considerados en esta nómina'],
+  'Le reste de l\'arrêt figure sur les autres bulletins de paie.': ['The rest of the leave appears on the other payslips.', 'Der Rest der Krankschreibung erscheint auf den anderen Abrechnungen.', 'De rest van het verlof staat op de andere loonbrieven.', 'Il resto dell\'assenza figura sulle altre buste paga.', 'El resto de la baja figura en las otras nóminas.'],
+
   // Panneaux f(x) des lignes d'absence
   'Salaire mensuel':          ['Monthly salary', 'Monatsgehalt', 'Maandloon', 'Retribuzione mensile', 'Salario mensual'],
   'Jours d\'absence comptés': ['Absence days counted', 'Gezählte Abwesenheitstage', 'Getelde afwezigheidsdagen', 'Giorni di assenza conteggiati', 'Días de ausencia contados'],

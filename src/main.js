@@ -1386,7 +1386,7 @@ function buildAbsenceFormulaContent(which, a, b) {
         <tr><td>Salaire de référence (min(brut ; ${n(a.coeff_plafond_ijss)} × SMIC))</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.salaire_ref_ijss)}</td></tr>
         <tr><td>SJB (× 3 ÷ 91,25)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.sjb)}</td></tr>
         <tr><td>IJ journalière (50 %)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.ijss_jour)}</td></tr>
-        <tr><td>Jours indemnisés (${a.jours_ijss + 3} cal. − 3 j de carence)</td><td class="fm-op">×</td><td class="fm-val c-taux">${a.jours_ijss}</td></tr>
+        <tr><td>Jours indemnisés dans le mois (carence de 3 j décomptée en début d'arrêt)</td><td class="fm-op">×</td><td class="fm-val c-taux">${a.jours_ijss}</td></tr>
         <tr class="fm-result fm-sep"><td>IJSS brutes</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(a.ijss_brut)}</td></tr>
       </table>
       <div class="fm-base-note">Déduites du brut soumis à cotisations (subrogation : l'employeur les perçoit de la CPAM).
@@ -3034,7 +3034,7 @@ function buildRemSection() {
     <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
     <div class="rem-section">
       ${baseRow}
-      ${absencePanel}${lines}${absenceLine}${totalRow}
+      ${absencePanel}${lines}${absInfo ? _buildAbsenceViz(absInfo, _absence) : ''}${absenceLine}${totalRow}
     </div>`;
 }
 
@@ -3085,7 +3085,7 @@ function buildRemSectionMobile() {
         <span class="rem-base-lbl">Salaire de base</span>
         <span style="font-size:0.68rem;color:var(--fg)">${fmt(_remBase)}</span>
       </div>
-      ${absencePanel}${lines}${absenceLine}${totalRow}
+      ${absencePanel}${lines}${absInfo ? _buildAbsenceViz(absInfo, _absence) : ''}${absenceLine}${totalRow}
     </div>`;
 }
 
@@ -3225,6 +3225,150 @@ function _countJoursOuvres(debut, fin) {
 function _joursCalMois(dateStr) {
   const d = new Date(dateStr);
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+// ── Frises visuelles du maintien de salaire et des IJSS ───────────────────────
+// Une case = un jour calendaire de l'arrêt, disposée sur une grille de 7 colonnes
+// alignée sur les vrais jours de la semaine (lundi→dimanche). La CLASSIFICATION de
+// chaque jour vient du backend (AbsenceResult.frise_maintien / frise_ijss) : les
+// carrés colorés collent donc exactement aux montants calculés.
+
+const _FRISE_LOCALE = { fr: 'fr-FR', en: 'en-GB', de: 'de-DE', nl: 'nl-NL', it: 'it-IT', es: 'es-ES' };
+
+// Parse une date ISO "YYYY-MM-DD" en Date LOCALE (minuit local) — évite le
+// décalage de fuseau de new Date("YYYY-MM-DD") (interprété en UTC).
+function _parseISO(s) {
+  const [y, m, d] = String(s).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+// Date longue sans jour de semaine ("12 janvier 2026"), localisée.
+function _friseFmtDate(d, locale) {
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Traduction d'un libellé de frise : dictionnaire statique, repli français.
+function _friseTr(fr) {
+  return (_currentLang === 'fr' ? null : trStatic(fr, _currentLang)) || fr;
+}
+
+// Taux décimal ("0.90", "0.6666") → pourcentage lisible ("90", "66,66").
+function _frisePct(v) {
+  const n = parseFloat(v) || 0;
+  return String(Math.round(n * 10000) / 100).replace('.', ',');
+}
+
+// En-têtes des 7 colonnes (initiales des jours), localisés. Semaine de référence
+// démarrant le lundi 1er janvier 2024.
+function _friseWeekHeads(locale) {
+  const monday = new Date(2024, 0, 1);
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    out.push(d.toLocaleDateString(locale, { weekday: 'narrow' }));
+  }
+  return out;
+}
+
+// Légende (infobulle) d'une case selon la grille ('maintien'|'ijss') et le code.
+function _friseLegende(kind, code, a) {
+  const at = a.type_arret === 'pro';
+  if (kind === 'maintien') {
+    switch (code) {
+      case 'carence': return _friseTr('Carence de maintien');
+      case 't1':      return `${_friseTr('Maintien à')} ${_frisePct(a.taux_maintien_t1)} %`;
+      case 't2':      return `${_friseTr('Maintien à')} ${_frisePct(a.taux_maintien_t2)} %`;
+      default:        return _friseTr('Non indemnisé (week-end/férié ou hors barème)');
+    }
+  }
+  const base = _friseTr(at ? 'du SJR' : 'du SJB');
+  switch (code) {
+    case 'carence': return _friseTr('Carence IJSS (3 jours)');
+    case 'ijss1':   return `${_friseTr('IJSS à')} ${_frisePct(a.taux_ijss_t1)} % ${base}`;
+    case 'ijss2':   return `${_friseTr('IJSS à')} ${_frisePct(a.taux_ijss_t2)} % ${base}`;
+    default:        return _friseTr('Non indemnisé');
+  }
+}
+
+// Grille d'une frise : en-têtes de jours + décalage du 1er jour + carrés colorés.
+// `mois` (optionnel) = { year, month } du mois de paie : les cases de ce mois
+// sont encadrées, celles des autres mois atténuées (arrêt à cheval sur plusieurs mois).
+function _friseGrid(codes, kind, a, startDate, mois) {
+  const locale = _FRISE_LOCALE[_currentLang] || 'fr-FR';
+  const start = _parseISO(startDate);
+  const offset = (start.getDay() + 6) % 7; // lundi = 0
+  const heads = _friseWeekHeads(locale)
+    .map(h => `<span class="frise-head">${esc(h)}</span>`).join('');
+  const empties = Array.from({ length: offset },
+    () => `<span class="frise-sq frise-sq--empty"></span>`).join('');
+  const squares = codes.map((code, i) => {
+    let mCls = '';
+    if (mois) {
+      const day = new Date(start); day.setDate(start.getDate() + i);
+      const inMonth = day.getFullYear() === mois.year && day.getMonth() === mois.month;
+      mCls = inMonth ? ' frise-sq--in' : ' frise-sq--out';
+    }
+    return `<span class="frise-sq frise-sq--${esc(code)}${mCls}" title="${esc(_friseLegende(kind, code, a))}"></span>`;
+  }).join('');
+  return `<div class="frise-grid">${heads}${empties}${squares}</div>`;
+}
+
+// Bloc complet inséré avant la ligne « Retenue absence » : en-tête daté, frise du
+// maintien, frise des IJSS, puis perte salarié (net avant impôt) et coût employeur.
+function _buildAbsenceViz(absInfo, absState) {
+  if (!absInfo || absInfo.type_arret === 'sans_solde') return '';
+  const fm = Array.isArray(absInfo.frise_maintien) ? absInfo.frise_maintien : [];
+  const fi = Array.isArray(absInfo.frise_ijss) ? absInfo.frise_ijss : [];
+  const startDate = absState?.dateDebut;
+  if ((fm.length === 0 && fi.length === 0) || !startDate) return '';
+
+  const locale = _FRISE_LOCALE[_currentLang] || 'fr-FR';
+  const start = _parseISO(startDate);
+  const end   = absState?.dateFin ? _parseISO(absState.dateFin) : start;
+  const dateLabel = start.toLocaleDateString(locale,
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const hasMaintien = fm.some(c => c !== 'hors');
+  const hasIjss = fi.some(c => c !== 'hors');
+
+  // Mois de paie : si l'arrêt déborde (avant et/ou après), on encadre les jours
+  // du mois dans les frises et on affiche un encadré rappelant les jours retenus.
+  const pay = _parseISO(getDatePaie());
+  const payYear = pay.getFullYear(), payMonth = pay.getMonth();
+  const monthStart = new Date(payYear, payMonth, 1);
+  const monthEnd   = new Date(payYear, payMonth + 1, 0);
+  const hasSpill = start < monthStart || end > monthEnd;
+  const mois = hasSpill ? { year: payYear, month: payMonth } : null;
+  const effStart = start < monthStart ? monthStart : start;
+  const effEnd   = end   > monthEnd   ? monthEnd   : end;
+  const encadre = hasSpill ? `
+      <div class="frise-note">
+        <div class="frise-note-title">${_friseTr('Arrêt à cheval sur plusieurs mois')}</div>
+        <div class="frise-note-line">${_friseTr('Jours retenus sur ce bulletin')} : ${esc(_friseFmtDate(effStart, locale))} → ${esc(_friseFmtDate(effEnd, locale))}</div>
+        <div class="frise-note-line frise-note-dim">${_friseTr('Le reste de l\'arrêt figure sur les autres bulletins de paie.')}</div>
+      </div>` : '';
+
+  const net    = parseFloat(lastBulletin?.net_a_payer) || 0;
+  const netRef = parseFloat(absInfo.net_reference) || 0;
+  const perte  = Math.max(0, netRef - net);
+  const cout    = parseFloat(lastBulletin?.cout_total_employeur) || 0;
+  const coutRef = parseFloat(absInfo.cout_reference) || 0;
+  const coutAbs = Math.max(0, coutRef - cout);
+
+  const friseMaintien = hasMaintien
+    ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Maintien de salaire')}</div>${_friseGrid(fm, 'maintien', absInfo, startDate, mois)}</div>`
+    : '';
+  const friseIjss = hasIjss
+    ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Indemnités journalières (IJSS)')}</div>${_friseGrid(fi, 'ijss', absInfo, startDate, mois)}</div>`
+    : '';
+  const perteCard = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Perte de salaire (net avant impôt)')}</span><span class="frise-card-val c-red">− ${fmt(perte)}</span></div>`;
+  const coutCard  = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Coût réel employeur de l\'absence')}</span><span class="frise-card-val c-pat">${fmt(coutAbs)}</span></div>`;
+  // Maintien, IJSS, perte salarié, coût employeur alignés sur une même ligne.
+  return `<div class="frise-block">
+      <div class="frise-start">${_friseTr('Début de l\'arrêt')} : ${esc(dateLabel)}</div>
+      ${encadre}
+      <div class="frise-row">${friseMaintien}${friseIjss}${perteCard}${coutCard}</div>
+    </div>`;
 }
 
 function _calcRetenue(brut, abs) {

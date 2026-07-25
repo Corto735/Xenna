@@ -172,8 +172,9 @@ async fn carence_seule_sans_ajustement() {
     nettoyer(&path);
 }
 
-/// Règle fiscale des 60 premiers jours : arrêt court → tout imposable ;
-/// arrêt long → plafonné à 57 jours indemnisés (60 − 3 de carence).
+/// Règle fiscale des 60 premiers jours (calcul limité au mois de paie, index
+/// global depuis le début de l'arrêt) : arrêt court → tout imposable ; arrêt
+/// long dont le mois franchit le 60e jour → une partie du mois n'est plus imposable.
 #[tokio::test]
 async fn ijss_imposables_regle_60_jours() {
     let (pool, path) = base_test().await;
@@ -185,19 +186,22 @@ async fn ijss_imposables_regle_60_jours() {
     let ac = court.absence.as_ref().unwrap();
     assert_eq!(ac.ijss_imposable, ac.ijss_brut, "arrêt court : IJSS entièrement imposables");
 
-    // Long (75 j cal → 72 j d'IJSS > 57) : imposable plafonné à 57 jours.
+    // Long (Jan→Mar), scindé par mois : sur le bulletin de MARS (date de paie
+    // 31/03), seuls les jours de mars sont indemnisés — index global 56 (1er mars)
+    // à 75 (20 mars) = 20 jours d'IJSS. La règle des 60 jours mord dans le mois :
+    // seuls les index 56-60 (5 jours) restent imposables, 61-75 ne le sont plus.
     let long = generer_bulletin(
         salarie_france("3000.00"), &ctx, Some(&absence("2026-01-05", "2026-03-20")));
     let al = long.absence.as_ref().unwrap();
-    assert_eq!(al.jours_ijss, 72);
+    assert_eq!(al.jours_ijss, 20, "mois de mars seul : 20 jours indemnisés");
     assert!(
         al.ijss_imposable < al.ijss_brut,
-        "arrêt long : imposable ({}) doit être < brut ({})", al.ijss_imposable, al.ijss_brut
+        "règle des 60 j : imposable ({}) doit être < brut ({})", al.ijss_imposable, al.ijss_brut
     );
-    // ijss_imposable = ijss_jour × 57 et ijss_brut = ijss_jour × 72.
-    let ratio_ok = (al.ijss_imposable * Decimal::from(72) - al.ijss_brut * Decimal::from(57)).abs()
-        <= d("0.72"); // tolérance d'arrondi (ijss_jour arrondi au centime × 72)
-    assert!(ratio_ok, "plafond 57 j non respecté : {} vs {}", al.ijss_imposable, al.ijss_brut);
+    // ijss_imposable = ijss_jour × 5 (index 56-60) et ijss_brut = ijss_jour × 20.
+    let ratio_ok = (al.ijss_imposable * Decimal::from(20) - al.ijss_brut * Decimal::from(5)).abs()
+        <= d("0.20"); // tolérance d'arrondi (ijss_jour arrondi au centime)
+    assert!(ratio_ok, "plafond 60 j non respecté : {} vs {}", al.ijss_imposable, al.ijss_brut);
 
     nettoyer(&path);
 }
@@ -287,13 +291,16 @@ async fn maintien_alsace_moselle() {
 }
 
 /// Alsace-Moselle, arrêt long (> 6 semaines) : 42 jours à 100 % puis relais du
-/// droit commun (conventionnel 75 % pour ≥ 3 ans d'ancienneté).
+/// droit commun (conventionnel 75 % pour ≥ 3 ans d'ancienneté). Le calcul étant
+/// limité au mois de paie, on prend le bulletin d'AVRIL : l'arrêt (débuté le
+/// 02/03) atteint son 42e jour le 12/04, donc avril voit les deux tranches —
+/// index global 31-42 à 100 % (1er→12 avril) puis 43-50 à 75 % (13→20 avril).
 #[tokio::test]
 async fn maintien_alsace_moselle_relais() {
     let (pool, path) = base_test().await;
-    let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
+    let ctx = ContextPaie::charger(&pool, date("2026-04-30")).await.unwrap();
 
-    // 50 jours calendaires (02/03 → 20/04), méthode calendaire → 50 jours comptés.
+    // Arrêt 02/03 → 20/04, méthode calendaire. Bulletin d'avril : jours 1-20.
     let abs = absence("2026-03-02", "2026-04-20");
     let mut s = salarie_france("3000.00");
     s.alsace_moselle = true;
@@ -302,9 +309,10 @@ async fn maintien_alsace_moselle_relais() {
     let a = b.absence.as_ref().unwrap();
 
     assert!(a.am_local);
-    assert_eq!(a.jours_maintien_t1, 42, "42 jours calendaires à 100 %");
+    assert_eq!(a.jours_absence, 20, "avril : 20 jours calendaires");
+    assert_eq!(a.jours_maintien_t1, 12, "1er→12 avril : 100 % (jusqu'au 42e jour de l'arrêt)");
     assert_eq!(a.taux_maintien_t1, d("1.00"));
-    assert_eq!(a.jours_maintien_t2, a.jours_absence - 42, "relais sur les jours 43+");
+    assert_eq!(a.jours_maintien_t2, 8, "13→20 avril : relais 75 % au-delà du 42e jour");
     assert_eq!(a.taux_maintien_t2, d("0.75"), "relais conventionnel 75 %");
     assert!(a.convention.contains("relais"), "libellé : {}", a.convention);
 

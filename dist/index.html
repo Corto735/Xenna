@@ -679,6 +679,53 @@
     .ascii-tbl.rem-embed-total { border-top: 1px solid var(--border); }
     .ascii-tbl.rem-embed-total td { font-weight: bold; }
     .ascii-tbl.rem-embed-total td.rem-total-val { color: var(--fg); }
+    /* Frises visuelles du maintien / IJSS : une case = un jour calendaire, grille
+       7 colonnes alignée sur les jours de la semaine. Couleurs sémantiques via
+       variables → surchargées par les modes impression / haute visibilité. */
+    .frise-block { margin: 0.5rem 0 0.2rem; }
+    .frise-start { font-size: 1.32rem; color: #fff; margin-bottom: 0.4rem; }
+    /* Maintien, IJSS et cartouches perte/coût alignés sur une même ligne. */
+    .frise-row { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: flex-start; }
+    .frise-wrap { margin: 0; }
+    .frise-title { font-size: 0.62rem; color: var(--gray); margin-bottom: 0.2rem; letter-spacing: 0.03em; }
+    /* Colonnes en largeur FIXE (14 px) : la taille des carrés ne dépend plus de
+       la largeur du conteneur ni du libellé → maintien et IJSS strictement identiques. */
+    .frise-grid { display: grid; grid-template-columns: repeat(7, 14px); gap: 2px; justify-content: start; }
+    .frise-head { font-size: 0.5rem; color: var(--muted); text-align: center; text-transform: uppercase; line-height: 1.3; }
+    .frise-sq { aspect-ratio: 1 / 1; border-radius: 2px; cursor: help; }
+    .frise-sq--carence { background: var(--blue); }
+    .frise-sq--t1      { background: var(--yellow); }
+    .frise-sq--t2      { background: color-mix(in srgb, var(--yellow) 55%, transparent); }
+    .frise-sq--ijss1   { background: var(--green); }
+    .frise-sq--ijss2   { background: color-mix(in srgb, var(--green) 60%, transparent); }
+    .frise-sq--hors    { background: color-mix(in srgb, var(--gray) 32%, transparent); }
+    .frise-sq--empty   { background: transparent; }
+    /* Arrêt à cheval sur plusieurs mois : cases du mois de paie encadrées,
+       cases des autres mois atténuées. */
+    .frise-sq--in  { box-shadow: inset 0 0 0 1px var(--text); }
+    .frise-sq--out { opacity: 0.28; }
+    .frise-note { border: 1px solid var(--border); border-left: 3px solid var(--blue); background: var(--bg3); border-radius: 4px; padding: 0.4rem 0.55rem; margin-bottom: 0.5rem; }
+    .frise-note-title { font-size: 0.68rem; font-weight: bold; color: var(--text); margin-bottom: 0.2rem; }
+    .frise-note-line { font-size: 0.64rem; color: var(--muted); }
+    .frise-note-dim { font-style: italic; opacity: 0.85; }
+    .frise-card { flex: 1 1 150px; border: 1px solid var(--border); background: var(--bg3); border-radius: 4px; padding: 0.35rem 0.5rem; display: flex; flex-direction: column; gap: 0.15rem; }
+    .frise-card-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .frise-card-val { font-size: 0.85rem; font-weight: bold; font-variant-numeric: tabular-nums; }
+    /* Impression / noir & blanc : les couleurs ne distinguent plus rien → motifs
+       et styles de bordure pour différencier carence / taux fort / taux réduit. */
+    body.bw-mode .frise-sq { border: 1px solid #000; }
+    body.bw-mode .frise-sq--carence { background: #ffffff; }
+    body.bw-mode .frise-sq--t1      { background: #000000; }
+    body.bw-mode .frise-sq--t2      { background: #888888; }
+    body.bw-mode .frise-sq--ijss1   { background: repeating-linear-gradient(45deg,#000 0 2px,#fff 2px 4px); }
+    body.bw-mode .frise-sq--ijss2   { background: repeating-linear-gradient(45deg,#000 0 1px,#fff 1px 4px); }
+    body.bw-mode .frise-sq--hors    { background: #ffffff; border-style: dashed; }
+    body.bw-mode .frise-sq--empty   { background: transparent; border: none; }
+    body.bw-mode .frise-card { background: #f2f2f2; border-color: #000; }
+    body.bw-mode .frise-note { background: #f2f2f2; border-color: #000; border-left-color: #000; }
+    body.bw-mode .frise-start { color: #000; }
+    /* Haute visibilité : contour net sur chaque case pour la définition. */
+    body.hv-mode .frise-sq:not(.frise-sq--empty) { outline: 1px solid var(--text); }
     .absence-conv-row {
       display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem;
     }
@@ -2147,7 +2194,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-BuUDy2Vt.js"></script>
+  <script type="module" crossorigin src="/assets/index-CzLzmb7I.js"></script>
 </head>
 <body>
 

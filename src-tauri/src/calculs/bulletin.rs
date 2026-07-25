@@ -171,6 +171,19 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
         r.net_cible = net_cible_gn;
     }
 
+    // Bulletin de RÉFÉRENCE : le même salarié en mois plein SANS absence (même
+    // brut, HS incluses à l'identique donc neutres dans l'écart). Sert à chiffrer
+    // la perte de salaire du salarié (net avant impôt = net_a_payer, PAS non
+    // soustrait ici) et le coût réel employeur de l'absence (Δ coût total).
+    // Pas de récursion : le bulletin de référence n'a pas d'absence.
+    if absence_res.is_some() {
+        let reference = generer_bulletin(salarie.clone(), ctx, None);
+        if let Some(r) = absence_res.as_mut() {
+            r.net_reference = reference.net_a_payer;
+            r.cout_reference = reference.cout_total_employeur;
+        }
+    }
+
     // Assiette de cotisations du mois : référence − IJSS brutes − ajustement.
     // Toutes les cotisations (Fillon, tranches, plafonds) tournent sur cette assiette.
     let brut = (assiette_ref - ijss_brut - ajustement).max(Decimal::ZERO);

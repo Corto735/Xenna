@@ -172,6 +172,25 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let fin   = NaiveDate::parse_from_str(&abs.date_fin,   "%Y-%m-%d").ok()?;
     if fin < debut { return None; }
 
+    // Bornes du mois de paie : ce bulletin ne retient (retenue, maintien, IJSS)
+    // que les jours de l'arrêt tombant dans le mois de `date_paie` — un arrêt
+    // pluri-mensuel est scindé sur plusieurs bulletins. Le barème de maintien et
+    // les carences restent indexés depuis le VRAI 1er jour de l'arrêt (`debut`),
+    // pas depuis le début du mois : la carence déjà consommée un mois antérieur
+    // ne se rejoue pas. `eff_debut`/`eff_fin` = fenêtre effective de ce mois.
+    let mois_debut = NaiveDate::from_ymd_opt(ctx.date_paie.year(), ctx.date_paie.month(), 1).unwrap();
+    let mois_fin = {
+        let (y, m) = if ctx.date_paie.month() == 12 {
+            (ctx.date_paie.year() + 1, 1)
+        } else {
+            (ctx.date_paie.year(), ctx.date_paie.month() + 1)
+        };
+        NaiveDate::from_ymd_opt(y, m, 1).unwrap() - Duration::days(1)
+    };
+    let eff_debut = debut.max(mois_debut);
+    let eff_fin   = fin.min(mois_fin);
+    if eff_fin < eff_debut { return None; } // arrêt entièrement hors du mois de paie
+
     let methode    = if abs.methode.is_empty() { "moyens" } else { abs.methode.as_str() };
     let jours_type = if abs.jours_type.is_empty() { "ouvres" } else { abs.jours_type.as_str() };
     let heures_mois = abs.heures_mois.unwrap_or(151.67);
@@ -181,10 +200,10 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let mut feries = jours_feries(debut.year());
     if fin.year() != debut.year() { feries.extend(jours_feries(fin.year())); }
 
-    // ── Retenue ──
-    let nb_jours = compter(debut, fin, kind);
+    // ── Retenue ── (jours de l'arrêt DANS le mois de paie uniquement)
+    let nb_jours = compter(eff_debut, eff_fin, kind);
     if nb_jours == 0 { return None; }
-    let div = diviseur(methode, kind, debut, heures_mois);
+    let div = diviseur(methode, kind, eff_debut, heures_mois);
     if div <= Decimal::ZERO { return None; }
     let retenue = (base_brut * unites_absence(methode, kind, nb_jours, div) / div).round_dp(2);
 
@@ -224,6 +243,10 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
             jours_absence: nb_jours,
             jours_ijss: 0,
             jours_maintien: 0,
+            frise_maintien: Vec::new(),
+            frise_ijss: Vec::new(),
+            net_reference: Decimal::ZERO,
+            cout_reference: Decimal::ZERO,
             libelle: format!("congé sans solde · {}", libelle_methode(methode, kind)),
             convention: String::new(),
         });
@@ -292,20 +315,26 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let per_day = retenue / Decimal::from(nb_jours);
     let mut maintien = Decimal::ZERO;
     let mut jours_maintien = 0i64;
-    // Paliers (taux, nb jours) — au plus 2 taux distincts (100 % puis 75 %/66,66 %).
-    let mut paliers: Vec<(Decimal, i64)> = Vec::new();
+    // `rates_arret` : taux distincts du régime sur TOUT l'arrêt (identité des
+    // tranches, indépendante du mois — au plus 2 : 100 % puis 75 %/66,66 %).
+    // `paliers_mois` : jours indemnisés DANS LE MOIS par taux (montants du mois).
+    let mut rates_arret: Vec<Decimal> = Vec::new();
+    let mut paliers_mois: Vec<(Decimal, i64)> = Vec::new();
     {
         let mut cur = debut;
-        let mut idx = 1i64; // index calendaire 1-based depuis le début de l'arrêt
+        let mut idx = 1i64; // index calendaire 1-based depuis le VRAI début de l'arrêt
         while cur <= fin {
             if est_compte(cur, kind, &feries) {
                 let rate = am_rate(idx).max(dc_rate(idx));
                 if rate > Decimal::ZERO {
-                    maintien += rate * per_day;
-                    jours_maintien += 1;
-                    match paliers.iter_mut().find(|(t, _)| *t == rate) {
-                        Some(p) => p.1 += 1,
-                        None => paliers.push((rate, 1)),
+                    if !rates_arret.contains(&rate) { rates_arret.push(rate); }
+                    if cur >= eff_debut && cur <= eff_fin {
+                        maintien += rate * per_day;
+                        jours_maintien += 1;
+                        match paliers_mois.iter_mut().find(|(t, _)| *t == rate) {
+                            Some(p) => p.1 += 1,
+                            None => paliers_mois.push((rate, 1)),
+                        }
                     }
                 }
             }
@@ -314,10 +343,15 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         }
     }
     let maintien = maintien.round_dp(2);
-    // Deux tranches pour le panneau f(x) : taux décroissant (t1 = plus élevé).
-    paliers.sort_by(|a, b| b.0.cmp(&a.0));
-    let (taux_maintien_t1, jours_maintien_t1) = paliers.first().copied().unwrap_or((Decimal::ZERO, 0));
-    let (taux_maintien_t2, jours_maintien_t2) = paliers.get(1).copied().unwrap_or((Decimal::ZERO, 0));
+    // Les deux taux du régime (t1 = le plus élevé), fixés par l'ancienneté/régime
+    // et donc constants d'un mois à l'autre.
+    rates_arret.sort_by(|a, b| b.cmp(a));
+    let taux_maintien_t1 = rates_arret.first().copied().unwrap_or(Decimal::ZERO);
+    let taux_maintien_t2 = rates_arret.get(1).copied().unwrap_or(Decimal::ZERO);
+    // Jours indemnisés DANS LE MOIS à chacun de ces deux taux (0 si le mois n'en
+    // touche aucun jour — ex. mois entièrement en tranche réduite).
+    let jours_maintien_t1 = paliers_mois.iter().find(|(t, _)| *t == taux_maintien_t1).map(|(_, n)| *n).unwrap_or(0);
+    let jours_maintien_t2 = paliers_mois.iter().find(|(t, _)| *t == taux_maintien_t2).map(|(_, n)| *n).unwrap_or(0);
     let carence_maintien = if am { 0 } else { bareme_dc.map(|(c, ..)| c).unwrap_or(0) };
 
     // Libellé du régime appliqué (affiché sur la ligne « Maintien de salaire »).
@@ -337,7 +371,13 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     };
 
     // ── IJSS (par jour calendaire) ──
+    // Longueur totale de l'arrêt (pour les frises) et index GLOBAL, 1-based depuis
+    // le vrai début, des 1er/dernier jours du mois de paie : carence SS, tranches
+    // et règle fiscale des 60 jours se comptent depuis le début RÉEL de l'arrêt,
+    // mais seuls les jours du mois sont indemnisés/valorisés sur ce bulletin.
     let jours_cal = (fin - debut).num_days() + 1;
+    let idx_lo = (eff_debut - debut).num_days() + 1;
+    let idx_hi = (eff_fin - debut).num_days() + 1;
     let (jours_ijss, sjb, salaire_ref, coeff_plafond, plafond_sjr,
          ijss_jour, ijss_jour_t2, jours_t1, jours_t2, taux_t1, taux_t2,
          ijss_brut, ijss_imposable);
@@ -345,7 +385,6 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         // AT/MP : SANS carence — IJ dès le 1er jour (CSS, versement dès le
         // lendemain de l'accident ; le jour même est payé par l'employeur, la
         // période saisie démarre au 1er jour indemnisé).
-        jours_ijss = jours_cal;
         // SJR = brut mensuel ÷ 30,42, plafonné à 0,834 % du PASS annuel
         // (12 × PMSS) → IJ max 2026 : 240,49 € (60 %) / 320,66 € (80 %).
         plafond_sjr = ctx.pmss * dec!(12) * dec!(0.00834);
@@ -357,16 +396,17 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         taux_t2 = dec!(0.80); // dès le 29e jour
         ijss_jour    = (taux_t1 * sjr).round_dp(2);
         ijss_jour_t2 = (taux_t2 * sjr).round_dp(2);
-        jours_t1 = jours_ijss.min(28);
-        jours_t2 = (jours_ijss - 28).max(0);
+        // Tranches par index global (60 % j1-28, 80 % dès j29), bornées au mois.
+        jours_t1 = (idx_hi.min(28) - idx_lo.max(1) + 1).max(0);
+        jours_t2 = (idx_hi - idx_lo.max(29) + 1).max(0);
+        jours_ijss = jours_t1 + jours_t2;
         ijss_brut = (ijss_jour * Decimal::from(jours_t1)
                    + ijss_jour_t2 * Decimal::from(jours_t2)).round_dp(2);
         // IJ AT/MP imposables à hauteur de 50 % de leur montant (pas de règle
         // des 60 jours, contrairement à la maladie).
         ijss_imposable = (ijss_brut * dec!(0.5)).round_dp(2);
     } else {
-        // Maladie : carence SS de 3 jours calendaires.
-        jours_ijss = (jours_cal - 3).max(0);
+        // Maladie : carence SS de 3 jours calendaires (index global 1-3).
         // Plafond : 1,4 SMIC depuis le 01/04/2025, 1,8 avant.
         coeff_plafond = if ctx.date_paie >= NaiveDate::from_ymd_opt(2025, 4, 1).unwrap() {
             dec!(1.4)
@@ -380,18 +420,57 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         plafond_sjr = Decimal::ZERO;
         ijss_jour = (taux_t1 * sjb).round_dp(2);
         ijss_jour_t2 = Decimal::ZERO;
+        // Jours du mois d'index global > 3 (au-delà de la carence).
+        jours_ijss = (idx_hi - idx_lo.max(4) + 1).max(0);
         jours_t1 = jours_ijss;
         jours_t2 = 0;
         ijss_brut = (ijss_jour * Decimal::from(jours_ijss)).round_dp(2);
         // IJSS imposables (base PAS) : maladie imposable sur les 60 premiers jours
-        // d'arrêt uniquement → 60 − 3 j de carence = 57 jours indemnisés au plus.
-        let jours_imposables = jours_ijss.min(57);
+        // d'arrêt uniquement → jours du mois d'index global 4..=60.
+        let jours_imposables = (idx_hi.min(60) - idx_lo.max(4) + 1).max(0);
         ijss_imposable = (ijss_jour * Decimal::from(jours_imposables)).round_dp(2).min(ijss_brut);
     }
     let ijss_net = (ijss_brut * IJSS_NET_COEFF).round_dp(2);
 
     let prefixe = if est_at { "AT/MP" } else { "maladie" };
     let libelle = format!("{prefixe} · {}", libelle_methode(methode, kind));
+
+    // ── Frises jour par jour (une case = un jour calendaire) ──
+    // Maintien : reclasse chaque jour selon est_compte + taux effectif (même
+    // logique que la boucle d'accumulation). La carence (calendaire) reste
+    // "carence" même les week-ends ; les jours non comptés ou hors barème → "hors".
+    let mut frise_maintien: Vec<String> = Vec::with_capacity(jours_cal as usize);
+    {
+        let mut cur = debut;
+        let mut idx = 1i64;
+        while cur <= fin {
+            let rate = am_rate(idx).max(dc_rate(idx));
+            let code = if est_compte(cur, kind, &feries) && rate > Decimal::ZERO {
+                if rate == taux_maintien_t1 { "t1" } else { "t2" }
+            } else if !am && carence_maintien > 0 && idx <= carence_maintien {
+                "carence"
+            } else {
+                "hors"
+            };
+            frise_maintien.push(code.to_string());
+            cur += Duration::days(1);
+            idx += 1;
+        }
+    }
+    // IJSS : jours calendaires purs, classés par index GLOBAL (indépendant du
+    // mois de paie ; le front encadre les jours effectivement retenus ce mois).
+    // Maladie : carence 3 j puis 50 % ; AT/MP : 60 % j1-28 puis 80 % dès j29.
+    let mut frise_ijss: Vec<String> = Vec::with_capacity(jours_cal as usize);
+    for idx in 1..=jours_cal {
+        let code = if est_at {
+            if idx <= 28 { "ijss1" } else { "ijss2" }
+        } else if idx <= 3 {
+            "carence"
+        } else {
+            "ijss1"
+        };
+        frise_ijss.push(code.to_string());
+    }
 
     Some(AbsenceResult {
         retenue,
@@ -426,6 +505,10 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         jours_absence: nb_jours,
         jours_ijss,
         jours_maintien,
+        frise_maintien,
+        frise_ijss,
+        net_reference: Decimal::ZERO,  // rempli par le bulletin France
+        cout_reference: Decimal::ZERO, // rempli par le bulletin France
         libelle,
         convention,
     })
