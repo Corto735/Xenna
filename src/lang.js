@@ -78,6 +78,7 @@ export const STATIC_DICT = {
   'Non indemnisé':              ['Not compensated', 'Nicht vergütet', 'Niet vergoed', 'Non indennizzato', 'No indemnizado'],
   'Carence IJSS (3 jours)':     ['IJSS waiting period (3 days)', 'IJSS-Karenzzeit (3 Tage)', 'IJSS-wachttijd (3 dagen)', 'Carenza IJSS (3 giorni)', 'Carencia IJSS (3 días)'],
   'IJSS à':                     ['IJSS at', 'IJSS zu', 'IJSS tegen', 'IJSS al', 'IJSS al'],
+  'Hors subrogation — IJSS versées directement par la CPAM': ['Outside subrogation — benefits paid directly to the employee by the health fund', 'Außerhalb der Forderungsübernahme — Krankengeld wird direkt von der Krankenkasse gezahlt', 'Buiten subrogatie — uitkeringen rechtstreeks door de ziektekostenkas betaald', 'Fuori surrogazione — indennità versate direttamente dalla cassa malattia', 'Fuera de subrogación — prestaciones abonadas directamente por la caja de enfermedad'],
   'du SJB':                     ['of the daily base wage', 'des Tagesgrundlohns', 'van het dagloon', 'del salario giornaliero base', 'del salario diario base'],
   'du SJR':                     ['of the reference daily wage', 'des Referenz-Tageslohns', 'van het referentiedagloon', 'del salario giornaliero di riferimento', 'del salario diario de referencia'],
   'Perte de salaire (net avant impôt)': ['Salary loss (net before tax)', 'Lohnverlust (Netto vor Steuer)', 'Loonverlies (netto vóór belasting)', 'Perdita salariale (netto ante imposte)', 'Pérdida salarial (neto antes de impuestos)'],
@@ -85,6 +86,9 @@ export const STATIC_DICT = {
   'Arrêt à cheval sur plusieurs mois': ['Sick leave spanning several months', 'Krankschreibung über mehrere Monate', 'Ziekteverlof over meerdere maanden', 'Assenza a cavallo di più mesi', 'Baja a caballo entre varios meses'],
   'Jours retenus sur ce bulletin': ['Days retained on this payslip', 'Auf dieser Abrechnung berücksichtigte Tage', 'Op deze loonbrief opgenomen dagen', 'Giorni conteggiati su questa busta', 'Días considerados en esta nómina'],
   'Le reste de l\'arrêt figure sur les autres bulletins de paie.': ['The rest of the leave appears on the other payslips.', 'Der Rest der Krankschreibung erscheint auf den anderen Abrechnungen.', 'De rest van het verlof staat op de andere loonbrieven.', 'Il resto dell\'assenza figura sulle altre buste paga.', 'El resto de la baja figura en las otras nóminas.'],
+  'Régime de maintien :':      ['Salary-maintenance regime:', 'Regelung der Lohnfortzahlung:', 'Regeling loondoorbetaling:', 'Regime di mantenimento:', 'Régimen de mantenimiento:'],
+  'Droit du travail (général)': ['Labour law (general)', 'Arbeitsrecht (allgemein)', 'Arbeidsrecht (algemeen)', 'Diritto del lavoro (generale)', 'Derecho laboral (general)'],
+  'IDCC 0016 — Transport routier': ['IDCC 0016 — Road transport', 'IDCC 0016 — Straßentransport', 'IDCC 0016 — Wegvervoer', 'IDCC 0016 — Trasporto su strada', 'IDCC 0016 — Transporte por carretera'],
 
   // Panneaux f(x) des lignes d'absence
   'Salaire mensuel':          ['Monthly salary', 'Monatsgehalt', 'Maandloon', 'Retribuzione mensile', 'Salario mensual'],

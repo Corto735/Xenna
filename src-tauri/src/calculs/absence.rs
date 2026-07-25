@@ -194,7 +194,9 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let methode    = if abs.methode.is_empty() { "moyens" } else { abs.methode.as_str() };
     let jours_type = if abs.jours_type.is_empty() { "ouvres" } else { abs.jours_type.as_str() };
     let heures_mois = abs.heures_mois.unwrap_or(151.67);
-    let idcc = abs.convention_idcc.clone().unwrap_or_else(|| "0016".into());
+    // Choix de simulation du maintien : "0016" = convention transport routier ;
+    // toute autre valeur (ou absente) = droit du travail général (mensualisation légale).
+    let idcc = abs.convention_idcc.clone().unwrap_or_else(|| "general".into());
     let kind = type_jour(methode, jours_type);
 
     let mut feries = jours_feries(debut.year());
@@ -255,39 +257,35 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
 
     // ── Maintien employeur ──
     // Barème = (carence, fin1, taux1, fin2, taux2), bornes en index calendaire
-    // 1-based depuis le début de l'arrêt, avec son libellé de régime et un
-    // indicateur « barème conventionnel » (préfixe IDCC sur le bulletin).
+    // 1-based depuis le début de l'arrêt. DEUX MODES selon le choix de simulation :
     //
-    // Maladie non professionnelle (IDCC 0016) :
-    //   < 1 an : aucun maintien.
-    //   1 à < 3 ans : régime légal de mensualisation (CT art. L1226-1 / D1226-1)
-    //     — carence 7 j, 90 % pendant 30 j puis 66,66 % pendant 30 j.
-    //   ≥ 3 ans : conventionnel IDCC 0016, dès le 6e jour :
-    //     ≥ 3 ans  : 100 % j6-40,  puis 75 % j41-70 ;
-    //     ≥ 5 ans  : 100 % j6-70,  puis 75 % j71-130 ;
-    //     ≥ 10 ans : 100 % j6-100, puis 75 % j101-190.
+    //  • Droit du travail GÉNÉRAL (mensualisation, CT art. L1226-1 / D1226-1) :
+    //    ancienneté ≥ 1 an, carence 7 j (maladie) ou 0 (AT/MP), 90 % puis 66,66 %,
+    //    30 j par tranche + 10 j par période de 5 ans dès la 6e année (plafond 90 j).
     //
-    // AT/MP : SANS carence (CT art. D1226-3), ancienneté ≥ 1 an (L1226-1).
-    //   1 à < 3 ans : légal 90 % pendant 30 j puis 66,66 % pendant 30 j, dès j1.
-    //   ≥ 3 ans : garantie de ressources AT IDCC 0016 (personnel ouvrier) :
-    //     ≥ 3 ans  : 100 % j1-30, puis 75 % j31-90 ;
-    //     ≥ 5 ans  : 100 % j1-60, puis 75 % j61-150 ;
-    //     ≥ 10 ans : 100 % j1-90, puis 75 % j91-210.
+    //  • Convention IDCC 0016 (transport routier) :
+    //    maladie — 1 à < 3 ans : repli légal ; ≥ 3 ans conventionnel dès le 6e jour
+    //      (100 % j6-40/70/100 puis 75 %, périodes allongées à 5 et 10 ans) ;
+    //    AT/MP — garantie de ressources (100 %/75 % dès j1, sans carence) au-delà de
+    //      3 ans, repli légal 90 %/66,66 % entre 1 et 3 ans.
     type Bareme = Option<(i64, i64, Decimal, i64, Decimal)>;
+    let convention_16 = idcc == "0016";
     let (bareme_dc, regime_dc, conventionnel): (Bareme, &str, bool) = if est_at {
-        if      anciennete >= 10 { (Some((0, 90, dec!(1.00), 210, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
-        else if anciennete >= 5  { (Some((0, 60, dec!(1.00), 150, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
-        else if anciennete >= 3  { (Some((0, 30, dec!(1.00), 90,  dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
-        else if anciennete >= 1  { (Some((0, 30, dec!(0.90), 60,  dec!(0.6666))), "légal AT 90 %/66,66 % sans carence", false) }
+        if      convention_16 && anciennete >= 10 { (Some((0, 90, dec!(1.00), 210, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if convention_16 && anciennete >= 5  { (Some((0, 60, dec!(1.00), 150, dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if convention_16 && anciennete >= 3  { (Some((0, 30, dec!(1.00), 90,  dec!(0.75))), "garantie de ressources AT 100 %/75 %", true) }
+        else if anciennete >= 1 { let d = duree_legale(anciennete); (Some((0, d, dec!(0.90), 2 * d, dec!(0.6666))), "légal AT 90 %/66,66 % sans carence", false) }
         else { (None, "sans maintien — ancienneté < 1 an", false) }
-    } else if idcc == "0016" {
+    } else if convention_16 {
         if      anciennete >= 10 { (Some((5, 100, dec!(1.00), 190, dec!(0.75))), "conventionnel 100 % / 75 %", true) }
         else if anciennete >= 5  { (Some((5, 70,  dec!(1.00), 130, dec!(0.75))), "conventionnel 100 % / 75 %", true) }
         else if anciennete >= 3  { (Some((5, 40,  dec!(1.00), 70,  dec!(0.75))), "conventionnel 100 % / 75 %", true) }
-        else if anciennete >= 1  { (Some((7, 37,  dec!(0.90), 67,  dec!(0.6666))), "légal 90 % / 66,66 %", false) }
+        else if anciennete >= 1  { let d = duree_legale(anciennete); (Some((7, 7 + d, dec!(0.90), 7 + 2 * d, dec!(0.6666))), "légal 90 % / 66,66 %", false) }
         else { (None, "sans maintien — ancienneté < 1 an", false) }
     } else {
-        (None, "sans maintien", false)
+        // Droit du travail général : mensualisation légale (carence 7 j en maladie).
+        if anciennete >= 1 { let d = duree_legale(anciennete); (Some((7, 7 + d, dec!(0.90), 7 + 2 * d, dec!(0.6666))), "légal — mensualisation (Code du travail)", false) }
+        else { (None, "sans maintien — ancienneté < 1 an", false) }
     };
 
     // Alsace-Moselle (droit local, art. L1226-23, ex-art. 616 code civil local) :
@@ -364,7 +362,9 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     };
     // Préfixe IDCC seulement quand un barème conventionnel (ou le droit local)
     // s'applique — « légal » et « sans maintien » ne relèvent pas de la convention.
-    let convention = if am || conventionnel {
+    // Préfixe IDCC seulement en mode convention IDCC 0016 (barème conventionnel ou
+    // relais Alsace-Moselle). En droit général, jamais de préfixe IDCC.
+    let convention = if convention_16 && (conventionnel || am) {
         format!("IDCC {idcc} · {regime}")
     } else {
         regime.clone()
@@ -378,6 +378,22 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     let jours_cal = (fin - debut).num_days() + 1;
     let idx_lo = (eff_debut - debut).num_days() + 1;
     let idx_hi = (eff_fin - debut).num_days() + 1;
+    // ── Fenêtre de subrogation ──
+    // Les IJSS ne figurent sur le bulletin que pendant le MAINTIEN de salaire : la
+    // subrogation cesse dès la fin du maintien ; au-delà (et s'il n'y a aucun
+    // maintien), la CPAM verse les IJSS directement au salarié — elles ne passent
+    // plus par le bulletin. Bornes en index calendaire depuis le début de l'arrêt :
+    //   début = 1er jour de maintien (carence de maintien + 1) ;
+    //   fin   = dernier jour de maintien (fin de tranche 2 du barème ; Alsace-Moselle :
+    //           42 jours, ou relais du droit commun au-delà).
+    let dc_fin2 = bareme_dc.map(|(_, _, _, f2, _)| f2).unwrap_or(0);
+    let maintien_start_idx = carence_maintien + 1;
+    let maintien_end_idx = if am { dc_fin2.max(42) } else { dc_fin2 };
+    // Carence SS (3 j en maladie, aucune en AT/MP). Fenêtre effective des IJSS sur
+    // le bulletin = mois ∩ subrogation ∩ post-carence SS (vide → aucune IJSS).
+    let ss_carence = if est_at { 0 } else { 3 };
+    let ijss_lo = idx_lo.max(maintien_start_idx).max(ss_carence + 1);
+    let ijss_hi = idx_hi.min(maintien_end_idx);
     let (jours_ijss, sjb, salaire_ref, coeff_plafond, plafond_sjr,
          ijss_jour, ijss_jour_t2, jours_t1, jours_t2, taux_t1, taux_t2,
          ijss_brut, ijss_imposable);
@@ -396,9 +412,11 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         taux_t2 = dec!(0.80); // dès le 29e jour
         ijss_jour    = (taux_t1 * sjr).round_dp(2);
         ijss_jour_t2 = (taux_t2 * sjr).round_dp(2);
-        // Tranches par index global (60 % j1-28, 80 % dès j29), bornées au mois.
-        jours_t1 = (idx_hi.min(28) - idx_lo.max(1) + 1).max(0);
-        jours_t2 = (idx_hi - idx_lo.max(29) + 1).max(0);
+        // Tranches par index global (60 % j1-28, 80 % dès j29), bornées à la fenêtre
+        // mois ∩ subrogation : hors période de maintien, la CPAM verse directement et
+        // ces jours ne figurent pas sur le bulletin. Sans maintien → fenêtre vide → 0.
+        jours_t1 = (ijss_hi.min(28) - ijss_lo.max(1) + 1).max(0);
+        jours_t2 = (ijss_hi - ijss_lo.max(29) + 1).max(0);
         jours_ijss = jours_t1 + jours_t2;
         ijss_brut = (ijss_jour * Decimal::from(jours_t1)
                    + ijss_jour_t2 * Decimal::from(jours_t2)).round_dp(2);
@@ -420,14 +438,16 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         plafond_sjr = Decimal::ZERO;
         ijss_jour = (taux_t1 * sjb).round_dp(2);
         ijss_jour_t2 = Decimal::ZERO;
-        // Jours du mois d'index global > 3 (au-delà de la carence).
-        jours_ijss = (idx_hi - idx_lo.max(4) + 1).max(0);
+        // Jours indemnisés sur le bulletin = fenêtre mois ∩ subrogation ∩ post-carence
+        // SS. Hors maintien (carence de maintien, ou au-delà de la fin du maintien), la
+        // CPAM verse directement → ces jours ne figurent pas ici. Pas de maintien → 0.
+        jours_ijss = (ijss_hi - ijss_lo + 1).max(0);
         jours_t1 = jours_ijss;
         jours_t2 = 0;
         ijss_brut = (ijss_jour * Decimal::from(jours_ijss)).round_dp(2);
         // IJSS imposables (base PAS) : maladie imposable sur les 60 premiers jours
-        // d'arrêt uniquement → jours du mois d'index global 4..=60.
-        let jours_imposables = (idx_hi.min(60) - idx_lo.max(4) + 1).max(0);
+        // d'arrêt uniquement → index global 4..=60, dans la fenêtre de subrogation.
+        let jours_imposables = (ijss_hi.min(60) - ijss_lo + 1).max(0);
         ijss_imposable = (ijss_jour * Decimal::from(jours_imposables)).round_dp(2).min(ijss_brut);
     }
     let ijss_net = (ijss_brut * IJSS_NET_COEFF).round_dp(2);
@@ -457,17 +477,24 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
             idx += 1;
         }
     }
-    // IJSS : jours calendaires purs, classés par index GLOBAL (indépendant du
-    // mois de paie ; le front encadre les jours effectivement retenus ce mois).
-    // Maladie : carence 3 j puis 50 % ; AT/MP : 60 % j1-28 puis 80 % dès j29.
+    // IJSS : jours calendaires purs, classés par index GLOBAL (indépendant du mois
+    // de paie ; le front encadre les jours effectivement retenus ce mois). Une IJSS
+    // n'apparaît (subrogation) que pendant la période de MAINTIEN : hors de cette
+    // fenêtre, la CPAM verse directement → "hors" (grisé). Maladie : carence 3 j puis
+    // 50 % ; AT/MP : 60 % j1-28 puis 80 % dès j29.
     let mut frise_ijss: Vec<String> = Vec::with_capacity(jours_cal as usize);
     for idx in 1..=jours_cal {
+        let subroge = idx >= maintien_start_idx && idx <= maintien_end_idx;
         let code = if est_at {
-            if idx <= 28 { "ijss1" } else { "ijss2" }
+            if subroge {
+                if idx <= 28 { "ijss1" } else { "ijss2" }
+            } else { "hors" }
         } else if idx <= 3 {
             "carence"
-        } else {
+        } else if subroge {
             "ijss1"
+        } else {
+            "hors"
         };
         frise_ijss.push(code.to_string());
     }
@@ -512,6 +539,14 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         libelle,
         convention,
     })
+}
+
+/// Durée légale d'indemnisation de CHAQUE tranche (mensualisation, CT art. D1226-1) :
+/// 30 jours de base, + 10 jours par période de 5 ans d'ancienneté à partir de la
+/// 6e année, plafonnée à 90 jours (atteinte à 31 ans et plus).
+///   1–5 ans → 30 · 6–10 → 40 · 11–15 → 50 · … · 31 ans et + → 90.
+fn duree_legale(anciennete: i64) -> i64 {
+    30 + ((anciennete - 1) / 5).clamp(0, 6) * 10
 }
 
 pub(crate) fn libelle_methode(methode: &str, kind: TypeJour) -> String {

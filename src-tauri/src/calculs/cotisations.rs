@@ -273,7 +273,7 @@ pub fn fillon_coeff(smic: Decimal, brut: Decimal, ctx: &ContextPaie) -> Decimal 
 /// Réduction générale des cotisations patronales (loi Fillon, CSS art. L241-13).
 /// Retourne None si le salaire dépasse le seuil ou si les paramètres Fillon
 /// ne sont pas en base pour cette date.
-pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Option<LigneCotisation> {
+pub fn reduction_fillon(brut: Decimal, etp_pct: f64, absence_ratio: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     // §670 BOSS (CSS art. L241-13) : le SMIC est proratisé selon la durée contractuelle.
     // SMIC_proraté = SMIC_mensuel × (ETP / 100)
     // On utilise le SMIC de référence Fillon (gelé au 1er janvier), pas le SMIC
@@ -281,7 +281,11 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
     let ratio: Decimal = format!("{:.6}", (etp_pct / 100.0).clamp(0.0, 2.0))
         .parse()
         .unwrap_or(dec!(1));
-    let smic = (ctx.smic_mensuel_fillon * ratio).round_dp(2);
+    // Absence (CSS art. D241-7 IV) : la valeur du SMIC est corrigée selon le rapport
+    // des revenus d'activité dus / dus si présent tout le mois. `absence_ratio` (borné
+    // [0;1], calculé en amont : (base − retenue + maintien)/base) porte cette correction ;
+    // maintien intégral → ratio = 1 (SMIC plein), absence non rémunérée → SMIC réduit.
+    let smic = (ctx.smic_mensuel_fillon * ratio * absence_ratio).round_dp(2);
 
     let coeff = fillon_coeff(smic, brut, ctx);
     if coeff == Decimal::ZERO {
@@ -298,6 +302,16 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
     let etp_info = if (etp_pct - 100.0).abs() > 0.1 {
         ctx.expl("REDUCTION_FILLON_ETP", "\n⚠ Temps partiel {etp} % — SMIC proratisé : {smic} € (§670 BOSS)")
             .replace("{etp}", &format!("{:.0}", etp_pct))
+            .replace("{smic}", &smic.to_string())
+    } else {
+        String::new()
+    };
+
+    // Correction d'absence (CSS art. D241-7 IV) : affichée seulement quand elle joue.
+    let abs_info = if absence_ratio < Decimal::ONE {
+        ctx.expl("REDUCTION_FILLON_ABSENCE",
+            "\n⚠ Absence : SMIC corrigé au prorata de la rémunération (× {ratio}) → {smic} € (CSS art. D241-7 IV)")
+            .replace("{ratio}", &absence_ratio.round_dp(4).to_string())
             .replace("{smic}", &smic.to_string())
     } else {
         String::new()
@@ -343,10 +357,11 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}{abs_info}\n\
             Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}\n\
             Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires.")
             .replace("{etp_info}", &etp_info)
+            .replace("{abs_info}", &abs_info)
             .replace("{ref_smic}", ref_smic)
             .replace("{annee}", &annee)
             .replace("{inner_disp}", &inner_disp.to_string())
@@ -374,9 +389,10 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Optio
                       = {montant} €\n\
             ────────────────────────────────────────────────────\n\
             \n\
-            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}\n\
+            S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}{abs_info}\n\
             Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}")
             .replace("{etp_info}", &etp_info)
+            .replace("{abs_info}", &abs_info)
             .replace("{ref_smic}", ref_smic)
             .replace("{annee}", &annee)
             .replace("{seuil_eur}", &seuil_eur.to_string())

@@ -186,20 +186,22 @@ async fn ijss_imposables_regle_60_jours() {
     let ac = court.absence.as_ref().unwrap();
     assert_eq!(ac.ijss_imposable, ac.ijss_brut, "arrêt court : IJSS entièrement imposables");
 
-    // Long (Jan→Mar), scindé par mois : sur le bulletin de MARS (date de paie
-    // 31/03), seuls les jours de mars sont indemnisés — index global 56 (1er mars)
-    // à 75 (20 mars) = 20 jours d'IJSS. La règle des 60 jours mord dans le mois :
-    // seuls les index 56-60 (5 jours) restent imposables, 61-75 ne le sont plus.
+    // Long (Jan→Mar), scindé par mois ET borné par la subrogation : sur le bulletin
+    // de MARS (date de paie 31/03), l'ancienneté par défaut (1 an) donne le barème
+    // légal (carence 7, maintien jusqu'au 67e jour). La subrogation cesse à la fin du
+    // maintien → les IJSS ne figurent au bulletin que jusqu'à l'index global 67. Mars
+    // = index 56-75, borné à 67 → 12 jours d'IJSS. La règle des 60 jours mord dans le
+    // mois : seuls les index 56-60 (5 jours) restent imposables.
     let long = generer_bulletin(
         salarie_france("3000.00"), &ctx, Some(&absence("2026-01-05", "2026-03-20")));
     let al = long.absence.as_ref().unwrap();
-    assert_eq!(al.jours_ijss, 20, "mois de mars seul : 20 jours indemnisés");
+    assert_eq!(al.jours_ijss, 12, "mars ∩ subrogation : IJSS jusqu'au 67e jour (fin du maintien légal)");
     assert!(
         al.ijss_imposable < al.ijss_brut,
         "règle des 60 j : imposable ({}) doit être < brut ({})", al.ijss_imposable, al.ijss_brut
     );
-    // ijss_imposable = ijss_jour × 5 (index 56-60) et ijss_brut = ijss_jour × 20.
-    let ratio_ok = (al.ijss_imposable * Decimal::from(20) - al.ijss_brut * Decimal::from(5)).abs()
+    // ijss_imposable = ijss_jour × 5 (index 56-60) et ijss_brut = ijss_jour × 12.
+    let ratio_ok = (al.ijss_imposable * Decimal::from(12) - al.ijss_brut * Decimal::from(5)).abs()
         <= d("0.20"); // tolérance d'arrondi (ijss_jour arrondi au centime)
     assert!(ratio_ok, "plafond 60 j non respecté : {} vs {}", al.ijss_imposable, al.ijss_brut);
 
@@ -336,6 +338,94 @@ async fn net_imposable_inclut_ijss() {
         .sum();
     let attendu = (b.brut - total_sal + csg_nd_crds + a.ijss_imposable).round_dp(2);
     assert_eq!(b.net_imposable, attendu, "net imposable doit inclure les IJSS imposables");
+
+    nettoyer(&path);
+}
+
+/// Choix du régime de maintien : droit du travail GÉNÉRAL (mensualisation légale)
+/// vs CONVENTION IDCC 0016 (transport routier). À ancienneté ≥ 3 ans, le droit
+/// général reste au barème légal (90 %/66,66 %, carence 7 j) tandis que l'IDCC 16
+/// bascule en conventionnel (100 %/75 %, carence 5 j).
+#[tokio::test]
+async fn maintien_droit_general_vs_convention() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
+
+    let abs_regime = |idcc: &str| AbsenceInput {
+        type_arret: "maladie".into(),
+        date_debut: "2026-03-02".into(), date_fin: "2026-03-20".into(),
+        methode: "calendaire".into(), jours_type: String::new(), heures_mois: None,
+        convention_idcc: Some(idcc.into()),
+    };
+    let bulletin = |idcc: &str| {
+        let mut s = salarie_france("3000.00");
+        s.anciennete = Some(4); // ≥ 3 ans
+        generer_bulletin(s, &ctx, Some(&abs_regime(idcc)))
+    };
+
+    // Droit général : mensualisation légale, même à 4 ans d'ancienneté.
+    let bg = bulletin("general");
+    let ag = bg.absence.as_ref().unwrap();
+    assert_eq!(ag.carence_maintien, 7, "droit général maladie : carence légale 7 j");
+    assert_eq!(ag.taux_maintien_t1, d("0.90"), "droit général : 90 % (pas 100 %)");
+    assert!(!ag.convention.contains("IDCC"), "aucun préfixe IDCC en droit général : {}", ag.convention);
+
+    // Convention IDCC 0016 : conventionnel dès 3 ans.
+    let bc = bulletin("0016");
+    let ac = bc.absence.as_ref().unwrap();
+    assert_eq!(ac.carence_maintien, 5, "IDCC 16 ≥ 3 ans : carence conventionnelle 5 j");
+    assert_eq!(ac.taux_maintien_t1, d("1.00"), "IDCC 16 : 100 %");
+    assert!(ac.convention.contains("IDCC 0016"), "préfixe IDCC attendu : {}", ac.convention);
+
+    // Le conventionnel (100 %) maintient plus que le légal (90 %) sur la même période.
+    assert!(ac.maintien > ag.maintien, "IDCC 16 ({}) doit maintenir plus que le général ({})", ac.maintien, ag.maintien);
+
+    nettoyer(&path);
+}
+
+/// Correction du SMIC de la réduction générale en cas d'absence (CSS art. D241-7 IV).
+/// Congé sans solde de ~½ mois : le brut ET le SMIC de référence sont réduits dans la
+/// même proportion → le COEFFICIENT Fillon reste invariant (la correction neutralise le
+/// gonflement qui, sans elle, surviendrait car le brut baisse mais pas le SMIC). Le
+/// montant de la réduction, lui, diminue à proportion de l'assiette.
+#[tokio::test]
+async fn fillon_smic_corrige_absence_sans_solde() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
+
+    let coeff = |b: &xenna_paie_lib::models::Bulletin| -> Decimal {
+        -b.cotisations.iter().find(|c| c.code == "REDUCTION_FILLON")
+            .map(|c| c.taux_pat).unwrap_or(Decimal::ZERO)
+    };
+    let montant = |b: &xenna_paie_lib::models::Bulletin| -> Decimal {
+        b.cotisations.iter().find(|c| c.code == "REDUCTION_FILLON")
+            .map(|c| c.montant_pat).unwrap_or(Decimal::ZERO)
+    };
+
+    // ~1,1 SMIC → réduction générale applicable.
+    let plein = generer_bulletin(salarie_france("2000.00"), &ctx, None);
+    let c_plein = coeff(&plein);
+    assert!(c_plein > Decimal::ZERO, "la réduction Fillon doit s'appliquer à 2000 € (mois plein)");
+
+    // Congé sans solde du 2 au 16 mars (15 j calendaires sur 31) ≈ demi-mois.
+    let mut abs = absence("2026-03-02", "2026-03-16");
+    abs.type_arret = "sans_solde".into();
+    let ss = generer_bulletin(salarie_france("2000.00"), &ctx, Some(&abs));
+    let c_ss = coeff(&ss);
+
+    assert!(
+        (c_ss - c_plein).abs() <= d("0.001"),
+        "coefficient Fillon instable : plein {} vs sans solde {} (la correction D241-7 doit le stabiliser)",
+        c_plein, c_ss
+    );
+    // Réduction plus faible en valeur absolue (assiette moindre) : montant moins négatif.
+    assert!(
+        montant(&ss) > montant(&plein) && montant(&ss) < Decimal::ZERO,
+        "réduction sans solde {} doit être plus faible que le mois plein {}", montant(&ss), montant(&plein)
+    );
+    // Transparence : l'explication cite la correction d'absence.
+    let expl = &ss.cotisations.iter().find(|c| c.code == "REDUCTION_FILLON").unwrap().explication;
+    assert!(expl.contains("D241-7"), "l'explication doit citer l'art. D241-7 IV : {expl}");
 
     nettoyer(&path);
 }

@@ -260,7 +260,18 @@ fn lignes_france(
         }
     }
 
-    if let Some(fillon) = reduction_fillon(assiette, salarie.etp, ctx) {
+    // Correction du SMIC de la réduction générale en cas d'absence (CSS art. D241-7 IV) :
+    // le SMIC de référence est proratisé selon le rapport des revenus d'activité dus sur
+    // ceux dus si le salarié avait été présent tout le mois. Le maintien employeur (soumis
+    // à cotisations) entre au numérateur, les IJSS non ; maintien intégral → ratio 1.
+    // Calculé depuis absence_res (retenue/maintien figés) → constant pendant la dichotomie
+    // de la garantie du net. Congés payés : absence_res = None → ratio 1 (rémunéré).
+    let absence_ratio = match absence_res {
+        Some(r) if base_ref > Decimal::ZERO =>
+            ((base_ref - r.retenue + r.maintien) / base_ref).clamp(Decimal::ZERO, Decimal::ONE),
+        _ => Decimal::ONE,
+    };
+    if let Some(fillon) = reduction_fillon(assiette, salarie.etp, absence_ratio, ctx) {
         cotisations.push(fillon);
     }
 

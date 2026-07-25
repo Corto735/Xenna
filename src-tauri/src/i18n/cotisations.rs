@@ -675,6 +675,15 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "es" => "\n⚠ Tiempo parcial {etp} % — SMIC prorrateado: {smic} € (§670 BOSS)",
             _ => return None,
         },
+        // Correction du SMIC en cas d'absence — placeholders {ratio} {smic}
+        "REDUCTION_FILLON_ABSENCE" => match lang {
+            "en" => "\n⚠ Absence: SMIC corrected pro rata to pay (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
+            "de" => "\n⚠ Abwesenheit: SMIC anteilig zum Entgelt korrigiert (× {ratio}) → {smic} € (CSS Art. D241-7 IV)",
+            "nl" => "\n⚠ Afwezigheid: SMIC gecorrigeerd naar rato van het loon (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
+            "it" => "\n⚠ Assenza: SMIC corretto in proporzione alla retribuzione (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
+            "es" => "\n⚠ Ausencia: SMIC corregido a prorrata de la remuneración (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
+            _ => return None,
+        },
         // Fragment plafond proratisé temps partiel — placeholders {etp} {pmss}
         "PMSS_ETP_NOTE" => match lang {
             "en" => "\n⚠ Part-time {etp} % — prorated SSC ceiling: {pmss} € (reduced ceiling, CSS art. L242-1)",

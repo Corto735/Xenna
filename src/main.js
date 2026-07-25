@@ -1226,6 +1226,183 @@ function buildDfpHsFormula(d) {
     <table class="fm-calc">${rows.join('')}</table>`;
 }
 
+// ── Panneaux f(x) des TOTAUX du bulletin ──────────────────────────────────────
+// Transparence des agrégats : chaque total (net à payer, coût employeur, totaux
+// de cotisations, net imposable…) est recalculé et décomposé depuis le bulletin.
+function buildTotalFormulaContent(which, b) {
+  if (!b) return '';
+  const n = v => parseFloat(v) || 0;
+  const cots = b.cotisations || [];
+  const nonAlleg = c => !['Allègement', "Aide à l'emploi", 'Heures supplémentaires'].includes(c.categorie);
+  const cotMain = cots.filter(nonAlleg); // lignes du tableau COTISATIONS (hors allègements)
+  const totalSal    = cots.reduce((s, c) => s + n(c.montant_sal), 0);     // toutes lignes
+  const totalPat    = cots.reduce((s, c) => s + n(c.montant_pat), 0);     // net des allègements
+  const totalSalCot = cotMain.reduce((s, c) => s + n(c.montant_sal), 0);  // = ligne TOTAUX sal.
+  const totalPatCot = cotMain.reduce((s, c) => s + n(c.montant_pat), 0);  // = ligne TOTAUX pat.
+  const brut       = n(b.brut);
+  const coutTotal  = n(b.cout_total_employeur);
+  const pasApplies = b.salarie?.pays === 'france' || b.salarie?.pays === 'fonction_publique';
+  const pas        = pasApplies ? calculerPas(b.net_imposable) : { total: 0, taux_effectif: 0 };
+  const ijssNet    = b.absence ? n(b.absence.ijss_net) : 0;
+  const ijssImp    = b.absence ? n(b.absence.ijss_imposable) : 0;
+  const csgCrds    = cots.filter(c => c.code === 'CSG_NON_DEDUCTIBLE' || c.code === 'CRDS')
+                         .reduce((s, c) => s + n(c.montant_sal), 0);
+  const exoHs      = b.heures_sup ? n(b.heures_sup.exo_fiscale) : 0;
+  const gainHs     = b.heures_sup ? n(b.heures_sup.gain_total) : 0;
+  const netImposable  = n(b.net_imposable);
+  const netAvantImpot = n(b.net_a_payer);      // brut − cot. sal + IJSS nettes
+  const netPayer      = netAvantImpot - pas.total;
+
+  // Ligne détaillée d'une cotisation : « libellé (base × taux) − montant ». On
+  // remonte d'un cran — aucun montant n'apparaît sans son calcul. Certaines
+  // cotisations (bases plafonnées, forfaits) ont une base propre ≠ brut : on
+  // affiche la base réellement utilisée par le backend (c.base).
+  const detailRow = (c, isSal, cls) => {
+    const taux    = isSal ? c.taux_sal   : c.taux_pat;
+    const montant = isSal ? c.montant_sal : c.montant_pat;
+    const det = n(taux) > 0 ? ` <span class="c-dim">(${fmt(c.base)} × ${fmtPct(taux)})</span>` : '';
+    return `<tr><td>${esc(c.libelle)}${det}</td><td class="fm-op">−</td><td class="fm-val ${cls}">${fmt(montant)}</td></tr>`;
+  };
+
+  if (which === 'cot_sal' || which === 'cot_pat') {
+    const isSal = which === 'cot_sal';
+    const lignes = cotMain.filter(c => n(isSal ? c.montant_sal : c.montant_pat) > 0);
+    const tot = isSal ? totalSalCot : totalPatCot;
+    const cls = isSal ? 'c-sal' : 'c-pat';
+    const titre = isSal ? 'Total cotisations salariales' : 'Total charges patronales';
+    return `
+      <div class="fm-generic">${titre}  =  Σ ( base × taux )  de chaque ligne</div>
+      <div class="fm-base-note">Somme des ${isSal
+        ? 'cotisations à la charge du salarié (retraite, maladie, CSG/CRDS, chômage…), déduites du brut pour obtenir le net'
+        : 'cotisations patronales du tableau (avant allègements), qui s\'ajoutent au brut pour former le coût employeur'}.
+        Chaque montant = base (assiette réelle, éventuellement plafonnée) × taux.</div>
+      <table class="fm-calc">
+        ${lignes.map(c => detailRow(c, isSal, cls)).join('')}
+        <tr class="fm-result fm-sep"><td>${titre}</td><td class="fm-op">=</td><td class="fm-val ${cls}">− ${fmt(tot)}</td></tr>
+      </table>`;
+  }
+
+  if (which === 'charges_pat') {
+    const allegPat = cots.filter(c => !nonAlleg(c)).reduce((s, c) => s + n(c.montant_pat), 0); // ≤ 0
+    const rows = cotMain.filter(c => n(c.montant_pat) > 0).map(c => detailRow(c, false, 'c-pat'));
+    rows.push(`<tr class="fm-sep"><td>Cotisations patronales brutes</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(totalPatCot)}</td></tr>`);
+    if (allegPat < 0) rows.push(`<tr><td>Allègements patronaux (Fillon, aides…)</td><td class="fm-op">−</td><td class="fm-val c-alleg">${fmt(Math.abs(allegPat))}</td></tr>`);
+    rows.push(`<tr class="fm-result fm-sep"><td>Charges patronales (nettes)</td><td class="fm-op">=</td><td class="fm-val c-pat">${fmt(totalPat)}</td></tr>`);
+    return `
+      <div class="fm-generic">Charges patronales  =  Σ cotisations patronales brutes  −  Allègements</div>
+      <div class="fm-base-note">Cotisations à la charge de l'employeur, déduction faite des allègements
+      (réduction générale Fillon, aides…). Ajoutées au brut, elles forment le coût total employeur.</div>
+      <table class="fm-calc">${rows.join('')}</table>`;
+  }
+
+  if (which === 'net') {
+    const rows = [
+      `<tr><td>Salaire brut</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut)}</td></tr>`,
+      `<tr><td>Cotisations salariales</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(totalSal)}</td></tr>`,
+    ];
+    if (ijssNet > 0) rows.push(`<tr><td>IJSS nettes réintégrées (subrogation)</td><td class="fm-op">+</td><td class="fm-val c-alleg">${fmt(ijssNet)}</td></tr>`);
+    rows.push(`<tr><td>Net à payer avant impôt</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(netAvantImpot)}</td></tr>`);
+    if (pasApplies) rows.push(`<tr><td>Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(pas.total)}</td></tr>`);
+    rows.push(`<tr class="fm-result fm-sep"><td>Net à payer</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(netPayer)}</td></tr>`);
+    return `
+      <div class="fm-generic">Net à payer  =  Brut  −  Cotisations salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${pasApplies ? '  −  PAS' : ''}</div>
+      ${fmDecomp([{ label: 'Net à payer', sym: `Brut  −  Cot. salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${pasApplies ? '  −  PAS' : ''}`,
+        num: `${fmt(brut)}  −  ${fmt(totalSal)}${ijssNet > 0 ? `  +  ${fmt(ijssNet)}` : ''}${pasApplies ? `  −  ${fmt(pas.total)}` : ''}`,
+        grp: `${fmt(netPayer)}` }])}
+      <div class="fm-base-note">Ce que perçoit réellement le salarié : le brut moins les cotisations salariales${ijssNet > 0 ? ', plus les IJSS nettes versées par subrogation' : ''}${pasApplies ? ', moins l\'impôt prélevé à la source' : ''}.</div>
+      <table class="fm-calc">${rows.join('')}</table>`;
+  }
+
+  if (which === 'super_brut') {
+    const opPat = totalPat < 0 ? '−' : '+';
+    return `
+      <div class="fm-generic">Coût total employeur  =  Salaire brut  +  Charges patronales (nettes des allègements)</div>
+      ${fmDecomp([{ label: 'Coût employeur', sym: 'Salaire brut  +  Charges patronales', num: `${fmt(brut)}  ${opPat}  ${fmt(Math.abs(totalPat))}`, grp: `${fmt(coutTotal)}` }])}
+      <div class="fm-base-note">Le « super brut » est le coût réel du salarié pour l'employeur : le brut versé
+      plus l'ensemble des cotisations patronales, déduction faite des allègements (Fillon, aides…).</div>
+      <table class="fm-calc">
+        <tr><td>Salaire brut</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut)}</td></tr>
+        <tr><td>Charges patronales (nettes des allègements)</td><td class="fm-op">${opPat}</td><td class="fm-val c-pat">${fmt(Math.abs(totalPat))}</td></tr>
+        <tr class="fm-result fm-sep"><td>Coût total employeur</td><td class="fm-op">=</td><td class="fm-val c-eblue">${fmt(coutTotal)}</td></tr>
+      </table>`;
+  }
+
+  if (which === 'net_imposable') {
+    const rows = [
+      `<tr><td>Salaire brut</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut)}</td></tr>`,
+      `<tr><td>Cotisations salariales</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(totalSal)}</td></tr>`,
+      `<tr><td>CSG/CRDS non déductibles (réintégrées)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(csgCrds)}</td></tr>`,
+    ];
+    if (ijssImp > 0) rows.push(`<tr><td>IJSS imposables</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(ijssImp)}</td></tr>`);
+    if (exoHs > 0)   rows.push(`<tr><td>Heures supp./compl. exonérées d'impôt</td><td class="fm-op">−</td><td class="fm-val c-alleg">${fmt(exoHs)}</td></tr>`);
+    rows.push(`<tr class="fm-result fm-sep"><td>Net imposable (base PAS)</td><td class="fm-op">=</td><td class="fm-val c-green">${fmt(netImposable)}</td></tr>`);
+    return `
+      <div class="fm-generic">Net imposable  =  Brut  −  Cot. salariales  +  CSG/CRDS non déductibles${ijssImp > 0 ? '  +  IJSS imposables' : ''}${exoHs > 0 ? '  −  HS exonérées' : ''}</div>
+      <div class="fm-base-note">Base du prélèvement à la source. Diffère du net à payer : la CSG/CRDS non
+      déductible (2,90 %) reste imposable, et les IJSS imposables y sont intégrées.</div>
+      <table class="fm-calc">${rows.join('')}</table>`;
+  }
+
+  if (which === 'brut') {
+    if (b.absence) {
+      const a = b.absence;
+      const rows = [`<tr><td>Assiette de référence (salaire − retenue + maintien)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.assiette_ref)}</td></tr>`];
+      if (n(a.ijss_brut) > 0)      rows.push(`<tr><td>IJSS brutes déduites (subrogation)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(a.ijss_brut)}</td></tr>`);
+      if (n(a.ajustement_net) > 0) rows.push(`<tr><td>Ajustement du net (garantie du net)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(a.ajustement_net)}</td></tr>`);
+      rows.push(`<tr class="fm-result fm-sep"><td>Salaire brut (assiette des cotisations)</td><td class="fm-op">=</td><td class="fm-val c-gray">${fmt(brut)}</td></tr>`);
+      return `
+        <div class="fm-generic">Brut soumis à cotisations  =  Assiette de référence  −  IJSS brutes  −  Ajustement</div>
+        <div class="fm-base-note">Avec une absence, l'assiette des cotisations part du salaire plein diminué de la
+        retenue et augmenté du maintien, puis les IJSS brutes (subrogation) et l'ajustement de la garantie du net
+        en sont retranchés.</div>
+        <table class="fm-calc">${rows.join('')}</table>`;
+    }
+    const rows = [];
+    if (gainHs > 0) {
+      rows.push(`<tr><td>Salaire de base</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut - gainHs)}</td></tr>`);
+      rows.push(`<tr><td>Heures supp./compl. (majorées)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(gainHs)}</td></tr>`);
+    }
+    rows.push(`<tr class="fm-result fm-sep"><td>Salaire brut (assiette des cotisations)</td><td class="fm-op">=</td><td class="fm-val c-gray">${fmt(brut)}</td></tr>`);
+    return `
+      <div class="fm-generic">Salaire brut  =  rémunération soumise à cotisations sociales</div>
+      <div class="fm-base-note">Assiette des cotisations : la rémunération avant toute déduction sociale${gainHs > 0 ? ', heures supplémentaires majorées incluses' : ''}.</div>
+      <table class="fm-calc">${rows.join('')}</table>`;
+  }
+
+  if (which === 'perte_absence' && b.absence) {
+    const netRef = n(b.absence.net_reference);
+    const perte  = Math.max(0, netRef - netAvantImpot);
+    return `
+      <div class="fm-generic">Perte de salaire  =  Net sans absence  −  Net avec absence   (net avant impôt)</div>
+      ${fmDecomp([{ label: 'Perte', sym: 'Net de référence  −  Net avant impôt', num: `${fmt(netRef)}  −  ${fmt(netAvantImpot)}`, grp: `${fmt(perte)}` }])}
+      <div class="fm-base-note">Écart, sur le net avant impôt, entre un mois plein sans absence et ce bulletin —
+      l'effet réel de l'arrêt sur la paie du salarié ce mois-ci.</div>
+      <table class="fm-calc">
+        <tr><td>Net avant impôt d'un mois plein (référence)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(netRef)}</td></tr>
+        <tr><td>Net avant impôt avec absence</td><td class="fm-op">−</td><td class="fm-val c-base">${fmt(netAvantImpot)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Perte de salaire</td><td class="fm-op">=</td><td class="fm-val c-sal">− ${fmt(perte)}</td></tr>
+      </table>`;
+  }
+
+  if (which === 'cout_absence' && b.absence) {
+    const coutRef = n(b.absence.cout_reference);
+    const cout    = Math.max(0, coutRef - coutTotal);
+    return `
+      <div class="fm-generic">Coût employeur de l'absence  =  Coût total sans absence  −  Coût total avec absence</div>
+      ${fmDecomp([{ label: 'Coût absence', sym: 'Coût employeur de référence  −  Coût employeur du mois', num: `${fmt(coutRef)}  −  ${fmt(coutTotal)}`, grp: `${fmt(cout)}` }])}
+      <div class="fm-base-note">Différence de coût total employeur entre un mois plein et ce bulletin. Il reflète
+      le maintien de salaire net des IJSS récupérées par subrogation ; il peut être négatif si la retenue dépasse
+      le maintien.</div>
+      <table class="fm-calc">
+        <tr><td>Coût total employeur d'un mois plein (référence)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(coutRef)}</td></tr>
+        <tr><td>Coût total employeur avec absence</td><td class="fm-op">−</td><td class="fm-val c-base">${fmt(coutTotal)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Coût réel de l'absence</td><td class="fm-op">=</td><td class="fm-val c-pat">${fmt(cout)}</td></tr>
+      </table>`;
+  }
+
+  return '';
+}
+
 // Lignes d'absence rendues dans la grille du tableau des cotisations (desktop) :
 // libellé sur les 3 premières colonnes, montant dans la 4e (PART SALARIÉ),
 // colonnes patronales vides → alignement natif sur la colonne salariale.
@@ -1303,11 +1480,13 @@ function buildAbsenceFormulaContent(which, a, b) {
            puis relais du droit commun. IJSS déduites (l'employeur complète jusqu'à 100 %). Couvre toute absence
            sans faute du salarié — accident du travail inclus.`
         : a.type_arret === 'pro'
-          ? `AT/MP : maintien SANS carence (art. D1226-3 du Code du travail). Barème : &lt; 1 an aucun maintien ·
-             1 à 3 ans régime légal dès le 1er jour (90 % 30 j puis 66,66 % 30 j) · ≥ 3 ans garantie de ressources
-             IDCC 0016 (100 % puis 75 % dès le 1er jour, périodes allongées à 5 et 10 ans d'ancienneté).`
-          : `Barème selon l'ancienneté : &lt; 1 an aucun maintien · 1 à 3 ans régime légal (90 % 30 j puis 66,66 % 30 j, carence 7 j) ·
-           ≥ 3 ans régime conventionnel IDCC 0016 (100 % puis 75 % dès le 6e jour, périodes allongées à 5 et 10 ans d'ancienneté).`}</div>
+          ? `AT/MP : maintien SANS carence (art. D1226-3 du Code du travail), ancienneté ≥ 1 an requise.
+             DROIT GÉNÉRAL — 90 % puis 66,66 % dès le 1er jour, durée légale 30 j/tranche + 10 j par 5 ans dès la
+             6e année (max 90 j). CONVENTION IDCC 0016 (garantie de ressources) — ≥ 3 ans : 100 % puis 75 % dès le
+             1er jour, périodes allongées à 5 et 10 ans.`
+          : `&lt; 1 an : aucun maintien. DROIT GÉNÉRAL (mensualisation, CT D1226-1) — carence 7 j, 90 % puis 66,66 %,
+             durée 30 j/tranche + 10 j par 5 ans dès la 6e année (max 90 j). CONVENTION IDCC 0016 (transport) —
+             ≥ 3 ans : 100 % puis 75 % dès le 6e jour (carence 5 j) ; 1 à 3 ans : repli légal.`}</div>
       <table class="fm-calc">
         <tr><td>Salaire journalier perdu (retenue ÷ ${a.jours_absence} j)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(perDay)}</td></tr>
         <tr><td>Tranche 1 : ${a.jours_maintien_t1} j × ${fmtPct(a.taux_maintien_t1)}</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(m1)}</td></tr>
@@ -1344,7 +1523,9 @@ function buildAbsenceFormulaContent(which, a, b) {
       ])}
       <div class="fm-base-note">AT/MP : AUCUNE carence — IJ versées par jour calendaire dès le 1er jour d'arrêt
       (le jour de l'accident lui-même est payé intégralement par l'employeur).
-      SJR = brut du mois précédent ÷ 30,42, plafonné à 0,834 % du PASS annuel (${fmt(a.plafond_sjr_ijss)}).</div>
+      SJR = brut du mois précédent ÷ 30,42, plafonné à 0,834 % du PASS annuel (${fmt(a.plafond_sjr_ijss)}).
+      <b>Subrogation</b> : les IJSS ne figurent au bulletin que pendant le maintien de salaire. Dès la fin du
+      maintien (ou en son absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
       <table class="fm-calc">
         <tr><td>SJR (brut ÷ 30,42, plafonné)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.sjb)}</td></tr>
         <tr><td>Tranche 1 : ${a.jours_ijss_t1} j × 60 % (${fmt(a.ijss_jour)}/j)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(t1)}</td></tr>
@@ -1381,7 +1562,9 @@ function buildAbsenceFormulaContent(which, a, b) {
         },
       ])}
       <div class="fm-base-note">Salaire de référence plafonné à ${n(a.coeff_plafond_ijss)} × SMIC mensuel (CSS art. R323-4).
-      Carence Sécurité sociale : 3 jours calendaires — IJ versée par jour calendaire dès le 4e jour.</div>
+      Carence Sécurité sociale : 3 jours calendaires — IJ versée par jour calendaire dès le 4e jour.
+      <b>Subrogation</b> : les IJSS ne figurent au bulletin que pendant le maintien de salaire. Dès la fin du
+      maintien (ou en son absence), la subrogation cesse et la CPAM verse les IJSS directement au salarié.</div>
       <table class="fm-calc">
         <tr><td>Salaire de référence (min(brut ; ${n(a.coeff_plafond_ijss)} × SMIC))</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(a.salaire_ref_ijss)}</td></tr>
         <tr><td>SJB (× 3 ÷ 91,25)</td><td class="fm-op">=</td><td class="fm-val c-taux">${fmt(a.sjb)}</td></tr>
@@ -1655,6 +1838,28 @@ window.showFormula = function(key) {
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
     return;
   }
+  if (entry.type === 'total') {
+    const meta = {
+      brut:          ['Salaire brut',                 '── Assiette des cotisations ─────────────────', 'fm-type-pat'],
+      cot_sal:       ['Total cotisations salariales',  '── Somme des parts salariales ───────────────', 'fm-type-sal'],
+      cot_pat:       ['Total charges patronales',      '── Somme des parts patronales ───────────────', 'fm-type-pat'],
+      charges_pat:   ['Charges patronales',            '── Cotisations patronales nettes ────────────', 'fm-type-pat'],
+      net_imposable: ['Net imposable',                 '── Base du prélèvement à la source ──────────', 'fm-type-alleg'],
+      net:           ['Net à payer',                   '── Ce que perçoit le salarié ────────────────', 'fm-type-alleg'],
+      super_brut:    ['Coût total employeur',          '── Super brut ───────────────────────────────', 'fm-type-pat'],
+      perte_absence: ['Perte de salaire (absence)',    '── Effet de l\'absence sur le net ────────────', 'fm-type-sal'],
+      cout_absence:  ['Coût employeur de l\'absence',  '── Δ coût total employeur ───────────────────', 'fm-type-pat'],
+    }[entry.which];
+    if (!meta) return;
+    document.getElementById('fm-title').textContent = meta[0];
+    document.getElementById('fm-badge').textContent = meta[1];
+    fmBody.className = meta[2];
+    fmBody.innerHTML = buildTotalFormulaContent(entry.which, lastBulletin);
+    document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+    return;
+  }
+
   const { c, type } = entry;
   const isSal = type === 'sal';
   const badge = c.code === 'REDUCTION_FILLON'
@@ -1748,12 +1953,18 @@ function renderDesktop(b) {
   const totalSalSansIS    = totalSal - isChAmt;
   const totalSalCotSeules = totalSal - isChAmt - itIrpefAmt - itBonusAmt;
 
+  // Panneaux f(x) des totaux (transparence des agrégats). Recalculés depuis
+  // lastBulletin au clic — on n'enregistre que le type et l'identifiant.
+  ['brut', 'cot_sal', 'cot_pat', 'charges_pat', 'net_imposable', 'net', 'super_brut'].forEach(w => {
+    _fmStore['TOT_' + w.toUpperCase()] = { type: 'total', which: w };
+  });
+
   // ── Barre récap ──
   const summaryBar = `
     <div class="summary-bar">
       <div class="sb-cell">
         <div class="sb-lbl">▸ SALAIRE BRUT</div>
-        <div class="sb-val c-gray">${fmt(b.brut)}</div>
+        <div class="sb-val c-gray" style="cursor:pointer" onclick="showFormula('TOT_BRUT')">${fmt(b.brut)}${buildFormulaStar('TOT_BRUT')}</div>
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ RETENUES</div>
@@ -1790,15 +2001,15 @@ function renderDesktop(b) {
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ NET À PAYER</div>
-        <div class="sb-val c-green">${fmt(netPayer)}</div>
+        <div class="sb-val c-green" style="cursor:pointer" onclick="showFormula('TOT_NET')">${fmt(netPayer)}${buildFormulaStar('TOT_NET')}</div>
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ CHARGES PAT.</div>
-        <div class="sb-val c-orange">${fmt(totalPat)}</div>
+        <div class="sb-val c-orange" style="cursor:pointer" onclick="showFormula('TOT_CHARGES_PAT')">${fmt(totalPat)}${buildFormulaStar('TOT_CHARGES_PAT')}</div>
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ SUPER BRUT</div>
-        <div class="sb-val c-eblue">${fmt(parseFloat(b.brut) + totalPat)}</div>
+        <div class="sb-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(parseFloat(b.brut) + totalPat)}${buildFormulaStar('TOT_SUPER_BRUT')}</div>
       </div>
     </div>`;
 
@@ -1879,9 +2090,9 @@ function renderDesktop(b) {
         ${buildRows(cotAll, 0)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
-          <td class="r c-sal">= − ${fmt(totalSalCot)}</td>
+          <td class="r c-sal" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">= − ${fmt(totalSalCot)}${buildFormulaStar('TOT_COT_SAL')}</td>
           <td></td>
-          <td class="r c-pat">= − ${fmt(totalPatBrut)}</td>
+          <td class="r c-pat" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">= − ${fmt(totalPatBrut)}${buildFormulaStar('TOT_COT_PAT')}</td>
         </tr>
       </tbody>
     </table>`;
@@ -2001,6 +2212,9 @@ function renderMobile(b) {
   const nom = document.getElementById("m-nom")?.value || document.getElementById("d-nom")?.value || "";
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
+  ['cot_sal', 'cot_pat', 'net_imposable', 'net', 'super_brut'].forEach(w => {
+    _fmStore['TOT_' + w.toUpperCase()] = { type: 'total', which: w };
+  });
 
   const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etats_unis', 'mexique', 'bresil', 'emirats', 'inde'].includes(b.salarie?.pays);
   const isItalieMob = b.salarie?.pays === 'italia';
@@ -2104,11 +2318,11 @@ function renderMobile(b) {
       ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL cotisations salariales</span>
-        <span class="mob-val c-yellow">− ${fmt(totalSalCotMob)}</span>
+        <span class="mob-val c-yellow" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">− ${fmt(totalSalCotMob)}${buildFormulaStar('TOT_COT_SAL')}</span>
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
-        <span class="mob-val c-orange">− ${fmt(totalPatBrutMob)}</span>
+        <span class="mob-val c-orange" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">− ${fmt(totalPatBrutMob)}${buildFormulaStar('TOT_COT_PAT')}</span>
       </div>
 
       <!-- Impôt à la source suisse — accordéon dédié -->
@@ -2125,7 +2339,7 @@ function renderMobile(b) {
       <!-- Net imposable (France / FPT) -->
       ${!skipPas ? `<div class="mob-row net-row">
         <span class="mob-lbl">NET IMPOSABLE</span>
-        <span class="mob-val c-green">${fmt(b.net_imposable)}</span>
+        <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('TOT_NET_IMPOSABLE')">${fmt(b.net_imposable)}${buildFormulaStar('TOT_NET_IMPOSABLE')}</span>
       </div>` : ''}
       ${(b.heures_sup && parseFloat(b.heures_sup.exo_fiscale) > 0) ? `<div class="mob-row" style="opacity:0.85">
         <span class="mob-lbl">dont HS/HC exonérées d'impôt (plafond ${fmt(b.heures_sup.exo_plafond)}/an)</span>
@@ -2170,7 +2384,7 @@ function renderMobile(b) {
       <!-- Net à payer -->
       <div class="mob-row final-row">
         <span class="mob-lbl">NET À PAYER</span>
-        <span class="mob-val c-green">${fmt(netPayer)}</span>
+        <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('TOT_NET')">${fmt(netPayer)}${buildFormulaStar('TOT_NET')}</span>
       </div>
 
       <!-- Allègements & exonérations -->
@@ -2189,7 +2403,7 @@ function renderMobile(b) {
       <!-- Super brut -->
       <div class="mob-row superbrut">
         <span class="mob-lbl">SUPER BRUT (coût employeur)</span>
-        <span class="mob-val c-eblue">${fmt(superBrut)}</span>
+        <span class="mob-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(superBrut)}${buildFormulaStar('TOT_SUPER_BRUT')}</span>
       </div>
 
     </div>`;
@@ -2953,7 +3167,7 @@ function getAbsencePayload() {
     methode:         _absence.methode || 'moyens',
     jours_type:      _absence.joursType || 'ouvres',
     heures_mois:     parseFloat(document.getElementById('d-h-mois')?.value) || 151.67,
-    convention_idcc: _absence.conventionIDCC || '0016',
+    convention_idcc: _absence.conventionIDCC || 'general',
   };
 }
 
@@ -3287,7 +3501,8 @@ function _friseLegende(kind, code, a) {
     case 'carence': return _friseTr('Carence IJSS (3 jours)');
     case 'ijss1':   return `${_friseTr('IJSS à')} ${_frisePct(a.taux_ijss_t1)} % ${base}`;
     case 'ijss2':   return `${_friseTr('IJSS à')} ${_frisePct(a.taux_ijss_t2)} % ${base}`;
-    default:        return _friseTr('Non indemnisé');
+    // 'hors' : jour indemnisé par la CPAM, mais hors subrogation → absent du bulletin.
+    default:        return _friseTr('Hors subrogation — IJSS versées directement par la CPAM');
   }
 }
 
@@ -3329,7 +3544,10 @@ function _buildAbsenceViz(absInfo, absState) {
   const dateLabel = start.toLocaleDateString(locale,
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const hasMaintien = fm.some(c => c !== 'hors');
-  const hasIjss = fi.some(c => c !== 'hors');
+  // Frise IJSS affichée seulement si des IJSS figurent au bulletin ce mois-ci : hors
+  // subrogation (pas de maintien, ou maintien terminé) la CPAM paie en direct et la
+  // frise ne montrerait que des cases « carence » et « hors ».
+  const hasIjss = parseFloat(absInfo.jours_ijss) > 0;
 
   // Mois de paie : si l'arrêt déborde (avant et/ou après), on encadre les jours
   // du mois dans les frises et on affiche un encadré rappelant les jours retenus.
@@ -3361,8 +3579,10 @@ function _buildAbsenceViz(absInfo, absState) {
   const friseIjss = hasIjss
     ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Indemnités journalières (IJSS)')}</div>${_friseGrid(fi, 'ijss', absInfo, startDate, mois)}</div>`
     : '';
-  const perteCard = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Perte de salaire (net avant impôt)')}</span><span class="frise-card-val c-red">− ${fmt(perte)}</span></div>`;
-  const coutCard  = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Coût réel employeur de l\'absence')}</span><span class="frise-card-val c-pat">${fmt(coutAbs)}</span></div>`;
+  _fmStore['TOT_PERTE_ABSENCE'] = { type: 'total', which: 'perte_absence' };
+  _fmStore['TOT_COUT_ABSENCE']  = { type: 'total', which: 'cout_absence' };
+  const perteCard = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Perte de salaire (net avant impôt)')}</span><span class="frise-card-val c-red" style="cursor:pointer" onclick="showFormula('TOT_PERTE_ABSENCE')">− ${fmt(perte)}${buildFormulaStar('TOT_PERTE_ABSENCE')}</span></div>`;
+  const coutCard  = `<div class="frise-card"><span class="frise-card-lbl">${_friseTr('Coût réel employeur de l\'absence')}</span><span class="frise-card-val c-pat" style="cursor:pointer" onclick="showFormula('TOT_COUT_ABSENCE')">${fmt(coutAbs)}${buildFormulaStar('TOT_COUT_ABSENCE')}</span></div>`;
   // Maintien, IJSS, perte salarié, coût employeur alignés sur une même ligne.
   return `<div class="frise-block">
       <div class="frise-start">${_friseTr('Début de l\'arrêt')} : ${esc(dateLabel)}</div>
@@ -3468,7 +3688,7 @@ function _buildAbsencePanel(isMob) {
   const type    = abs.type    || 'maladie';
   const methode = abs.methode || 'moyens';
   const jType   = abs.joursType || 'ouvres';
-  const conv    = abs.conventionIDCC || '0016';
+  const conv    = abs.conventionIDCC || 'general';
   if (!abs.joursType) { if (_absence) _absence.joursType = jType; }
   if (!abs.conventionIDCC && _absence) _absence.conventionIDCC = conv;
 
@@ -3516,8 +3736,9 @@ function _buildAbsencePanel(isMob) {
       </div>
       ${(type === 'maladie' || type === 'pro') ? `
       <div class="absence-conv-row">
-        <span>Convention collective (maintien) :</span>
+        <span>Régime de maintien :</span>
         <select id="abs-conv-${p}" onchange="onAbsenceConvention('${p}', this.value)">
+          <option value="general" ${conv==='general'?'selected':''}>Droit du travail (général)</option>
           <option value="0016" ${conv==='0016'?'selected':''}>IDCC 0016 — Transport routier</option>
         </select>
       </div>` : ''}
@@ -3542,7 +3763,7 @@ function _buildAbsencePanel(isMob) {
 window.toggleAbsencePanel = function(p) {
   if (!_absence) {
     _absence = { active: false, type: 'maladie', dateDebut: '', dateFin: '',
-      methode: 'moyens', joursType: 'ouvres', conventionIDCC: '0016' };
+      methode: 'moyens', joursType: 'ouvres', conventionIDCC: 'general' };
     _reRenderRemInPlace(); // insère le panneau dans le DOM
     return;
   }

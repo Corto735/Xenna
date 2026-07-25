@@ -209,10 +209,11 @@ async fn at_alsace_moselle_actif() {
     nettoyer(&path);
 }
 
-/// Ancienneté < 1 an : pas de maintien (condition L1226-1) mais IJSS AT
-/// versées quand même, sans carence.
+/// Ancienneté < 1 an : pas de maintien (condition L1226-1). La subrogation étant
+/// adossée au maintien de salaire, AUCUNE IJSS ne figure alors sur le bulletin —
+/// la CPAM les verse directement au salarié. Seule la retenue s'applique.
 #[tokio::test]
-async fn at_sans_anciennete_ijss_seules() {
+async fn at_sans_maintien_pas_de_subrogation() {
     let (pool, path) = base_test().await;
     let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
 
@@ -224,7 +225,10 @@ async fn at_sans_anciennete_ijss_seules() {
 
     assert_eq!(a.maintien, Decimal::ZERO, "< 1 an : pas de maintien");
     assert!(a.convention.contains("sans maintien"), "libellé : {}", a.convention);
-    assert!(a.ijss_brut > Decimal::ZERO, "IJSS AT dues sans condition d'ancienneté");
+    // Sans maintien → subrogation inactive → pas d'IJSS au bulletin (versées en direct).
+    assert_eq!(a.ijss_brut, Decimal::ZERO, "sans maintien → pas de subrogation → pas d'IJSS au bulletin");
+    assert_eq!(a.jours_ijss, 0, "aucun jour d'IJSS subrogé");
+    assert!(a.retenue > Decimal::ZERO, "la retenue pour absence s'applique quand même");
 
     nettoyer(&path);
 }
