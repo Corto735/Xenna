@@ -1083,6 +1083,17 @@
       color: var(--purple);
       text-decoration-color: color-mix(in srgb, var(--purple) 40%, transparent);
     }
+    /* Cascade caractère par caractère du « f(x) ». Le décalage de chaque lettre
+       est posé en inline par buildFormulaStar() (animation-delay), et le nom de
+       l'animation est piloté par --fx-anim : hérité du parent, il passe de
+       `none` à `fxChar` au survol, ce qui (re)déclenche la cascade à chaque
+       apparition. `backwards` garde la lettre invisible pendant son délai. */
+    .formula-star > span {
+      animation-name: var(--fx-anim, none);
+      animation-duration: 0.16s;
+      animation-timing-function: ease-out;
+      animation-fill-mode: backwards;
+    }
     /* Apparaît au survol de la valeur (td, span.fm-val ou ligne d'absence) ;
        reste visible 1 s après la sortie du survol puis s'efface. */
     td:hover .formula-star,
@@ -1094,6 +1105,11 @@
       visibility: visible;
       opacity: 1;
       transition-delay: 0s, 0s;
+      --fx-anim: fxChar;
+    }
+    /* Mouvement réduit : le f(x) apparaît d'un bloc, sans cascade. */
+    @media (prefers-reduced-motion: reduce) {
+      .formula-star > span { animation-name: none; }
     }
 
     /* ── Modal formule ───────────────────────────────────────── */

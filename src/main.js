@@ -621,15 +621,22 @@ async function typewriterDesktop(b) {
   const flashColor = () => ee ? NEONS[Math.floor(Math.random() * NEONS.length)] : '#ffe066';
 
   // Phase 1 — masquer la ligne TOTAUX
+  // On ne vide que le nœud texte du montant, jamais la cellule entière : le
+  // <span class="formula-star"> doit survivre à la frappe, sinon le f(x) est
+  // retapé en texte brut et perd son survol bleu et son violet « visité ».
+  const montantNode = cell => cell && [...cell.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
   const totalRow = container.querySelector('tr.tbl-total');
   let totalSalCell = null, totalPatCell = null;
+  let totalSalNode = null, totalPatNode = null;
   let totalSalText = '', totalPatText = '';
   if (totalRow) {
     const cells = totalRow.querySelectorAll('td');
     totalSalCell = cells[1];
     totalPatCell = cells[3];
-    if (totalSalCell) { totalSalText = totalSalCell.textContent; totalSalCell.textContent = ''; }
-    if (totalPatCell) { totalPatText = totalPatCell.textContent; totalPatCell.textContent = ''; }
+    totalSalNode = montantNode(totalSalCell);
+    totalPatNode = montantNode(totalPatCell);
+    if (totalSalNode) { totalSalText = totalSalNode.textContent; totalSalNode.textContent = ''; }
+    if (totalPatNode) { totalPatText = totalPatNode.textContent; totalPatNode.textContent = ''; }
   }
 
   // Phase 2 — collecter et vider les cibles
@@ -706,11 +713,11 @@ async function typewriterDesktop(b) {
     }
   }
 
-  if (totalSalCell) {
+  if (totalSalNode) {
     if (ee) { totalSalCell.style.fontWeight = 'bold'; totalSalCell.style.fontSize = '1.05em'; }
     for (const char of totalSalText) {
       if (abort()) return;
-      totalSalCell.textContent += char;
+      totalSalNode.textContent += char;
       await _sleep(msV);
     }
     if (ee) spawnFlames(totalSalCell);
@@ -734,11 +741,11 @@ async function typewriterDesktop(b) {
     }
   }
 
-  if (totalPatCell) {
+  if (totalPatNode) {
     if (ee) { totalPatCell.style.fontWeight = 'bold'; totalPatCell.style.fontSize = '1.05em'; }
     for (const char of totalPatText) {
       if (abort()) return;
-      totalPatCell.textContent += char;
+      totalPatNode.textContent += char;
       await _sleep(msV);
     }
     if (ee) spawnFlames(totalPatCell);
