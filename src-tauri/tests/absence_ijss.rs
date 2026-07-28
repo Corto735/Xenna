@@ -292,6 +292,81 @@ async fn maintien_alsace_moselle() {
     nettoyer(&path);
 }
 
+/// Articulation des régimes : les droits acquis (local, conventionnel) s'épuisent
+/// AVANT toute comparaison au droit du travail général, et celui-ci n'intervient
+/// que s'il verse davantage sur l'ensemble de l'arrêt. Aucun panachage jour par
+/// jour : un salarié Alsace-Moselle sur un arrêt de 50 jours n'a droit à RIEN
+/// au-delà de ses 42 jours à 100 % (le légal seul donnerait 30 × 90 % + 12 ×
+/// 66,66 % = 35 j-équiv. < 42, il ne l'emporte donc pas).
+#[tokio::test]
+async fn maintien_droits_acquis_sans_relais_legal() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-31")).await.unwrap();
+
+    // Arrêt 01/02 → 22/03 (50 j), Alsace-Moselle SANS convention. Bulletin de mars :
+    // index global 29-50 → jours 29-42 à 100 %, puis plus rien.
+    let mut abs = absence("2026-02-01", "2026-03-22");
+    abs.convention_idcc = Some("general".into());
+    let mut s = salarie_france("3000.00");
+    s.alsace_moselle = true;
+    s.anciennete = Some(4);
+    let b = generer_bulletin(s, &ctx, Some(&abs));
+    let a = b.absence.as_ref().unwrap();
+
+    assert_eq!(a.taux_maintien_t1, d("1.00"), "droit local 100 %");
+    assert_eq!(a.jours_maintien_t1, 14, "1er→14 mars : jusqu'au 42e jour de l'arrêt");
+    assert_eq!(a.jours_maintien_t2, 0, "aucun relais légal : le légal seul est moins favorable");
+    assert!(
+        !a.convention.contains("légal"),
+        "le droit général ne doit pas apparaître : {}", a.convention
+    );
+
+    nettoyer(&path);
+}
+
+/// Quand le droit général l'emporte globalement (arrêt long), il ne verse que le
+/// COMPLÉMENT : le salarié touche le maximum des deux régimes, jamais leur somme.
+/// Alsace-Moselle sans convention, ancienneté 4, arrêt de 100 jours — droits
+/// acquis 42 j-équiv., droit légal seul 30 × 90 % + 30 × 66,66 % ≈ 47 j-équiv.
+/// → complément ≈ 5 j-équiv., soit 8 jours à 66,66 % (dernier jour payé entier),
+/// et non les 25 jours restants du barème légal.
+#[tokio::test]
+async fn maintien_relais_legal_plafonne_au_complement() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-02-28")).await.unwrap();
+
+    // Arrêt 05/01 → 14/04. Bulletin de février : index global 28-55.
+    // Jours 28-42 à 100 % (droit local), 43-50 en complément légal à 66,66 %.
+    let mut abs = absence("2026-01-05", "2026-04-14");
+    abs.convention_idcc = Some("general".into());
+    let mut s = salarie_france("3000.00");
+    s.alsace_moselle = true;
+    s.anciennete = Some(4);
+    let b = generer_bulletin(s, &ctx, Some(&abs));
+    let a = b.absence.as_ref().unwrap();
+
+    assert_eq!(a.jours_maintien_t1, 15, "1er→15 février : droit local à 100 %");
+    assert_eq!(a.taux_maintien_t2, d("0.6666"), "complément au taux légal réduit");
+    assert_eq!(
+        a.jours_maintien_t2, 8,
+        "complément plafonné : 8 j et non les 13 j de février couverts par le barème légal"
+    );
+    assert!(a.convention.contains("relais légal"), "libellé : {}", a.convention);
+
+    // Le bulletin doit rester décomposable : maintien = (n1 × t1 + n2 × t2) × per_day.
+    // Tolérance au centime près sur `per_day_maintien` (exposé arrondi) : on traque
+    // le décrochage structurel — un jour oublié pèserait ~71 € ici.
+    let decomp = (Decimal::from(a.jours_maintien_t1) * a.taux_maintien_t1
+        + Decimal::from(a.jours_maintien_t2) * a.taux_maintien_t2)
+        * a.per_day_maintien;
+    assert!(
+        (decomp - a.maintien).abs() <= d("0.50"),
+        "décomposition f(x) non réconciliée : {} ≠ {}", decomp, a.maintien
+    );
+
+    nettoyer(&path);
+}
+
 /// Alsace-Moselle, arrêt long (> 6 semaines) : 42 jours à 100 % puis relais du
 /// droit commun (conventionnel 75 % pour ≥ 3 ans d'ancienneté). Le calcul étant
 /// limité au mois de paie, on prend le bulletin d'AVRIL : l'arrêt (débuté le

@@ -1391,20 +1391,33 @@ function buildTotalFormulaContent(which, b) {
       </table>`;
   }
 
+  // Coût employeur de la SEULE période d'arrêt tombant dans le mois — jamais le
+  // mois entier : les jours travaillés n'y ont pas leur place, et ce chiffre
+  // n'est donc comparable à aucun coût mensuel.
   if (which === 'cout_absence' && b.absence) {
-    const coutRef = n(b.absence.cout_reference);
-    const cout    = Math.max(0, coutRef - coutTotal);
+    const ca = _coutAbsencePeriode(b);
+    if (!ca) return '';
+    const opPat  = ca.quotePat < 0 ? '−' : '+';
+    const rows = [
+      `<tr><td>Maintien de salaire (brut)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(ca.maintien)}</td></tr>`,
+    ];
+    if (ca.ijssBrut > 0) rows.push(`<tr><td>IJSS brutes déduites du brut (subrogation)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(ca.ijssBrut)}</td></tr>`);
+    if (ca.ajust > 0)    rows.push(`<tr><td>Ajustement (garantie du net)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(ca.ajust)}</td></tr>`);
+    rows.push(`<tr class="fm-sep"><td>Brut porté par l'employeur pendant l'arrêt</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(ca.brutAbs)}</td></tr>`);
+    rows.push(`<tr><td>Charges patronales afférentes <span class="c-dim">(taux moyen du mois : ${fmtPct(Math.abs(ca.tauxPat))})</span></td><td class="fm-op">${opPat}</td><td class="fm-val c-pat">${fmt(Math.abs(ca.quotePat))}</td></tr>`);
+    if (ijssNet > 0) rows.push(`<tr><td class="c-dim">IJSS nettes avancées au salarié puis remboursées par la Sécurité sociale <span class="c-dim">(neutres)</span></td><td class="fm-op c-dim">±</td><td class="fm-val c-dim">${fmt(ijssNet)}</td></tr>`);
+    rows.push(`<tr class="fm-result fm-sep"><td>Coût employeur de l'arrêt</td><td class="fm-op">=</td><td class="fm-val c-pat">${fmt(ca.cout)}</td></tr>`);
     return `
-      <div class="fm-generic">Coût employeur de l'absence  =  Coût total sans absence  −  Coût total avec absence</div>
-      ${fmDecomp([{ label: 'Coût absence', sym: 'Coût employeur de référence  −  Coût employeur du mois', num: `${fmt(coutRef)}  −  ${fmt(coutTotal)}`, grp: `${fmt(cout)}` }])}
-      <div class="fm-base-note">Différence de coût total employeur entre un mois plein et ce bulletin. Il reflète
-      le maintien de salaire net des IJSS récupérées par subrogation ; il peut être négatif si la retenue dépasse
-      le maintien.</div>
-      <table class="fm-calc">
-        <tr><td>Coût total employeur d'un mois plein (référence)</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(coutRef)}</td></tr>
-        <tr><td>Coût total employeur avec absence</td><td class="fm-op">−</td><td class="fm-val c-base">${fmt(coutTotal)}</td></tr>
-        <tr class="fm-result fm-sep"><td>Coût réel de l'absence</td><td class="fm-op">=</td><td class="fm-val c-pat">${fmt(cout)}</td></tr>
-      </table>`;
+      <div class="fm-generic">Coût de l'arrêt  =  Brut porté pendant l'arrêt  ${opPat}  Charges patronales afférentes</div>
+      ${fmDecomp([{ label: 'Coût de l\'arrêt', sym: `Brut porté pendant l'arrêt  ${opPat}  Charges patronales`, num: `${fmt(ca.brutAbs)}  ${opPat}  ${fmt(Math.abs(ca.quotePat))}`, grp: `${fmt(ca.cout)}` }])}
+      <div class="fm-base-note">Coût des <b>seuls jours d'arrêt tombant sur ce bulletin</b> — les jours travaillés
+      en sont exclus, ce montant n'est donc pas comparable au coût d'un mois. La retenue d'absence n'est pas un coût
+      (ce salaire n'est pas dû) : l'employeur ne supporte que le maintien${ca.ijssBrut > 0 ? `, diminué des IJSS
+      déduites du brut et de l'ajustement de garantie du net` : ''}, plus les charges patronales correspondantes
+      (quote-part du brut du mois, allègements déduits).${ijssNet > 0 ? ` Les IJSS nettes avancées au salarié sont
+      remboursées à l'employeur par la Sécurité sociale : elles ne lui coûtent rien.` : ''}
+      ${ca.cout === 0 ? ' Ici, aucun maintien n\'est dû (carence) : l\'arrêt ne coûte rien à l\'employeur ce mois-ci.' : ''}</div>
+      <table class="fm-calc">${rows.join('')}</table>`;
   }
 
   return '';
@@ -1857,7 +1870,7 @@ window.showFormula = function(key) {
       net:           ['Net à payer',                   '── Ce que perçoit le salarié ────────────────', 'fm-type-alleg'],
       super_brut:    ['Coût total employeur',          '── Super brut ───────────────────────────────', 'fm-type-pat'],
       perte_absence: ['Perte de salaire (absence)',    '── Effet de l\'absence sur le net ────────────', 'fm-type-sal'],
-      cout_absence:  ['Coût employeur de l\'absence',  '── Δ coût total employeur ───────────────────', 'fm-type-pat'],
+      cout_absence:  ['Coût employeur de l\'absence',  '── Période d\'arrêt — hors jours travaillés ──', 'fm-type-pat'],
     }[entry.which];
     if (!meta) return;
     document.getElementById('fm-title').textContent = meta[0];
@@ -3538,6 +3551,32 @@ function _friseGrid(codes, kind, a, startDate, mois) {
   return `<div class="frise-grid">${heads}${empties}${squares}</div>`;
 }
 
+// Coût employeur des SEULS jours d'arrêt tombant sur ce bulletin. Le brut du
+// mois se scinde en deux parts additives : les jours travaillés (base − retenue)
+// et l'arrêt (maintien − IJSS brutes − ajustement de garantie du net). On ne
+// retient que la seconde, majorée de sa quote-part de charges patronales
+// (allègements déduits) — les charges n'étant pas linéaires (Fillon, plafonds),
+// leur ventilation se fait au prorata du brut. Les IJSS nettes n'y figurent pas :
+// avancées au salarié puis remboursées par la Sécurité sociale, elles sont
+// neutres pour l'employeur.
+// Contrôle : sur un arrêt couvrant tout le mois, le résultat retombe exactement
+// sur le coût total employeur du bulletin.
+function _coutAbsencePeriode(b) {
+  const a = b?.absence;
+  if (!a) return null;
+  const n = v => parseFloat(v) || 0;
+  const maintien = n(a.maintien), ijssBrut = n(a.ijss_brut), ajust = n(a.ajustement_net);
+  const brut     = n(b.brut);
+  const brutAbs  = Math.round((maintien - ijssBrut - ajust) * 100) / 100;
+  const totalPat = (b.cotisations || []).reduce((s, c) => s + n(c.montant_pat), 0);
+  const tauxPat  = brut > 0 ? totalPat / brut : 0;
+  const quotePat = Math.round(brutAbs * tauxPat * 100) / 100;
+  return {
+    maintien, ijssBrut, ajust, brutAbs, tauxPat, quotePat,
+    cout: Math.round((brutAbs + quotePat) * 100) / 100,
+  };
+}
+
 // Bloc complet inséré avant la ligne « Retenue absence » : en-tête daté, frise du
 // maintien, frise des IJSS, puis perte salarié (net avant impôt) et coût employeur.
 function _buildAbsenceViz(absInfo, absState) {
@@ -3578,9 +3617,8 @@ function _buildAbsenceViz(absInfo, absState) {
   const net    = parseFloat(lastBulletin?.net_a_payer) || 0;
   const netRef = parseFloat(absInfo.net_reference) || 0;
   const perte  = Math.max(0, netRef - net);
-  const cout    = parseFloat(lastBulletin?.cout_total_employeur) || 0;
-  const coutRef = parseFloat(absInfo.cout_reference) || 0;
-  const coutAbs = Math.max(0, coutRef - cout);
+  // Coût employeur des seuls jours d'arrêt de ce bulletin (jamais le mois entier).
+  const coutAbs = _coutAbsencePeriode(lastBulletin)?.cout ?? 0;
 
   const friseMaintien = hasMaintien
     ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Maintien de salaire')}</div>${_friseGrid(fm, 'maintien', absInfo, startDate, mois)}</div>`

@@ -356,8 +356,9 @@ pub struct AbsenceResult {
     #[serde(default, with = "rust_decimal::serde::str")]
     pub net_reference: Decimal,
     /// Coût total employeur du bulletin de RÉFÉRENCE (plein mois sans absence).
-    /// Rempli par le bulletin France (0 sinon). Sert au coût réel employeur de
-    /// l'absence (cout_reference − cout_total_employeur).
+    /// Rempli par le bulletin France (0 sinon). Fourni à titre indicatif : il
+    /// n'entre PAS dans le coût employeur de l'absence, qui ne porte que sur les
+    /// jours d'arrêt du mois et n'est donc pas comparable à un mois plein.
     #[serde(default, with = "rust_decimal::serde::str")]
     pub cout_reference: Decimal,
     /// Ex. "maladie · ÷21,67 ouvrés".

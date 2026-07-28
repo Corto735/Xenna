@@ -290,23 +290,103 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
 
     // Alsace-Moselle (droit local, art. L1226-23, ex-art. 616 code civil local) :
     // 100 % du salaire dès le 1er jour, SANS carence ni condition d'ancienneté,
-    // pendant 42 jours calendaires (6 semaines), puis relais du droit commun.
-    // Couvre toute absence sans faute du salarié : maladie ET accident du travail.
+    // pendant 42 jours calendaires (6 semaines). Couvre toute absence sans faute
+    // du salarié : maladie ET accident du travail.
     let am = alsace_moselle;
 
-    // Taux du jour = max(Alsace-Moselle, droit commun). Le max réalise le relais :
-    // jours 1-42 à 100 % (AM l'emporte et efface la carence du droit commun),
-    // au-delà le droit commun reprend (75 % / 66,66 %).
-    let dc_rate = |idx: i64| -> Decimal {
-        match bareme_dc {
+    let taux_bareme = |b: Bareme, idx: i64| -> Decimal {
+        match b {
             Some((carence, fin1, taux1, fin2, taux2)) if idx > carence => {
                 if idx <= fin1 { taux1 } else if idx <= fin2 { taux2 } else { Decimal::ZERO }
             }
             _ => Decimal::ZERO,
         }
     };
-    let am_rate = |idx: i64| -> Decimal {
-        if am && idx <= 42 { dec!(1.00) } else { Decimal::ZERO }
+    // Barème de la mensualisation LÉGALE seule (droit du travail général), isolé du
+    // barème conventionnel : il sert de terme de comparaison, pas d'appoint jour
+    // par jour. Identique à `bareme_dc` quand aucune convention ne s'applique.
+    let bareme_legal: Bareme = if anciennete >= 1 {
+        let d = duree_legale(anciennete);
+        if est_at { Some((0, d, dec!(0.90), 2 * d, dec!(0.6666))) }
+        else      { Some((7, 7 + d, dec!(0.90), 7 + 2 * d, dec!(0.6666))) }
+    } else {
+        None
+    };
+    let bareme_conv: Bareme = if conventionnel { bareme_dc } else { None };
+
+    let am_rate    = |idx: i64| -> Decimal { if am && idx <= 42 { dec!(1.00) } else { Decimal::ZERO } };
+    let conv_rate  = |idx: i64| -> Decimal { taux_bareme(bareme_conv, idx) };
+    let legal_rate = |idx: i64| -> Decimal { taux_bareme(bareme_legal, idx) };
+    // Droits propres du salarié : droit local puis conventionnel, en relais l'un de
+    // l'autre (l'Alsace-Moselle efface la carence conventionnelle sur ses 42 jours).
+    let acquis_rate = |idx: i64| -> Decimal { am_rate(idx).max(conv_rate(idx)) };
+
+    // ── Articulation des régimes (principe de faveur, comparaison GLOBALE) ──
+    // On n'additionne pas les régimes et on ne prend pas le meilleur taux jour par
+    // jour : le salarié épuise d'abord ses droits locaux et conventionnels, et le
+    // droit du travail général n'intervient QUE s'il verse davantage sur l'ensemble
+    // de l'arrêt (Cass. soc. : comparaison globale des avantages de même nature,
+    // jamais de panachage). Il n'ajoute alors que le COMPLÉMENT : le salarié touche
+    // le maximum des deux régimes, jamais leur somme. Conséquence pratique : un
+    // salarié couvert par l'Alsace-Moselle ou par une convention ne voit presque
+    // jamais la mensualisation légale s'appliquer.
+    // Drapeaux de libellé : quels régimes paient effectivement des jours de l'arrêt.
+    let (total_acquis, total_legal, paye_am, paye_conv, legal_couvre) = {
+        let (mut a, mut l) = (Decimal::ZERO, Decimal::ZERO);
+        let (mut f_am, mut f_conv, mut f_legal) = (false, false, false);
+        let mut cur = debut;
+        let mut idx = 1i64;
+        while cur <= fin {
+            if est_compte(cur, kind, &feries) {
+                let (r_am, r_conv) = (am_rate(idx), conv_rate(idx));
+                a += r_am.max(r_conv);
+                l += legal_rate(idx);
+                if r_am > Decimal::ZERO { f_am = true; }
+                if r_conv > r_am { f_conv = true; }
+                // Jours que le droit général couvrirait là où les droits acquis
+                // sont épuisés (le relais reste conditionné à la comparaison).
+                if r_am.max(r_conv).is_zero() && legal_rate(idx) > Decimal::ZERO { f_legal = true; }
+            }
+            cur += Duration::days(1);
+            idx += 1;
+        }
+        (a, l, f_am, f_conv, f_legal)
+    };
+    let relais_legal = total_legal > total_acquis;
+
+    // Taux effectivement dû, jour calendaire par jour calendaire (index 1-based
+    // depuis le VRAI début de l'arrêt) : droits acquis tant qu'ils courent, puis
+    // complément légal une fois épuisés — celui-ci s'interrompt dès que le total
+    // versé atteint ce qu'aurait donné le droit général seul (`reste`, exprimé en
+    // jours-équivalents comme les taux). Le dernier jour du complément est payé
+    // ENTIER : le total dépasse alors le droit légal d'une fraction de journée
+    // (arrondi en faveur du salarié), au bénéfice de la lisibilité — un jour au
+    // taux bâtard casserait la décomposition « n jours × taux » du bulletin et des
+    // frises. Une même grille sert au montant et aux frises : aucune divergence.
+    let taux_par_jour: Vec<Decimal> = {
+        let mut v = Vec::new();
+        let mut reste = if relais_legal { total_legal - total_acquis } else { Decimal::ZERO };
+        let mut cur = debut;
+        let mut idx = 1i64;
+        while cur <= fin {
+            let mut rate = Decimal::ZERO;
+            if est_compte(cur, kind, &feries) {
+                let acquis = acquis_rate(idx);
+                if acquis > Decimal::ZERO {
+                    rate = acquis;
+                } else if reste > Decimal::ZERO {
+                    rate = legal_rate(idx);
+                    reste -= rate;
+                }
+            }
+            v.push(rate);
+            cur += Duration::days(1);
+            idx += 1;
+        }
+        v
+    };
+    let taux_jour = |idx: i64| -> Decimal {
+        taux_par_jour.get((idx - 1) as usize).copied().unwrap_or(Decimal::ZERO)
     };
 
     // per_day = gross moyen perdu par jour compté → indépendant de la méthode.
@@ -323,7 +403,7 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         let mut idx = 1i64; // index calendaire 1-based depuis le VRAI début de l'arrêt
         while cur <= fin {
             if est_compte(cur, kind, &feries) {
-                let rate = am_rate(idx).max(dc_rate(idx));
+                let rate = taux_jour(idx);
                 if rate > Decimal::ZERO {
                     if !rates_arret.contains(&rate) { rates_arret.push(rate); }
                     if cur >= eff_debut && cur <= eff_fin {
@@ -350,15 +430,26 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     // touche aucun jour — ex. mois entièrement en tranche réduite).
     let jours_maintien_t1 = paliers_mois.iter().find(|(t, _)| *t == taux_maintien_t1).map(|(_, n)| *n).unwrap_or(0);
     let jours_maintien_t2 = paliers_mois.iter().find(|(t, _)| *t == taux_maintien_t2).map(|(_, n)| *n).unwrap_or(0);
-    let carence_maintien = if am { 0 } else { bareme_dc.map(|(c, ..)| c).unwrap_or(0) };
-
-    // Libellé du régime appliqué (affiché sur la ligne « Maintien de salaire »).
-    let regime: String = if am {
-        let mut s = "Alsace-Moselle — droit local 100 % (6 sem.), art. L1226-23".to_string();
-        if jours_maintien_t2 > 0 { s.push_str(" + relais droit commun"); }
-        s
+    // Carence opposable = celle du régime qui ouvre les droits (le droit local n'en
+    // a aucune ; sinon la convention, à défaut la mensualisation légale).
+    let carence_maintien = if am {
+        0
+    } else if conventionnel {
+        bareme_conv.map(|(c, ..)| c).unwrap_or(0)
     } else {
-        regime_dc.to_string()
+        bareme_legal.map(|(c, ..)| c).unwrap_or(0)
+    };
+
+    // Libellé du régime appliqué (affiché sur la ligne « Maintien de salaire ») :
+    // les régimes réellement payeurs, dans l'ordre où ils prennent le relais.
+    let regime: String = {
+        let mut segs: Vec<String> = Vec::new();
+        if paye_am   { segs.push("Alsace-Moselle — droit local 100 % (6 sem.), art. L1226-23".into()); }
+        if paye_conv { segs.push(if paye_am { format!("relais {regime_dc}") } else { regime_dc.to_string() }); }
+        if relais_legal && legal_couvre {
+            segs.push(if paye_am || paye_conv { "relais légal 90 % / 66,66 %".into() } else { regime_dc.to_string() });
+        }
+        if segs.is_empty() { regime_dc.to_string() } else { segs.join(" + ") }
     };
     // Préfixe IDCC seulement quand un barème conventionnel (ou le droit local)
     // s'applique — « légal » et « sans maintien » ne relèvent pas de la convention.
@@ -388,8 +479,19 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     //   début = fin de carence SS (jour 4 en maladie, jour 1 en AT/MP) ;
     //   fin   = dernier jour de maintien (fin de tranche 2 du barème ; Alsace-Moselle :
     //           42 jours, ou relais du droit commun au-delà). Pas de maintien → fin 0 → 0.
-    let dc_fin2 = bareme_dc.map(|(_, _, _, f2, _)| f2).unwrap_or(0);
-    let maintien_end_idx = if am { dc_fin2.max(42) } else { dc_fin2 };
+    // Fin du maintien = dernier jour du dernier régime qui paie réellement. Sans
+    // droit local ni conventionnel, c'est la fin du barème légal (le droit peut
+    // courir au-delà de l'arrêt saisi) ; sinon, le dernier jour effectivement payé
+    // de la grille — le complément légal, plafonné, s'arrête avant la fin du barème.
+    let fin_am   = if am { 42 } else { 0 };
+    let fin_conv = bareme_conv.map(|(_, _, _, f2, _)| f2).unwrap_or(0);
+    let maintien_end_idx = if fin_am == 0 && fin_conv == 0 {
+        bareme_legal.map(|(_, _, _, f2, _)| f2).unwrap_or(0)
+    } else {
+        let dernier_paye = taux_par_jour.iter().rposition(|t| *t > Decimal::ZERO)
+            .map(|p| p as i64 + 1).unwrap_or(0);
+        fin_am.max(fin_conv).max(dernier_paye)
+    };
     // Carence SS (3 j en maladie, aucune en AT/MP). Fenêtre des IJSS sur le bulletin
     // = mois ∩ post-carence SS ∩ [1 ; fin du maintien] (vide → aucune IJSS).
     let ss_carence = if est_at { 0 } else { 3 };
@@ -465,7 +567,7 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
         let mut cur = debut;
         let mut idx = 1i64;
         while cur <= fin {
-            let rate = am_rate(idx).max(dc_rate(idx));
+            let rate = taux_jour(idx);
             let code = if est_compte(cur, kind, &feries) && rate > Decimal::ZERO {
                 if rate == taux_maintien_t1 { "t1" } else { "t2" }
             } else if !am && carence_maintien > 0 && idx <= carence_maintien {
