@@ -2,6 +2,7 @@ pub mod admin;
 pub mod altcha;
 pub mod membre;
 pub mod calculs;
+pub mod ccn;
 pub mod crypto;
 pub mod db;
 pub mod i18n;

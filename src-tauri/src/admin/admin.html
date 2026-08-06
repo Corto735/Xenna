@@ -56,6 +56,32 @@
   .user-info { color: var(--muted); font-size: 0.7rem; }
   .spinner { color: var(--muted); font-size: 0.75rem; padding: 2rem 0; text-align: center; }
 
+  /* Conventions collectives */
+  #ccn-section { margin-top: 1.5rem; }
+  #ccn-section .panel { border-top-color: var(--yellow); }
+  #ccn-section select, #ccn-section textarea, #ccn-section input[type=text] {
+    width: 100%; background: var(--bg3); border: 1px solid var(--dim); color: var(--white);
+    padding: 0.45rem 0.6rem; font-family: inherit; font-size: 0.8rem; outline: none; border-radius: 2px;
+  }
+  #ccn-section select:focus, #ccn-section textarea:focus { border-color: var(--blue); }
+  #ccn-section textarea { min-height: 150px; resize: vertical; line-height: 1.65; }
+  .ccn-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+  .ccn-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.9rem; }
+  @media (max-width: 760px) { .ccn-grid2, .ccn-grid3 { grid-template-columns: 1fr; } }
+  .ccn-row  { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; align-items: center; }
+  .ccn-adm-item { background: var(--bg3); border: 1px solid var(--dim); padding: 0.55rem 0.7rem;
+    margin-bottom: 0.4rem; display: flex; gap: 0.7rem; align-items: flex-start; }
+  .ccn-adm-item.off { opacity: 0.45; }
+  .ccn-adm-main { flex: 1; min-width: 0; }
+  .ccn-adm-titre { color: var(--white); font-size: 0.76rem; }
+  .ccn-adm-sub   { color: var(--muted); font-size: 0.62rem; margin-top: 0.2rem; }
+  .ccn-adm-badge { font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid var(--dim); padding: 0.05rem 0.3rem; margin-right: 0.3rem; }
+  .ccn-b-verif { color: var(--green);  }
+  .ccn-b-todo  { color: var(--red);    }
+  .ccn-b-draft { color: var(--muted);  }
+  .ccn-adm-acts { display: flex; gap: 0.3rem; flex-shrink: 0; }
+
   /* Human input — page À propos */
   #hi-section { margin-top: 1.5rem; }
   #hi-section .panel { border-top-color: var(--green); }
@@ -143,6 +169,87 @@
       <div class="panel">
         <div class="panel-title">QUESTIONS QUIZZ À VALIDER <span class="panel-count" id="quizz-count"></span></div>
         <div id="quizz-list"><div class="spinner">chargement…</div></div>
+      </div>
+    </div>
+
+    <!-- CONVENTIONS COLLECTIVES -->
+    <div id="ccn-section">
+      <div class="panel">
+        <div class="panel-title">CONVENTIONS COLLECTIVES — RÉGLEMENTATIONS
+          <span class="panel-count" id="ccn-count"></span></div>
+        <p class="subtitle" style="margin-bottom:1rem">
+          Contenu éditorial de la page publique. Aucun calcul de bulletin n'en dépend :
+          corriger ici ne change pas un centime des simulations.
+        </p>
+
+        <div class="ccn-grid3">
+          <div class="field"><label>IDCC</label>
+            <input type="text" id="ccn-f-idcc" value="0016"></div>
+          <div class="field"><label>ACTIVITÉ</label>
+            <select id="ccn-f-activite"></select></div>
+          <div class="field"><label>THÈME</label>
+            <select id="ccn-f-theme"></select></div>
+        </div>
+
+        <div class="field"><label>TITRE</label>
+          <input type="text" id="ccn-f-titre" placeholder="Prime d'ancienneté — ouvriers"></div>
+        <div class="field"><label>RÉSUMÉ (une phrase : ce que ça fait au bulletin)</label>
+          <input type="text" id="ccn-f-resume"></div>
+        <div class="field"><label>CORPS (texte brut, les sauts de ligne sont conservés)</label>
+          <textarea id="ccn-f-corps"></textarea></div>
+        <div class="field"><label>BARÈMES — JSON, facultatif. Liste de
+            { "titre", "colonnes": [...], "lignes": [[...]], "note" }.
+            Chaque ligne doit avoir autant de cellules que de colonnes.</label>
+          <textarea id="ccn-f-tableaux" style="min-height:110px"
+            placeholder='[{"titre":"Taux horaires","colonnes":["Coefficient","Embauche"],"lignes":[["150M","12,43 €"]],"note":"…"}]'></textarea></div>
+
+        <div class="ccn-grid3">
+          <div class="field"><label>VALEUR AFFICHÉE</label>
+            <input type="text" id="ccn-f-valeur" placeholder="2 / 4 / 6 / 8 %"></div>
+          <div class="field"><label>IMPACT</label>
+            <select id="ccn-f-impact">
+              <option>Brut</option><option>Cotisations</option><option>Net imposable</option>
+              <option>Cout employeur</option><option>Temps de travail</option><option>Hors bulletin</option>
+            </select></div>
+          <div class="field"><label>RÉGIME SOCIAL</label>
+            <input type="text" id="ccn-f-regime" placeholder="Soumis à cotisations"></div>
+        </div>
+
+        <div class="ccn-grid3">
+          <div class="field"><label>SOURCE (article, accord, décret)</label>
+            <input type="text" id="ccn-f-source"></div>
+          <div class="field"><label>LIEN (http/https, facultatif)</label>
+            <input type="text" id="ccn-f-url"></div>
+          <div class="field"><label>DATE D'EFFET (AAAA-MM-JJ, facultatif)</label>
+            <input type="text" id="ccn-f-date" placeholder="2003-12-22"></div>
+        </div>
+
+        <div class="ccn-grid3">
+          <div class="field"><label>STATUT DE VÉRIFICATION</label>
+            <select id="ccn-f-statut">
+              <option value="a_verifier">À vérifier</option>
+              <option value="verifie">Vérifié</option>
+              <option value="brouillon">Brouillon</option>
+            </select></div>
+          <div class="field"><label>ORDRE D'AFFICHAGE</label>
+            <input type="text" id="ccn-f-ordre" value="0"></div>
+          <div class="field"><label>PUBLICATION</label>
+            <select id="ccn-f-publie">
+              <option value="1">Publiée</option>
+              <option value="0">Dépubliée</option>
+            </select></div>
+        </div>
+
+        <div class="ccn-row">
+          <button class="btn btn-sm btn-green" onclick="ccnSave()" id="ccn-btn-save">✓ Créer</button>
+          <button class="btn btn-sm" onclick="ccnResetForm()"
+                  style="background:var(--bg3);color:var(--text);border:1px solid var(--dim)">Nouveau</button>
+          <span id="ccn-edit-hint" style="font-size:0.65rem;color:var(--yellow)"></span>
+        </div>
+        <div id="ccn-status" style="font-size:0.65rem;margin-top:0.6rem;min-height:1rem"></div>
+
+        <div class="panel-title" style="margin-top:1.5rem">RÈGLES EN BASE</div>
+        <div id="ccn-list"><div class="spinner">chargement…</div></div>
       </div>
     </div>
 
@@ -251,6 +358,7 @@ function showDashboard(user) {
   if (user) document.getElementById('user-label').textContent = user;
   loadDashboard();
   hiLoadList();
+  ccnLoad();
 }
 
 async function loadDashboard() {
@@ -500,8 +608,184 @@ async function hiDelete(id) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CONVENTIONS COLLECTIVES
+// Contenu éditorial de la page publique. Aucun lien avec le moteur
+// de paie : une erreur ici se voit, elle ne se calcule pas.
+// ═══════════════════════════════════════════════════════════════
+
+let ccnEditId = null;   // null = création, sinon modification
+
+const ccnEl = id => document.getElementById('ccn-f-' + id);
+
+function ccnStatus(msg, kind) {
+  const el = document.getElementById('ccn-status');
+  el.textContent = msg;
+  el.style.color = kind === 'ok' ? 'var(--green)' : kind === 'err' ? 'var(--red)' : 'var(--muted)';
+}
+
+function ccnIdcc() {
+  return (ccnEl('idcc').value || '0016').trim();
+}
+
+async function ccnLoad() {
+  try {
+    const q = '?idcc=' + encodeURIComponent(ccnIdcc());
+    const [ref, regles] = await Promise.all([
+      fetch(BASE + '/ccn/referentiel' + q,     { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
+      fetch(BASE + '/ccn/reglementations' + q, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
+    ]);
+    if (ref.status === 401 || regles.status === 401) { doLogout(); return; }
+    const r = await ref.json();
+    ccnFillSelect('activite', r.activites);
+    ccnFillSelect('theme',    r.themes);
+    ccnRenderList(await regles.json());
+  } catch (e) {
+    document.getElementById('ccn-list').innerHTML =
+      '<div class="empty" style="color:var(--red)">Erreur de chargement</div>';
+  }
+}
+
+function ccnFillSelect(champ, items) {
+  const sel = ccnEl(champ);
+  const garde = sel.value;                       // ne pas perdre la saisie en cours
+  sel.innerHTML = items.map(i =>
+    `<option value="${esc(i.code)}">${esc(i.libelle)}</option>`).join('');
+  if (garde) sel.value = garde;
+}
+
+function ccnRenderList(regles) {
+  const box = document.getElementById('ccn-list');
+  document.getElementById('ccn-count').textContent = `(${regles.length})`;
+  if (!regles.length) { box.innerHTML = '<div class="empty">Aucune règle</div>'; return; }
+
+  box.innerHTML = regles.map(r => {
+    const badge = r.statutVerif === 'verifie'
+      ? '<span class="ccn-adm-badge ccn-b-verif">Vérifié</span>'
+      : r.statutVerif === 'brouillon'
+        ? '<span class="ccn-adm-badge ccn-b-draft">Brouillon</span>'
+        : '<span class="ccn-adm-badge ccn-b-todo">À vérifier</span>';
+    let nbTab = 0;
+    try { if (r.tableaux) nbTab = JSON.parse(r.tableaux).length; } catch { nbTab = 0; }
+    return `
+      <div class="ccn-adm-item${r.publie ? '' : ' off'}">
+        <div class="ccn-adm-main">
+          <div class="ccn-adm-titre">${esc(r.titre)}</div>
+          <div class="ccn-adm-sub">${badge}${esc(r.activite)} · ${esc(r.theme)} · ${esc(r.impact)}
+            · ordre ${r.ordre}${nbTab ? ` · ${nbTab} barème${nbTab > 1 ? 's' : ''}` : ''}${r.publie ? '' : ' · DÉPUBLIÉE'}</div>
+        </div>
+        <div class="ccn-adm-acts">
+          <button class="btn btn-sm" style="background:var(--bg3);color:var(--text);border:1px solid var(--dim)"
+                  onclick="ccnEdit(${r.id})">Éditer</button>
+          <button class="btn btn-sm btn-red" onclick="ccnDelete(${r.id})">×</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Les objets complets servent au pré-remplissage du formulaire :
+  // inutile de refaire un aller-retour réseau pour éditer.
+  window._ccnCache = Object.fromEntries(regles.map(r => [r.id, r]));
+}
+
+function ccnEdit(id) {
+  const r = (window._ccnCache || {})[id];
+  if (!r) return;
+  ccnEditId = id;
+  ccnEl('idcc').value     = r.idcc;
+  ccnEl('activite').value = r.activite;
+  ccnEl('theme').value    = r.theme;
+  ccnEl('titre').value    = r.titre;
+  ccnEl('resume').value   = r.resume;
+  ccnEl('corps').value    = r.corps;
+  // Réindenté pour être relisible : la base stocke du JSON compact.
+  ccnEl('tableaux').value = r.tableaux
+    ? (() => { try { return JSON.stringify(JSON.parse(r.tableaux), null, 2); }
+               catch { return r.tableaux; } })()
+    : '';
+  ccnEl('valeur').value   = r.valeur || '';
+  ccnEl('impact').value   = r.impact;
+  ccnEl('regime').value   = r.regimeSocial || '';
+  ccnEl('source').value   = r.source;
+  ccnEl('url').value      = r.sourceUrl || '';
+  ccnEl('date').value     = r.dateEffet || '';
+  ccnEl('statut').value   = r.statutVerif;
+  ccnEl('ordre').value    = r.ordre;
+  ccnEl('publie').value   = r.publie ? '1' : '0';
+  document.getElementById('ccn-btn-save').textContent = '✓ Enregistrer';
+  document.getElementById('ccn-edit-hint').textContent = `Modification de la règle #${id}`;
+  ccnStatus('', '');
+  document.getElementById('ccn-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function ccnResetForm() {
+  ccnEditId = null;
+  ['titre', 'resume', 'corps', 'tableaux', 'valeur', 'regime', 'source', 'url', 'date']
+    .forEach(c => { ccnEl(c).value = ''; });
+  ccnEl('ordre').value  = '0';
+  ccnEl('statut').value = 'a_verifier';
+  ccnEl('publie').value = '1';
+  document.getElementById('ccn-btn-save').textContent = '✓ Créer';
+  document.getElementById('ccn-edit-hint').textContent = '';
+  ccnStatus('', '');
+}
+
+async function ccnSave() {
+  const ordre = parseInt(ccnEl('ordre').value, 10);
+  const body = {
+    idcc:         ccnIdcc(),
+    activite:     ccnEl('activite').value,
+    theme:        ccnEl('theme').value,
+    titre:        ccnEl('titre').value.trim(),
+    resume:       ccnEl('resume').value.trim(),
+    corps:        ccnEl('corps').value,
+    tableaux:     ccnEl('tableaux').value.trim() || null,
+    valeur:       ccnEl('valeur').value.trim() || null,
+    source:       ccnEl('source').value.trim(),
+    sourceUrl:    ccnEl('url').value.trim() || null,
+    dateEffet:    ccnEl('date').value.trim() || null,
+    impact:       ccnEl('impact').value,
+    regimeSocial: ccnEl('regime').value.trim() || null,
+    statutVerif:  ccnEl('statut').value,
+    publie:       ccnEl('publie').value === '1',
+    ordre:        Number.isFinite(ordre) ? ordre : 0,
+  };
+
+  const edition = ccnEditId !== null;
+  ccnStatus('Envoi…', '');
+  try {
+    const r = await fetch(BASE + '/ccn/reglementations' + (edition ? '/' + ccnEditId : ''), {
+      method: edition ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify(body),
+    });
+    if (r.status === 401) { doLogout(); return; }
+    if (!r.ok) { ccnStatus(await r.text() || 'Refus du serveur', 'err'); return; }
+    ccnStatus(edition ? 'Règle modifiée.' : 'Règle créée.', 'ok');
+    ccnResetForm();
+    ccnLoad();
+  } catch (e) {
+    ccnStatus('Erreur réseau', 'err');
+  }
+}
+
+async function ccnDelete(id) {
+  // Suppression définitive : le corps d'une règle représente un vrai
+  // travail de rédaction, et rien ne le sauvegarde ailleurs.
+  const r0 = (window._ccnCache || {})[id];
+  if (!confirm(`Supprimer définitivement « ${r0 ? r0.titre : '#' + id} » ?`)) return;
+
+  const r = await fetch(BASE + '/ccn/reglementations/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+  });
+  if (r.status === 401) { doLogout(); return; }
+  if (r.ok) { ccnStatus(`Règle #${id} supprimée.`, 'ok'); if (ccnEditId === id) ccnResetForm(); ccnLoad(); }
+  else ccnStatus('Suppression refusée', 'err');
+}
+
 // Auto-connect si token en session
 document.getElementById('inp-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('ccn-f-idcc').addEventListener('change', () => { ccnResetForm(); ccnLoad(); });
 if (TOKEN) {
   try {
     const payload = JSON.parse(atob(TOKEN.split('.')[1]));

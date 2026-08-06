@@ -314,4 +314,8 @@ pub fn admin_router() -> Router<Db> {
         .route(&p("/apropos/publish"),            post(publish_apropos))
         .route(&p("/apropos/{id}"),               delete(delete_apropos))
         .route("/api/apropos/posts",              get(list_apropos_posts))
+        // Édition des réglementations conventionnelles : les handlers
+        // vivent dans le module ccn, l'authentification et le préfixe
+        // restent ici.
+        .merge(crate::ccn::ccn_admin_router(PREFIXE_ADMIN))
 }

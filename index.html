@@ -1436,6 +1436,100 @@
     .view-gaabrielle,
     .view-quizz   { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
     .view-hercule { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto 3rem; }
+    .view-ccn     { display: none; padding: 1.5rem; max-width: 1000px; margin: 0 auto 3rem; }
+
+    /* ── Conventions collectives ── */
+    .ccn-ident      { border: 1px solid var(--border); background: var(--bg2); padding: 1rem 1.1rem; margin-bottom: 1.4rem; }
+    .ccn-ident-code { font-size: 0.62rem; color: var(--yellow); letter-spacing: 0.16em; text-transform: uppercase; }
+    .ccn-ident-lib  { font-size: 0.78rem; color: var(--white); letter-spacing: 0.04em; margin: 0.35rem 0 0.6rem; }
+    .ccn-ident-champ{ font-size: 0.66rem; color: var(--muted); letter-spacing: 0.03em; line-height: 1.55; }
+    .ccn-ident-meta { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.08em; margin-top: 0.7rem;
+                      display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; }
+
+    .ccn-warn       { border-left: 2px solid var(--yellow); background: var(--bg2);
+                      padding: 0.65rem 0.9rem; font-size: 0.62rem; color: var(--muted);
+                      letter-spacing: 0.03em; line-height: 1.5; margin-bottom: 1.4rem; }
+
+    .ccn-filters    { margin-bottom: 1.2rem; }
+    .ccn-filter-lbl { font-size: 0.56rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase; margin: 0.9rem 0 0.45rem; }
+    .ccn-chips      { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .ccn-chip       { font-family: inherit; font-size: 0.6rem; letter-spacing: 0.06em; cursor: pointer;
+                      background: transparent; color: var(--muted); border: 1px solid var(--border);
+                      padding: 0.3rem 0.6rem; border-radius: 2px; transition: color 0.12s, border-color 0.12s; }
+    .ccn-chip:hover { color: var(--blue); border-color: var(--blue); }
+    .ccn-chip.active{ color: var(--bg); background: var(--blue); border-color: var(--blue); }
+    .ccn-chip-n     { opacity: 0.55; margin-left: 0.35rem; }
+
+    .ccn-search     { width: 100%; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.04em;
+                      background: var(--bg2); color: var(--text); border: 1px solid var(--border);
+                      padding: 0.55rem 0.7rem; border-radius: 2px; }
+    .ccn-search:focus { outline: none; border-color: var(--blue); }
+
+    .ccn-count      { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase;
+                      margin: 1.4rem 0 0.7rem; border-top: 1px solid var(--border); padding-top: 0.9rem; }
+
+    .ccn-card       { border: 1px solid var(--border); margin-bottom: 0.5rem; overflow: hidden; }
+    .ccn-card-hdr   { display: flex; align-items: flex-start; gap: 0.9rem; padding: 0.75rem 1rem;
+                      cursor: pointer; background: var(--bg2); user-select: none; }
+    .ccn-card-hdr:hover { background: var(--bg3); }
+    .ccn-card-main  { flex: 1; min-width: 0; }
+    .ccn-card-titre { font-size: 0.72rem; color: var(--text); letter-spacing: 0.04em; }
+    .ccn-card-res   { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.03em; margin-top: 0.28rem; line-height: 1.5; }
+    .ccn-card-val   { font-size: 0.72rem; color: var(--green); letter-spacing: 0.04em; white-space: nowrap;
+                      font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .ccn-card-caret { font-size: 0.62rem; color: var(--dim); flex-shrink: 0; transition: transform 0.15s; margin-top: 0.1rem; }
+    .ccn-card.open .ccn-card-caret { transform: rotate(90deg); }
+
+    .ccn-tags       { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
+    .ccn-tag        { font-size: 0.53rem; letter-spacing: 0.1em; text-transform: uppercase;
+                      padding: 0.12rem 0.4rem; border: 1px solid var(--border); color: var(--dim); border-radius: 2px; }
+    /* Bordures laissées en var(--border) : les thèmes contraste et
+       impression réduisent toute la palette au noir, une couleur en
+       dur y deviendrait illisible. */
+    .ccn-tag-act    { color: var(--blue);   }
+    .ccn-tag-imp    { color: var(--yellow); }
+    .ccn-tag-verif  { color: var(--green);  }
+    .ccn-tag-todo   { color: var(--red);    }
+
+    .ccn-card-body  { display: none; padding: 0.9rem 1rem 1rem; border-top: 1px solid var(--border); }
+    .ccn-card.open .ccn-card-body { display: block; }
+    .ccn-corps      { font-size: 0.66rem; color: var(--text); letter-spacing: 0.03em; line-height: 1.7;
+                      white-space: pre-wrap; }
+    /* Barèmes chiffrés */
+    .ccn-bareme       { margin-top: 1.1rem; }
+    .ccn-bareme-titre { font-size: 0.6rem; color: var(--yellow); letter-spacing: 0.12em;
+                        text-transform: uppercase; margin-bottom: 0.45rem; }
+    /* Les grilles de salaires ont jusqu'à 8 colonnes : elles défilent
+       dans leur propre boîte plutôt que d'élargir la page. */
+    .ccn-bareme-scroll{ overflow-x: auto; border: 1px solid var(--border); }
+    .ccn-table        { width: 100%; border-collapse: collapse; font-size: 0.64rem;
+                        font-variant-numeric: tabular-nums; }
+    .ccn-table th     { background: var(--bg3); color: var(--blue); font-size: 0.55rem;
+                        letter-spacing: 0.1em; text-transform: uppercase; text-align: left;
+                        padding: 0.4rem 0.6rem; white-space: nowrap;
+                        border-bottom: 1px solid var(--border); }
+    .ccn-table td     { color: var(--text); padding: 0.35rem 0.6rem; white-space: nowrap;
+                        border-bottom: 1px solid var(--border); }
+    .ccn-table tr:last-child td { border-bottom: none; }
+    .ccn-table tbody tr:nth-child(even) td { background: var(--bg2); }
+    .ccn-table th.num, .ccn-table td.num   { text-align: right; }
+    .ccn-table td:first-child { color: var(--white); }
+    .ccn-bareme-note  { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.03em;
+                        line-height: 1.5; margin-top: 0.4rem; }
+
+    .ccn-meta       { margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px solid rgba(255,255,255,0.05);
+                      display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem;
+                      font-size: 0.58rem; letter-spacing: 0.04em; }
+    .ccn-meta dt    { color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; }
+    .ccn-meta dd    { color: var(--muted); margin: 0; }
+    .ccn-empty      { font-size: 0.66rem; color: var(--dim); letter-spacing: 0.06em; padding: 2rem 0; text-align: center; }
+
+    @media (max-width: 680px) {
+      .ccn-card-hdr { flex-wrap: wrap; }
+      .ccn-card-val { order: 3; width: 100%; }
+      .ccn-meta     { grid-template-columns: 1fr; gap: 0.15rem; }
+      .ccn-meta dd  { margin-bottom: 0.5rem; }
+    }
 
     /* ── Hercule Compta ── */
     .herc-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 4rem; }
@@ -1489,6 +1583,12 @@
     body.is-carnet .view-annuel  { display: none !important; }
     body.is-carnet .view-bar     { display: none !important; }
     body.is-carnet .view-carnet  { display: block; }
+
+    body.is-ccn .view-desktop,
+    body.is-ccn .view-mobile,
+    body.is-ccn .view-annuel  { display: none !important; }
+    body.is-ccn .view-bar     { display: none !important; }
+    body.is-ccn .view-ccn     { display: block; }
 
     body.is-contact .view-desktop,
     body.is-contact .view-mobile,
@@ -1949,6 +2049,7 @@
     body.is-ecart      .page-exit,
     body.is-meliinda   .page-exit,
     body.is-carnet     .page-exit,
+    body.is-ccn        .page-exit,
     body.is-mecenat    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
@@ -1960,6 +2061,7 @@
       body.is-ecart      .page-exit,
       body.is-meliinda   .page-exit,
       body.is-carnet     .page-exit,
+      body.is-ccn        .page-exit,
       body.is-mecenat    .page-exit {
         position: fixed;
         bottom: 1.5rem;
@@ -2256,6 +2358,10 @@
         <button class="burger-item" onclick="setView('carnet'); closeBurger()">
           <span class="burger-item-icon">▤</span>
           Carnet de bord
+        </button>
+        <button class="burger-item" onclick="setView('ccn'); closeBurger()">
+          <span class="burger-item-icon">§</span>
+          Conventions <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">collectives</span>
         </button>
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
@@ -3611,6 +3717,20 @@
 
     </div>
 
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE CONVENTIONS COLLECTIVES
+  ════════════════════════════════ -->
+  <div class="view-ccn">
+    <div class="about-head">
+      <div class="about-title">CONVENTIONS COLLECTIVES</div>
+      <div class="about-sub">
+        Ce que la convention ajoute, retire ou déplace sur le bulletin.
+      </div>
+    </div>
+
+    <div id="ccn-body"></div>
   </div>
 
   <!-- ════════════════════════════════

@@ -801,7 +801,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -814,8 +814,257 @@ window.setView = function (v) {
   if (v === 'hercule')    herculeInit();
   if (v === 'apropos')  { _mecenatStart(); _humanInputLoad(); }
   if (v === 'carnet')     _carnetLoad();
+  if (v === 'ccn')        ccnInit();
   if (v === 'meliinda')   meliindaInit();
 };
+
+// ── Conventions collectives ──────────────────────────────────────────────────
+// Page de consultation : ce que la convention fait au bulletin. Contenu
+// purement éditorial, servi par /api/ccn — aucun de ces libellés n'entre
+// dans un calcul, le moteur garde ses barèmes en base de paie.
+//
+// Le contenu est français et propre au droit français : pas de passage
+// par lang.js, la page reste en français quelle que soit la langue de
+// l'interface. Traduire « garantie annuelle de rémunération » n'aurait
+// aucun destinataire.
+
+const CCN_IDCC_DEFAUT = '0016';
+
+let _ccnDossier = null;   // dossier chargé (convention + activités + thèmes + règles)
+let _ccnActivite = 'tous';
+let _ccnTheme    = 'tous';
+let _ccnQuery    = '';
+
+async function ccnInit() {
+  const box = document.getElementById('ccn-body');
+  if (!box || _ccnDossier) return;          // déjà chargé : on ne rejoue rien
+  box.innerHTML = '<div class="ccn-empty">Chargement…</div>';
+  try {
+    const res = await fetch('/api/ccn/' + CCN_IDCC_DEFAUT);
+    if (!res.ok) throw new Error('Le serveur a répondu ' + res.status + '.');
+    _ccnDossier = await res.json();
+  } catch (e) {
+    // Un « indisponible » sans cause fait perdre une demi-heure. En
+    // développement, la panne est presque toujours la même : le front
+    // tourne sur Vite (1420) mais le serveur Axum qu'il proxifie n'est
+    // pas lancé. On le dit.
+    const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+    box.innerHTML = `<div class="ccn-empty">
+      Conventions indisponibles.<br>${esc(e.message || String(e))}
+      ${local ? '<br><br>En local, le serveur Axum doit tourner sur le port 8080 :<br>'
+              + '<code>cargo run --bin web</code>' : ''}
+    </div>`;
+    return;
+  }
+  _ccnRenderShell();
+  _ccnRenderListe();
+}
+
+// Coque figée : identité de la convention, avertissement, filtres.
+// Seule la liste est re-rendue au fil des filtres.
+function _ccnRenderShell() {
+  const d = _ccnDossier, c = d.convention;
+  const meta = [];
+  if (c.brochureJo)    meta.push('Brochure JO n° ' + esc(c.brochureJo));
+  if (c.dateSignature) meta.push('Signée le ' + _ccnDate(c.dateSignature));
+  if (c.legifranceId)  meta.push('Légifrance ' + esc(c.legifranceId));
+
+  const nbAVerifier = d.reglementations.filter(r => r.statutVerif !== 'verifie').length;
+
+  document.getElementById('ccn-body').innerHTML = `
+    <div class="ccn-ident">
+      <div class="ccn-ident-code">IDCC ${esc(c.idcc)} — ${esc(c.libelleCourt)}</div>
+      <div class="ccn-ident-lib">${esc(c.libelle)}</div>
+      <div class="ccn-ident-champ">${esc(c.champ)}</div>
+      <div class="ccn-ident-meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
+    </div>
+
+    <div class="ccn-warn">
+      Page de repérage, pas de source du droit. Elle dit où regarder et ce que la
+      règle produit sur le bulletin ; elle ne remplace ni le texte conventionnel
+      ni le dernier accord de salaires. Les montants et taux se périment vite —
+      ${nbAVerifier} règle${nbAVerifier > 1 ? 's' : ''} sur ${d.reglementations.length}
+      ${nbAVerifier > 1 ? 'restent' : 'reste'} à valider par un praticien.
+    </div>
+
+    <div class="ccn-filters">
+      <input type="text" class="ccn-search" id="ccn-q"
+             placeholder="Rechercher : ancienneté, découcher, équivalence…"
+             autocomplete="off">
+
+      <div class="ccn-filter-lbl">Activité</div>
+      <div class="ccn-chips" id="ccn-chips-act">
+        ${_ccnChip('act', 'tous', 'Toutes', d.reglementations.length)}
+        ${d.activites.map(a => _ccnChip('act', a.code, a.libelle,
+            d.reglementations.filter(r => r.activite === a.code).length)).join('')}
+      </div>
+
+      <div class="ccn-filter-lbl">Thème</div>
+      <div class="ccn-chips" id="ccn-chips-theme">
+        ${_ccnChip('theme', 'tous', 'Tous', d.reglementations.length)}
+        ${d.themes.map(t => _ccnChip('theme', t.code, t.libelle,
+            d.reglementations.filter(r => r.theme === t.code).length)).join('')}
+      </div>
+    </div>
+
+    <div class="ccn-count" id="ccn-count"></div>
+    <div id="ccn-liste"></div>
+  `;
+
+  document.getElementById('ccn-q').addEventListener('input', e => {
+    _ccnQuery = e.target.value.trim().toLowerCase();
+    _ccnRenderListe();
+  });
+  document.querySelectorAll('#ccn-chips-act .ccn-chip').forEach(b =>
+    b.addEventListener('click', () => { _ccnActivite = b.dataset.code; _ccnSyncChips(); _ccnRenderListe(); }));
+  document.querySelectorAll('#ccn-chips-theme .ccn-chip').forEach(b =>
+    b.addEventListener('click', () => { _ccnTheme = b.dataset.code; _ccnSyncChips(); _ccnRenderListe(); }));
+}
+
+function _ccnChip(groupe, code, libelle, n) {
+  const actif = (groupe === 'act' ? _ccnActivite : _ccnTheme) === code;
+  return `<button class="ccn-chip${actif ? ' active' : ''}" data-code="${esc(code)}">`
+       + `${esc(libelle)}<span class="ccn-chip-n">${n}</span></button>`;
+}
+
+function _ccnSyncChips() {
+  document.querySelectorAll('#ccn-chips-act .ccn-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.code === _ccnActivite));
+  document.querySelectorAll('#ccn-chips-theme .ccn-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.code === _ccnTheme));
+}
+
+function _ccnFiltrer() {
+  return _ccnDossier.reglementations.filter(r => {
+    if (_ccnActivite !== 'tous' && r.activite !== _ccnActivite) return false;
+    if (_ccnTheme    !== 'tous' && r.theme    !== _ccnTheme)    return false;
+    if (!_ccnQuery) return true;
+    // Recherche sur le corps aussi : c'est là que vivent les mots que
+    // le gestionnaire a en tête (« découcher », « 186 heures »).
+    return (r.titre + ' ' + r.resume + ' ' + r.corps + ' ' + r.source)
+             .toLowerCase().includes(_ccnQuery);
+  });
+}
+
+function _ccnRenderListe() {
+  const regles = _ccnFiltrer();
+  const cnt = document.getElementById('ccn-count');
+  const box = document.getElementById('ccn-liste');
+  if (!cnt || !box) return;
+
+  cnt.textContent = regles.length === 0
+    ? 'Aucune règle'
+    : `${regles.length} règle${regles.length > 1 ? 's' : ''}`;
+
+  if (!regles.length) {
+    box.innerHTML = '<div class="ccn-empty">Rien sous ces filtres.</div>';
+    return;
+  }
+
+  const libAct   = Object.fromEntries(_ccnDossier.activites.map(a => [a.code, a.libelle]));
+  const libTheme = Object.fromEntries(_ccnDossier.themes.map(t => [t.code, t.libelle]));
+
+  box.innerHTML = regles.map(r => {
+    const verifie = r.statutVerif === 'verifie';
+    const meta = [];
+    meta.push(['Source', esc(r.source)]);
+    if (r.dateEffet)    meta.push(['Effet', _ccnDate(r.dateEffet)]);
+    if (r.regimeSocial) meta.push(['Régime social', esc(r.regimeSocial)]);
+    // Le lien vient de la base, alimentée par l'admin. On n'accepte
+    // que http(s) : une URL 'javascript:' saisie par erreur ou par
+    // malice ne doit pas devenir un vecteur.
+    const url = /^https?:\/\//i.test(r.sourceUrl || '') ? r.sourceUrl : null;
+    if (url) meta.push(['Lien',
+      `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`]);
+
+    return `
+      <div class="ccn-card" data-id="${r.id}">
+        <div class="ccn-card-hdr">
+          <span class="ccn-card-caret">▸</span>
+          <div class="ccn-card-main">
+            <div class="ccn-card-titre">${esc(r.titre)}</div>
+            <div class="ccn-card-res">${esc(r.resume)}</div>
+            <div class="ccn-tags">
+              <span class="ccn-tag ccn-tag-act">${esc(libAct[r.activite] || r.activite)}</span>
+              <span class="ccn-tag">${esc(libTheme[r.theme] || r.theme)}</span>
+              <span class="ccn-tag ccn-tag-imp">${esc(r.impact)}</span>
+              <span class="ccn-tag ${verifie ? 'ccn-tag-verif' : 'ccn-tag-todo'}">${verifie ? 'Vérifié' : 'À vérifier'}</span>
+            </div>
+          </div>
+          ${r.valeur ? `<div class="ccn-card-val">${esc(r.valeur)}</div>` : ''}
+        </div>
+        <div class="ccn-card-body">
+          <div class="ccn-corps">${esc(r.corps)}</div>
+          ${_ccnTableaux(r.tableaux)}
+          <dl class="ccn-meta">
+            ${meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
+          </dl>
+        </div>
+      </div>`;
+  }).join('');
+
+  box.querySelectorAll('.ccn-card-hdr').forEach(h =>
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+}
+
+// Rend les barèmes chiffrés d'une règle.
+//
+// Le JSON vient de la base : structure contrôlée à l'écriture, mais on
+// ne parie pas dessus au rendu. Un JSON illisible fait disparaître les
+// tableaux, pas la règle — le texte reste lisible sans eux.
+//
+// Convention d'alignement : première colonne à gauche (le libellé),
+// toutes les suivantes à droite (ce sont des montants). Ça vaut pour
+// les dix-huit barèmes de l'IDCC 16 et ça évite d'avoir à déclarer
+// l'alignement colonne par colonne.
+function _ccnTableaux(json) {
+  if (!json) return '';
+  let tableaux;
+  try {
+    tableaux = JSON.parse(json);
+  } catch (e) {
+    return '';
+  }
+  if (!Array.isArray(tableaux) || !tableaux.length) return '';
+
+  return tableaux.map(t => {
+    const cols   = Array.isArray(t.colonnes) ? t.colonnes : [];
+    const lignes = Array.isArray(t.lignes)   ? t.lignes   : [];
+    if (!cols.length || !lignes.length) return '';
+
+    const thead = cols.map((c, i) =>
+      `<th${i ? ' class="num"' : ''}>${esc(c)}</th>`).join('');
+
+    const tbody = lignes.map(l => {
+      const cells = Array.isArray(l) ? l : [];
+      // On borne sur le nombre d'en-têtes : une ligne trop longue ne
+      // doit pas déborder du tableau, une ligne trop courte se comble.
+      return '<tr>' + cols.map((_, i) =>
+        `<td${i ? ' class="num"' : ''}>${esc(cells[i] ?? '')}</td>`).join('') + '</tr>';
+    }).join('');
+
+    return `
+      <div class="ccn-bareme">
+        ${t.titre ? `<div class="ccn-bareme-titre">${esc(t.titre)}</div>` : ''}
+        <div class="ccn-bareme-scroll">
+          <table class="ccn-table">
+            <thead><tr>${thead}</tr></thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
+        ${t.note ? `<div class="ccn-bareme-note">${esc(t.note)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// '2003-12-22' → '22 décembre 2003'. Les dates viennent de SQLite en ISO.
+function _ccnDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return esc(iso || '');
+  const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  return `${+m[3]} ${mois[+m[2] - 1]} ${m[1]}`;
+}
 
 // ── Human input — posts publiés depuis Méliinda sur la page À propos ──────────
 let _hiTimers = [];

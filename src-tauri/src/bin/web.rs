@@ -22,6 +22,7 @@ use xenna_paie_lib::{
     admin::admin_router,
     altcha::{generate_challenge, AltchaChallenge},
     calculs::{generer_annee, generer_bulletin},
+    ccn::ccn_router,
     db::{init_db, ContextPaie},
     forge::forge_router,
     membre::membre_router,
@@ -258,6 +259,7 @@ async fn main() {
         .route("/altcha/challenge", get(altcha_challenge))
         .merge(forge_router())
         .merge(quizz_router())
+        .merge(ccn_router())
         .merge(admin_router())
         .merge(membre_router())
         .merge(meliinda)
