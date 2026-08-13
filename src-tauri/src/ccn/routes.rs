@@ -16,8 +16,8 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 
 use super::models::{
-    Activite, Convention, ConventionResume, DossierCcn, Reglementation, ReglementationAdmin,
-    ReglementationInput, Theme,
+    Activite, Branche, Convention, ConventionResume, DossierCcn, DossierGrilles, Grille, Maintien,
+    Reglementation, ReglementationAdmin, ReglementationInput, Theme,
 };
 use crate::admin::auth::AdminAuth;
 
@@ -147,6 +147,74 @@ pub async fn charger_dossier(
     }))
 }
 
+/// Grilles de minima et régimes de maintien de salaire d'une convention.
+///
+/// `Ok(None)` = convention inconnue. Une convention publiée sans aucune
+/// grille reste un succès : le front sait afficher « rien ici », il ne
+/// sait pas quoi faire d'une 404 qui n'en est pas une.
+pub async fn charger_grilles(
+    pool: &SqlitePool,
+    idcc: &str,
+) -> Result<Option<DossierGrilles>, sqlx::Error> {
+    let convention = sqlx::query_as::<_, Convention>(
+        "SELECT idcc, libelle, libelle_court, champ,
+                brochure_jo, legifrance_id, date_signature
+           FROM ccn_conventions
+          WHERE idcc = ? AND publie = 1",
+    )
+    .bind(idcc)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(convention) = convention else {
+        return Ok(None);
+    };
+
+    // Seules les branches qui portent au moins une grille sont
+    // remontées : proposer un choix qui n'affiche rien est une
+    // promesse non tenue.
+    let branches = sqlx::query_as::<_, Branche>(
+        "SELECT b.code, b.libelle, b.detail, b.ordre
+           FROM ccn_branches b
+          WHERE b.idcc = ?
+            AND EXISTS (SELECT 1 FROM ccn_grilles g
+                         WHERE g.idcc = b.idcc AND g.branche = b.code)
+          ORDER BY b.ordre, b.libelle",
+    )
+    .bind(idcc)
+    .fetch_all(pool)
+    .await?;
+
+    let grilles = sqlx::query_as::<_, Grille>(
+        "SELECT id, branche, categorie, intitule, corps, tableaux,
+                source, source_url, extension, date_effet, consulte_le, ordre
+           FROM ccn_grilles
+          WHERE idcc = ?
+          ORDER BY ordre, id",
+    )
+    .bind(idcc)
+    .fetch_all(pool)
+    .await?;
+
+    let maintien = sqlx::query_as::<_, Maintien>(
+        "SELECT id, categorie, intitule, article, corps, tableaux,
+                source, source_url, consulte_le, ordre
+           FROM ccn_maintien
+          WHERE idcc = ?
+          ORDER BY ordre, id",
+    )
+    .bind(idcc)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(Some(DossierGrilles {
+        convention,
+        branches,
+        grilles,
+        maintien,
+    }))
+}
+
 /// Un IDCC est un code court numérique. Partagé par le web et le bureau.
 pub fn idcc_valide(idcc: &str) -> bool {
     !idcc.is_empty() && idcc.len() <= 6 && idcc.chars().all(|c| c.is_ascii_digit())
@@ -191,6 +259,29 @@ async fn conventions_post(
     State(pool): State<Db>,
 ) -> Result<Json<Vec<ConventionResume>>, CcnError> {
     Ok(Json(charger_conventions(&pool).await?))
+}
+
+/// Grilles de salaires et maintien de salaire d'une convention.
+async fn grilles(
+    State(pool): State<Db>,
+    Path(idcc): Path<String>,
+) -> Result<Json<DossierGrilles>, CcnError> {
+    grilles_par_idcc(&pool, &idcc).await.map(Json)
+}
+
+async fn grilles_post(
+    State(pool): State<Db>,
+    Json(req): Json<DossierReq>,
+) -> Result<Json<DossierGrilles>, CcnError> {
+    let idcc = req.idcc.unwrap_or_else(|| "0016".to_string());
+    grilles_par_idcc(&pool, &idcc).await.map(Json)
+}
+
+async fn grilles_par_idcc(pool: &SqlitePool, idcc: &str) -> Result<DossierGrilles, CcnError> {
+    valider_idcc(idcc)?;
+    charger_grilles(pool, idcc)
+        .await?
+        .ok_or_else(|| CcnError::Introuvable(format!("Convention IDCC {idcc} introuvable")))
 }
 
 async fn dossier_par_idcc(pool: &SqlitePool, idcc: &str) -> Result<DossierCcn, CcnError> {
@@ -541,11 +632,13 @@ pub fn ccn_router() -> Router<Db> {
     Router::new()
         // Forme REST, pratique à interroger directement et cacheable.
         .route("/api/ccn/conventions", get(lister_conventions))
+        .route("/api/ccn/grilles/{idcc}", get(grilles))
         .route("/api/ccn/{idcc}", get(dossier))
         // Forme « commande », convention de la maison : c'est celle que
         // `api()` sait router indifféremment vers Tauri ou vers HTTP, donc
         // celle qui fait fonctionner la page dans l'application bureau.
         .route("/api/dossier_ccn", post(dossier_post))
+        .route("/api/grilles_ccn", post(grilles_post))
         .route("/api/conventions_ccn", post(conventions_post))
 }
 

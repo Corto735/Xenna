@@ -271,3 +271,150 @@ async fn le_seed_ne_se_pretend_pas_verifie() {
 
     nettoyer(&path);
 }
+
+// ── Grilles de salaires et maintien de salaire ───────────────────────────────
+//
+// Même logique que ci-dessus, sur les tables posées par la migration
+// 0113 : ce sont des chiffres recopiés à la main dans un fichier SQL,
+// c'est-à-dire l'endroit exact où une colonne se décale sans que rien
+// ne proteste.
+
+/// Structure des barèmes : JSON valide, colonnes et lignes cohérentes.
+#[tokio::test]
+async fn grilles_tableaux_bien_formes() {
+    let (pool, path) = base_test().await;
+
+    for table in ["ccn_grilles", "ccn_maintien"] {
+        let json_casse = compter(
+            &pool,
+            &format!("SELECT COUNT(*) FROM {table} WHERE json_valid(tableaux) = 0"),
+        )
+        .await;
+        assert_eq!(json_casse, 0, "{table} : barèmes en JSON invalide");
+
+        let sans_structure = compter(
+            &pool,
+            &format!(
+                "SELECT COUNT(*)
+                   FROM {table} g, json_each(g.tableaux) t
+                  WHERE json_extract(t.value, '$.colonnes') IS NULL
+                     OR json_extract(t.value, '$.lignes')   IS NULL
+                     OR json_array_length(json_extract(t.value, '$.colonnes')) = 0
+                     OR json_array_length(json_extract(t.value, '$.lignes'))   = 0"
+            ),
+        )
+        .await;
+        assert_eq!(sans_structure, 0, "{table} : tableau sans colonnes ou sans lignes");
+
+        // Le décalage d'une cellule sur une grille de salaires, c'est un
+        // taux horaire lu dans la mauvaise colonne d'ancienneté.
+        let decalees = compter(
+            &pool,
+            &format!(
+                "SELECT COUNT(*)
+                   FROM {table} g,
+                        json_each(g.tableaux) t,
+                        json_each(json_extract(t.value, '$.lignes')) l
+                  WHERE json_array_length(l.value)
+                     <> json_array_length(json_extract(t.value, '$.colonnes'))"
+            ),
+        )
+        .await;
+        assert_eq!(decalees, 0, "{table} : lignes qui ne suivent pas leurs en-têtes");
+    }
+
+    nettoyer(&path);
+}
+
+/// Une grille sans source ni date est une grille invérifiable : c'est
+/// précisément ce que cette page refuse d'afficher.
+#[tokio::test]
+async fn grilles_toujours_datees_et_sourcees() {
+    let (pool, path) = base_test().await;
+
+    let muettes = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_grilles
+          WHERE trim(source) = ''
+             OR date_effet  NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+             OR consulte_le NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'",
+    )
+    .await;
+    assert_eq!(muettes, 0, "grille sans source ou sans date exploitable");
+
+    let maintien_muet = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_maintien
+          WHERE trim(source) = '' OR trim(article) = ''
+             OR consulte_le NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'",
+    )
+    .await;
+    assert_eq!(maintien_muet, 0, "régime de maintien sans source, sans article ou sans date");
+
+    // Un lien qui n'est pas http(s) ne sera pas rendu par le front :
+    // autant le refuser ici plutôt que de le voir disparaître à l'écran.
+    let liens_douteux = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_grilles
+          WHERE source_url IS NOT NULL AND source_url NOT LIKE 'https://%'
+         UNION ALL
+         SELECT COUNT(*) FROM ccn_maintien
+          WHERE source_url IS NOT NULL AND source_url NOT LIKE 'https://%'",
+    )
+    .await;
+    assert_eq!(liens_douteux, 0, "lien de source qui n'est pas en https");
+
+    nettoyer(&path);
+}
+
+/// Le menu déroulant ne doit proposer que des branches qui affichent
+/// quelque chose, et les quatre catégories de la convention doivent
+/// toutes avoir leur régime de maintien de salaire.
+#[tokio::test]
+async fn grilles_couvrent_le_choix_offert() {
+    let (pool, path) = base_test().await;
+
+    let branches_vides = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_branches b
+          WHERE NOT EXISTS (SELECT 1 FROM ccn_grilles g
+                             WHERE g.idcc = b.idcc AND g.branche = b.code)",
+    )
+    .await;
+    assert_eq!(branches_vides, 0, "branche déclarée sans aucune grille");
+
+    let grilles_orphelines = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_grilles g
+          WHERE NOT EXISTS (SELECT 1 FROM ccn_branches b
+                             WHERE b.idcc = g.idcc AND b.code = g.branche)",
+    )
+    .await;
+    assert_eq!(grilles_orphelines, 0, "grille rattachée à une branche inexistante");
+
+    let categories_maintien = compter(
+        &pool,
+        "SELECT COUNT(DISTINCT categorie) FROM ccn_maintien WHERE idcc = '0016'",
+    )
+    .await;
+    assert_eq!(
+        categories_maintien, 4,
+        "les quatre catégories doivent avoir leur régime de maintien de salaire"
+    );
+
+    // Garde-fou de contenu : marchandises, voyageurs, déménagement et
+    // logistique portent leurs quatre annexes.
+    for branche in ["marchandises", "voyageurs", "demenagement", "logistique"] {
+        let n = compter(
+            &pool,
+            &format!(
+                "SELECT COUNT(*) FROM ccn_grilles
+                  WHERE idcc = '0016' AND branche = '{branche}'"
+            ),
+        )
+        .await;
+        assert_eq!(n, 4, "branche {branche} : {n} grilles au lieu des 4 annexes");
+    }
+
+    nettoyer(&path);
+}

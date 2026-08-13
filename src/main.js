@@ -818,31 +818,46 @@ window.setView = function (v) {
   if (v === 'meliinda')   meliindaInit();
 };
 
-// ── Conventions collectives ──────────────────────────────────────────────────
-// Page de consultation : ce que la convention fait au bulletin. Contenu
-// purement éditorial, servi par /api/ccn — aucun de ces libellés n'entre
-// dans un calcul, le moteur garde ses barèmes en base de paie.
+// ── Le Chakrram — grilles conventionnelles ───────────────────────────────────
+// Page de consultation, refondue autour de deux choses seulement : les
+// grilles de minima de l'IDCC 16, branche par branche et catégorie par
+// catégorie, et le maintien de salaire conventionnel en cas d'absence
+// maladie. Rien d'autre.
 //
-// Le contenu est français et propre au droit français : pas de passage
-// par lang.js, la page reste en français quelle que soit la langue de
-// l'interface. Traduire « garantie annuelle de rémunération » n'aurait
+// Chaque tableau est recopié du texte conventionnel — accord, avenant
+// ou annexe — et porte sa source, sa date d'effet et la date à laquelle
+// il a été lu. Une grille de salaires se périme en un an : afficher la
+// date de consultation est le minimum vital, l'absence de date étant la
+// meilleure façon de faire passer un barème mort pour un barème vivant.
+//
+// Contenu servi par /api/ccn/grilles/{idcc}. Aucun de ces chiffres
+// n'entre dans un calcul de bulletin : le moteur garde ses barèmes en
+// base de paie. Page en français quelle que soit la langue de
+// l'interface — traduire « garantie annuelle de rémunération » n'aurait
 // aucun destinataire.
 
 const CCN_IDCC_DEFAUT = '0016';
 
-let _ccnDossier = null;   // dossier chargé (convention + activités + thèmes + règles)
-let _ccnActivite = 'tous';
-let _ccnTheme    = 'tous';
-let _ccnQuery    = '';
+// Les quatre catégories de la convention, dans l'ordre des annexes.
+const CCN_CATEGORIES = [
+  ['ouvriers', 'Ouvriers',                              'CCNA 1'],
+  ['employes', 'Employés',                              'CCNA 2'],
+  ['tam',      'Techniciens et agents de maîtrise',     'CCNA 3'],
+  ['cadres',   'Ingénieurs et cadres',                  'CCNA 4'],
+];
+
+let _ccnData      = null;        // dossier chargé (convention + branches + grilles + maintien)
+let _ccnBranche   = null;        // code de branche sélectionné
+let _ccnCategorie = 'ouvriers';  // catégorie sélectionnée
 
 async function ccnInit() {
   const box = document.getElementById('ccn-body');
-  if (!box || _ccnDossier) return;          // déjà chargé : on ne rejoue rien
+  if (!box || _ccnData) return;             // déjà chargé : on ne rejoue rien
   box.innerHTML = '<div class="ccn-empty">Chargement…</div>';
   try {
-    const res = await fetch('/api/ccn/' + CCN_IDCC_DEFAUT);
+    const res = await fetch('/api/ccn/grilles/' + CCN_IDCC_DEFAUT);
     if (!res.ok) throw new Error('Le serveur a répondu ' + res.status + '.');
-    _ccnDossier = await res.json();
+    _ccnData = await res.json();
   } catch (e) {
     // Un « indisponible » sans cause fait perdre une demi-heure. En
     // développement, la panne est presque toujours la même : le front
@@ -850,26 +865,30 @@ async function ccnInit() {
     // pas lancé. On le dit.
     const local = ['localhost', '127.0.0.1'].includes(location.hostname);
     box.innerHTML = `<div class="ccn-empty">
-      Conventions indisponibles.<br>${esc(e.message || String(e))}
+      Grilles conventionnelles indisponibles.<br>${esc(e.message || String(e))}
       ${local ? '<br><br>En local, le serveur Axum doit tourner sur le port 8080 :<br>'
               + '<code>cargo run --bin web</code>' : ''}
     </div>`;
     return;
   }
+
+  _ccnBranche = (_ccnData.branches[0] || {}).code || null;
   _ccnRenderShell();
-  _ccnRenderListe();
+  _ccnRenderContenu();
 }
 
-// Coque figée : identité de la convention, avertissement, filtres.
-// Seule la liste est re-rendue au fil des filtres.
+// Coque figée : identité de la convention, avertissement, sélecteurs.
+// Seul le bloc du bas est re-rendu au fil des choix.
 function _ccnRenderShell() {
-  const d = _ccnDossier, c = d.convention;
+  const d = _ccnData, c = d.convention;
   const meta = [];
   if (c.brochureJo)    meta.push('Brochure JO n° ' + esc(c.brochureJo));
   if (c.dateSignature) meta.push('Signée le ' + _ccnDate(c.dateSignature));
   if (c.legifranceId)  meta.push('Légifrance ' + esc(c.legifranceId));
 
-  const nbAVerifier = d.reglementations.filter(r => r.statutVerif !== 'verifie').length;
+  const optBranches = d.branches.map(b =>
+    `<option value="${esc(b.code)}"${b.code === _ccnBranche ? ' selected' : ''}>${esc(b.libelle)}</option>`
+  ).join('');
 
   document.getElementById('ccn-body').innerHTML = `
     <div class="ccn-ident">
@@ -880,143 +899,156 @@ function _ccnRenderShell() {
     </div>
 
     <div class="ccn-warn">
-      Page de repérage, pas de source du droit. Elle dit où regarder et ce que la
-      règle produit sur le bulletin ; elle ne remplace ni le texte conventionnel
-      ni le dernier accord de salaires. Les montants et taux se périment vite —
-      ${nbAVerifier} règle${nbAVerifier > 1 ? 's' : ''} sur ${d.reglementations.length}
-      ${nbAVerifier > 1 ? 'restent' : 'reste'} à valider par un praticien.
+      Deux choses ici, et rien d'autre : les grilles de salaires minimaux
+      conventionnels, recopiées du texte au centime, et le maintien de salaire
+      en cas d'absence maladie. Chaque tableau porte le texte dont il sort, sa
+      date d'effet et la date à laquelle il a été lu. Un minimum conventionnel
+      inférieur au SMIC est inapplicable : c'est le SMIC qui s'impose,
+      coefficient par coefficient et mois par mois.
     </div>
 
-    <div class="ccn-filters">
-      <input type="text" class="ccn-search" id="ccn-q"
-             placeholder="Rechercher : ancienneté, découcher, équivalence…"
-             autocomplete="off">
-
-      <div class="ccn-filter-lbl">Activité</div>
-      <div class="ccn-chips" id="ccn-chips-act">
-        ${_ccnChip('act', 'tous', 'Toutes', d.reglementations.length)}
-        ${d.activites.map(a => _ccnChip('act', a.code, a.libelle,
-            d.reglementations.filter(r => r.activite === a.code).length)).join('')}
-      </div>
-
-      <div class="ccn-filter-lbl">Thème</div>
-      <div class="ccn-chips" id="ccn-chips-theme">
-        ${_ccnChip('theme', 'tous', 'Tous', d.reglementations.length)}
-        ${d.themes.map(t => _ccnChip('theme', t.code, t.libelle,
-            d.reglementations.filter(r => r.theme === t.code).length)).join('')}
-      </div>
+    <div class="ccn-picks">
+      <label class="ccn-pick">
+        <span class="ccn-pick-lbl">Branche</span>
+        <select id="ccn-sel-branche" class="ccn-select">${optBranches}</select>
+      </label>
+      <label class="ccn-pick">
+        <span class="ccn-pick-lbl">Catégorie</span>
+        <select id="ccn-sel-cat" class="ccn-select"></select>
+      </label>
+      <div class="ccn-pick-detail" id="ccn-branche-detail"></div>
     </div>
 
-    <div class="ccn-count" id="ccn-count"></div>
-    <div id="ccn-liste"></div>
+    <div id="ccn-contenu"></div>
   `;
 
-  document.getElementById('ccn-q').addEventListener('input', e => {
-    _ccnQuery = e.target.value.trim().toLowerCase();
-    _ccnRenderListe();
+  document.getElementById('ccn-sel-branche').addEventListener('change', e => {
+    _ccnBranche = e.target.value;
+    _ccnRenderContenu();
   });
-  document.querySelectorAll('#ccn-chips-act .ccn-chip').forEach(b =>
-    b.addEventListener('click', () => { _ccnActivite = b.dataset.code; _ccnSyncChips(); _ccnRenderListe(); }));
-  document.querySelectorAll('#ccn-chips-theme .ccn-chip').forEach(b =>
-    b.addEventListener('click', () => { _ccnTheme = b.dataset.code; _ccnSyncChips(); _ccnRenderListe(); }));
-}
-
-function _ccnChip(groupe, code, libelle, n) {
-  const actif = (groupe === 'act' ? _ccnActivite : _ccnTheme) === code;
-  return `<button class="ccn-chip${actif ? ' active' : ''}" data-code="${esc(code)}">`
-       + `${esc(libelle)}<span class="ccn-chip-n">${n}</span></button>`;
-}
-
-function _ccnSyncChips() {
-  document.querySelectorAll('#ccn-chips-act .ccn-chip').forEach(b =>
-    b.classList.toggle('active', b.dataset.code === _ccnActivite));
-  document.querySelectorAll('#ccn-chips-theme .ccn-chip').forEach(b =>
-    b.classList.toggle('active', b.dataset.code === _ccnTheme));
-}
-
-function _ccnFiltrer() {
-  return _ccnDossier.reglementations.filter(r => {
-    if (_ccnActivite !== 'tous' && r.activite !== _ccnActivite) return false;
-    if (_ccnTheme    !== 'tous' && r.theme    !== _ccnTheme)    return false;
-    if (!_ccnQuery) return true;
-    // Recherche sur le corps aussi : c'est là que vivent les mots que
-    // le gestionnaire a en tête (« découcher », « 186 heures »).
-    return (r.titre + ' ' + r.resume + ' ' + r.corps + ' ' + r.source)
-             .toLowerCase().includes(_ccnQuery);
+  document.getElementById('ccn-sel-cat').addEventListener('change', e => {
+    _ccnCategorie = e.target.value;
+    _ccnRenderContenu();
   });
 }
 
-function _ccnRenderListe() {
-  const regles = _ccnFiltrer();
-  const cnt = document.getElementById('ccn-count');
-  const box = document.getElementById('ccn-liste');
-  if (!cnt || !box) return;
+// Le menu des catégories se reconstruit à chaque changement de branche :
+// toutes les branches n'ont pas les quatre annexes (le transport
+// sanitaire n'a de grille que pour ses personnels ambulanciers). Une
+// catégorie sans grille reste sélectionnable, mais le dit.
+function _ccnSyncCategories() {
+  const sel = document.getElementById('ccn-sel-cat');
+  if (!sel) return;
+  sel.innerHTML = CCN_CATEGORIES.map(([code, libelle, annexe]) => {
+    const dispo = _ccnGrille(_ccnBranche, code) != null;
+    const suffixe = dispo ? ` — ${annexe}` : ' — grille non publiée';
+    return `<option value="${code}"${code === _ccnCategorie ? ' selected' : ''}>`
+         + `${esc(libelle)}${suffixe}</option>`;
+  }).join('');
+}
 
-  cnt.textContent = regles.length === 0
-    ? 'Aucune règle'
-    : `${regles.length} règle${regles.length > 1 ? 's' : ''}`;
+function _ccnGrille(branche, categorie) {
+  return _ccnData.grilles.find(g => g.branche === branche && g.categorie === categorie) || null;
+}
 
-  if (!regles.length) {
-    box.innerHTML = '<div class="ccn-empty">Rien sous ces filtres.</div>';
-    return;
+function _ccnRenderContenu() {
+  _ccnSyncCategories();
+
+  const box = document.getElementById('ccn-contenu');
+  if (!box) return;
+
+  const branche  = _ccnData.branches.find(b => b.code === _ccnBranche);
+  const detail   = document.getElementById('ccn-branche-detail');
+  if (detail) detail.textContent = branche && branche.detail ? branche.detail : '';
+
+  const grille   = _ccnGrille(_ccnBranche, _ccnCategorie);
+  const maintien = _ccnData.maintien.find(m => m.categorie === _ccnCategorie) || null;
+  const libCat   = (CCN_CATEGORIES.find(c => c[0] === _ccnCategorie) || [, _ccnCategorie])[1];
+
+  box.innerHTML = _ccnBlocGrille(grille, branche, libCat) + _ccnBlocMaintien(maintien);
+}
+
+// Bloc 1 — la grille de minima.
+function _ccnBlocGrille(g, branche, libCat) {
+  const titre = `<div class="ccn-sec-lbl">Grille des salaires minimaux conventionnels</div>`;
+
+  if (!g) {
+    return titre + `
+      <div class="ccn-vide">
+        Aucune grille publiée ici pour « ${esc(libCat)} »
+        ${branche ? 'dans la branche « ' + esc(branche.libelle) + ' »' : ''}.
+        <br><br>
+        Cette page ne montre que des barèmes lus dans le texte conventionnel.
+        Tant que celui-ci n'a pas été consulté ligne à ligne, rien ne s'affiche :
+        un tableau reconstitué de mémoire vaut moins que pas de tableau du tout.
+      </div>`;
   }
 
-  const libAct   = Object.fromEntries(_ccnDossier.activites.map(a => [a.code, a.libelle]));
-  const libTheme = Object.fromEntries(_ccnDossier.themes.map(t => [t.code, t.libelle]));
+  const meta = [];
+  meta.push(['Source', esc(g.source)]);
+  if (g.extension) meta.push(['Extension', esc(g.extension)]);
+  meta.push(['Applicable depuis', _ccnDate(g.dateEffet)]);
+  meta.push(['Source consultée le', _ccnDate(g.consulteLe)]);
+  // Le lien vient de la base. On n'accepte que http(s) : une URL
+  // 'javascript:' saisie par erreur ou par malice ne doit pas devenir
+  // un vecteur.
+  const url = /^https?:\/\//i.test(g.sourceUrl || '') ? g.sourceUrl : null;
+  if (url) meta.push(['Texte intégral',
+    `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`]);
 
-  box.innerHTML = regles.map(r => {
-    const verifie = r.statutVerif === 'verifie';
-    const meta = [];
-    meta.push(['Source', esc(r.source)]);
-    if (r.dateEffet)    meta.push(['Effet', _ccnDate(r.dateEffet)]);
-    if (r.regimeSocial) meta.push(['Régime social', esc(r.regimeSocial)]);
-    // Le lien vient de la base, alimentée par l'admin. On n'accepte
-    // que http(s) : une URL 'javascript:' saisie par erreur ou par
-    // malice ne doit pas devenir un vecteur.
-    const url = /^https?:\/\//i.test(r.sourceUrl || '') ? r.sourceUrl : null;
-    if (url) meta.push(['Lien',
-      `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`]);
-
-    return `
-      <div class="ccn-card" data-id="${r.id}">
-        <div class="ccn-card-hdr">
-          <span class="ccn-card-caret">▸</span>
-          <div class="ccn-card-main">
-            <div class="ccn-card-titre">${esc(r.titre)}</div>
-            <div class="ccn-card-res">${esc(r.resume)}</div>
-            <div class="ccn-tags">
-              <span class="ccn-tag ccn-tag-act">${esc(libAct[r.activite] || r.activite)}</span>
-              <span class="ccn-tag">${esc(libTheme[r.theme] || r.theme)}</span>
-              <span class="ccn-tag ccn-tag-imp">${esc(r.impact)}</span>
-              <span class="ccn-tag ${verifie ? 'ccn-tag-verif' : 'ccn-tag-todo'}">${verifie ? 'Vérifié' : 'À vérifier'}</span>
-            </div>
-          </div>
-          ${r.valeur ? `<div class="ccn-card-val">${esc(r.valeur)}</div>` : ''}
-        </div>
-        <div class="ccn-card-body">
-          <div class="ccn-corps">${esc(r.corps)}</div>
-          ${_ccnTableaux(r.tableaux)}
-          <dl class="ccn-meta">
-            ${meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
-          </dl>
-        </div>
-      </div>`;
-  }).join('');
-
-  box.querySelectorAll('.ccn-card-hdr').forEach(h =>
-    h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+  return titre + `
+    <div class="ccn-bloc">
+      <div class="ccn-bloc-titre">${esc(g.intitule)}</div>
+      <div class="ccn-corps">${esc(g.corps)}</div>
+      ${_ccnTableaux(g.tableaux)}
+      <dl class="ccn-meta">
+        ${meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
+      </dl>
+    </div>`;
 }
 
-// Rend les barèmes chiffrés d'une règle.
+// Bloc 2 — le maintien de salaire en cas d'absence maladie. Il ne dépend
+// que de la catégorie : les annexes I à IV traitent la maladie pour
+// toutes les branches de la convention, sans distinguer marchandises,
+// voyageurs ou déménagement.
+function _ccnBlocMaintien(m) {
+  const titre = `<div class="ccn-sec-lbl">Maintien de salaire en cas d'absence maladie</div>`;
+
+  if (!m) {
+    return titre + `<div class="ccn-vide">Aucun régime publié ici pour cette catégorie.</div>`;
+  }
+
+  const meta = [];
+  meta.push(['Article', esc(m.article)]);
+  meta.push(['Source', esc(m.source)]);
+  meta.push(['Source consultée le', _ccnDate(m.consulteLe)]);
+  const url = /^https?:\/\//i.test(m.sourceUrl || '') ? m.sourceUrl : null;
+  if (url) meta.push(['Texte intégral',
+    `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`]);
+
+  return titre + `
+    <div class="ccn-bloc">
+      <div class="ccn-bloc-titre">${esc(m.intitule)}</div>
+      <div class="ccn-corps">${esc(m.corps)}</div>
+      ${_ccnTableaux(m.tableaux)}
+      <dl class="ccn-meta">
+        ${meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
+      </dl>
+    </div>`;
+}
+
+// Rend les barèmes chiffrés d'une grille ou d'un régime de maintien.
 //
 // Le JSON vient de la base : structure contrôlée à l'écriture, mais on
 // ne parie pas dessus au rendu. Un JSON illisible fait disparaître les
-// tableaux, pas la règle — le texte reste lisible sans eux.
+// tableaux, pas le texte — celui-ci reste lisible sans eux.
 //
-// Convention d'alignement : première colonne à gauche (le libellé),
-// toutes les suivantes à droite (ce sont des montants). Ça vaut pour
-// les dix-huit barèmes de l'IDCC 16 et ça évite d'avoir à déclarer
-// l'alignement colonne par colonne.
+// Alignement : une colonne dont toutes les cellules sont des montants
+// est cadrée à droite, les autres à gauche. La règle « tout sauf la
+// première colonne est un montant » ne tient plus depuis que les
+// grilles portent des libellés d'emploi et que les tableaux de maintien
+// disent « du 6e au 40e jour » — on regarde le contenu plutôt que le
+// rang.
 function _ccnTableaux(json) {
   if (!json) return '';
   let tableaux;
@@ -1027,20 +1059,35 @@ function _ccnTableaux(json) {
   }
   if (!Array.isArray(tableaux) || !tableaux.length) return '';
 
+  // Chiffres, séparateurs de milliers, décimales, €, %, signes : tout
+  // ce qui compose un montant et rien d'autre.
+  const estMontant = v => /^[\d\s .,€%+±–—-]+$/.test(String(v ?? '').trim())
+                       && /\d/.test(String(v ?? ''));
+
   return tableaux.map(t => {
     const cols   = Array.isArray(t.colonnes) ? t.colonnes : [];
     const lignes = Array.isArray(t.lignes)   ? t.lignes   : [];
     if (!cols.length || !lignes.length) return '';
 
+    // Une colonne est numérique si aucune de ses cellules non vides ne
+    // dément : une seule mention « Voir art. 6-3 » suffit à la recadrer
+    // à gauche, et c'est bien ainsi.
+    const num = cols.map((_, i) => {
+      const vals = lignes
+        .map(l => (Array.isArray(l) ? l[i] : ''))
+        .filter(v => String(v ?? '').trim() !== '' && String(v).trim() !== '—');
+      return vals.length > 0 && vals.every(estMontant);
+    });
+
     const thead = cols.map((c, i) =>
-      `<th${i ? ' class="num"' : ''}>${esc(c)}</th>`).join('');
+      `<th${num[i] ? ' class="num"' : ''}>${esc(c)}</th>`).join('');
 
     const tbody = lignes.map(l => {
       const cells = Array.isArray(l) ? l : [];
       // On borne sur le nombre d'en-têtes : une ligne trop longue ne
       // doit pas déborder du tableau, une ligne trop courte se comble.
       return '<tr>' + cols.map((_, i) =>
-        `<td${i ? ' class="num"' : ''}>${esc(cells[i] ?? '')}</td>`).join('') + '</tr>';
+        `<td${num[i] ? ' class="num"' : ''}>${esc(cells[i] ?? '')}</td>`).join('') + '</tr>';
     }).join('');
 
     return `

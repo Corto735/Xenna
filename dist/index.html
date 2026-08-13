@@ -1438,7 +1438,11 @@
     .view-hercule { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto 3rem; }
     .view-ccn     { display: none; padding: 1.5rem; max-width: 1000px; margin: 0 auto 3rem; }
 
-    /* ── Conventions collectives ── */
+    /* ── Le Chakrram (conventions collectives) ── */
+    /* Exposant du titre : « IDCC » posé sur le nom, comme une référence. */
+    .ccn-idcc       { font-size: 0.42em; color: var(--muted); letter-spacing: 0.14em;
+                      margin-left: 0.2em; vertical-align: super; font-weight: normal; }
+
     .ccn-ident      { border: 1px solid var(--border); background: var(--bg2); padding: 1rem 1.1rem; margin-bottom: 1.4rem; }
     .ccn-ident-code { font-size: 0.62rem; color: var(--yellow); letter-spacing: 0.16em; text-transform: uppercase; }
     .ccn-ident-lib  { font-size: 0.78rem; color: var(--white); letter-spacing: 0.04em; margin: 0.35rem 0 0.6rem; }
@@ -1450,49 +1454,27 @@
                       padding: 0.65rem 0.9rem; font-size: 0.62rem; color: var(--muted);
                       letter-spacing: 0.03em; line-height: 1.5; margin-bottom: 1.4rem; }
 
-    .ccn-filters    { margin-bottom: 1.2rem; }
-    .ccn-filter-lbl { font-size: 0.56rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase; margin: 0.9rem 0 0.45rem; }
-    .ccn-chips      { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .ccn-chip       { font-family: inherit; font-size: 0.6rem; letter-spacing: 0.06em; cursor: pointer;
-                      background: transparent; color: var(--muted); border: 1px solid var(--border);
-                      padding: 0.3rem 0.6rem; border-radius: 2px; transition: color 0.12s, border-color 0.12s; }
-    .ccn-chip:hover { color: var(--blue); border-color: var(--blue); }
-    .ccn-chip.active{ color: var(--bg); background: var(--blue); border-color: var(--blue); }
-    .ccn-chip-n     { opacity: 0.55; margin-left: 0.35rem; }
+    /* Sélecteurs branche / catégorie : deux menus déroulants, c'est
+       toute la navigation de la page. */
+    .ccn-picks      { display: flex; flex-wrap: wrap; gap: 0.9rem 1.4rem; align-items: flex-end;
+                      border: 1px solid var(--border); background: var(--bg2);
+                      padding: 0.9rem 1.1rem; margin-bottom: 1.6rem; }
+    .ccn-pick       { display: flex; flex-direction: column; gap: 0.35rem; min-width: 15rem; flex: 1; }
+    .ccn-pick-lbl   { font-size: 0.56rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase; }
+    .ccn-select     { width: 100%; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.04em;
+                      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+                      padding: 0.5rem 0.6rem; border-radius: 2px; cursor: pointer; }
+    .ccn-select:focus { outline: none; border-color: var(--blue); }
+    .ccn-pick-detail{ flex-basis: 100%; font-size: 0.58rem; color: var(--dim); letter-spacing: 0.04em; }
 
-    .ccn-search     { width: 100%; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.04em;
-                      background: var(--bg2); color: var(--text); border: 1px solid var(--border);
-                      padding: 0.55rem 0.7rem; border-radius: 2px; }
-    .ccn-search:focus { outline: none; border-color: var(--blue); }
+    /* Titre de section : grille d'un côté, maintien de salaire de l'autre. */
+    .ccn-sec-lbl    { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase;
+                      margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+    .ccn-bloc       { border: 1px solid var(--border); padding: 1rem 1.1rem 1.1rem; }
+    .ccn-bloc-titre { font-size: 0.76rem; color: var(--white); letter-spacing: 0.04em; margin-bottom: 0.7rem; }
+    .ccn-vide       { border: 1px solid var(--border); background: var(--bg2); padding: 1rem 1.1rem;
+                      font-size: 0.64rem; color: var(--muted); letter-spacing: 0.03em; line-height: 1.6; }
 
-    .ccn-count      { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase;
-                      margin: 1.4rem 0 0.7rem; border-top: 1px solid var(--border); padding-top: 0.9rem; }
-
-    .ccn-card       { border: 1px solid var(--border); margin-bottom: 0.5rem; overflow: hidden; }
-    .ccn-card-hdr   { display: flex; align-items: flex-start; gap: 0.9rem; padding: 0.75rem 1rem;
-                      cursor: pointer; background: var(--bg2); user-select: none; }
-    .ccn-card-hdr:hover { background: var(--bg3); }
-    .ccn-card-main  { flex: 1; min-width: 0; }
-    .ccn-card-titre { font-size: 0.72rem; color: var(--text); letter-spacing: 0.04em; }
-    .ccn-card-res   { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.03em; margin-top: 0.28rem; line-height: 1.5; }
-    .ccn-card-val   { font-size: 0.72rem; color: var(--green); letter-spacing: 0.04em; white-space: nowrap;
-                      font-variant-numeric: tabular-nums; flex-shrink: 0; }
-    .ccn-card-caret { font-size: 0.62rem; color: var(--dim); flex-shrink: 0; transition: transform 0.15s; margin-top: 0.1rem; }
-    .ccn-card.open .ccn-card-caret { transform: rotate(90deg); }
-
-    .ccn-tags       { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
-    .ccn-tag        { font-size: 0.53rem; letter-spacing: 0.1em; text-transform: uppercase;
-                      padding: 0.12rem 0.4rem; border: 1px solid var(--border); color: var(--dim); border-radius: 2px; }
-    /* Bordures laissées en var(--border) : les thèmes contraste et
-       impression réduisent toute la palette au noir, une couleur en
-       dur y deviendrait illisible. */
-    .ccn-tag-act    { color: var(--blue);   }
-    .ccn-tag-imp    { color: var(--yellow); }
-    .ccn-tag-verif  { color: var(--green);  }
-    .ccn-tag-todo   { color: var(--red);    }
-
-    .ccn-card-body  { display: none; padding: 0.9rem 1rem 1rem; border-top: 1px solid var(--border); }
-    .ccn-card.open .ccn-card-body { display: block; }
     .ccn-corps      { font-size: 0.66rem; color: var(--text); letter-spacing: 0.03em; line-height: 1.7;
                       white-space: pre-wrap; }
     /* Barèmes chiffrés */
@@ -1525,8 +1507,8 @@
     .ccn-empty      { font-size: 0.66rem; color: var(--dim); letter-spacing: 0.06em; padding: 2rem 0; text-align: center; }
 
     @media (max-width: 680px) {
-      .ccn-card-hdr { flex-wrap: wrap; }
-      .ccn-card-val { order: 3; width: 100%; }
+      .ccn-picks    { flex-direction: column; align-items: stretch; }
+      .ccn-pick     { min-width: 0; }
       .ccn-meta     { grid-template-columns: 1fr; gap: 0.15rem; }
       .ccn-meta dd  { margin-bottom: 0.5rem; }
     }
@@ -2315,7 +2297,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DuuETBQE.js"></script>
+  <script type="module" crossorigin src="/assets/index-Cld_yjHI.js"></script>
 </head>
 <body>
 
@@ -2361,8 +2343,8 @@
           Carnet de bord
         </button>
         <button class="burger-item" onclick="setView('ccn'); closeBurger()">
-          <span class="burger-item-icon">§</span>
-          Conventions <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">collectives</span>
+          <span class="burger-item-icon">◎</span>
+          Le Chakrram<sup class="ccn-idcc">IDCC</sup>
         </button>
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
@@ -3721,13 +3703,14 @@
   </div>
 
   <!-- ════════════════════════════════
-       VUE CONVENTIONS COLLECTIVES
+       VUE LE CHAKRRAM (conventions collectives)
   ════════════════════════════════ -->
   <div class="view-ccn">
     <div class="about-head">
-      <div class="about-title">CONVENTIONS COLLECTIVES</div>
+      <div class="about-title">LE CHAKRRAM<sup class="ccn-idcc">IDCC</sup></div>
       <div class="about-sub">
-        Ce que la convention ajoute, retire ou déplace sur le bulletin.
+        Conventions collectives — grilles de salaires minimaux et maintien
+        de salaire en cas d'absence maladie, recopiés du texte.
       </div>
     </div>
 

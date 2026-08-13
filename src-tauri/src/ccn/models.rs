@@ -128,6 +128,79 @@ pub struct ReglementationInput {
     pub ordre:         i64,
 }
 
+// ── Grilles de salaires et maintien de salaire ───────────────────────────────
+//
+// Ces trois structures servent la page de consultation refondue : des
+// barèmes lus dans le texte conventionnel, avec leur source et leur
+// date de validité en face. Elles ne partagent rien avec les règles
+// éditoriales ci-dessus — volontairement : le lecteur qui vient
+// chercher une grille ne vient pas lire un commentaire.
+
+/// Sous-champ conventionnel proposé au premier menu déroulant.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Branche {
+    pub code:    String,
+    pub libelle: String,
+    pub detail:  Option<String>,
+    pub ordre:   i64,
+}
+
+/// Grille de minima d'une branche pour une catégorie de personnel.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Grille {
+    pub id:         i64,
+    pub branche:    String,
+    /// `ouvriers` | `employes` | `tam` | `cadres`
+    pub categorie:  String,
+    pub intitule:   String,
+    pub corps:      String,
+    /// Barèmes en JSON : `[{ titre, colonnes[], lignes[][], note }]`.
+    /// Transporté en chaîne brute, désérialisé par le front.
+    pub tableaux:   String,
+    pub source:     String,
+    pub source_url: Option<String>,
+    /// Arrêté d'extension, quand le texte en a un.
+    pub extension:  Option<String>,
+    /// Début de validité de la grille.
+    pub date_effet: String,
+    /// Date à laquelle la source a été lue. Une grille se périme ;
+    /// dire quand on l'a recopiée vaut mieux que la laisser vieillir
+    /// en silence.
+    pub consulte_le: String,
+    pub ordre:      i64,
+}
+
+/// Régime conventionnel de maintien de salaire d'une catégorie.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Maintien {
+    pub id:          i64,
+    pub categorie:   String,
+    pub intitule:    String,
+    pub article:     String,
+    pub corps:       String,
+    pub tableaux:    String,
+    pub source:      String,
+    pub source_url:  Option<String>,
+    pub consulte_le: String,
+    pub ordre:       i64,
+}
+
+/// Tout ce que la page de consultation charge en un aller-retour :
+/// l'identité de la convention, les branches, les grilles et les
+/// régimes de maintien. Quelques dizaines de kilo-octets — la
+/// pagination serait du zèle.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DossierGrilles {
+    pub convention: Convention,
+    pub branches:   Vec<Branche>,
+    pub grilles:    Vec<Grille>,
+    pub maintien:   Vec<Maintien>,
+}
+
 /// Réponse complète pour une convention : tout ce qu'il faut au
 /// front en un seul aller-retour. Le volume reste modeste (quelques
 /// dizaines de règles), la pagination serait du zèle.
