@@ -227,6 +227,10 @@ document.addEventListener("DOMContentLoaded", () => {
     _dactyloMode = true;
     document.getElementById('dactylo-switch')?.classList.add('on');
   }
+  if (localStorage.getItem('xenna-minitel')) {
+    document.body.classList.add('minitel-mode');
+    document.getElementById('minitel-switch')?.classList.add('on');
+  }
 
   // Animation wakeup des boutons flottants
   const _wakeupColors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#f06595'];
@@ -468,6 +472,7 @@ window.toggleHVMode = function() {
   document.getElementById('hv-switch')?.classList.toggle('on', active);
   document.getElementById('a11y-hv-btn')?.classList.toggle('active', active);
   localStorage.setItem('xenna-hv', active ? '1' : '');
+  if (active && document.body.classList.contains('minitel-mode')) window.toggleMinitel();
 };
 
 window.toggleZoom = function() {
@@ -591,6 +596,21 @@ window.toggleBWMode = function() {
   document.getElementById('bw-switch')?.classList.toggle('on', active);
   document.getElementById('a11y-bw-btn')?.classList.toggle('active', active);
   localStorage.setItem('xenna-bw', active ? '1' : '');
+  if (active && document.body.classList.contains('minitel-mode')) window.toggleMinitel();
+};
+
+// ── Mode Minitel ─────────────────────────────────────────────────────────────
+// Vert phosphore sur fond noir + police EF9345. Les deux autres thèmes
+// repeignent le fond (N&B en blanc, haute visibilité en contrasté) : les trois
+// sont donc mutuellement exclusifs, sinon les variables se marchent dessus.
+window.toggleMinitel = function() {
+  const active = document.body.classList.toggle('minitel-mode');
+  document.getElementById('minitel-switch')?.classList.toggle('on', active);
+  localStorage.setItem('xenna-minitel', active ? '1' : '');
+  if (active) {
+    if (document.body.classList.contains('bw-mode')) window.toggleBWMode();
+    if (document.body.classList.contains('hv-mode')) window.toggleHVMode();
+  }
 };
 
 // ── Mode dactylo (desktop uniquement) ────────────────────────────────────────

@@ -398,6 +398,138 @@
     body.hv-mode .field input,
     body.hv-mode .field select { padding: 0.5rem 0.6rem; }
 
+    /* ── Mode Minitel ─────────────────────────────────────────────────────
+       Vert phosphore sur fond noir + le jeu de caractères EF9345 du Minitel 1.
+       La fonte d'origine ignore les capitales accentuées et le « € » (elle est
+       antérieure à l'euro) : ces glyphes-là retombent sur VT323, qui reste dans
+       le même registre pixel. */
+    @font-face {
+      font-family: 'MinitelXenna';
+      src: url('https://cdn.jsdelivr.net/gh/Zigazou/miedit@b88a99f36bc084167948b8fc2e5526cbbc0c64a7/font/Minitel.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    /* Repli pixel pour les glyphes absents de la fonte Minitel : capitales
+       accentuées (É, À, Ç) et « € ». */
+    @font-face {
+      font-family: 'VT323';
+      src: url('https://cdn.jsdelivr.net/npm/@fontsource/vt323@5/files/vt323-latin-400-normal.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    body.minitel-mode {
+      /* Un seul phosphore, quatre luminosités : l'information passe par la
+         clarté et non par la teinte, comme sur un écran monochrome. */
+      --mnt-bright: #b6ffcb;
+      --mnt-fg:     #33ff66;
+      --mnt-mid:    #12b23f;
+      --mnt-dark:   #0a7a2a;
+
+      --bg:     #000000;
+      --bg2:    #001206;
+      --bg3:    #000804;
+      --text:   var(--mnt-fg);
+      --muted:  var(--mnt-mid);
+      --dim:    var(--mnt-dark);
+      --border: var(--mnt-mid);
+      --blue:   var(--mnt-fg);
+      --electric-blue: var(--mnt-bright);
+      --green:  var(--mnt-fg);
+      --red:    var(--mnt-bright);
+      --orange: #5cff8a;
+      --yellow: var(--mnt-bright);
+      --purple: var(--mnt-mid);
+      --gray:   var(--mnt-mid);
+      --white:  var(--mnt-bright);
+
+      background: #000000;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 4px rgba(51, 255, 102, 0.35);
+    }
+    body.minitel-mode,
+    body.minitel-mode * {
+      font-family: 'MinitelXenna', 'VT323', 'Courier New', monospace !important;
+    }
+
+    /* Zébrures — un seul vert très sombre au lieu des deux gris */
+    body.minitel-mode .mob-row:nth-child(odd)  { background: #000000 !important; }
+    body.minitel-mode .mob-row:nth-child(even) { background: #001206 !important; }
+    body.minitel-mode .ascii-tbl tr:nth-child(odd)  td { background: #000000; }
+    body.minitel-mode .ascii-tbl tr:nth-child(even) td { background: #001206; }
+
+    /* Couleurs sémantiques restantes → nuances de vert */
+    body.minitel-mode .c-red,
+    body.minitel-mode .c-orange,
+    body.minitel-mode .c-purple,
+    body.minitel-mode .c-blue  { color: var(--mnt-bright) !important; }
+    body.minitel-mode .c-green,
+    body.minitel-mode .c-alleg { color: var(--mnt-fg) !important; }
+    body.minitel-mode .sb-val,
+    body.minitel-mode .mob-val { color: var(--mnt-bright) !important; }
+    body.minitel-mode .summary-bar .sb-cell { background: #001206; border-color: var(--mnt-mid); }
+
+    /* Saisie et bouton principal — vidéo inverse, comme les zones de saisie
+       d'un service Vidéotex */
+    body.minitel-mode input,
+    body.minitel-mode select { color: var(--mnt-fg) !important; background: #001206; }
+    body.minitel-mode .btn-calc { background: var(--mnt-fg); color: #000000; border-color: var(--mnt-fg); }
+    body.minitel-mode .hf-knob { background: var(--mnt-fg); box-shadow: none; }
+    body.minitel-mode .hf-toggle.is-h .hf-end-h,
+    body.minitel-mode .hf-toggle.is-f .hf-end-f { color: #000000; }
+
+    /* Panneaux d'explication (couleurs en dur dans le CSS de base) */
+    body.minitel-mode .expl-box { background: #001206 !important; border-left-color: var(--mnt-mid) !important; }
+    body.minitel-mode .expl-txt { color: var(--mnt-fg) !important; }
+    body.minitel-mode .expl-ref { color: var(--mnt-mid) !important; border-color: var(--mnt-dark) !important; }
+    body.minitel-mode .mob-expand {
+      background: #000804 !important;
+      border-left-color: var(--mnt-mid) !important;
+      border-bottom-color: var(--mnt-dark) !important;
+    }
+    body.minitel-mode .mob-exp-txt { color: var(--mnt-fg) !important; }
+    body.minitel-mode .mob-exp-loi { color: var(--mnt-mid) !important; border-color: var(--mnt-dark) !important; }
+    body.minitel-mode .mob-expand .fm-generic,
+    body.minitel-mode .mob-expand .fm-base-note,
+    body.minitel-mode .mob-expand .fm-fillon { color: var(--mnt-fg) !important; border-left-color: var(--mnt-mid) !important; }
+    body.minitel-mode .mob-expand .fm-calc td,
+    body.minitel-mode .mob-expand .fm-calc td.c-base,
+    body.minitel-mode .mob-expand .fm-calc td.c-taux { color: var(--mnt-fg) !important; }
+    body.minitel-mode .mob-expand .fm-calc td.fm-op  { color: var(--mnt-mid) !important; opacity: 1 !important; }
+    body.minitel-mode .fm-type-sal .fm-generic,   body.minitel-mode .fm-type-sal .fm-base-note,
+    body.minitel-mode .fm-type-pat .fm-generic,   body.minitel-mode .fm-type-pat .fm-base-note,
+    body.minitel-mode .fm-type-alleg .fm-generic, body.minitel-mode .fm-type-alleg .fm-base-note,
+    body.minitel-mode .fm-type-pas .fm-generic,   body.minitel-mode .fm-type-pas .fm-base-note {
+      color: var(--mnt-fg) !important; border-left-color: var(--mnt-mid) !important;
+    }
+
+    /* Bandeau, boutons flottants et drapeaux passent aussi au phosphore */
+    body.minitel-mode .banner-title { text-shadow: 0 0 12px rgba(51, 255, 102, 0.55); }
+    body.minitel-mode .a11y-float-btn { border-color: var(--mnt-mid); }
+    body.minitel-mode .flag-img,
+    body.minitel-mode .flag-emoji,
+    body.minitel-mode img {
+      filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(5) brightness(0.95);
+    }
+
+    /* Lignes de balayage CRT — décoratif, ne capte jamais le pointeur */
+    body.minitel-mode::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0)    0px,
+        rgba(0, 0, 0, 0)    2px,
+        rgba(0, 0, 0, 0.22) 3px,
+        rgba(0, 0, 0, 0.22) 4px
+      );
+    }
+
     /* ══════════════════════════════
        LAYOUT BUREAU
     ══════════════════════════════ */
@@ -2297,7 +2429,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-Cld_yjHI.js"></script>
+  <script type="module" crossorigin src="/assets/index-D9qItX8a.js"></script>
 </head>
 <body>
 
@@ -2415,6 +2547,10 @@
         <div class="a11y-row" onclick="toggleDactylo()">
           <span>Mode dactylo</span>
           <div class="a11y-switch" id="dactylo-switch"></div>
+        </div>
+        <div class="a11y-row" onclick="toggleMinitel()">
+          <span>Mode Minitel <span style="font-size:0.6rem;color:var(--dim)">vert phosphore · 3615</span></span>
+          <div class="a11y-switch" id="minitel-switch"></div>
         </div>
       </div>
     </div>

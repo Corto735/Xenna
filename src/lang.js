@@ -268,6 +268,7 @@ export const STATIC_DICT = {
   'Zoom ×2':                 ['Zoom ×2', 'Zoom ×2', 'Zoom ×2', 'Zoom ×2', 'Zoom ×2'],
   'Mode noir & blanc':       ['Black & white mode', 'Schwarz-Weiß-Modus', 'Zwart-witmodus', 'Modalità bianco e nero', 'Modo blanco y negro'],
   'Mode dactylo':            ['Typewriter mode', 'Schreibmaschinenmodus', 'Typemachinemodus', 'Modalità macchina da scrivere', 'Modo máquina de escribir'],
+  'Mode Minitel':            ['Minitel mode', 'Minitel-Modus', 'Minitel-modus', 'Modalità Minitel', 'Modo Minitel'],
   'POLICE D\'ÉCRITURE':      ['FONT', 'SCHRIFTART', 'LETTERTYPE', 'CARATTERE', 'TIPOGRAFÍA'],
 
   // ── Erreurs ──────────────────────────────────────────────────────────────
