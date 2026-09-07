@@ -18,7 +18,7 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use crate::models::{AbsenceInput, CongesPayesResult};
-use super::absence::{compter, diviseur, libelle_methode, type_jour, unites_absence, TypeJour};
+use super::absence::{compter, diviseur, libelle_methode, periode_exploitable, type_jour, unites_absence, TypeJour};
 
 /// Calcule retenue + indemnité (max maintien/dixième) pour des congés payés.
 /// `base_brut` = brut mensuel plein (saisi ou reconstitué en paie inversée).
@@ -26,7 +26,7 @@ use super::absence::{compter, diviseur, libelle_methode, type_jour, unites_absen
 pub fn compute_conges(base_brut: Decimal, abs: &AbsenceInput) -> Option<CongesPayesResult> {
     let debut = NaiveDate::parse_from_str(&abs.date_debut, "%Y-%m-%d").ok()?;
     let fin   = NaiveDate::parse_from_str(&abs.date_fin,   "%Y-%m-%d").ok()?;
-    if fin < debut { return None; }
+    if !periode_exploitable(debut, fin) { return None; }
 
     let methode    = if abs.methode.is_empty() { "moyens" } else { abs.methode.as_str() };
     let jours_type = if abs.jours_type.is_empty() { "ouvres" } else { abs.jours_type.as_str() };

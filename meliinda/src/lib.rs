@@ -20,10 +20,14 @@ use sqlx::SqlitePool;
 pub async fn meliinda_router(pool: Arc<SqlitePool>) -> Result<Router<Arc<SqlitePool>>, sqlx::Error> {
     db::run_migrations(&pool).await?;
 
+    // NB : `routes::delete_sequence` n'est délibérément PAS routée ici. Ce
+    // routeur ne porte aucune authentification ; exposer la suppression
+    // laissait n'importe qui vider la table. Au caller de la brancher derrière
+    // sa propre auth (côté Xenna : espace admin).
     let router = Router::new()
         .route("/api/meliinda/record",        post(routes::record))
         .route("/api/meliinda/sequences",     get(routes::list_sequences))
-        .route("/api/meliinda/sequence/{id}", get(routes::get_sequence).delete(routes::delete_sequence));
+        .route("/api/meliinda/sequence/{id}", get(routes::get_sequence));
 
     Ok(router)
 }

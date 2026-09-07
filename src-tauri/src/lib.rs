@@ -3,6 +3,7 @@ pub mod altcha;
 pub mod membre;
 pub mod calculs;
 pub mod ccn;
+pub mod contrat;
 pub mod crypto;
 pub mod db;
 pub mod i18n;
@@ -15,7 +16,7 @@ pub mod models;
 pub mod commands;
 
 #[cfg(feature = "desktop")]
-use commands::{calculer_bulletin, simuler_annee};
+use commands::{calculer_bulletin, generer_contrat_pdf, simuler_annee};
 #[cfg(feature = "desktop")]
 use sqlx::SqlitePool;
 #[cfg(feature = "desktop")]
@@ -60,7 +61,7 @@ pub fn run() {
             app.manage(AppState { db: pool });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![calculer_bulletin, simuler_annee])
+        .invoke_handler(tauri::generate_handler![calculer_bulletin, simuler_annee, generer_contrat_pdf])
         .run(tauri::generate_context!())
         .expect("Tauri error");
 }

@@ -91,6 +91,19 @@ pub(crate) fn est_compte(d: NaiveDate, kind: TypeJour, feries: &[NaiveDate]) -> 
     }
 }
 
+/// Durée maximale d'un arrêt acceptée en entrée. Trois ans couvrent le cas
+/// légal le plus long (arrêt longue maladie), avec de la marge.
+pub(crate) const MAX_JOURS_ARRET: i64 = 366 * 3;
+
+/// Période exploitable ? Les dates viennent du JSON client : sans borne
+/// supérieure, un `date_debut` très ancienne fait tourner les boucles
+/// jour-par-jour ci-dessous sur des centaines de milliers d'itérations et
+/// allouer une entrée de frise par jour calendaire — plusieurs Mo de réponse
+/// et autant de RSS, depuis une requête anonyme de 300 octets.
+pub(crate) fn periode_exploitable(debut: NaiveDate, fin: NaiveDate) -> bool {
+    fin >= debut && (fin - Duration::days(MAX_JOURS_ARRET)) <= debut
+}
+
 /// Nombre de jours comptés (du type donné) entre deux dates incluses.
 pub(crate) fn compter(debut: NaiveDate, fin: NaiveDate, kind: TypeJour) -> i64 {
     if fin < debut { return 0; }
@@ -170,7 +183,7 @@ pub fn compute_absence(base_brut: Decimal, abs: &AbsenceInput, anciennete: i64, 
     if abs.type_arret == "conge" { return None; }
     let debut = NaiveDate::parse_from_str(&abs.date_debut, "%Y-%m-%d").ok()?;
     let fin   = NaiveDate::parse_from_str(&abs.date_fin,   "%Y-%m-%d").ok()?;
-    if fin < debut { return None; }
+    if !periode_exploitable(debut, fin) { return None; }
 
     // Bornes du mois de paie : ce bulletin ne retient (retenue, maintien, IJSS)
     // que les jours de l'arrêt tombant dans le mois de `date_paie` — un arrêt

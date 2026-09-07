@@ -267,6 +267,22 @@ async fn delete_apropos(
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+// ── DELETE {prefixe}/meliinda/sequence/:id ───────────────────────────────────
+// La suppression d'une séquence Meliinda vit ici, et pas dans le crate
+// meliinda : son routeur n'a aucune authentification, et l'endpoint y était
+// public — n'importe qui pouvait vider la bibliothèque.
+
+async fn delete_meliinda_sequence(
+    State(pool): State<Db>,
+    _auth: AdminAuth,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    match meliinda::routes::delete_sequence(State(pool), Path(id)).await {
+        Ok(_)  => StatusCode::NO_CONTENT,
+        Err(_) => StatusCode::NOT_FOUND,
+    }
+}
+
 // ── GET /api/apropos/posts (public) ──────────────────────────────────────────
 
 async fn list_apropos_posts(
@@ -313,6 +329,7 @@ pub fn admin_router() -> Router<Db> {
         .route(&p("/quizz/{id}/reject"),          post(reject_quizz))
         .route(&p("/apropos/publish"),            post(publish_apropos))
         .route(&p("/apropos/{id}"),               delete(delete_apropos))
+        .route(&p("/meliinda/sequence/{id}"),     delete(delete_meliinda_sequence))
         .route("/api/apropos/posts",              get(list_apropos_posts))
         // Édition des réglementations conventionnelles : les handlers
         // vivent dans le module ccn, l'authentification et le préfixe

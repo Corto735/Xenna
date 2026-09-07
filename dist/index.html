@@ -1716,6 +1716,12 @@
     body.is-gaabrielle .view-bar       { display: none !important; }
     body.is-gaabrielle .view-gaabrielle { display: block; }
 
+    body.is-contrat .view-desktop,
+    body.is-contrat .view-mobile,
+    body.is-contrat .view-annuel  { display: none !important; }
+    body.is-contrat .view-bar     { display: none !important; }
+    body.is-contrat .view-contrat { display: block; }
+
     body.is-hercule .view-desktop,
     body.is-hercule .view-mobile,
     body.is-hercule .view-annuel    { display: none !important; }
@@ -2016,6 +2022,118 @@
       background: var(--blue);
       color: #071e38;
     }
+    /* Ajout d'un salarié — bouton +1 et formulaire d'embauche */
+    .gaab-edit-bar { gap: 0.5rem; }
+    .gaab-add-btn {
+      background: none;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.7rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border-radius: 0.3rem;
+    }
+    .gaab-add-btn:hover { background: var(--green); color: var(--bg); }
+    .gaab-add-btn svg {
+      width: 0.85rem; height: 0.85rem; flex-shrink: 0;
+      fill: none; stroke: currentColor; stroke-width: 1.5;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* Saisie en cours : le formulaire est seul à l'écran. */
+    .gaab-wrap.gaab-form-open > .gaab-initiales,
+    .gaab-wrap.gaab-form-open > .gaab-edit-bar,
+    .gaab-wrap.gaab-form-open > .gaab-table-outer,
+    .gaab-wrap.gaab-form-open > .gaab-rqth-section,
+    .gaab-wrap.gaab-form-open > .gaab-box-section,
+    .gaab-wrap.gaab-form-open > .gaab-pyr-section { display: none; }
+
+    .gaab-form-panel {
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      border-radius: 0.3rem;
+      padding: 1.1rem 1.2rem 1.3rem;
+      margin-bottom: 1.4rem;
+    }
+    .gaab-form-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0.6rem;
+    }
+    .gaab-form-close {
+      background: none; border: none; color: var(--dim);
+      font-family: inherit; font-size: 1.1rem; line-height: 1;
+      cursor: pointer; padding: 0 0.2rem; transition: color 0.15s;
+    }
+    .gaab-form-close:hover { color: var(--red); }
+    .gaab-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0 1rem;
+    }
+    .gaab-form-wide { grid-column: 1 / -1; }
+    .gaab-form-preview {
+      font-size: 0.64rem; color: var(--yellow); letter-spacing: 0.04em;
+      min-height: 1rem; margin-top: 0.3rem;
+    }
+    .gaab-form-note {
+      font-size: 0.62rem; color: var(--dim); letter-spacing: 0.03em;
+      line-height: 1.6; margin-top: 0.5rem;
+    }
+    .gaab-form-err {
+      font-size: 0.66rem; color: var(--red); letter-spacing: 0.03em;
+      line-height: 1.7; margin-top: 0.6rem;
+    }
+    .gaab-form-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.9rem; }
+    .gaab-form-actions .btn-calc { width: auto; flex: 1 1 14rem; }
+
+    /* Menu de suite de l'embauche */
+    .gaab-next-done {
+      font-size: 0.7rem; color: var(--green); letter-spacing: 0.04em;
+      margin-bottom: 1.2rem;
+    }
+    .gaab-next-lbl {
+      font-size: 0.58rem; color: var(--dim); letter-spacing: 0.14em;
+      text-transform: uppercase; margin-bottom: 0.6rem;
+    }
+    .gaab-next-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
+    }
+    .gaab-next-btn {
+      background: none; border: 1px solid var(--blue); color: var(--blue);
+      font-family: inherit; font-size: 0.75rem; letter-spacing: 0.05em;
+      padding: 0.8rem 0.6rem; cursor: pointer; border-radius: 0.3rem;
+      transition: all 0.15s; display: flex; align-items: center;
+      justify-content: center; gap: 0.5rem;
+    }
+    .gaab-next-btn:hover { background: rgba(56,189,248,0.10); color: var(--white); }
+    .gaab-next-ico { font-size: 0.9rem; opacity: 0.8; }
+    .gaab-next-note {
+      font-size: 0.66rem; color: var(--muted); letter-spacing: 0.03em;
+      line-height: 1.7; margin-top: 0.8rem; min-height: 1rem;
+    }
+    .gaab-next-back {
+      background: none; border: 1px solid var(--dim); color: var(--muted);
+      font-family: inherit; font-size: 0.7rem; letter-spacing: 0.05em;
+      padding: 0.35rem 0.9rem; cursor: pointer; border-radius: 0.3rem;
+      transition: all 0.15s;
+    }
+    .gaab-next-back:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Ligne qui vient d'être créée — repérage discret, puis retour à la normale */
+    @keyframes gaabRowNew {
+      from { background: rgba(74,222,128,0.16); }
+      to   { background: transparent; }
+    }
+    .gaab-table tbody tr.gaab-row-new td { animation: gaabRowNew 2.4s ease-out forwards; }
+
     .gaab-table.gaab-edit-mode td { cursor: text; }
     .gaab-table.gaab-edit-mode td:hover { outline: 1px solid rgba(56,189,248,0.3); }
     .gaab-table.gaab-edit-mode td:focus { outline: 1px solid var(--blue); background: rgba(56,189,248,0.06); }
@@ -2122,6 +2240,168 @@
     .gp-head.gp-f { fill: var(--purple); }
     .gp-moy   { fill: var(--dim); font-size: 12px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
 
+    /* ── Contrat de travail ────────────────────────────────────────────────────
+       Trois blocs empilés : saisie (employeur / salarié / contrat), catalogue de
+       clauses cochables, aperçu du contrat composé. Toute couleur passe par une
+       variable : les cinq modes accessibilité redéfinissent les mêmes noms. */
+    .ct-wrap { max-width: 1180px; margin: 0 auto; padding: 0 1rem 4rem; }
+    .ct-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
+
+    .ct-step {
+      font-size: 0.62rem; color: var(--blue); letter-spacing: 0.16em;
+      text-transform: uppercase; margin: 2.4rem 0 0.7rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0.35rem;
+    }
+    .ct-step:first-of-type { margin-top: 0.6rem; }
+    .ct-step-note { color: var(--dim); letter-spacing: 0.04em; text-transform: none; font-size: 0.9em; margin-left: 0.6rem; }
+
+    /* ── Bloc A : saisie ─────────────────────────────────────────────────────── */
+    .ct-fieldset { border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem; margin-bottom: 0.7rem; }
+    .ct-legend {
+      width: 100%; background: none; border: none; border-bottom: 1px solid transparent;
+      color: var(--text); font-family: inherit; font-size: 0.74rem; letter-spacing: 0.09em;
+      text-transform: uppercase; text-align: left; padding: 0.6rem 0.9rem; cursor: pointer;
+      display: flex; align-items: center; gap: 0.55rem;
+    }
+    .ct-legend:hover { color: var(--blue); }
+    .ct-legend .ct-caret { color: var(--muted); font-size: 0.8em; transition: transform 0.15s; display: inline-block; }
+    .ct-fieldset.open .ct-legend { border-bottom-color: var(--border); color: var(--blue); }
+    .ct-fieldset.open .ct-caret { transform: rotate(90deg); }
+    .ct-legend-count { margin-left: auto; font-size: 0.66rem; color: var(--dim); letter-spacing: 0.04em; text-transform: none; }
+    .ct-fieldset-body { display: none; padding: 1rem 0.9rem 1.1rem; }
+    .ct-fieldset.open .ct-fieldset-body { display: block; }
+
+    .ct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem 1.1rem; }
+    .ct-wide { grid-column: 1 / -1; }
+    .ct-half { grid-column: span 2; }
+    @media (max-width: 620px) { .ct-half { grid-column: 1 / -1; } }
+
+    .ct-subhead {
+      grid-column: 1 / -1; font-size: 0.6rem; color: var(--muted); letter-spacing: 0.14em;
+      text-transform: uppercase; margin: 0.6rem 0 -0.1rem; padding-top: 0.5rem;
+      border-top: 1px dotted var(--border);
+    }
+    .ct-subhead:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .ct-hint { grid-column: 1 / -1; font-size: 0.62rem; color: var(--dim); line-height: 1.5; letter-spacing: 0.02em; }
+
+    /* Les blocs conditionnels au type de contrat / à la durée du travail */
+    .ct-cond { display: none; }
+    .ct-cond.on { display: contents; }
+
+    .ct-prefill { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.8rem 1.1rem; margin-bottom: 1rem; }
+    .ct-prefill .field { flex: 1 1 240px; }
+    .ct-prefill .ct-de { flex: 0 0 auto; padding: 0.34rem 0.75rem; border-color: var(--purple); color: var(--purple); }
+    .ct-prefill .ct-de:hover { border-color: var(--purple); background: var(--purple); color: var(--bg); }
+    .ct-prefill-note { flex: 1 1 100%; font-size: 0.62rem; color: var(--dim); letter-spacing: 0.02em; line-height: 1.5; }
+
+    /* ── Bloc B : catalogue des clauses ──────────────────────────────────────── */
+    .ct-clauses { border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem; overflow: hidden; }
+    .ct-clause-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.42rem 0.7rem; border-bottom: 1px solid var(--bg3);
+      transition: background 0.12s;
+    }
+    .ct-clause-row:last-child { border-bottom: none; }
+    .ct-clause-row:hover { background: var(--bg3); }
+    .ct-clause-row.off .ct-clause-titre { color: var(--dim); }
+    .ct-clause-row.libre .ct-clause-titre::after {
+      content: ' ajoutée'; color: var(--green); font-size: 0.72em; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .ct-clause-cb { flex-shrink: 0; width: 0.95rem; height: 0.95rem; accent-color: var(--blue); cursor: pointer; }
+    .ct-clause-num {
+      flex-shrink: 0; width: 2.1rem; text-align: right; font-size: 0.72rem;
+      color: var(--blue); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+    }
+    .ct-clause-row.off .ct-clause-num { color: var(--dim); }
+    .ct-clause-titre { flex: 1; font-size: 0.76rem; color: var(--text); letter-spacing: 0.02em; cursor: pointer; }
+    .ct-clause-tag {
+      flex-shrink: 0; font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--yellow); border: 1px solid var(--yellow); border-radius: 0.2rem;
+      padding: 0.05rem 0.3rem; opacity: 0.8;
+    }
+    .ct-clause-acts { flex-shrink: 0; display: flex; gap: 0.22rem; }
+    .ct-act {
+      background: none; border: 1px solid var(--dim); color: var(--muted);
+      font-family: inherit; font-size: 0.68rem; line-height: 1;
+      width: 1.5rem; height: 1.5rem; padding: 0; cursor: pointer; border-radius: 0.2rem;
+      display: inline-flex; align-items: center; justify-content: center; transition: all 0.12s;
+    }
+    .ct-act:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    .ct-act:disabled { opacity: 0.28; cursor: default; }
+    .ct-act.ct-act-del:hover { border-color: var(--red); color: var(--red); }
+    .ct-act.on { border-color: var(--blue); color: var(--blue); background: var(--bg); }
+
+    .ct-clause-edit { padding: 0.6rem 0.7rem 0.85rem 3.4rem; background: var(--bg3); border-bottom: 1px solid var(--bg3); }
+    .ct-clause-edit textarea {
+      width: 100%; min-height: 8.5rem; resize: vertical;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 0.25rem;
+      color: var(--text); font-family: inherit; font-size: 0.72rem; line-height: 1.65;
+      padding: 0.55rem 0.65rem; letter-spacing: 0.01em;
+    }
+    .ct-clause-edit textarea:focus { outline: none; border-color: var(--blue); }
+    .ct-edit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+    .ct-edit-bar select {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 0.25rem;
+      color: var(--text); font-family: inherit; font-size: 0.66rem; padding: 0.2rem 0.35rem; max-width: 15rem;
+    }
+    .ct-mini {
+      background: none; border: 1px solid var(--dim); color: var(--muted);
+      font-family: inherit; font-size: 0.64rem; letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem; cursor: pointer; border-radius: 0.25rem; transition: all 0.12s;
+    }
+    .ct-mini:hover { border-color: var(--blue); color: var(--blue); }
+    .ct-mini.ct-mini-warn:hover { border-color: var(--red); color: var(--red); }
+    .ct-edit-note { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.02em; flex: 1 1 100%; }
+
+    .ct-clauses-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.7rem; }
+    .ct-clauses-bar .ct-count { margin-left: auto; font-size: 0.64rem; color: var(--dim); letter-spacing: 0.04em; }
+
+    /* ── Bloc C : aperçu ─────────────────────────────────────────────────────── */
+    .ct-feuille {
+      border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem;
+      padding: 3rem 3.2rem 3.4rem; max-width: 860px; margin: 0 auto;
+      font-size: 0.78rem; line-height: 1.85; color: var(--text); letter-spacing: 0.01em;
+    }
+    @media (max-width: 680px) { .ct-feuille { padding: 1.6rem 1.2rem 2rem; } }
+    .ct-doc-titre {
+      text-align: center; font-size: 0.95rem; letter-spacing: 0.13em; text-transform: uppercase;
+      color: var(--white); margin-bottom: 2.4rem; line-height: 1.5;
+    }
+    .ct-doc-sstitre { display: block; font-size: 0.66rem; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.5rem; }
+    .ct-doc-chapeau { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); margin: 1.6rem 0 0.7rem; }
+    .ct-doc-partie { margin-bottom: 0.9rem; }
+    .ct-doc-mention { display: flex; gap: 0.6rem; align-items: baseline; }
+    .ct-doc-mention-lbl { flex: 0 0 12.5rem; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.03em; }
+    @media (max-width: 680px) { .ct-doc-mention { display: block; } .ct-doc-mention-lbl { display: block; } }
+    .ct-doc-dune { text-align: right; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0.5rem 0 1.4rem; }
+    .ct-doc-art-t {
+      font-size: 0.8rem; letter-spacing: 0.05em; color: var(--white);
+      margin: 1.9rem 0 0.55rem; padding-bottom: 0.2rem; border-bottom: 1px dotted var(--border);
+    }
+    .ct-doc-p { text-align: justify; margin-bottom: 0.7rem; hyphens: auto; }
+    .ct-doc-p:last-child { margin-bottom: 0; }
+    .ct-val { color: var(--blue); }
+    .ct-ph {
+      color: var(--yellow); border-bottom: 1px dashed var(--yellow);
+      font-size: 0.94em; letter-spacing: 0.05em; padding-bottom: 1px;
+    }
+    .ct-ref-off { color: var(--red); font-size: 0.94em; letter-spacing: 0.05em; }
+    .ct-doc-fait { margin: 2.6rem 0 0; }
+    .ct-doc-sign { display: flex; gap: 2.5rem; margin-top: 2.2rem; }
+    .ct-doc-sign > div { flex: 1; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+    .ct-doc-sign-r { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .ct-doc-sign-m { font-size: 0.66rem; color: var(--dim); font-style: italic; margin-top: 0.2rem; }
+    .ct-doc-sign-box { height: 4.2rem; }
+    .ct-doc-vide { color: var(--dim); font-style: italic; text-align: center; padding: 2rem 0; }
+
+    /* ── Bloc D : sortie ─────────────────────────────────────────────────────── */
+    .ct-sortie { margin-top: 1.6rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; }
+    .ct-sortie .btn-calc { margin: 0; }
+    .ct-pdf-etat { font-size: 0.66rem; letter-spacing: 0.03em; color: var(--dim); }
+    .ct-pdf-etat.err { color: var(--red); }
+    .ct-pdf-etat.ok  { color: var(--green); }
+    .ct-rgpd { flex: 1 1 100%; font-size: 0.6rem; color: var(--dim); line-height: 1.55; letter-spacing: 0.02em; }
+
     /* Boutons de navigation des vues secondaires */
     .page-exit,
     .page-nav {
@@ -2164,7 +2444,8 @@
     body.is-meliinda   .page-exit,
     body.is-carnet     .page-exit,
     body.is-ccn        .page-exit,
-    body.is-mecenat    .page-exit { display: flex; }
+    body.is-mecenat    .page-exit,
+    body.is-contrat    .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-apropos    .page-exit,
@@ -2176,7 +2457,8 @@
       body.is-meliinda   .page-exit,
       body.is-carnet     .page-exit,
       body.is-ccn        .page-exit,
-      body.is-mecenat    .page-exit {
+      body.is-mecenat    .page-exit,
+      body.is-contrat    .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -2429,7 +2711,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-D9qItX8a.js"></script>
+  <script type="module" crossorigin src="/assets/index-wy4RdOcZ.js"></script>
 </head>
 <body>
 
@@ -2457,6 +2739,10 @@
         <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
           <span class="burger-item-icon">/</span>
           Gaabrielle <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">RH</span>
+        </button>
+        <button class="burger-item" onclick="setView('contrat'); closeBurger()">
+          <span class="burger-item-icon">§</span>
+          Contrat <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">de travail</span>
         </button>
         <button class="burger-item" onclick="setView('hercule'); closeBurger()">
           <span class="burger-item-icon">□</span>
@@ -3888,11 +4174,126 @@
       <!-- Initiales cliquables -->
       <div class="gaab-initiales" id="gaab-initiales"></div>
 
-      <!-- Toggle édition -->
+      <!-- Toggle édition + ajout d'un salarié -->
       <div class="gaab-edit-bar">
         <button class="gaab-edit-toggle" id="gaab-edit-toggle" onclick="gaabToggleEdit()" title="Activer / désactiver l'édition">
           <span id="gaab-lock-icon">🔒</span> Édition
         </button>
+        <button class="gaab-add-btn" id="gaab-add-btn" onclick="gaabOpenForm()" title="Ajouter un salarié à l'effectif">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.4" cy="4.6" r="2.9"/><path d="M1.1 14.4c0-2.9 2.4-5.2 5.3-5.2s5.3 2.3 5.3 5.2"/></svg>
+          +1
+        </button>
+        <button class="gaab-add-btn" id="gaab-contrat-btn" onclick="ctDepuisGaabrielle()" title="Rédiger un contrat de travail" style="border-color:var(--blue);color:var(--blue)">
+          <span style="font-size:0.95em">§</span> Contrat
+        </button>
+      </div>
+
+      <!-- ── Formulaire d'embauche ──────────────────────────────────────────
+           Reprend exactement le modèle GAAB_EMPLOYES : les huit colonnes du
+           tableau, plus sexe et RQTH qui alimentent la pyramide des âges et le
+           taux de travailleurs handicapés. -->
+      <div class="gaab-form-panel" id="gaab-form-panel" style="display:none">
+        <div class="gaab-form-head">
+          <span class="gaab-box-title">Nouveau salarié</span>
+          <button class="gaab-form-close" onclick="gaabCloseForm()" title="Fermer">×</button>
+        </div>
+
+        <div id="gaab-form-body">
+          <div class="gaab-form-grid">
+            <div class="field">
+              <label for="gf-mat">Matricule</label>
+              <input type="text" id="gf-mat" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="gf-nom">Nom</label>
+              <input type="text" id="gf-nom" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="gf-prenom">Prénom</label>
+              <input type="text" id="gf-prenom" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="gf-sexe">Sexe</label>
+              <select id="gf-sexe">
+                <option value="H">H</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="gf-embauche">Date d'embauche</label>
+              <input type="date" id="gf-embauche" />
+            </div>
+            <div class="field">
+              <label for="gf-naissance">Date de naissance</label>
+              <input type="date" id="gf-naissance" />
+            </div>
+            <div class="field gaab-form-wide">
+              <label for="gf-poste">Poste</label>
+              <input type="text" id="gf-poste" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="gf-etp">ETP (%)</label>
+              <input type="number" id="gf-etp" min="1" max="100" step="1" />
+            </div>
+            <div class="field">
+              <label for="gf-salbase">Base de saisie</label>
+              <select id="gf-salbase" onchange="gaabPreviewSal()">
+                <option value="bh">Brut horaire</option>
+                <option value="bm">Brut mensuel</option>
+                <option value="nm">Net mensuel</option>
+                <option value="nh">Net horaire</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="gf-sal">Rémunération</label>
+              <input type="text" id="gf-sal" inputmode="decimal" autocomplete="off" oninput="gaabPreviewSal()" />
+            </div>
+            <div class="gaab-form-wide">
+              <label class="param-item" for="gf-rqth">
+                <input type="checkbox" id="gf-rqth" />
+                <span class="flag-emoji">♿</span> Reconnaissance de la qualité de travailleur handicapé (RQTH)
+              </label>
+            </div>
+          </div>
+
+          <div class="gaab-form-preview" id="gf-sal-preview"></div>
+          <div class="gaab-form-note">
+            Le brut horaire est la valeur stockée ; les autres bases en sont
+            déduites (× 151,67 h, net estimé à 79 % du brut), comme dans le tableau.
+          </div>
+          <div class="gaab-form-err" id="gaab-form-err"></div>
+
+          <div class="gaab-form-actions">
+            <button class="btn-calc" onclick="gaabSubmitForm()">[ ENREGISTRER LE SALARIÉ ]</button>
+          </div>
+        </div>
+
+        <!-- Menu de suite de la saisie -->
+        <div id="gaab-next" style="display:none">
+          <div class="gaab-next-done">
+            ✓ Salarié enregistré dans l'effectif — <span id="gaab-next-who"></span>
+          </div>
+          <div class="gaab-next-lbl">Suite de l'embauche</div>
+          <div class="gaab-next-grid">
+            <button class="gaab-next-btn" onclick="gaabNextAction('contrat')">
+              <span class="gaab-next-ico">§</span> Contrat
+            </button>
+            <button class="gaab-next-btn" onclick="gaabNextAction('dpae')">
+              <span class="gaab-next-ico">⇢</span> DPAE
+            </button>
+            <button class="gaab-next-btn" onclick="gaabNextAction('documents')">
+              <span class="gaab-next-ico">▤</span> Documents
+            </button>
+            <button class="gaab-next-btn" onclick="gaabNextAction('visite')">
+              <span class="gaab-next-ico">✚</span> Visite médicale
+            </button>
+          </div>
+          <div class="gaab-next-note" id="gaab-next-note"></div>
+          <div class="gaab-form-actions">
+            <button class="gaab-next-back" onclick="gaabOpenForm()">＋ Ajouter un autre salarié</button>
+            <button class="gaab-next-back" onclick="gaabCloseForm()">Retour au tableau</button>
+          </div>
+        </div>
       </div>
 
       <!-- Tableau personnel -->
@@ -3954,6 +4355,57 @@
           <span class="gaab-box-basis">// effectif par tranche de 5 ans</span>
         </div>
         <div id="gaab-pyramide"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       VUE CONTRAT DE TRAVAIL
+       Squelette seul : les champs de saisie, les clauses et l'aperçu sont
+       rendus par main.js à partir d'un schéma unique (CT_CHAMPS / CT_CLAUSES),
+       de sorte qu'un champ déclaré une fois donne à la fois son input, sa
+       variable de clause et son libellé d'attente.
+  ════════════════════════════════ -->
+  <div class="view-contrat">
+    <div class="ct-wrap">
+      <div class="ct-section-lbl">Gaabrielle - rédaction d'un contrat de travail</div>
+
+      <div class="ct-step">
+        1 // Identification
+        <span class="ct-step-note">l'employeur, le salarié, puis le contrat lui-même</span>
+      </div>
+      <div class="ct-prefill" id="ct-prefill"></div>
+      <div id="ct-form"></div>
+
+      <div class="ct-step">
+        2 // Clauses
+        <span class="ct-step-note">cochez, réordonnez avec ▲ ▼, modifiez le texte avec ✎</span>
+      </div>
+      <div class="ct-clauses" id="ct-clauses"></div>
+      <div class="ct-clauses-bar">
+        <button class="ct-mini" onclick="ctNouvelleClause()">＋ Ajouter une clause</button>
+        <button class="ct-mini" onclick="ctToutCocher(true)">Tout cocher</button>
+        <button class="ct-mini" onclick="ctToutCocher(false)">Tout décocher</button>
+        <button class="ct-mini ct-mini-warn" onclick="ctRetablirClauses()">Rétablir les clauses d'origine</button>
+        <span class="ct-count" id="ct-count"></span>
+      </div>
+
+      <div class="ct-step">
+        3 // Le contrat
+        <span class="ct-step-note">composé en temps réel — les mentions non saisies restent en attente</span>
+      </div>
+      <div class="ct-feuille" id="ct-feuille"></div>
+
+      <div class="ct-sortie">
+        <button class="btn-calc" onclick="ctGenererPdf()">[ GÉNÉRER LE PDF ]</button>
+        <span class="ct-pdf-etat" id="ct-pdf-etat"></span>
+        <button class="ct-mini ct-mini-warn" onclick="ctViderBrouillon()">Vider le brouillon</button>
+        <div class="ct-rgpd">
+          La saisie reste sur ce poste (brouillon local, repris au rechargement). La mise en page du
+          PDF est faite par le moteur Rust : en version web, les informations saisies lui sont
+          transmises le temps de fabriquer le fichier, sans être ni journalisées, ni écrites sur
+          disque, ni enregistrées en base.
+        </div>
       </div>
     </div>
   </div>

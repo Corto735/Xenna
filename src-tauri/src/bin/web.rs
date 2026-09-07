@@ -1,10 +1,10 @@
 //! Serveur HTTP standalone — Railway / Docker.
 //! Expose les mêmes commandes que Tauri via POST JSON sur /api/{commande}.
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use axum::{
-    extract::{Request, State},
+    extract::{ConnectInfo, Request, State},
     http::{header, HeaderValue, Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Redirect, Response},
@@ -20,6 +20,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use xenna_paie_lib::{
     admin::admin_router,
+    contrat::{pdf as contrat_pdf, ContratPdf, ReponsePdf},
     altcha::{generate_challenge, AltchaChallenge},
     calculs::{generer_annee, generer_bulletin},
     ccn::ccn_router,
@@ -89,6 +90,12 @@ fn verifier_secrets_ou_quitter() {
         return;
     }
 
+    // Le repli de développement n'existe QUE dans un binaire de debug. Compilé
+    // en release, `XENNA_DEV_MODE` ne veut plus rien dire : une variable
+    // d'environnement égarée dans la config de prod ne peut plus faire démarrer
+    // le serveur avec le secret JWT public de `admin/auth.rs` (forge de jeton
+    // admin), une clé de chiffrement nulle et le captcha désactivé.
+    #[cfg(debug_assertions)]
     if std::env::var("XENNA_DEV_MODE").is_ok() {
         tracing::warn!(
             "XENNA_DEV_MODE actif — secrets manquants tolérés (JAMAIS en production) : {manquants:?}"
@@ -100,7 +107,8 @@ fn verifier_secrets_ou_quitter() {
         "ERREUR : variables d'environnement de sécurité manquantes : {manquants:?}\n\
          Générer chaque valeur avec : openssl rand -base64 32\n\
          (ENCRYPTION_KEY doit décoder exactement 32 octets)\n\
-         Pour un poste de développement local uniquement : XENNA_DEV_MODE=1."
+         XENNA_DEV_MODE=1 lève ce contrôle, mais uniquement dans un binaire de\n\
+         debug (cargo run) — jamais dans une build release."
     );
     std::process::exit(1);
 }
@@ -127,6 +135,68 @@ async fn https_redirect(req: Request, next: Next) -> Response {
             .unwrap_or("/");
         let location = format!("https://{host}{path_query}");
         return Redirect::permanent(&location).into_response();
+    }
+    next.run(req).await
+}
+
+// ── Middleware : quota par adresse IP ─────────────────────────────────────────
+// Le compteur d'échecs de `ratelimit` est indexé par compte : changer
+// d'identifiant à chaque essai le contournait entièrement, alors que chaque
+// tentative coûte un Argon2id (~19 Mio). Ce quota-ci est indexé par IP et
+// s'applique avant d'atteindre le handler.
+
+/// Fenêtre et plafond selon la route. `None` = pas de quota.
+fn quota_pour(chemin: &str) -> Option<(u32, Duration)> {
+    // Authentification et inscription : coûteuses (Argon2id) et sensibles.
+    let auth = chemin.ends_with("/login")
+        || chemin == "/forge/profil"
+        || chemin == "/la_forge/login";
+    if auth {
+        return Some((15, Duration::from_secs(15 * 60)));
+    }
+    // Écritures publiques sans authentification : bornées plus large.
+    if chemin == "/api/meliinda/record"
+        || chemin == "/quizz/score"
+        || chemin == "/quizz/suggestion"
+        || chemin.starts_with("/quizz/vote/")
+    {
+        return Some((30, Duration::from_secs(60)));
+    }
+    // Calculs : bon marché à l'unité, mais c'est le gros du trafic anonyme.
+    if chemin.starts_with("/api/calculer_bulletin") || chemin.starts_with("/api/simuler_annee") {
+        return Some((120, Duration::from_secs(60)));
+    }
+    None
+}
+
+/// IP du client. Derrière le proxy Clever Cloud, `x-forwarded-for` porte
+/// l'adresse réelle en première position ; en direct on retombe sur la socket.
+/// Un en-tête absent ne doit pas faire partager un même compteur à tout le
+/// monde : sans IP identifiable, on n'applique pas de quota.
+fn ip_client(req: &Request) -> Option<String> {
+    if let Some(xff) = req.headers().get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
+        if let Some(premier) = xff.split(',').next().map(str::trim).filter(|s| !s.is_empty()) {
+            return Some(premier.to_string());
+        }
+    }
+    req.extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ci| ci.0.ip().to_string())
+}
+
+async fn limite_par_ip(req: Request, next: Next) -> Response {
+    if let Some((max, fenetre)) = quota_pour(req.uri().path()) {
+        if let Some(ip) = ip_client(&req) {
+            let cle = format!("ip:{ip}:{}", req.uri().path());
+            if !xenna_paie_lib::ratelimit::quota_autorise(&cle, max, fenetre) {
+                tracing::warn!("Quota dépassé — {ip} sur {}", req.uri().path());
+                return (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Trop de requêtes. Réessayez dans quelques minutes.",
+                )
+                    .into_response();
+            }
+        }
     }
     next.run(req).await
 }
@@ -164,6 +234,26 @@ async fn altcha_challenge() -> Json<AltchaChallenge> {
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
+
+// ── POST /api/generer_contrat_pdf ─────────────────────────────────────────────
+// Le contrat arrive rédigé : le back n'en compose que la mise en page. Rien n'est
+// écrit sur disque ni en base, et le corps de la requête — qui porte le NIR,
+// l'adresse et la rémunération — n'est jamais journalisé, y compris en cas
+// d'échec : seule la cause technique l'est.
+async fn handle_contrat_pdf(
+    Json(req): Json<ContratReq>,
+) -> Result<impl IntoResponse, ApiError> {
+    let (pdf_base64, pages) = contrat_pdf::generer_base64(&req.contrat).map_err(|e| {
+        tracing::error!("generer_contrat_pdf: {e}");
+        ApiError("Le moteur PDF n'a pas pu composer le document".into())
+    })?;
+    Ok(Json(ReponsePdf { pdf_base64, pages }))
+}
+
+#[derive(Deserialize)]
+struct ContratReq {
+    contrat: ContratPdf,
+}
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -256,6 +346,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
+        .route("/api/generer_contrat_pdf", post(handle_contrat_pdf))
         .route("/altcha/challenge", get(altcha_challenge))
         .merge(forge_router())
         .merge(quizz_router())
@@ -266,6 +357,10 @@ async fn main() {
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))
         .layer(cors)
+        // Ordre : le quota est évalué avant tout le reste (couche la plus
+        // externe après la redirection HTTPS), pour que les requêtes refusées
+        // ne touchent jamais un handler ni la base.
+        .layer(middleware::from_fn(limite_par_ip))
         .layer(middleware::from_fn(https_redirect))
         .with_state(pool);
 
@@ -278,5 +373,12 @@ async fn main() {
     tracing::info!("Xenna web → http://{addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    // `with_connect_info` : sans lui, `limite_par_ip` n'a aucune IP de repli
+    // quand `x-forwarded-for` est absent (accès direct, hors proxy).
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

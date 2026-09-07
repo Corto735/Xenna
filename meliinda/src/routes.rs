@@ -16,6 +16,17 @@ pub type Db = Arc<SqlitePool>;
 
 pub struct ApiError(String);
 
+/// Texte brut uniquement : retire `<`/`>` et les caractères de contrôle.
+/// Le label est affiché par le front dans une liste publique ; sans ce filtre,
+/// un POST anonyme y dépose du HTML qui s'exécute chez tous les visiteurs.
+fn sanitiser(s: &str) -> String {
+    s.chars()
+        .filter(|c| !matches!(c, '<' | '>') && (!c.is_control() || *c == ' '))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         (StatusCode::BAD_REQUEST, self.0).into_response()
@@ -35,6 +46,7 @@ pub async fn record(
     if req.label.as_deref().is_some_and(|l| l.len() > 120) {
         return Err(ApiError("Label : 120 caractères maximum".into()));
     }
+    let label = req.label.as_deref().map(sanitiser).filter(|l| !l.is_empty());
 
     let id = Uuid::new_v4();
     let events_json = serde_json::to_string(&req.events)
@@ -46,7 +58,7 @@ pub async fn record(
         "INSERT INTO meliinda_sequences (id, label, events, created_at) VALUES (?, ?, ?, ?)",
     )
     .bind(&id_str)
-    .bind(&req.label)
+    .bind(&label)
     .bind(&events_json)
     .bind(&now)
     .execute(pool.as_ref())

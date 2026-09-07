@@ -22,6 +22,9 @@ COPY src-tauri/src ./src
 COPY src-tauri/migrations ./migrations
 COPY src-tauri/build.rs ./build.rs
 COPY src-tauri/capabilities ./capabilities
+# Polices du contrat de travail : src/contrat/police.rs les intègre au binaire
+# par include_bytes!, la compilation échoue si elles manquent.
+COPY src-tauri/assets ./assets
 # Meliinda : copiée à /meliinda pour respecter le path "../meliinda" du Cargo.toml
 COPY meliinda /meliinda
 

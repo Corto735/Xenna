@@ -27,7 +27,9 @@ fn deja_utilises() -> &'static Mutex<HashMap<String, u64>> {
 
 /// true si le challenge n'avait jamais été consommé (et le marque consommé).
 fn marquer_consomme(challenge: &str, expires: u64) -> bool {
-    let mut map = deja_utilises().lock().unwrap();
+    // Verrou empoisonné récupéré : une panique ailleurs ne doit pas condamner
+    // le captcha (donc les inscriptions) pour toute la durée du processus.
+    let mut map = deja_utilises().lock().unwrap_or_else(|e| e.into_inner());
     let now = maintenant();
     map.retain(|_, exp| *exp > now);
     map.insert(challenge.to_string(), expires).is_none()

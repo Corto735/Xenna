@@ -821,7 +821,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'contrat', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
@@ -830,6 +830,7 @@ window.setView = function (v) {
   if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
   if (v === 'desktop' || v === 'mobile') _applyNoms(_genre);
   if (v === 'quizz')      quizzInit();
+  if (v === 'contrat')    contratInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
   if (v === 'apropos')  { _mecenatStart(); _humanInputLoad(); }
@@ -4699,14 +4700,22 @@ let _gaabInited = false;
 function gaabInit() {
   if (_gaabInited) return;
   _gaabInited = true;
+  gaabRenderEffectif();
+}
 
+// Rend TOUT ce qui dérive de GAAB_EMPLOYES : initiales, tableau, taux RQTH et
+// pyramide des âges. Appelée à l'ouverture du module et après chaque ajout de
+// salarié — on reconstruit d'un bloc plutôt que d'insérer une ligne à la main,
+// sinon le taux RQTH et la pyramide restent sur l'ancien effectif.
+// `matNouveau` (facultatif) surligne brièvement la ligne qui vient d'être créée.
+function gaabRenderEffectif(matNouveau) {
   // Initiales avec tooltip CSS
   const initDiv = document.getElementById('gaab-initiales');
   if (initDiv) {
     initDiv.innerHTML = GAAB_EMPLOYES.map((e, i) => {
       const init = e.prenom[0] + '.' + e.nom[0];
       const sep  = i > 0 ? '<span class="gaab-sep"> ; </span>' : '';
-      return sep + `<span class="gaab-init" data-name="${e.prenom} ${e.nom}">${init}</span>`;
+      return sep + `<span class="gaab-init" data-name="${esc(e.prenom)} ${esc(e.nom)}">${esc(init)}</span>`;
     }).join('');
   }
 
@@ -4715,13 +4724,14 @@ function gaabInit() {
   if (tbody) {
     tbody.innerHTML = GAAB_EMPLOYES.map(e => {
       const etpCls = e.etp < 100 ? 'style="color:var(--yellow)"' : 'style="color:var(--dim)"';
-      return `<tr>
-        <td class="gaab-mat">${e.mat}</td>
-        <td>${e.nom}</td>
-        <td>${e.prenom}</td>
-        <td>${e.embauche}</td>
+      const trCls  = e.mat === matNouveau ? ' class="gaab-row-new"' : '';
+      return `<tr${trCls}>
+        <td class="gaab-mat">${esc(e.mat)}</td>
+        <td>${esc(e.nom)}</td>
+        <td>${esc(e.prenom)}</td>
+        <td>${esc(e.embauche)}</td>
         <td class="gaab-age">${formatDate(e.naissance)}</td>
-        <td class="gaab-poste">${e.poste}</td>
+        <td class="gaab-poste">${esc(e.poste)}</td>
         <td class="gaab-etp" ${etpCls}>${e.etp} %</td>
         <td class="gaab-sal" data-bh="${e.bh}">${_gaabSalStr(e.bh, 'bh')}</td>
       </tr>`;
@@ -4730,6 +4740,23 @@ function gaabInit() {
 
   gaabRenderRqth();
   gaabRenderPyramide();
+  _gaabRestaureVueTableau();
+}
+
+// Le tableau est reconstruit à neuf : il faut lui rendre l'état d'affichage
+// courant (mode édition, colonne de rémunération révélée), sinon un ajout
+// referme silencieusement ce que l'utilisateur avait ouvert.
+function _gaabRestaureVueTableau() {
+  if (_gaabEditMode) {
+    document.querySelectorAll('#gaab-tbody td').forEach(td => { td.contentEditable = 'true'; });
+  }
+  const type = document.getElementById('gaab-saltype')?.value;
+  if (type && document.getElementById('gaab-table')?.classList.contains('gaab-sal-visible')) {
+    document.querySelectorAll('.gaab-sal').forEach(cell => {
+      cell.textContent = _gaabSalStr(parseFloat(cell.dataset.bh), type);
+    });
+    gaabRenderBox(type);   // l'effectif a changé → la dispersion aussi
+  }
 }
 
 // Âge courant (années révolues) à partir de la date de naissance ISO.
@@ -4992,6 +5019,1599 @@ window.gaabRenderBox = function(type) {
       <span>ratio Q3/Q1 <b>${ratio}</b></span>
       ${outliers.length ? `<span class="gb-l-out">${outliers.length} atypique${outliers.length > 1 ? 's' : ''}</span>` : ''}`;
   }
+};
+
+// ── Ajout d'un salarié ────────────────────────────────────────────────────────
+// Le formulaire saisit EXACTEMENT les champs du modèle GAAB_EMPLOYES : les huit
+// colonnes du tableau, plus le sexe et la RQTH. Ces deux-là ne sont pas des
+// colonnes, mais ils alimentent la pyramide des âges et le taux de travailleurs
+// handicapés : les omettre ferait entrer le nouveau salarié dans l'effectif sans
+// qu'il apparaisse dans aucun des deux indicateurs.
+
+// Date du jour au sens strict. DATE_TODAY, dans le simulateur, vaut le DERNIER
+// jour du mois courant (c'est une date de paie, pas une date calendaire) : la
+// reprendre telle quelle daterait toute embauche de la fin du mois.
+function _gaabAujourdhui() {
+  const d = new Date();
+  return [d.getFullYear(),
+          String(d.getMonth() + 1).padStart(2, '0'),
+          String(d.getDate()).padStart(2, '0')].join('-');
+}
+
+// Matricule suivant au format XN-NNN, en repartant du plus grand numéro utilisé
+// (et non du nombre de salariés : une suppression ne doit pas rejouer un numéro).
+function _gaabProchainMat() {
+  const max = GAAB_EMPLOYES.reduce((m, e) => {
+    const n = parseInt(String(e.mat).replace(/\D/g, ''), 10);
+    return Number.isFinite(n) && n > m ? n : m;
+  }, 0);
+  return 'XN-' + String(max + 1).padStart(3, '0');
+}
+
+// Lecture d'un montant saisi à la française. `parseFloat` s'arrête au premier
+// caractère non numérique : sur « 3 200,50 » — la forme même que le tableau
+// affiche, et donc celle qu'on recopie — il rend 3, et le salarié entre dans
+// l'effectif à 0,02 €/h sans que rien ne le signale. On retire donc les espaces
+// (y compris l'insécable étroit de toLocaleString), on traite le point comme un
+// séparateur de milliers dès qu'une virgule est présente, et on REFUSE tout ce
+// qui n'est pas un nombre entier de bout en bout plutôt que d'en tronquer un.
+function _gaabNombre(txt) {
+  let t = String(txt).replace(/[\s\u00a0\u202f\u2009]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NaN;
+}
+
+// Conversion inverse de _gaabSalVal : quelle que soit la base saisie, on stocke
+// un brut horaire, seule valeur retenue par le modèle.
+function _gaabBhDepuis(val, base) {
+  switch (base) {
+    case 'bm': return val / 151.67;
+    case 'nm': return val / 0.79 / 151.67;
+    case 'nh': return val / 0.79;
+    default:   return val;          // 'bh'
+  }
+}
+
+window.gaabOpenForm = function() {
+  const panel = document.getElementById('gaab-form-panel');
+  if (!panel) return;
+
+  // Réinitialisation complète : le panneau sert aussi bien au 1er qu'au 10e ajout.
+  document.getElementById('gaab-next').style.display  = 'none';
+  document.getElementById('gaab-form-body').style.display = '';
+  document.getElementById('gaab-form-err').textContent = '';
+  document.getElementById('gaab-next-note').textContent = '';
+
+  const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  v('gf-mat',       _gaabProchainMat());
+  v('gf-nom',       '');
+  v('gf-prenom',    '');
+  v('gf-sexe',      'H');
+  v('gf-naissance', '');
+  v('gf-embauche',  _gaabAujourdhui());
+  v('gf-poste',     '');
+  v('gf-etp',       '100');
+  v('gf-salbase',   'bm');
+  v('gf-sal',       '');
+  const rqth = document.getElementById('gf-rqth');
+  if (rqth) rqth.checked = false;
+  gaabPreviewSal();
+
+  // Le formulaire prend toute la vue : tableau, indicateurs et barre d'outils
+  // s'effacent le temps de la saisie, sinon on saisit une embauche par-dessus
+  // un effectif qui n'est pas encore le bon.
+  document.querySelector('.gaab-wrap')?.classList.add('gaab-form-open');
+  panel.style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('gf-nom')?.focus();
+};
+
+window.gaabCloseForm = function() {
+  document.querySelector('.gaab-wrap')?.classList.remove('gaab-form-open');
+  const panel = document.getElementById('gaab-form-panel');
+  if (panel) panel.style.display = 'none';
+};
+
+// Aperçu des quatre bases à partir de la valeur saisie : le gestionnaire saisit
+// dans l'unité qu'il a sous la main (brut mensuel le plus souvent) et vérifie
+// tout de suite ce que ça donne ailleurs.
+window.gaabPreviewSal = function() {
+  const host = document.getElementById('gf-sal-preview');
+  if (!host) return;
+  const val  = _gaabNombre(document.getElementById('gf-sal')?.value || '');
+  const base = document.getElementById('gf-salbase')?.value || 'bm';
+  if (!Number.isFinite(val) || val <= 0) { host.textContent = ''; return; }
+  const bh = _gaabBhDepuis(val, base);
+  host.textContent = ['bh', 'bm', 'nm', 'nh']
+    .filter(t => t !== base)
+    .map(t => _GAAB_BASIS_LBL[t] + ' ' + _gaabSalStr(bh, t))
+    .join('  ·  ');
+};
+
+window.gaabSubmitForm = function() {
+  const val = id => String(document.getElementById(id)?.value || '').trim();
+  const err = document.getElementById('gaab-form-err');
+
+  const mat       = val('gf-mat');
+  const nom       = val('gf-nom');
+  const prenom    = val('gf-prenom');
+  const sexe      = val('gf-sexe');
+  const naissance = val('gf-naissance');
+  const embauche  = val('gf-embauche');
+  const poste     = val('gf-poste');
+  const etp       = _gaabNombre(val('gf-etp'));
+  const salBrut   = _gaabNombre(val('gf-sal'));
+  const salBase   = val('gf-salbase');
+  const rqth      = document.getElementById('gf-rqth')?.checked ?? false;
+
+  const pbs = [];
+  if (!mat)                                       pbs.push('matricule obligatoire');
+  else if (GAAB_EMPLOYES.some(e => e.mat === mat)) pbs.push(`le matricule ${mat} est déjà attribué`);
+  if (!nom)       pbs.push('nom obligatoire');
+  if (!prenom)    pbs.push('prénom obligatoire');
+  if (!poste)     pbs.push('poste obligatoire');
+  if (!naissance) pbs.push('date de naissance obligatoire');
+  if (!embauche)  pbs.push('date d\'embauche obligatoire');
+  if (naissance && embauche) {
+    if (naissance >= embauche) pbs.push('la naissance doit précéder l\'embauche');
+    else if (_gaabAgeALaDate(naissance, embauche) < 16) {
+      pbs.push('moins de 16 ans à l\'embauche (art. L4153-1 C. trav.)');
+    }
+  }
+  if (!Number.isInteger(etp) || etp < 1 || etp > 100) pbs.push('ETP attendu : nombre entier entre 1 et 100');
+  if (!Number.isFinite(salBrut) || salBrut <= 0) {
+    pbs.push('rémunération illisible ou nulle — attendu un nombre, ex. 3 200,50');
+  }
+
+  if (pbs.length) {
+    err.innerHTML = pbs.map(p => '· ' + esc(p)).join('<br>');
+    return;
+  }
+  err.textContent = '';
+
+  // Brut horaire arrondi au millionième. Le centime ne suffit pas : 3 200,50 €
+  // mensuels font 21,101668 €/h, et arrondir à 21,10 rendrait 3 200,24 € quand
+  // le gestionnaire rebascule la colonne en brut mensuel — un écart qu'il verra.
+  // Six décimales font tenir l'aller-retour au centime près sur toute la plage
+  // de salaires utile (vérifié de 1 000 à 12 000 € mensuels) ; deux et quatre
+  // décimales ne le font pas. L'affichage arrondit à deux de toute façon.
+  const bh = Math.round(_gaabBhDepuis(salBrut, salBase) * 1e6) / 1e6;
+
+  GAAB_EMPLOYES.push({ mat, nom, prenom, sexe, naissance, rqth, embauche, poste, bh, etp });
+  _gaabDernierMat = mat;
+  gaabRenderEffectif(mat);
+
+  // Saisie terminée → on masque le formulaire et on propose la suite.
+  document.getElementById('gaab-form-body').style.display = 'none';
+  document.getElementById('gaab-next-who').textContent = `${prenom} ${nom} — ${mat}`;
+  document.getElementById('gaab-next').style.display = 'block';
+};
+
+// Âge révolu à une date donnée (l'embauche), et non à aujourd'hui : c'est l'âge
+// à l'embauche que le code du travail encadre.
+function _gaabAgeALaDate(naissanceIso, refIso) {
+  const [y, m, d]    = naissanceIso.split('-').map(Number);
+  const [ry, rm, rd] = refIso.split('-').map(Number);
+  let age = ry - y;
+  if (rm < m || (rm === m && rd < d)) age--;
+  return age;
+}
+
+// Les trois suites de la saisie. Rien n'est branché pour l'instant : ces écrans
+// restent à écrire, et annoncer le contraire ne rendrait service à personne.
+const _GAAB_NEXT_LBL = {
+  contrat:   'Contrat de travail',
+  dpae:      'DPAE (déclaration préalable à l\'embauche)',
+  documents: 'Documents d\'embauche',
+  // Depuis le décret n° 2016-1908, la visite médicale d'embauche n'existe plus
+  // sous ce nom : c'est une visite d'information et de prévention, dans les
+  // trois mois suivant la prise de poste — sauf suivi individuel renforcé
+  // (poste à risque), où l'examen d'aptitude reste préalable à l'embauche.
+  visite:    'Visite d\'information et de prévention (VIP)',
+};
+
+// Matricule du dernier salarié enregistré, pour enchaîner sur son contrat.
+let _gaabDernierMat = null;
+
+window.gaabNextAction = function(kind) {
+  if (kind === 'contrat') { ctDepuisGaabrielle(_gaabDernierMat); return; }
+  const note = document.getElementById('gaab-next-note');
+  if (!note) return;
+  note.innerHTML = `<b>${esc(_GAAB_NEXT_LBL[kind] || kind)}</b> — module non encore écrit.
+    Le salarié est bien enregistré dans l'effectif ; cette étape viendra s'y greffer.`;
+};
+
+
+// ── Contrat de travail ────────────────────────────────────────────────────────
+// Rédaction d'un contrat à partir de trois choses : les informations saisies en
+// haut, un catalogue de clauses qu'on coche et qu'on ordonne, et un aperçu qui
+// se recompose à chaque frappe.
+//
+// Un principe gouverne tout le module : CT_CHAMPS est la SEULE déclaration d'une
+// information. Chaque entrée produit à la fois le champ de saisie, la variable
+// utilisable dans les clauses ({{cle}}) et le libellé affiché tant que rien n'est
+// saisi. Ajouter une information, c'est ajouter une ligne — pas trois.
+//
+// Les corps de clause sont volontairement farfelus : cette itération sert à
+// éprouver la mise en page, pas à produire un contrat opposable. L'ossature, en
+// revanche, est celle d'un vrai contrat français (mentions obligatoires,
+// articles, formules d'usage, bloc de signatures).
+
+// Sociétés proposées au pré-remplissage. Aucune n'existe, et c'est voulu :
+// le module ne conserve aucune donnée d'entreprise réelle.
+const CT_ENTREPRISES = [
+  {
+    nom: 'Xenna Industries',
+    v: {
+      emp_raison_sociale: 'Xenna Industries',
+      emp_forme:          'société par actions simplifiée',
+      emp_capital:        '250 000 €',
+      emp_siren:          '842 517 093',
+      emp_siret:          '842 517 093 00027',
+      emp_ape:            '62.01Z',
+      emp_rcs:            'Nanterre',
+      emp_adresse_siege:  '14, allée des Signaux Faibles — 92130 Issy-les-Moulineaux',
+      emp_adresse_etab:   '14, allée des Signaux Faibles — 92130 Issy-les-Moulineaux',
+      emp_rep_nom:        'Bayaz le Magi',
+      emp_rep_qualite:    'président',
+      emp_urssaf:         'URSSAF Île-de-France',
+      emp_urssaf_num:     '117 000000 842517093',
+      emp_idcc:           '1486',
+      emp_ccn:            'Bureaux d’études techniques (Syntec)',
+      emp_retraite:       'AGIRC-ARRCO — Malakoff Humanis',
+      emp_prevoyance:     'Malakoff Humanis Prévoyance',
+      emp_mutuelle:       'Harmonie Mutuelle',
+      emp_sante_travail:  'SST Hauts-de-Seine',
+      emp_effectif:       '20 salariés',
+    },
+  },
+  {
+    nom: 'Gaabrielle Services',
+    v: {
+      emp_raison_sociale: 'Gaabrielle Services',
+      emp_forme:          'société à responsabilité limitée',
+      emp_capital:        '40 000 €',
+      emp_siren:          '509 331 774',
+      emp_siret:          '509 331 774 00013',
+      emp_ape:            '78.10Z',
+      emp_rcs:            'Metz',
+      emp_adresse_siege:  '3, quai des Écritures Anciennes — 57000 Metz',
+      emp_adresse_etab:   '3, quai des Écritures Anciennes — 57000 Metz',
+      emp_rep_nom:        'Sigarni la Guerrière',
+      emp_rep_qualite:    'gérante',
+      emp_urssaf:         'URSSAF Lorraine',
+      emp_urssaf_num:     '157 000000 509331774',
+      emp_idcc:           '0016',
+      emp_ccn:            'Transports routiers et activités auxiliaires',
+      emp_retraite:       'AGIRC-ARRCO — AG2R La Mondiale',
+      emp_prevoyance:     'AG2R Prévoyance',
+      emp_mutuelle:       'Mutuelle de l’Est',
+      emp_sante_travail:  'Santé au travail Moselle',
+      emp_effectif:       '8 salariés',
+    },
+  },
+];
+
+// Motifs de recours au CDD — liste de l'article L1242-2 du code du travail.
+const CT_MOTIFS_CDD = [
+  'Remplacement d’un salarié absent',
+  'Remplacement d’un salarié passé provisoirement à temps partiel',
+  'Attente de l’entrée en service d’un salarié recruté en CDI',
+  'Attente de la suppression définitive du poste',
+  'Accroissement temporaire de l’activité de l’entreprise',
+  'Emploi à caractère saisonnier',
+  'Emploi pour lequel il est d’usage de ne pas recourir au CDI',
+  'Remplacement du chef d’entreprise ou de son conjoint',
+  'Contrat conclu au titre de la politique de l’emploi',
+  'Complément de formation professionnelle au salarié',
+];
+
+// ── Le schéma unique ──────────────────────────────────────────────────────────
+// k    clé (= id du champ « ctf-<k> » ET nom de la variable « {{k}} »)
+// l    libellé du champ de saisie
+// p    libellé d'attente, imprimé dans les clauses tant que rien n'est saisi
+// t    type : text (défaut), date, euro, num, area, check, ou un tableau d'options
+// w    largeur : 'h' (double colonne) ou 'w' (pleine largeur)
+// c    condition d'affichage : nom d'un groupe conditionnel (voir ctCond)
+// d    valeur par défaut
+const CT_CHAMPS = [
+  { id: 'emp', titre: 'Employeur', champs: [
+    { k: 'emp_raison_sociale', l: 'Raison sociale',              p: 'RAISON SOCIALE DE L’EMPLOYEUR', w: 'h' },
+    { k: 'emp_forme',          l: 'Forme juridique',             p: 'FORME JURIDIQUE' },
+    { k: 'emp_capital',        l: 'Capital social',              p: 'CAPITAL SOCIAL' },
+    { k: 'emp_siren',          l: 'SIREN',                       p: 'NUMÉRO SIREN' },
+    { k: 'emp_siret',          l: 'SIRET de l’établissement', p: 'SIRET DE L’ÉTABLISSEMENT' },
+    { k: 'emp_ape',            l: 'Code APE / NAF',              p: 'CODE APE' },
+    { k: 'emp_rcs',            l: 'RCS (ville)',                 p: 'VILLE DU RCS' },
+    { k: 'emp_adresse_siege',  l: 'Adresse du siège',            p: 'ADRESSE DU SIÈGE', w: 'w' },
+    { k: 'emp_adresse_etab',   l: 'Adresse de l’établissement', p: 'ADRESSE DE L’ÉTABLISSEMENT', w: 'w' },
+    { k: 'emp_rep_nom',        l: 'Représentant légal',          p: 'REPRÉSENTANT LÉGAL', w: 'h' },
+    { k: 'emp_rep_qualite',    l: 'Qualité du représentant',     p: 'QUALITÉ DU REPRÉSENTANT' },
+    { s: 'Rattachements' },
+    { k: 'emp_urssaf',         l: 'URSSAF de rattachement',      p: 'URSSAF DE RATTACHEMENT', w: 'h' },
+    { k: 'emp_urssaf_num',     l: 'N° de compte URSSAF',         p: 'NUMÉRO DE COMPTE URSSAF' },
+    { k: 'emp_idcc',           l: 'IDCC',                        p: 'IDCC' },
+    { k: 'emp_ccn',            l: 'Convention collective',       p: 'CONVENTION COLLECTIVE APPLICABLE', w: 'h' },
+    { k: 'emp_retraite',       l: 'Retraite complémentaire',     p: 'CAISSE DE RETRAITE COMPLÉMENTAIRE' },
+    { k: 'emp_prevoyance',     l: 'Prévoyance',                  p: 'ORGANISME DE PRÉVOYANCE' },
+    { k: 'emp_mutuelle',       l: 'Mutuelle',                    p: 'ORGANISME DE MUTUELLE' },
+    { k: 'emp_sante_travail',  l: 'Service de santé au travail', p: 'SERVICE DE SANTÉ AU TRAVAIL' },
+    { k: 'emp_effectif',       l: 'Effectif',                    p: 'EFFECTIF DE L’ENTREPRISE' },
+  ]},
+
+  { id: 'sal', titre: 'Salarié', champs: [
+    { k: 'sal_nom',            l: 'Nom de naissance',            p: 'NOM DU SALARIÉ' },
+    { k: 'sal_nom_usage',      l: 'Nom d’usage',            p: 'NOM D’USAGE' },
+    { k: 'sal_prenoms',        l: 'Prénom(s)',                   p: 'PRÉNOM DU SALARIÉ' },
+    { k: 'sal_naissance',      l: 'Date de naissance',           p: 'DATE DE NAISSANCE', t: 'date' },
+    { k: 'sal_lieu_naissance', l: 'Lieu de naissance',           p: 'LIEU DE NAISSANCE' },
+    { k: 'sal_nationalite',    l: 'Nationalité',                 p: 'NATIONALITÉ', d: 'française' },
+    { k: 'sal_nir',            l: 'N° de sécurité sociale',      p: 'NUMÉRO DE SÉCURITÉ SOCIALE', w: 'h' },
+    { k: 'sal_matricule',      l: 'Matricule',                   p: 'MATRICULE' },
+    { k: 'sal_adresse',        l: 'Adresse',                     p: 'ADRESSE DU SALARIÉ', w: 'w' },
+    { k: 'sal_tel',            l: 'Téléphone',                   p: 'TÉLÉPHONE' },
+    { k: 'sal_email',          l: 'Courriel',                    p: 'COURRIEL' },
+    { k: 'sal_urgence',        l: 'Personne à prévenir',         p: 'PERSONNE À PRÉVENIR', w: 'h' },
+    { k: 'sal_iban',           l: 'IBAN',                        p: 'IBAN DU SALARIÉ', w: 'h' },
+    { k: 'sal_situation',      l: 'Situation avant l’embauche', p: 'SITUATION ANTÉRIEURE' },
+    { k: 'sal_hors_ue',        l: 'Ressortissant hors UE / EEE / Suisse — titre de séjour requis', t: 'check', w: 'w' },
+    { k: 'sal_sejour_num',     l: 'N° de titre de séjour',       p: 'NUMÉRO DE TITRE DE SÉJOUR', c: 'sejour' },
+    { k: 'sal_sejour_fin',     l: 'Validité du titre de séjour', p: 'VALIDITÉ DU TITRE DE SÉJOUR', t: 'date', c: 'sejour' },
+  ]},
+
+  { id: 'ctr', titre: 'Le contrat', champs: [
+    { k: 'ctr_type',            l: 'Nature du contrat', p: 'NATURE DU CONTRAT', d: 'CDI',
+      t: ['CDI', 'CDD', 'Apprentissage', 'Professionnalisation'] },
+    { k: 'ctr_date_conclusion', l: 'Date de conclusion',   p: 'DATE DE CONCLUSION', t: 'date' },
+    { k: 'ctr_date_effet',      l: 'Date de prise d’effet', p: 'DATE DE PRISE D’EFFET', t: 'date' },
+    { k: 'ctr_lieu_signature',  l: 'Fait à',               p: 'LIEU DE SIGNATURE' },
+
+    { s: 'Contrat à durée déterminée', c: 'cdd' },
+    { k: 'ctr_cdd_motif',          l: 'Motif de recours', p: 'MOTIF DE RECOURS AU CDD', c: 'cdd', w: 'h', t: CT_MOTIFS_CDD },
+    { k: 'ctr_cdd_terme',          l: 'Terme',            p: 'TYPE DE TERME', c: 'cdd', t: ['Terme précis', 'Terme imprécis'] },
+    { k: 'ctr_cdd_fin',            l: 'Date de fin',      p: 'DATE DE FIN DU CONTRAT', c: 'cdd', t: 'date' },
+    { k: 'ctr_cdd_duree_min',      l: 'Durée minimale',   p: 'DURÉE MINIMALE', c: 'cdd' },
+    { k: 'ctr_cdd_remplace',       l: 'Salarié remplacé', p: 'NOM DU SALARIÉ REMPLACÉ', c: 'cdd' },
+    { k: 'ctr_cdd_remplace_quali', l: 'Qualification du remplacé', p: 'QUALIFICATION DU SALARIÉ REMPLACÉ', c: 'cdd' },
+    { k: 'ctr_cdd_renouv',         l: 'Renouvellements',  p: 'NOMBRE DE RENOUVELLEMENTS', c: 'cdd' },
+    { k: 'ctr_cdd_indemnite',      l: 'Indemnité de fin de contrat', p: 'INDEMNITÉ DE FIN DE CONTRAT', c: 'cdd', d: '10 % de la rémunération brute totale' },
+
+    { s: 'Alternance', c: 'alt' },
+    { k: 'ctr_alt_cfa',          l: 'CFA / organisme de formation', p: 'CENTRE DE FORMATION', c: 'alt', w: 'h' },
+    { k: 'ctr_alt_diplome',      l: 'Diplôme ou titre préparé',     p: 'DIPLÔME PRÉPARÉ', c: 'alt', w: 'h' },
+    { k: 'ctr_alt_debut_cycle',  l: 'Début du cycle',               p: 'DÉBUT DU CYCLE DE FORMATION', c: 'alt', t: 'date' },
+    { k: 'ctr_alt_fin_cycle',    l: 'Fin du cycle',                 p: 'FIN DU CYCLE DE FORMATION', c: 'alt', t: 'date' },
+    { k: 'ctr_alt_tuteur',       l: 'Maître d’apprentissage / tuteur', p: 'MAÎTRE D’APPRENTISSAGE', c: 'alt', w: 'h' },
+    { k: 'ctr_alt_tuteur_quali', l: 'Qualification du tuteur',      p: 'QUALIFICATION DU TUTEUR', c: 'alt' },
+    { k: 'ctr_alt_tuteur_exp',   l: 'Expérience du tuteur',         p: 'EXPÉRIENCE DU TUTEUR', c: 'alt' },
+    { k: 'ctr_alt_pct',          l: 'Rémunération (% SMIC / SMC)',  p: 'POURCENTAGE DU SMIC', c: 'alt' },
+  ]},
+
+  { id: 'pos', titre: 'Poste et temps de travail', champs: [
+    { k: 'pos_intitule',    l: 'Intitulé du poste', p: 'INTITULÉ DU POSTE', w: 'h' },
+    { k: 'pos_statut',      l: 'Statut',            p: 'STATUT', t: ['Ouvrier', 'Employé', 'Agent de maîtrise', 'Cadre'], d: 'Employé' },
+    { k: 'pos_niveau',      l: 'Niveau',            p: 'NIVEAU' },
+    { k: 'pos_echelon',     l: 'Échelon',           p: 'ÉCHELON' },
+    { k: 'pos_coefficient', l: 'Coefficient',       p: 'COEFFICIENT' },
+    { k: 'pos_position',    l: 'Position',          p: 'POSITION' },
+    { k: 'pos_lieu',        l: 'Lieu de travail',   p: 'LIEU DE TRAVAIL', w: 'h' },
+    { k: 'pos_mobilite',    l: 'Périmètre de mobilité', p: 'PÉRIMÈTRE DE MOBILITÉ', w: 'h' },
+
+    { s: 'Durée du travail' },
+    { k: 'pos_regime',   l: 'Régime', p: 'RÉGIME DE DURÉE DU TRAVAIL', w: 'h', d: 'Temps plein — 35 heures hebdomadaires',
+      t: ['Temps plein — 35 heures hebdomadaires', 'Forfait annuel en heures', 'Forfait annuel en jours', 'Temps partiel'] },
+    { k: 'pos_duree',    l: 'Durée contractuelle', p: 'DURÉE DU TRAVAIL', d: '35 heures hebdomadaires' },
+    { k: 'pos_horaires', l: 'Horaires habituels',  p: 'HORAIRES DE TRAVAIL', w: 'h' },
+    { k: 'pos_tp_repartition', l: 'Répartition hebdomadaire', p: 'RÉPARTITION DE LA DURÉE DU TRAVAIL', c: 'tp', w: 'w' },
+    { k: 'pos_tp_hc',          l: 'Limite d’heures complémentaires', p: 'LIMITE D’HEURES COMPLÉMENTAIRES', c: 'tp' },
+    { k: 'pos_tp_prevenance',  l: 'Délai de prévenance', p: 'DÉLAI DE PRÉVENANCE', c: 'tp', d: '7 jours ouvrés' },
+
+    { s: 'Essai, congés, préavis' },
+    { k: 'pos_essai',        l: 'Période d’essai',      p: 'DURÉE DE LA PÉRIODE D’ESSAI' },
+    { k: 'pos_essai_renouv', l: 'Renouvellement de l’essai', p: 'RENOUVELLEMENT DE LA PÉRIODE D’ESSAI' },
+    { k: 'pos_conges',       l: 'Congés payés',              p: 'DROIT À CONGÉS PAYÉS', d: '2,5 jours ouvrables par mois de travail effectif' },
+    { k: 'pos_preavis',      l: 'Préavis',                   p: 'DURÉE DU PRÉAVIS' },
+    { k: 'pos_teletravail',  l: 'Télétravail',               p: 'RÉGIME DE TÉLÉTRAVAIL' },
+
+    { s: 'Non-concurrence' },
+    { k: 'pos_nc_duree',        l: 'Durée',                 p: 'DURÉE DE LA NON-CONCURRENCE' },
+    { k: 'pos_nc_perimetre',    l: 'Périmètre',             p: 'PÉRIMÈTRE DE NON-CONCURRENCE', w: 'h' },
+    { k: 'pos_nc_contrepartie', l: 'Contrepartie financière', p: 'CONTREPARTIE FINANCIÈRE' },
+  ]},
+
+  { id: 'rem', titre: 'Rémunération', champs: [
+    { k: 'rem_brut_mensuel', l: 'Brut mensuel',    p: 'RÉMUNÉRATION BRUTE MENSUELLE', t: 'euro' },
+    { k: 'rem_brut_horaire', l: 'Brut horaire',    p: 'TAUX HORAIRE BRUT', t: 'euro' },
+    { k: 'rem_mensualites',  l: 'Mensualités',     p: 'NOMBRE DE MENSUALITÉS', d: '12' },
+    { k: 'rem_date_paiement', l: 'Date de paiement', p: 'DATE DE PAIEMENT DU SALAIRE', d: 'dernier jour ouvré' },
+    { k: 'rem_mode_paiement', l: 'Mode de paiement', p: 'MODE DE PAIEMENT', d: 'virement bancaire' },
+
+    { s: 'Primes' },
+    { k: 'rem_13e',        l: 'Treizième mois',     p: 'TREIZIÈME MOIS' },
+    { k: 'rem_anciennete', l: 'Prime d’ancienneté', p: 'PRIME D’ANCIENNETÉ' },
+    { k: 'rem_objectifs',  l: 'Prime d’objectifs',  p: 'PRIME D’OBJECTIFS' },
+    { k: 'rem_panier',     l: 'Prime de panier',    p: 'PRIME DE PANIER' },
+    { k: 'rem_transport',  l: 'Frais de transport', p: 'PARTICIPATION AUX FRAIS DE TRANSPORT', d: '50 % de l’abonnement' },
+
+    { s: 'Avantages en nature et frais' },
+    { k: 'rem_avn_vehicule', l: 'Véhicule',         p: 'VÉHICULE DE FONCTION' },
+    { k: 'rem_avn_logement', l: 'Logement',         p: 'AVANTAGE LOGEMENT' },
+    { k: 'rem_avn_repas',    l: 'Repas',            p: 'AVANTAGE REPAS' },
+    { k: 'rem_frais',        l: 'Barème de frais',  p: 'BARÈME DE FRAIS PROFESSIONNELS', w: 'h' },
+  ]},
+];
+
+// Index plat : clé → définition. Construit une fois, consulté partout.
+const CT_DEF = {};
+CT_CHAMPS.forEach(g => g.champs.forEach(c => { if (c.k) CT_DEF[c.k] = c; }));
+
+// Variables calculées — elles n'ont pas de champ de saisie mais s'emploient dans
+// les clauses comme les autres. `get` reçoit l'état de saisie et rend une chaîne
+// vide quand l'information manque, ce qui déclenche l'affichage du libellé.
+const CT_DERIVES = {
+  sal_nom_complet: {
+    p: 'PRÉNOM ET NOM DU SALARIÉ',
+    get: d => [d.sal_prenoms, d.sal_nom_usage || d.sal_nom].filter(Boolean).join(' '),
+  },
+  sal_age: {
+    p: 'ÂGE DU SALARIÉ',
+    get: d => (d.sal_naissance && d.ctr_date_effet && d.sal_naissance < d.ctr_date_effet)
+      ? _gaabAgeALaDate(d.sal_naissance, d.ctr_date_effet) + ' ans' : '',
+  },
+  rem_brut_annuel: {
+    p: 'RÉMUNÉRATION BRUTE ANNUELLE',
+    get: d => {
+      const b = _gaabNombre(d.rem_brut_mensuel || ''), m = _gaabNombre(d.rem_mensualites || '');
+      return (Number.isFinite(b) && Number.isFinite(m) && b > 0 && m > 0) ? _ctEuro(b * m) : '';
+    },
+  },
+};
+
+// ── Les vingt clauses ─────────────────────────────────────────────────────────
+// Titres et enchaînement d'un vrai contrat de travail français ; corps délibérément
+// délirant, dans un futur proche où le droit du travail a mal tourné. C'est la mise
+// en page qu'on éprouve ici, pas le fond.
+//
+// k    clé stable (sert aux renvois {{ref:k}} et au brouillon)
+// t    intitulé de l'article
+// on   cochée par défaut
+// tag  pastille affichée dans le catalogue
+// c    paragraphes : une chaîne, ou { si:'cdd'|'alt'|'tp'|'nc', t:'…' } pour un
+//      paragraphe qui ne s'imprime que dans certaines configurations
+const CT_CLAUSES_SRC = [
+  { k: 'engagement', t: 'Engagement et objet du contrat', on: true, c: [
+    '{{emp_raison_sociale}}, {{emp_forme}} au capital de {{emp_capital}}, immatriculée au registre du commerce et des sociétés de {{emp_rcs}} sous le numéro SIREN {{emp_siren}}, dont le siège est situé {{emp_adresse_siege}}, représentée par {{emp_rep_nom}}, agissant en qualité de {{emp_rep_qualite}}, engage {{sal_nom_complet}} en qualité de {{pos_intitule}}.',
+    'L’engagement porte sur la mise à disposition de la disponibilité attentionnelle du salarié pendant les heures convenues. Il ne s’étend pas aux souvenirs formés antérieurement à la signature, qui demeurent la propriété pleine et entière de l’intéressé.',
+    'Le salarié déclare se trouver, à la date des présentes, dans la situation suivante au regard de l’emploi : {{sal_situation}}. Il déclare en outre n’être lié à aucun autre employeur, à aucune entité successorale de lui-même, ni à aucune instance de lui-même hébergée sur un support tiers.',
+    'Il reconnaît avoir pris connaissance du règlement intérieur, affiché {{emp_adresse_etab}} sur un panneau dont la lisibilité varie selon l’heure.',
+  ]},
+
+  { k: 'duree', t: 'Date d’effet et durée du contrat', on: true, c: [
+    'Le présent contrat est conclu le {{ctr_date_conclusion}} et prend effet le {{ctr_date_effet}}, au premier réveil constaté du salarié suivant cette date. Il annule et remplace tout accord antérieur, y compris ceux conclus dans un état de conscience non homologué.',
+    { si: 'cdi', t: 'Il est conclu pour une durée indéterminée. Chacune des parties peut y mettre fin dans les conditions fixées à l’{{ref:rupture}}.' },
+    { si: 'cdd', t: 'Il est conclu pour une durée déterminée, au motif suivant : {{ctr_cdd_motif}}. Assorti d’un {{ctr_cdd_terme}}, il prend fin le {{ctr_cdd_fin}}, sans pouvoir durer moins de {{ctr_cdd_duree_min}}, et pourra être renouvelé {{ctr_cdd_renouv}} fois. Le salarié remplacé est {{ctr_cdd_remplace}}, occupant les fonctions de {{ctr_cdd_remplace_quali}}.' },
+    { si: 'alt', t: 'Il couvre le cycle de formation dispensé par {{ctr_alt_cfa}} en vue de la préparation du diplôme suivant : {{ctr_alt_diplome}}, du {{ctr_alt_debut_cycle}} au {{ctr_alt_fin_cycle}}. Le suivi en entreprise est assuré par {{ctr_alt_tuteur}}, {{ctr_alt_tuteur_quali}}, justifiant de {{ctr_alt_tuteur_exp}} d’expérience et d’un taux de présence corporelle supérieur à la moyenne du service.' },
+  ]},
+
+  { k: 'essai', t: 'Période d’essai', on: true, c: [
+    'Le contrat ne deviendra définitif qu’au terme d’une période d’essai de {{pos_essai}}, renouvelable {{pos_essai_renouv}}. Durant cette période, chacune des parties peut y mettre fin dans le respect du délai de prévenance légal.',
+    'L’appréciation du salarié repose sur deux évaluations concordantes : celle de son supérieur hiérarchique et celle de son badge, ce dernier disposant d’une voix prépondérante en cas de divergence. Le salarié peut consulter l’avis de son badge une fois par trimestre, sur rendez-vous et en présence d’un tiers.',
+  ]},
+
+  { k: 'fonctions', t: 'Fonctions et attributions', on: true, c: [
+    '{{sal_nom_complet}} exerce les fonctions de {{pos_intitule}}, sous l’autorité de {{emp_rep_nom}}. La fiche de poste correspondante est révisée chaque semestre par le Comité des Attributions Flottantes, lequel ne s’est plus réuni depuis onze ans mais continue de statuer.',
+    'Le salarié pourra se voir confier toute mission relevant de sa qualification, ainsi que, à titre exceptionnel et néanmoins permanent, les missions relevant de la qualification de ses collègues absents, disparus ou requalifiés.',
+  ]},
+
+  { k: 'classification', t: 'Classification conventionnelle', on: true, c: [
+    'Le salarié relève de la convention collective {{emp_ccn}} (IDCC {{emp_idcc}}), au statut {{pos_statut}}, niveau {{pos_niveau}}, échelon {{pos_echelon}}, coefficient {{pos_coefficient}}, position {{pos_position}}.',
+    'Le coefficient est indexé sur l’humeur moyenne du service, relevée chaque lundi à 9 h 12. Une baisse consécutive à un lundi difficile ne constitue pas une modification du contrat au sens de la jurisprudence interne, laquelle n’est pas publiée.',
+  ]},
+
+  { k: 'lieu', t: 'Lieu de travail', on: true, c: [
+    'Le salarié exerce ses fonctions à {{pos_lieu}}, dans les locaux de l’établissement sis {{emp_adresse_etab}}.',
+    'Le poste de travail est géolocalisé variable : sa position exacte est communiquée chaque matin par notification, dans un rayon n’excédant pas celui du bâtiment — sauf les jours où le bâtiment lui-même a été déplacé, auquel cas la notification est envoyée avec retard.',
+  ]},
+
+  { k: 'mobilite', t: 'Clause de mobilité géographique', c: [
+    'Compte tenu de la nature de ses fonctions, le salarié accepte que son lieu de travail puisse être modifié dans le périmètre suivant : {{pos_mobilite}}.',
+    'Ce périmètre comprend les deux étages non cartographiés de l’immeuble, dont l’accès requiert un accompagnement. Toute affectation à un étage non cartographié est précédée d’un délai de prévenance de sept jours et de la remise d’une lampe, dont le salarié demeure responsable.',
+  ]},
+
+  { k: 'duree_travail', t: 'Durée et organisation du travail', on: true, c: [
+    'La durée du travail est fixée à {{pos_duree}}, selon le régime « {{pos_regime}} ». Les horaires habituels sont les suivants : {{pos_horaires}}.',
+    { si: 'tp', t: 'Le salarié étant employé à temps partiel, la répartition de sa durée de travail est la suivante : {{pos_tp_repartition}}. Le nombre d’heures complémentaires ne pourra excéder {{pos_tp_hc}} et toute modification de la répartition lui sera notifiée dans un délai de prévenance de {{pos_tp_prevenance}}.' },
+    'À cette durée s’ajoutent les plages de vigilance passive, pendant lesquelles le salarié n’accomplit aucune tâche mais demeure interrogeable. Ces plages ne constituent pas du temps de travail effectif ; elles ne constituent pas davantage du repos. Leur nature exacte fait l’objet d’un contentieux pendant depuis 2043.',
+    'Le télétravail est organisé selon les modalités suivantes : {{pos_teletravail}}. Le salarié en télétravail demeure tenu de paraître éveillé.',
+  ]},
+
+  { k: 'heures_supp', t: 'Heures supplémentaires', c: [
+    'Les heures accomplies au-delà de {{pos_duree}} à la demande expresse de l’employeur donnent lieu aux majorations prévues par la convention collective {{emp_ccn}}.',
+    'Le paiement de ces majorations intervient en temps différé sur le compte-mémoire du salarié, où elles sont conservées sous forme de fins de journée. Le salarié peut en demander la liquidation deux fois au cours de sa carrière, sous réserve que les souvenirs concernés n’aient pas été altérés par le stockage.',
+  ]},
+
+  { k: 'remuneration', t: 'Rémunération', on: true, tag: 'salaire', c: [
+    'En contrepartie de son travail, {{sal_nom_complet}} percevra une rémunération brute mensuelle de {{rem_brut_mensuel}}, correspondant à un taux horaire brut de {{rem_brut_horaire}}, versée en {{rem_mensualites}} mensualités, soit une rémunération brute annuelle de {{rem_brut_annuel}}.',
+    'Le salaire est payé le {{rem_date_paiement}} de chaque mois par {{rem_mode_paiement}}, sur le compte {{sal_iban}}.',
+    { si: 'alt', t: 'Le salarié étant en alternance et âgé de {{sal_age}} à la prise d’effet, sa rémunération est fixée à {{ctr_alt_pct}} du salaire minimum applicable, sans pouvoir être inférieure au minimum légal correspondant à sa tranche d’âge et à son année d’exécution.' },
+    'Le versement est subordonné au maintien d’un indice de conformité émotionnelle supérieur à 0,62, relevé quotidiennement par le badge à l’entrée et à la sortie. En deçà de ce seuil, la fraction non conforme de la rémunération est convertie en jours de rétention affective portés au compte épargne-humeur du salarié, sans que cette conversion puisse être regardée comme une modification du contrat.',
+    'Le salarié reconnaît que l’indice mentionné à l’alinéa précédent n’est ni contestable, ni consultable, ni, à proprement parler, mesurable.',
+  ]},
+
+  { k: 'primes', t: 'Primes et gratifications', on: true, tag: 'primes', c: [
+    'S’ajoutent à la rémunération fixée à l’{{ref:remuneration}} les primes suivantes : treizième mois — {{rem_13e}} ; prime d’ancienneté — {{rem_anciennete}} ; prime d’objectifs — {{rem_objectifs}} ; prime de panier — {{rem_panier}} ; participation aux frais de transport — {{rem_transport}}.',
+    'La prime d’objectifs est versée en crédits respiratoires, utilisables dans les espaces pressurisés de l’établissement et périmés au 31 décembre. La prime de panier ouvre droit à un panier, dont le contenu est arrêté par un algorithme tenant compte du bilan carbone du salarié et de son comportement dans l’ascenseur.',
+    'Il est en outre institué une prime de tempérance algorithmique, versée au salarié n’ayant contredit aucune recommandation automatique au cours du trimestre, et une prime de silence en espace ouvert, dont le montant décroît d’un centime à chaque mot prononcé au-delà du quatre-centième.',
+    'Ces primes présentent un caractère bénévole et révocable. Leur suppression est réputée notifiée dès lors qu’elle a été rêvée par au moins trois salariés du service.',
+  ]},
+
+  { k: 'avantages', t: 'Avantages en nature', c: [
+    'Le salarié bénéficie des avantages en nature suivants : véhicule — {{rem_avn_vehicule}} ; logement — {{rem_avn_logement}} ; repas — {{rem_avn_repas}}. Ces avantages sont évalués et soumis à cotisations selon les barèmes en vigueur.',
+    'Il est en outre attribué au salarié une fenêtre, entendue comme un droit d’accès visuel à l’extérieur d’une durée de vingt minutes par jour ouvré, non reportable, non cessible et suspendu les jours de forte luminosité.',
+  ]},
+
+  { k: 'frais', t: 'Frais professionnels', c: [
+    'Les frais engagés pour les besoins du service sont remboursés sur justificatifs, selon le barème {{rem_frais}}.',
+    'Sont exclus du remboursement les trajets accomplis en songe, y compris lorsqu’ils portent sur un déplacement professionnel réel et que le salarié en rapporte la preuve par témoin.',
+  ]},
+
+  { k: 'conges', t: 'Congés payés', on: true, c: [
+    'Le salarié bénéficie de {{pos_conges}}, pris selon les modalités arrêtées par l’employeur en fonction des nécessités du service.',
+    'Trois de ces jours sont non remémorables : le salarié en jouit pleinement mais n’en conserve aucun souvenir. Il est réputé informé de cette particularité et ne peut s’en prévaloir pour en demander de nouveaux.',
+  ]},
+
+  { k: 'absences', t: 'Absences et maladie', c: [
+    'Toute absence doit être justifiée dans les quarante-huit heures. En cas d’arrêt de travail, le salarié bénéficie du maintien de salaire prévu par la convention collective {{emp_ccn}}, sous réserve des conditions d’ancienneté qu’elle fixe.',
+    'Un délai de carence de trois jours est appliqué au silence : l’absence de nouvelles du salarié pendant trois jours consécutifs ouvre une procédure de recherche, dont le coût est imputé à son compte épargne-humeur.',
+  ]},
+
+  { k: 'protection', t: 'Protection sociale complémentaire', on: true, c: [
+    'Le salarié est affilié à la caisse de retraite complémentaire {{emp_retraite}}, à l’organisme de prévoyance {{emp_prevoyance}} et à la mutuelle {{emp_mutuelle}}, dont il reconnaît avoir reçu les notices. Les cotisations sont déclarées auprès de l’{{emp_urssaf}} sous le numéro de compte {{emp_urssaf_num}}.',
+    'Le suivi médical est assuré par {{emp_sante_travail}}, qui procède à une visite d’information et de prévention dans les trois mois de la prise de poste, puis à un relevé annuel de sincérité posturale dont les résultats ne sont communiqués à personne.',
+  ]},
+
+  { k: 'loyaute', t: 'Obligation de loyauté et de discrétion', on: true, c: [
+    'Le salarié s’engage à observer la plus stricte discrétion sur l’ensemble des informations dont il aurait connaissance à l’occasion de ses fonctions, pendant l’exécution du contrat comme après sa rupture.',
+    'Cette obligation s’étend aux rêves à contenu professionnel. Le salarié qui rêve de l’entreprise s’abstient d’en faire état, y compris auprès de ses proches, et signale sans délai tout rêve dont il ressort une information qu’il n’était pas censé détenir.',
+  ]},
+
+  { k: 'propriete', t: 'Confidentialité et propriété intellectuelle', c: [
+    'Toute création réalisée par le salarié dans le cadre de ses fonctions est la propriété exclusive de {{emp_raison_sociale}}, qui en détient l’intégralité des droits patrimoniaux pour la durée légale et pour tous pays.',
+    'La cession porte également sur les idées abandonnées — celles que le salarié a formées puis écartées — ainsi que sur celles qu’il aurait formées s’il avait disposé de davantage de temps. Le salarié renonce à en revendiquer la paternité, y compris lorsqu’elles lui reviennent après la rupture du contrat.',
+  ]},
+
+  { k: 'non_concurrence', t: 'Clause de non-concurrence', c: [
+    'À l’expiration du contrat, pour quelque cause que ce soit, le salarié s’interdit pendant {{pos_nc_duree}} d’exercer une activité concurrente dans le périmètre suivant : {{pos_nc_perimetre}}.',
+    'Ce périmètre s’exprime en kilomètres et en degrés de séparation : le salarié s’abstient de travailler pour toute entreprise située à moins de la distance convenue, ainsi que pour toute entreprise dont un salarié connaît un salarié de {{emp_raison_sociale}}, fût-ce de vue.',
+    'En contrepartie de cette obligation, le salarié percevra une indemnité de {{pos_nc_contrepartie}}. L’employeur se réserve la faculté de renoncer à la présente clause, y compris rétroactivement, y compris après l’avoir invoquée.',
+  ]},
+
+  { k: 'rupture', t: 'Rupture du contrat et préavis', on: true, c: [
+    'Passée la période d’essai prévue à l’{{ref:essai}}, le contrat peut être rompu par l’une ou l’autre des parties dans les conditions légales et conventionnelles, moyennant un préavis de {{pos_preavis}}.',
+    { si: 'cdd', t: 'S’agissant d’un contrat à durée déterminée, il prend fin de plein droit le {{ctr_cdd_fin}} et ouvre droit, sauf les exceptions prévues par la loi, à une indemnité de fin de contrat de {{ctr_cdd_indemnite}}.' },
+    'Au dernier jour, le salarié restitue l’ensemble du matériel confié, son badge, ainsi que la part de son attention encore détenue par l’entreprise. La restitution de l’attention peut prendre plusieurs semaines ; le solde de tout compte n’est établi qu’à son terme.',
+    'Fait en deux exemplaires originaux, dont un remis à chacune des parties, l’exemplaire du salarié étant réputé remis dès lors qu’il en a été informé.',
+  ]},
+];
+
+// Mentions imprimées dans le préambule « ENTRE LES SOUSSIGNÉS ». Le texte passe
+// par le même moteur de substitution que les clauses : une information non
+// saisie y affiche donc, elle aussi, son libellé d'attente.
+const CT_MENTIONS_EMP = [
+  { l: 'Raison sociale',        t: '{{emp_raison_sociale}}' },
+  { l: 'Forme et capital',      t: '{{emp_forme}} au capital de {{emp_capital}}' },
+  { l: 'SIREN / SIRET',         t: '{{emp_siren}} — établissement {{emp_siret}}' },
+  { l: 'Code APE — RCS',        t: '{{emp_ape}} — RCS {{emp_rcs}}' },
+  { l: 'Siège social',          t: '{{emp_adresse_siege}}' },
+  { l: 'Établissement',         t: '{{emp_adresse_etab}}' },
+  { l: 'Représentée par',       t: '{{emp_rep_nom}}, {{emp_rep_qualite}}' },
+  { l: 'URSSAF',                t: '{{emp_urssaf}} — compte {{emp_urssaf_num}}' },
+  { l: 'Convention collective', t: '{{emp_ccn}} (IDCC {{emp_idcc}})' },
+  { l: 'Effectif',              t: '{{emp_effectif}}' },
+];
+
+const CT_MENTIONS_SAL = [
+  { l: 'Nom et prénom',      t: '{{sal_nom}}{{sal_nom_usage_paren}}, {{sal_prenoms}}' },
+  { l: 'Né(e) le',           t: '{{sal_naissance}} à {{sal_lieu_naissance}}' },
+  { l: 'Nationalité',        t: '{{sal_nationalite}}' },
+  { l: 'N° de sécurité sociale', t: '{{sal_nir}}' },
+  { l: 'Domicile',           t: '{{sal_adresse}}' },
+  { l: 'Coordonnées',        t: '{{sal_tel}} — {{sal_email}}' },
+  { l: 'Personne à prévenir', t: '{{sal_urgence}}' },
+  { l: 'Titre de séjour',    t: '{{sal_sejour_num}}, valable jusqu’au {{sal_sejour_fin}}', si: 'sejour' },
+  { l: 'Matricule',          t: '{{sal_matricule}}' },
+];
+
+const CT_TITRES = {
+  'CDI':                  'Contrat de travail à durée indéterminée',
+  'CDD':                  'Contrat de travail à durée déterminée',
+  'Apprentissage':        'Contrat d’apprentissage',
+  'Professionnalisation': 'Contrat de professionnalisation',
+};
+
+const CT_MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+// Date en toutes lettres — c'est la forme qu'emploie un contrat, pas le 01/10/2026.
+function _ctDateFr(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return iso || '';
+  const [y, m, d] = iso.split('-').map(Number);
+  return (d === 1 ? '1er' : String(d)) + ' ' + CT_MOIS[m - 1] + ' ' + y;
+}
+
+function _ctEuro(n) {
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// ── État ──────────────────────────────────────────────────────────────────────
+const CT_BROUILLON = 'xenna.contrat.brouillon';
+let _ctInited  = false;
+let _ctD       = {};      // clé → valeur saisie
+let _ctClauses = [];      // clauses dans l'ordre courant
+let _ctEditK   = null;    // clause ouverte en édition
+let _ctSaveT   = null;
+
+function _ctClausesNeuves() {
+  return CT_CLAUSES_SRC.map(c => ({
+    k: c.k, t: c.t, tag: c.tag || '', on: !!c.on,
+    c: c.c.map(p => (typeof p === 'string' ? { t: p } : { si: p.si, t: p.t })),
+    libre: false, modifiee: false,
+  }));
+}
+
+// Groupes conditionnels actifs, déduits de la saisie. Sert aussi bien à
+// l'affichage des champs qu'au filtrage des paragraphes marqués `si`.
+function _ctCond() {
+  const type = _ctD.ctr_type || 'CDI';
+  return {
+    cdi:    type === 'CDI',
+    cdd:    type === 'CDD',
+    alt:    type === 'Apprentissage' || type === 'Professionnalisation',
+    tp:     (_ctD.pos_regime || '') === 'Temps partiel',
+    sejour: !!_ctD.sal_hors_ue,
+  };
+}
+
+// ── Substitution ──────────────────────────────────────────────────────────────
+// Rend une suite de fragments stylés : 'n' courant, 'b' valeur saisie,
+// 'i' libellé d'attente, 'r' renvoi vers une clause non retenue. La même sortie
+// alimente l'aperçu HTML et le moteur PDF, ce qui garantit que les deux disent
+// exactement la même chose.
+function _ctValeur(k) {
+  if (CT_DERIVES[k]) return CT_DERIVES[k].get(_ctD) || '';
+  const def = CT_DEF[k];
+  const brut = String(_ctD[k] ?? '').trim();
+  if (!brut || !def) return brut;
+  if (def.t === 'date') return _ctDateFr(brut);
+  if (def.t === 'euro') {
+    const n = _gaabNombre(brut);
+    return Number.isFinite(n) ? _ctEuro(n) : brut;
+  }
+  return brut;
+}
+
+function _ctLibelle(k) {
+  const src = CT_DERIVES[k] || CT_DEF[k];
+  return (src && src.p) || k.toUpperCase();
+}
+
+function _ctSubst(txt, numeros) {
+  const runs = [];
+  const push = (t, s) => { if (t) runs.push({ t, s }); };
+  let reste = String(txt), m;
+  const re = /\{\{([a-z0-9_]+(?::[a-z0-9_]+)?)\}\}/;
+  while ((m = re.exec(reste))) {
+    push(reste.slice(0, m.index), 'n');
+    reste = reste.slice(m.index + m[0].length);
+    const cle = m[1];
+
+    if (cle.startsWith('ref:')) {
+      const num = numeros && numeros[cle.slice(4)];
+      if (num) push('article ' + num, 'n');
+      else     push('[ARTICLE NON RETENU]', 'r');
+      continue;
+    }
+    // Parenthèse de nom d'usage : ne s'imprime que si le nom d'usage existe.
+    if (cle === 'sal_nom_usage_paren') {
+      const nu = String(_ctD.sal_nom_usage || '').trim();
+      if (nu) { push(' (nom d’usage : ', 'n'); push(nu, 'b'); push(')', 'n'); }
+      continue;
+    }
+    const v = _ctValeur(cle);
+    if (v) push(v, 'b');
+    else   push('[' + _ctLibelle(cle) + ']', 'i');
+  }
+  push(reste, 'n');
+  return runs;
+}
+
+function _ctRunsHtml(runs) {
+  return runs.map(r => {
+    const t = esc(r.t);
+    if (r.s === 'b') return '<span class="ct-val">' + t + '</span>';
+    if (r.s === 'i') return '<span class="ct-ph">' + t + '</span>';
+    if (r.s === 'r') return '<span class="ct-ref-off">' + t + '</span>';
+    return t;
+  }).join('');
+}
+
+// ── Le contrat composé ────────────────────────────────────────────────────────
+// Numérotation : rang parmi les clauses COCHÉES. Décocher un article ne laisse
+// donc jamais de trou, et les renvois {{ref:…}} suivent automatiquement.
+function _ctComposer() {
+  const cond = _ctCond();
+  const retenues = _ctClauses.filter(c => c.on);
+  const numeros = {};
+  retenues.forEach((c, i) => { numeros[c.k] = i + 1; });
+
+  const articles = retenues.map((c, i) => ({
+    numero: i + 1,
+    titre: c.t,
+    corps: c.c
+      .filter(p => !p.si || cond[p.si])
+      .map(p => _ctSubst(p.t, numeros))
+      .filter(runs => runs.length),
+  }));
+
+  const type = _ctD.ctr_type || 'CDI';
+  return {
+    titre: (CT_TITRES[type] || CT_TITRES.CDI).toUpperCase(),
+    sous_titre: _ctSubst('Convention collective {{emp_ccn}} — IDCC {{emp_idcc}}', numeros),
+    employeur: CT_MENTIONS_EMP.map(m => ({ l: m.l, runs: _ctSubst(m.t, numeros) })),
+    salarie:   CT_MENTIONS_SAL.filter(m => !m.si || cond[m.si])
+                              .map(m => ({ l: m.l, runs: _ctSubst(m.t, numeros) })),
+    articles,
+    lieu: _ctSubst('{{ctr_lieu_signature}}', numeros),
+    date: _ctSubst('{{ctr_date_conclusion}}', numeros),
+    pied: String(_ctD.emp_raison_sociale || '').trim(),
+  };
+}
+
+function ctRenderApercu() {
+  const host = document.getElementById('ct-feuille');
+  if (!host) return;
+  const doc = _ctComposer();
+
+  if (!doc.articles.length) {
+    host.innerHTML = '<div class="ct-doc-vide">Aucune clause retenue — le contrat est vide.<br>'
+      + 'Cochez au moins un article ci-dessus.</div>';
+    return;
+  }
+
+  const mention = m => '<div class="ct-doc-mention"><span class="ct-doc-mention-lbl">'
+    + esc(m.l) + '</span><span>' + _ctRunsHtml(m.runs) + '</span></div>';
+
+  host.innerHTML =
+      '<div class="ct-doc-titre">' + esc(doc.titre)
+        + '<span class="ct-doc-sstitre">' + _ctRunsHtml(doc.sous_titre) + '</span></div>'
+    + '<div class="ct-doc-chapeau">Entre les soussignés</div>'
+    + '<div class="ct-doc-partie">' + doc.employeur.map(mention).join('') + '</div>'
+    + '<div class="ct-doc-dune">ci-après « l’employeur », d’une part,</div>'
+    + '<div class="ct-doc-partie">' + doc.salarie.map(mention).join('') + '</div>'
+    + '<div class="ct-doc-dune">ci-après « le salarié », d’autre part,</div>'
+    + '<div class="ct-doc-chapeau">Il a été convenu ce qui suit</div>'
+    + doc.articles.map(a =>
+        '<div class="ct-doc-art-t">Article ' + a.numero + ' — ' + esc(a.titre) + '</div>'
+        + a.corps.map(runs => '<p class="ct-doc-p">' + _ctRunsHtml(runs) + '</p>').join('')
+      ).join('')
+    + '<div class="ct-doc-fait">Fait à ' + _ctRunsHtml(doc.lieu)
+        + ', le ' + _ctRunsHtml(doc.date) + ', en deux exemplaires originaux.</div>'
+    + '<div class="ct-doc-sign">'
+      + '<div><div class="ct-doc-sign-r">L’employeur</div>'
+        + '<div class="ct-doc-sign-m">signature et cachet</div><div class="ct-doc-sign-box"></div></div>'
+      + '<div><div class="ct-doc-sign-r">Le salarié</div>'
+        + '<div class="ct-doc-sign-m">précédée de la mention « lu et approuvé »</div>'
+        + '<div class="ct-doc-sign-box"></div></div>'
+    + '</div>';
+}
+
+// ── Remplissage au hasard ─────────────────────────────────────────────────────
+// Un formulaire vide ne montre rien de la mise en page : à l'ouverture, tous les
+// champs reçoivent une valeur tirée au sort. « Vider le brouillon » rend l'état
+// vierge, où chaque clause réaffiche le libellé de l'information attendue.
+//
+// Le fond est emprunté à la fantasy européenne, dans le registre de l'effectif de
+// Gaabrielle, avec un penchant pour les titres qu'on ne cite jamais : Gormenghast
+// et son Rituel (Peake), Lud-en-Brume (Mirrlees), Momo et la Caisse d'Épargne du
+// Temps (Ende), La Horde du Contrevent (Damasio), Le Serpent Ouroboros (Eddison),
+// le Vieux Royaume (Jaworski), Gwendalavir (Bottero), Zamonie (Moers), les
+// Chroniques de Corum et de Hawkmoon (Moorcock), Waylander et les Trente
+// (Gemmell), Le Dernier Vœu (Sapkowski), la Terre Plate (Tanith Lee).
+
+const _ctPick = a => a[Math.floor(Math.random() * a.length)];
+const _ctEntre = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const _ctChiffres = n => Array.from({ length: n }, () => _ctEntre(0, 9)).join('');
+
+function _ctIsoPlus(iso, jours) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + jours);
+  return d.toISOString().slice(0, 10);
+}
+
+function _ctIsoEntre(anMin, anMax) {
+  const y = _ctEntre(anMin, anMax);
+  const m = String(_ctEntre(1, 12)).padStart(2, '0');
+  const j = String(_ctEntre(1, 28)).padStart(2, '0');
+  return `${y}-${m}-${j}`;
+}
+
+const CT_PERSONNAGES = [
+  { p: 'Titus',        n: 'Groan' },              // Peake, Gormenghast
+  { p: 'Fuchsia',      n: 'Groan', f: true },
+  { p: 'Barquentine',  n: 'du Rituel' },
+  { p: 'Nathanael',    n: 'Chanteclair' },        // Mirrlees, Lud-en-Brume
+  { p: 'Endymion',     n: 'Leer' },
+  { p: 'Golgoth',      n: 'du Contrevent' },      // Damasio, La Horde du Contrevent
+  { p: 'Caracole',     n: "l'Oblique" },
+  { p: 'Sov',          n: 'Strochnis' },
+  { p: 'Oroshi',       n: 'Melicerte', f: true },
+  { p: 'Momo',         n: 'des Ruines', f: true },  // Ende, Momo
+  { p: 'Beppo',        n: 'Balayeur' },
+  { p: 'Atrejou',      n: 'des Grandes Plaines' },
+  { p: 'Benvenuto',    n: 'Gesufal' },            // Jaworski, Gagner la guerre
+  { p: 'Bellovèse',    n: 'des Turons' },
+  { p: 'Waylander',    n: 'Dakeyras' },           // Gemmell, Waylander
+  { p: 'Skilgannon',   n: 'le Damné' },
+  { p: 'Serbitar',     n: 'des Trente' },
+  { p: 'Nogusta',      n: 'de Ventria' },
+  { p: 'Corum',        n: "Jhaelen Irsei" },      // Moorcock, Corum
+  { p: 'Dorian',       n: 'Hawkmoon' },
+  { p: 'Erekosë',      n: 'le Champion' },
+  { p: 'Gorice',       n: 'de Carcë' },           // Eddison, Le Serpent Ouroboros
+  { p: 'Brandoch',     n: 'Daha' },
+  { p: 'Mémé',         n: 'Ciredutemps', f: true }, // Pratchett, Lancre
+  { p: 'Rincevent',    n: "de l'Université" },
+  { p: 'Edwin',        n: "Til'Illan" },          // Bottero, Gwendalavir
+  { p: 'Duom',         n: "Nil'Erg" },
+  { p: 'Bjorn',        n: "Wil'Wayart" },
+  { p: 'Yennefer',     n: 'de Vengerberg', f: true }, // Sapkowski
+  { p: 'Emiel',        n: 'Regis' },
+  { p: 'Zoltan',       n: 'Chivay' },
+  { p: 'Eithné',       n: 'de Brokilone', f: true },
+  { p: 'Vazkor',       n: 'de la Terre Plate' },  // Tanith Lee
+  { p: 'Azhrarn',      n: 'le Prince Démon' },
+  { p: 'Hildegunst',   n: 'Taillemythes' },       // Moers, Zamonie
+  { p: 'Ronya',        n: 'Fille-de-Brigand', f: true }, // Lindgren
+  { p: 'Túrin',        n: 'Turambar' },           // Tolkien, Les Enfants de Húrin
+  { p: 'Beren',        n: 'Erchamion' },
+  { p: 'Ciri',         n: 'de Cintra', f: true },      // Sapkowski
+  { p: 'Milva',        n: 'Barring', f: true },
+  { p: 'Tiphaine',     n: 'Patraque', f: true },       // Pratchett, Les Ch'tits Hommes libres
+  { p: 'Angua',        n: 'von Überwald', f: true },
+  { p: 'Monza',        n: 'Murcatto', f: true },       // Abercrombie, Servez-le froid
+  { p: 'Marigold',     n: 'Chanteclair', f: true },    // Mirrlees, Lud-en-Brume
+  { p: 'Ayesha',       n: 'de Kôr', f: true },         // Haggard, She
+  { p: 'Clarissima',   n: 'de Ciudalia', f: true },    // Jaworski, Gagner la guerre
+];
+
+const CT_VILLES = [
+  'Ankh-Morpork', 'Lud-en-Brume', 'Gormenghast', 'Ciudalia', 'Abyme', 'Tanelorn',
+  'Imrryr', 'Al-Jeit', 'Kaer Morhen', 'Novigrad', 'Sto Lat', 'Quirm', 'Überwald',
+  'Carcë', 'Adua', 'Sipani', 'Dros Delnoch', 'Melniboné', 'Dorimare', 'Ombra',
+  'Ville-des-Rêves', 'Extrême-Amont', 'Brokilone',
+];
+
+const CT_RUES = [
+  'rue des Petits-Dieux', 'allée des Contrevents', 'quai des Scribes Mineurs',
+  'impasse du Rituel Quotidien', 'boulevard des Heures Économisées',
+  'passage des Marchombres', 'rue de la Corne de Brume', 'venelle des Trente',
+  'place du Serpent Ouroboros', 'chemin des Fleurs de Brume',
+  'rue Basse-des-Cendres', 'esplanade de la Chambre Fermée',
+  'cour des Seuils Consentis', 'sentier des Neuf Vents',
+];
+
+const CT_POSTES = [
+  'Gardien de Seuil Non Répertorié', 'Contrôleur des Vents Contraires',
+  'Archiviste du Rituel Quotidien', 'Économe des Heures Non Vécues',
+  'Interprète des Silences Hiérarchiques', 'Cartographe des Étages Manquants',
+  'Régisseur des Brumes Administratives', 'Auditeur de Conformité Onirique',
+  'Préposé à la Décrue des Ambitions', 'Veilleur de Nuit du Département Diurne',
+  'Ingénieur en Persistance Rétinienne', 'Dépositaire des Serments Périmés',
+  'Chargé de la Redistribution des Regrets', 'Métreur des Distances Intérieures',
+];
+
+const CT_SOCIETES = [
+  'Gormenghast Logistique', 'Ouroboros Ressources', 'Melniboné Services Généraux',
+  'Tanelorn Continuité', 'Lud-en-Brume Analytique', 'Kaer Morhen Maintenance',
+  'Extrême-Amont Aéraulique', 'Ciudalia Négoce', 'Zamonie Manufacture',
+  'Dorimare Conserves & Brumes', 'Les Trente — Sécurité Rituelle',
+];
+
+function _ctAdresse() {
+  return `${_ctEntre(1, 180)}, ${_ctPick(CT_RUES)} — ${_ctChiffres(5)} ${_ctPick(CT_VILLES)}`;
+}
+
+function _ctNir(naissanceIso, sexeH) {
+  const [y, m] = naissanceIso.split('-');
+  return `${sexeH ? 1 : 2} ${y.slice(2)} ${m} ${_ctChiffres(2)} ${_ctChiffres(3)} ${_ctChiffres(3)} ${_ctChiffres(2)}`;
+}
+
+function _ctSansAccent(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/// Un jeu complet de valeurs cohérentes entre elles : les dates s'ordonnent, le
+/// taux horaire découle du brut mensuel et de la durée du travail, la période
+/// d'essai et le préavis suivent le statut.
+function _ctAleatoire() {
+  const societe   = _ctPick(CT_SOCIETES);
+  const dirigeant = _ctPick(CT_PERSONNAGES);
+  const salarie   = _ctPick(CT_PERSONNAGES.filter(p => p !== dirigeant));
+  const urgence   = _ctPick(CT_PERSONNAGES.filter(p => p !== salarie && p !== dirigeant));
+  const remplace  = _ctPick(CT_PERSONNAGES.filter(p => p !== salarie));
+  const tuteur    = _ctPick(CT_PERSONNAGES.filter(p => p !== salarie));
+  const ville     = _ctPick(CT_VILLES);
+  const siege     = _ctAdresse();
+  const siren     = `${_ctChiffres(3)} ${_ctChiffres(3)} ${_ctChiffres(3)}`;
+  const sexeH     = !salarie.f;
+
+  const type      = _ctPick(['CDI', 'CDI', 'CDI', 'CDD', 'Apprentissage', 'Professionnalisation']);
+  const alternant = type === 'Apprentissage' || type === 'Professionnalisation';
+  const naissance = alternant ? _ctIsoEntre(2004, 2008) : _ctIsoEntre(1958, 2002);
+  const conclusion = _gaabAujourdhui();
+  const effet     = _ctIsoPlus(conclusion, _ctEntre(3, 75));
+
+  const statut    = alternant ? 'Employé' : _ctPick(['Ouvrier', 'Employé', 'Employé', 'Agent de maîtrise', 'Cadre']);
+  const regime    = alternant ? 'Temps plein — 35 heures hebdomadaires'
+                              : _ctPick(['Temps plein — 35 heures hebdomadaires',
+                                         'Temps plein — 35 heures hebdomadaires',
+                                         'Temps partiel', 'Forfait annuel en jours', 'Forfait annuel en heures']);
+  const partiel   = regime === 'Temps partiel';
+  const quotite   = partiel ? _ctPick([50, 60, 70, 80, 90]) : 100;
+  const heuresMois = 151.67 * quotite / 100;
+
+  const horaire = statut === 'Cadre'            ? _ctEntre(3200, 6400) / 100
+                : statut === 'Agent de maîtrise' ? _ctEntre(2100, 3200) / 100
+                : alternant                      ? _ctEntre(900, 1400) / 100
+                                                 : _ctEntre(1250, 2400) / 100;
+  const mensuel = horaire * heuresMois;
+  const eur = n => n.toFixed(2).replace('.', ',');
+
+  const essai = statut === 'Cadre' ? '4 mois' : statut === 'Agent de maîtrise' ? '3 mois' : '2 mois';
+  const preavis = statut === 'Cadre' ? '3 mois' : statut === 'Agent de maîtrise' ? '2 mois' : '1 mois';
+
+  const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'];
+  const retenus = jours.slice(0, Math.max(2, Math.round(5 * quotite / 100)));
+
+  return {
+    // ── Employeur ───────────────────────────────────────────────────────────
+    emp_raison_sociale: societe,
+    emp_forme: _ctPick(['société par actions simplifiée', 'société à responsabilité limitée',
+                        'société anonyme à directoire', 'société coopérative de production',
+                        'société en commandite par actions']),
+    emp_capital: `${_ctEntre(1, 900) * 1000} €`.replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
+    emp_siren: siren,
+    emp_siret: `${siren} 000${_ctChiffres(2)}`,
+    emp_ape: _ctPick(['62.01Z', '70.22Z', '78.10Z', '82.11Z', '90.02Z', '52.10B', '32.99Z']),
+    emp_rcs: _ctPick(CT_VILLES),
+    emp_adresse_siege: siege,
+    emp_adresse_etab: Math.random() < 0.6 ? siege : _ctAdresse(),
+    emp_rep_nom: `${dirigeant.p} ${dirigeant.n}`,
+    emp_rep_qualite: _ctPick(dirigeant.f
+      ? ['présidente', 'gérante', 'directrice générale', 'directrice des opérations',
+         'Maîtresse du Rituel', 'intendante générale']
+      : ['président', 'gérant', 'directeur général', 'directeur des opérations',
+         'Maître du Rituel', 'intendant général']),
+    emp_urssaf: _ctPick(['URSSAF de Gwendalavir', 'URSSAF du Vieux Royaume', 'URSSAF de Dorimare',
+                         'URSSAF des Marches du Nord', 'URSSAF du Kamarg', "URSSAF de l'Extrême-Amont"]),
+    emp_urssaf_num: `${_ctChiffres(3)} ${_ctChiffres(6)} ${siren.replace(/ /g, '')}`,
+    emp_idcc: _ctChiffres(4),
+    emp_ccn: _ctPick(['Porteurs de fardeaux et gardiens de seuils',
+                      'Scriptoria, copistes et enlumineurs',
+                      'Industries du vent et de ses dérivés',
+                      'Négoce des heures et denrées périssables',
+                      "Bureaux d'études rituelles et connexes"]),
+    emp_retraite: _ctPick(["AGIRC-ARRCO — Caisse d'Épargne du Temps",
+                           'AGIRC-ARRCO — Institution des Trente',
+                           "AGIRC-ARRCO — Caisse d'Imrryr"]),
+    emp_prevoyance: _ctPick(['Prévoyance Tanelorn', 'Institution de Prévoyance de Carcë',
+                             'Prévoyance des Contrevents']),
+    emp_mutuelle: _ctPick(['Mutuelle des Gardiens de Seuil', 'Harmonie du Vieux Royaume',
+                           'Mutualité de Lud-en-Brume']),
+    emp_sante_travail: _ctPick(["Service de santé au travail d'Ankh-Morpork",
+                                'SST des Étages Non Cartographiés',
+                                'Médecine du travail de Gormenghast']),
+    emp_effectif: `${_ctEntre(4, 640)} salariés`,
+
+    // ── Salarié ─────────────────────────────────────────────────────────────
+    sal_nom: salarie.n,
+    sal_nom_usage: Math.random() < 0.25 ? _ctPick(CT_PERSONNAGES).n : '',
+    sal_prenoms: salarie.p,
+    sal_naissance: naissance,
+    sal_lieu_naissance: _ctPick(CT_VILLES),
+    sal_nationalite: _ctPick(['française', 'française', 'française', 'polonaise', 'suédoise',
+                              'nilfgaardienne', 'alavirienne', 'zamonienne']),
+    sal_nir: _ctNir(naissance, sexeH),
+    sal_matricule: `XN-${String(_ctEntre(21, 199)).padStart(3, '0')}`,
+    sal_adresse: _ctAdresse(),
+    sal_tel: `0${_ctPick([6, 7])} ${_ctChiffres(2)} ${_ctChiffres(2)} ${_ctChiffres(2)} ${_ctChiffres(2)}`,
+    sal_email: `${_ctSansAccent(salarie.p)}.${_ctSansAccent(salarie.n)}@${_ctSansAccent(societe)}.fr`,
+    sal_urgence: `${urgence.p} ${urgence.n} — ${_ctPick(['sœur', 'frère', 'mère', 'père', 'conjoint',
+                    'conjointe', 'voisine de palier', "ancien maître d'armes", 'tuteur légal'])}`,
+    sal_iban: `FR76 ${_ctChiffres(4)} ${_ctChiffres(4)} ${_ctChiffres(4)} ${_ctChiffres(4)} ${_ctChiffres(4)} ${_ctChiffres(3)}`,
+    sal_situation: alternant
+      ? _ctPick(['scolarisé, en fin de cycle', 'étudiant, sortant de première année'])
+      : _ctPick([`demandeur d'emploi depuis ${_ctEntre(2, 19)} mois`,
+                 'salarié en préavis chez un tiers', "sortant d'apprentissage",
+                 'en reconversion professionnelle', 'première expérience professionnelle',
+                 'sortant de congé sabbatique non déclaré']),
+    sal_hors_ue: Math.random() < 0.3,
+    sal_sejour_num: `${_ctChiffres(4)}-${_ctChiffres(6)}-${_ctChiffres(2)}`,
+    sal_sejour_fin: _ctIsoPlus(effet, _ctEntre(400, 1500)),
+
+    // ── Contrat ─────────────────────────────────────────────────────────────
+    ctr_type: type,
+    ctr_date_conclusion: conclusion,
+    ctr_date_effet: effet,
+    ctr_lieu_signature: ville,
+    ctr_cdd_motif: _ctPick(CT_MOTIFS_CDD),
+    ctr_cdd_terme: _ctPick(['Terme précis', 'Terme précis', 'Terme imprécis']),
+    ctr_cdd_fin: _ctIsoPlus(effet, _ctEntre(90, 540)),
+    ctr_cdd_duree_min: `${_ctEntre(2, 8)} mois`,
+    ctr_cdd_remplace: `${remplace.p} ${remplace.n}`,
+    ctr_cdd_remplace_quali: _ctPick(CT_POSTES),
+    ctr_cdd_renouv: _ctPick(['1', '2']),
+    ctr_cdd_indemnite: '10 % de la rémunération brute totale',
+
+    ctr_alt_cfa: _ctPick(['CFA de Gormenghast — section Rituel',
+                          'Institut des Scribes Mineurs de Ciudalia',
+                          "École des Marchombres d'Al-Jeit",
+                          "Collège Aéraulique de l'Extrême-Amont"]),
+    ctr_alt_diplome: _ctPick(['Titre professionnel de Gardien de Seuil (niveau 5)',
+                              'BTS Régie des Brumes et Fluides Administratifs',
+                              'Licence professionnelle Conformité Onirique',
+                              'CAP Veille Passive et Vigilance Assise']),
+    ctr_alt_debut_cycle: effet,
+    ctr_alt_fin_cycle: _ctIsoPlus(effet, _ctEntre(360, 730)),
+    ctr_alt_tuteur: `${tuteur.p} ${tuteur.n}`,
+    ctr_alt_tuteur_quali: _ctPick(CT_POSTES),
+    ctr_alt_tuteur_exp: `${_ctEntre(3, 24)} ans`,
+    ctr_alt_pct: `${_ctPick([43, 51, 61, 67, 78, 100])} %`,
+
+    // ── Poste et temps de travail ───────────────────────────────────────────
+    pos_intitule: _ctPick(CT_POSTES),
+    pos_statut: statut,
+    pos_niveau: _ctPick(['I', 'II', 'III', 'IV', 'V']),
+    pos_echelon: String(_ctEntre(1, 4)),
+    pos_coefficient: String(_ctEntre(180, 600)),
+    pos_position: _ctPick(['1.1', '1.2', '2.1', '2.2', '3.1']),
+    pos_lieu: `${ville} — établissement de ${_ctPick(['la Cour Extérieure', "l'aile ouest",
+                 'la Tour des Silex', 'la Halle aux Brumes', 'la Chambre Fermée'])}`,
+    pos_mobilite: _ctPick([`un rayon de ${_ctEntre(20, 90)} km autour de ${ville}, brumes comprises`,
+                           "l'ensemble des sites du Vieux Royaume et leurs annexes oniriques",
+                           'les trois étages accessibles et les deux qui ne le sont pas']),
+    pos_regime: regime,
+    pos_duree: regime === 'Forfait annuel en jours' ? `${_ctPick([214, 216, 218])} jours par an`
+             : regime === 'Forfait annuel en heures' ? `${_ctPick([1607, 1687, 1780])} heures par an`
+             : partiel ? `${(35 * quotite / 100).toFixed(2).replace('.', ',').replace(/,00$/, '')} heures hebdomadaires (${quotite} %)`
+             : '35 heures hebdomadaires',
+    pos_horaires: _ctPick(['9 h — 12 h 30 / 13 h 30 — 17 h',
+                           '8 h 45 — 17 h 15, pause méridienne de 45 minutes',
+                           '7 h — 15 h, en alternance une semaine sur deux',
+                           'de la deuxième corne de brume au coucher du soleil']),
+    pos_tp_repartition: retenus.join(', ') + ` — ${(35 * quotite / 100 / retenus.length).toFixed(1).replace('.', ',')} heures par jour`,
+    pos_tp_hc: "un tiers de la durée contractuelle, sans jamais atteindre la durée légale",
+    pos_tp_prevenance: `${_ctPick([3, 7, 7, 14])} jours ouvrés`,
+    pos_essai: essai,
+    pos_essai_renouv: _ctPick(['une fois, pour la même durée', 'une fois, pour la même durée', 'non renouvelable']),
+    pos_conges: '2,5 jours ouvrables par mois de travail effectif',
+    pos_preavis: preavis,
+    pos_teletravail: _ctPick([`${_ctEntre(1, 3)} jours par semaine, hors jours de brume`,
+                              "1 jour par semaine, indemnité de 2,70 € par jour de télétravail",
+                              'non applicable au poste, la présence corporelle étant requise']),
+    pos_nc_duree: _ctPick(['12 mois', '18 mois', '24 mois']),
+    pos_nc_perimetre: `un rayon de ${_ctEntre(30, 120)} km autour de ${ville} et deux degrés de séparation`,
+    pos_nc_contrepartie: `${_ctPick([25, 30, 33, 40])} % de la moyenne mensuelle des douze derniers mois`,
+
+    // ── Rémunération ────────────────────────────────────────────────────────
+    rem_brut_mensuel: eur(mensuel),
+    rem_brut_horaire: eur(horaire),
+    rem_mensualites: _ctPick(['12', '12', '13']),
+    rem_date_paiement: _ctPick(['dernier jour ouvré', '5', '28', 'avant-dernier jeudi']),
+    rem_mode_paiement: _ctPick(['virement bancaire', 'virement bancaire', 'virement sur compte à terme scellé']),
+    rem_13e: _ctPick(['versé pour moitié en juin, pour moitié en décembre',
+                      'un mois de salaire au prorata du temps de présence', 'sans objet']),
+    rem_anciennete: _ctPick(['3 % après 3 ans, 6 % après 6 ans, 9 % après 9 ans',
+                             '2 % par tranche de deux ans, plafonnée à 15 %', 'sans objet']),
+    rem_objectifs: _ctPick([`jusqu'à ${_ctEntre(4, 15)} % du brut annuel, sur critères arrêtés chaque semestre`,
+                            'sans objet']),
+    rem_panier: _ctPick([`${_ctEntre(620, 890) / 100} € par jour travaillé`.replace('.', ','), 'sans objet']),
+    rem_transport: _ctPick(["50 % de l'abonnement de transport public",
+                            "75 % de l'abonnement Contrevent, sur justificatif"]),
+    rem_avn_vehicule: _ctPick(['véhicule de fonction catégorie B, usage privé autorisé',
+                               'sans objet', 'sans objet']),
+    rem_avn_logement: _ctPick(['sans objet', 'sans objet',
+                               "chambre de fonction, troisième étage de l'aile ouest"]),
+    rem_avn_repas: _ctPick(['un repas par jour travaillé, évalué au barème URSSAF', 'sans objet']),
+    rem_frais: _ctPick(['barème kilométrique administratif en vigueur',
+                        'barème interne révisé au 1er janvier de chaque année']),
+  };
+}
+
+window.ctRemplirAuHasard = function () {
+  Object.assign(_ctD, _ctAleatoire());
+  _ctEcrireForm();
+  const pe = document.getElementById('ct-pre-emp'); if (pe) pe.value = '';
+  const ps = document.getElementById('ct-pre-sal'); if (ps) ps.value = '';
+  ctOnSaisie();
+  _ctEtat('formulaire rempli au hasard — « Vider le brouillon » rend les libellés d’attente', '');
+};
+
+// ── Bloc A : le formulaire ────────────────────────────────────────────────────
+function _ctChampHtml(c) {
+  const id  = 'ctf-' + c.k;
+  const cls = c.w === 'w' ? ' ct-wide' : (c.w === 'h' ? ' ct-half' : '');
+
+  if (c.t === 'check') {
+    return '<div class="ct-wide"><label class="param-item" for="' + id + '">'
+      + '<input type="checkbox" id="' + id + '"> ' + esc(c.l) + '</label></div>';
+  }
+  let input;
+  if (Array.isArray(c.t)) {
+    input = '<select id="' + id + '">'
+      + '<option value=""></option>'
+      + c.t.map(o => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
+      + '</select>';
+  } else if (c.t === 'date') {
+    input = '<input type="date" id="' + id + '" />';
+  } else if (c.t === 'euro' || c.t === 'num') {
+    input = '<input type="text" inputmode="decimal" autocomplete="off" id="' + id + '" />';
+  } else {
+    input = '<input type="text" autocomplete="off" id="' + id + '" />';
+  }
+  return '<div class="field' + cls + '"><label for="' + id + '">' + esc(c.l) + '</label>' + input + '</div>';
+}
+
+function _ctLigneHtml(c) {
+  const html = c.s
+    ? '<div class="ct-subhead">' + esc(c.s) + '</div>'
+    : _ctChampHtml(c);
+  return c.c ? '<div class="ct-cond" data-cond="' + esc(c.c) + '">' + html + '</div>' : html;
+}
+
+function ctRenderForm() {
+  const pre = document.getElementById('ct-prefill');
+  if (pre) {
+    pre.innerHTML =
+        '<div class="field"><label for="ct-pre-emp">Reprendre une entreprise</label>'
+      + '<select id="ct-pre-emp" onchange="ctPrefillEmp()"><option value="">—</option>'
+      + CT_ENTREPRISES.map((e, i) => '<option value="' + i + '">' + esc(e.nom) + '</option>').join('')
+      + '</select></div>'
+      + '<div class="field"><label for="ct-pre-sal">Reprendre un salarié de l’effectif</label>'
+      + '<select id="ct-pre-sal" onchange="ctPrefillSal()"></select></div>'
+      + '<button type="button" class="ct-mini ct-de" onclick="ctRemplirAuHasard()" '
+        + 'title="Garnir tous les champs de valeurs tirées au sort">🎲 Au hasard</button>'
+      + '<div class="ct-prefill-note">Le pré-remplissage recopie ce que Gaabrielle connaît ; '
+      + 'chaque champ reste modifiable, et le modifier ne touche pas l’effectif. '
+      + 'Le formulaire s’ouvre garni au hasard — « Vider le brouillon », en bas de page, '
+      + 'le remet à blanc et fait réapparaître les libellés d’attente dans les clauses.</div>';
+    _ctMajListeSalaries();
+  }
+
+  const host = document.getElementById('ct-form');
+  if (!host) return;
+  host.innerHTML = CT_CHAMPS.map((g, i) =>
+      '<div class="ct-fieldset' + (i === 0 ? ' open' : '') + '" id="ct-fs-' + g.id + '">'
+    + '<button type="button" class="ct-legend" onclick="ctToggleGroupe(\'' + g.id + '\')">'
+      + '<span class="ct-caret">▸</span>' + esc(g.titre)
+      + '<span class="ct-legend-count" id="ct-cnt-' + g.id + '"></span></button>'
+    + '<div class="ct-fieldset-body"><div class="ct-grid">'
+      + g.champs.map(_ctLigneHtml).join('')
+    + '</div></div></div>'
+  ).join('');
+
+  // Un seul écouteur pour tout le bloc : les champs sont trop nombreux pour
+  // qu'on en attache un par input, et le formulaire est rendu d'un bloc.
+  host.addEventListener('input',  ctOnSaisie);
+  host.addEventListener('change', ctOnSaisie);
+}
+
+function _ctMajListeSalaries() {
+  const sel = document.getElementById('ct-pre-sal');
+  if (!sel) return;
+  const garde = sel.value;
+  sel.innerHTML = '<option value="">—</option>'
+    + GAAB_EMPLOYES.map(e => '<option value="' + esc(e.mat) + '">'
+        + esc(e.mat + ' — ' + e.prenom + ' ' + e.nom) + '</option>').join('');
+  sel.value = garde;
+}
+
+window.ctToggleGroupe = function (id) {
+  document.getElementById('ct-fs-' + id)?.classList.toggle('open');
+};
+
+function _ctDefauts() {
+  CT_CHAMPS.forEach(g => g.champs.forEach(c => { if (c.k && c.d) _ctD[c.k] = c.d; }));
+  if (!_ctD.ctr_date_conclusion) _ctD.ctr_date_conclusion = _gaabAujourdhui();
+}
+
+function _ctEcrireForm() {
+  CT_CHAMPS.forEach(g => g.champs.forEach(c => {
+    if (!c.k) return;
+    const el = document.getElementById('ctf-' + c.k);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!_ctD[c.k];
+    else                        el.value   = _ctD[c.k] ?? '';
+  }));
+}
+
+function _ctLireForm() {
+  CT_CHAMPS.forEach(g => g.champs.forEach(c => {
+    if (!c.k) return;
+    const el = document.getElementById('ctf-' + c.k);
+    if (!el) return;
+    _ctD[c.k] = el.type === 'checkbox' ? el.checked : el.value;
+  }));
+}
+
+function _ctMajCond() {
+  const cond = _ctCond();
+  document.querySelectorAll('#ct-form .ct-cond').forEach(el => {
+    el.classList.toggle('on', !!cond[el.dataset.cond]);
+  });
+}
+
+function _ctMajCompteurs() {
+  const cond = _ctCond();
+  CT_CHAMPS.forEach(g => {
+    const el = document.getElementById('ct-cnt-' + g.id);
+    if (!el) return;
+    const visibles = g.champs.filter(c => c.k && c.t !== 'check' && (!c.c || cond[c.c]));
+    const remplis  = visibles.filter(c => String(_ctD[c.k] ?? '').trim());
+    el.textContent = remplis.length + ' / ' + visibles.length;
+    el.style.color = remplis.length === visibles.length ? 'var(--green)' : 'var(--dim)';
+  });
+}
+
+function ctOnSaisie() {
+  _ctLireForm();
+  _ctMajCond();
+  _ctMajCompteurs();
+  ctRenderClauses();
+  ctRenderApercu();
+  _ctSauver();
+}
+
+window.ctPrefillEmp = function () {
+  const i = document.getElementById('ct-pre-emp')?.value;
+  if (i === '' || i == null) return;
+  Object.assign(_ctD, CT_ENTREPRISES[Number(i)].v);
+  _ctEcrireForm();
+  ctOnSaisie();
+};
+
+// Le pré-remplissage salarié tire de GAAB_EMPLOYES tout ce que l'effectif sait :
+// identité, poste, quotité et brut horaire. Le reste (NIR, adresse, nationalité)
+// n'y figure pas — Gaabrielle ne le collecte pas — et reste donc à saisir.
+window.ctPrefillSal = function () {
+  const mat = document.getElementById('ct-pre-sal')?.value;
+  const e = GAAB_EMPLOYES.find(x => x.mat === mat);
+  if (!e) return;
+  const bm = e.bh * 151.67;
+  Object.assign(_ctD, {
+    sal_nom: e.nom,
+    sal_prenoms: e.prenom,
+    sal_naissance: e.naissance,
+    sal_matricule: e.mat,
+    pos_intitule: e.poste,
+    ctr_date_effet: e.embauche,
+    rem_brut_horaire: e.bh.toFixed(2).replace('.', ','),
+    rem_brut_mensuel: bm.toFixed(2).replace('.', ','),
+  });
+  if (e.etp < 100) {
+    _ctD.pos_regime = 'Temps partiel';
+    _ctD.pos_duree  = (35 * e.etp / 100).toFixed(2).replace('.', ',').replace(/,00$/, '')
+                      + ' heures hebdomadaires (' + e.etp + ' %)';
+  } else {
+    _ctD.pos_regime = 'Temps plein — 35 heures hebdomadaires';
+    _ctD.pos_duree  = '35 heures hebdomadaires';
+  }
+  _ctEcrireForm();
+  ctOnSaisie();
+};
+
+// ── Bloc B : le catalogue de clauses ──────────────────────────────────────────
+function ctRenderClauses() {
+  const host = document.getElementById('ct-clauses');
+  if (!host) return;
+
+  let num = 0;
+  host.innerHTML = _ctClauses.map((c, i) => {
+    if (c.on) num++;
+    const lignes =
+        '<div class="ct-clause-row' + (c.on ? '' : ' off') + (c.libre ? ' libre' : '') + '">'
+      + '<input type="checkbox" class="ct-clause-cb"' + (c.on ? ' checked' : '')
+        + ' onchange="ctCocher(\'' + c.k + '\', this.checked)"'
+        + ' aria-label="Retenir cette clause" />'
+      + '<span class="ct-clause-num">' + (c.on ? num + '.' : '—') + '</span>'
+      + '<span class="ct-clause-titre" id="ct-t-' + c.k + '" onclick="ctEditer(\'' + c.k + '\')">' + esc(c.t)
+        + (c.modifiee ? ' <span style="color:var(--orange);font-size:0.8em">· modifiée</span>' : '') + '</span>'
+      + (c.tag ? '<span class="ct-clause-tag">' + esc(c.tag) + '</span>' : '')
+      + '<span class="ct-clause-acts">'
+        + '<button class="ct-act" onclick="ctDeplacer(\'' + c.k + '\',-1)" title="Monter"'
+          + (i === 0 ? ' disabled' : '') + '>▲</button>'
+        + '<button class="ct-act" onclick="ctDeplacer(\'' + c.k + '\',1)" title="Descendre"'
+          + (i === _ctClauses.length - 1 ? ' disabled' : '') + '>▼</button>'
+        + '<button class="ct-act' + (_ctEditK === c.k ? ' on' : '') + '" onclick="ctEditer(\'' + c.k + '\')" title="Modifier le texte">✎</button>'
+        + (c.libre ? '<button class="ct-act ct-act-del" onclick="ctSupprimer(\'' + c.k + '\')" title="Supprimer">✕</button>' : '')
+      + '</span></div>';
+    return lignes + (_ctEditK === c.k ? _ctEditHtml(c) : '');
+  }).join('');
+
+  const cnt = document.getElementById('ct-count');
+  if (cnt) cnt.textContent = num + ' clause' + (num > 1 ? 's' : '') + ' sur ' + _ctClauses.length + ' retenue' + (num > 1 ? 's' : '');
+}
+
+function _ctClauseTexte(c) {
+  return c.c.map(p => (p.si ? '[si:' + p.si + '] ' : '') + p.t).join('\n\n');
+}
+
+function _ctTexteClause(txt) {
+  return String(txt).split(/\n\s*\n/).map(s => s.trim()).filter(Boolean).map(s => {
+    const m = s.match(/^\[si:([a-z]+)\]\s*/);
+    return m ? { si: m[1], t: s.slice(m[0].length) } : { t: s };
+  });
+}
+
+function _ctEditHtml(c) {
+  const vars = Object.keys(CT_DEF).concat(Object.keys(CT_DERIVES)).sort();
+  return '<div class="ct-clause-edit">'
+    + '<div class="field ct-wide" style="margin-bottom:0.5rem"><label for="ct-edit-titre">Intitulé de l’article</label>'
+      + '<input type="text" id="ct-edit-titre" value="' + esc(c.t) + '" oninput="ctMajTitre(\'' + c.k + '\', this.value)" /></div>'
+    + '<textarea id="ct-edit-corps" oninput="ctMajCorps(\'' + c.k + '\', this.value)">' + esc(_ctClauseTexte(c)) + '</textarea>'
+    + '<div class="ct-edit-bar">'
+      + '<select onchange="ctInsererVar(this.value); this.value=\'\'">'
+        + '<option value="">＋ insérer une information…</option>'
+        + vars.map(k => '<option value="' + esc(k) + '">' + esc(_ctLibelle(k)) + '</option>').join('')
+        + '<optgroup label="Renvoi vers un article">'
+        + _ctClauses.map(x => '<option value="ref:' + esc(x.k) + '">→ ' + esc(x.t) + '</option>').join('')
+        + '</optgroup>'
+      + '</select>'
+      + (c.libre ? '' : '<button class="ct-mini" onclick="ctRetablirClause(\'' + c.k + '\')">Rétablir le texte d’origine</button>')
+      + '<button class="ct-mini" onclick="ctEditer(null)">Fermer</button>'
+      + '<div class="ct-edit-note">Un paragraphe par bloc séparé d’une ligne vide. '
+        + 'Préfixez un paragraphe de <b>[si:cdd]</b>, <b>[si:alt]</b>, <b>[si:tp]</b> ou <b>[si:cdi]</b> '
+        + 'pour ne l’imprimer que dans cette configuration.</div>'
+    + '</div></div>';
+}
+
+window.ctCocher = function (k, on) {
+  const c = _ctClauses.find(x => x.k === k);
+  if (c) { c.on = on; ctRenderClauses(); ctRenderApercu(); _ctSauver(); }
+};
+
+window.ctDeplacer = function (k, sens) {
+  const i = _ctClauses.findIndex(x => x.k === k);
+  const j = i + sens;
+  if (i < 0 || j < 0 || j >= _ctClauses.length) return;
+  [_ctClauses[i], _ctClauses[j]] = [_ctClauses[j], _ctClauses[i]];
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+};
+
+window.ctEditer = function (k) {
+  _ctEditK = (_ctEditK === k) ? null : k;
+  ctRenderClauses();
+  if (_ctEditK) document.getElementById('ct-edit-corps')?.focus();
+};
+
+window.ctMajTitre = function (k, v) {
+  const c = _ctClauses.find(x => x.k === k);
+  if (!c) return;
+  c.t = v; c.modifiee = true;
+  // Retouche ciblée plutôt que re-rendu : re-rendre le catalogue arracherait le
+  // focus du champ à chaque caractère tapé.
+  const lbl = document.getElementById('ct-t-' + k);
+  if (lbl) lbl.innerHTML = esc(c.t) + ' <span style="color:var(--orange);font-size:0.8em">· modifiée</span>';
+  ctRenderApercu(); _ctSauver();
+};
+
+window.ctMajCorps = function (k, v) {
+  const c = _ctClauses.find(x => x.k === k);
+  if (!c) return;
+  c.c = _ctTexteClause(v); c.modifiee = true;
+  ctRenderApercu(); _ctSauver();
+};
+
+window.ctInsererVar = function (k) {
+  if (!k) return;
+  const ta = document.getElementById('ct-edit-corps');
+  if (!ta || !_ctEditK) return;
+  const jeton = '{{' + k + '}}';
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + jeton + ta.value.slice(b);
+  ta.selectionStart = ta.selectionEnd = a + jeton.length;
+  ta.focus();
+  ctMajCorps(_ctEditK, ta.value);
+};
+
+window.ctRetablirClause = function (k) {
+  const src = CT_CLAUSES_SRC.find(x => x.k === k);
+  const c   = _ctClauses.find(x => x.k === k);
+  if (!src || !c) return;
+  c.t = src.t;
+  c.c = src.c.map(p => (typeof p === 'string' ? { t: p } : { si: p.si, t: p.t }));
+  c.modifiee = false;
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+};
+
+window.ctNouvelleClause = function () {
+  const k = 'libre_' + Date.now().toString(36);
+  _ctClauses.push({
+    k, t: 'Nouvel article', tag: '', on: true, libre: true, modifiee: false,
+    c: [{ t: 'Rédigez ici le texte de l’article. Les informations saisies plus haut '
+           + 's’y insèrent avec le menu ci-dessous, par exemple {{sal_nom_complet}}.' }],
+  });
+  _ctEditK = k;
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+  document.getElementById('ct-edit-titre')?.focus();
+};
+
+window.ctSupprimer = function (k) {
+  const i = _ctClauses.findIndex(x => x.k === k);
+  if (i < 0 || !_ctClauses[i].libre) return;
+  _ctClauses.splice(i, 1);
+  if (_ctEditK === k) _ctEditK = null;
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+};
+
+window.ctToutCocher = function (on) {
+  _ctClauses.forEach(c => { c.on = on; });
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+};
+
+window.ctRetablirClauses = function () {
+  _ctClauses = _ctClausesNeuves();
+  _ctEditK = null;
+  ctRenderClauses(); ctRenderApercu(); _ctSauver();
+};
+
+// ── Brouillon local ───────────────────────────────────────────────────────────
+// Reste sur le poste : rien de tout cela ne part sur le réseau.
+function _ctSauver() {
+  clearTimeout(_ctSaveT);
+  _ctSaveT = setTimeout(() => {
+    try {
+      localStorage.setItem(CT_BROUILLON, JSON.stringify({
+        d: _ctD,
+        cl: _ctClauses.map(c => ({
+          k: c.k, on: c.on, libre: c.libre, modifiee: c.modifiee,
+          t: (c.modifiee || c.libre) ? c.t : undefined,
+          c: (c.modifiee || c.libre) ? c.c : undefined,
+        })),
+      }));
+    } catch (e) { /* mode privé, quota, stockage bloqué : le module marche sans */ }
+  }, 400);
+}
+
+// Rend `true` si un brouillon a été repris, `false` sinon — c'est ce qui décide
+// si le formulaire s'ouvre garni au hasard ou sur ce que l'utilisateur avait laissé.
+function _ctCharger() {
+  let brut = null;
+  try { brut = localStorage.getItem(CT_BROUILLON); } catch (e) { return false; }
+  if (!brut) return false;
+  let etat;
+  try { etat = JSON.parse(brut); } catch (e) { return false; }
+  if (!etat || typeof etat !== 'object') return false;
+
+  if (etat.d && typeof etat.d === 'object') Object.assign(_ctD, etat.d);
+
+  if (Array.isArray(etat.cl)) {
+    const neuves = _ctClausesNeuves();
+    const parCle = {};
+    neuves.forEach(c => { parCle[c.k] = c; });
+    const ordonnees = [];
+    etat.cl.forEach(s => {
+      if (!s || !s.k) return;
+      let c = parCle[s.k];
+      if (!c) {
+        if (!s.libre || !Array.isArray(s.c)) return;   // clause inconnue et non reconstructible
+        c = { k: s.k, t: s.t || 'Article', tag: '', libre: true, c: s.c };
+      } else {
+        delete parCle[s.k];
+      }
+      c.on = !!s.on;
+      c.modifiee = !!s.modifiee;
+      if (s.t) c.t = s.t;
+      if (Array.isArray(s.c) && s.c.length) c.c = s.c;
+      ordonnees.push(c);
+    });
+    // Une clause ajoutée au catalogue depuis l'écriture du brouillon doit
+    // apparaître quand même, plutôt que de disparaître silencieusement.
+    neuves.forEach(c => { if (parCle[c.k]) ordonnees.push(c); });
+    if (ordonnees.length) _ctClauses = ordonnees;
+  }
+  return true;
+}
+
+window.ctViderBrouillon = function () {
+  try { localStorage.removeItem(CT_BROUILLON); } catch (e) { /* rien à vider */ }
+  _ctD = {}; _ctEditK = null;
+  _ctClauses = _ctClausesNeuves();
+  _ctDefauts();
+  _ctEcrireForm();
+  const pe = document.getElementById('ct-pre-emp'); if (pe) pe.value = '';
+  const ps = document.getElementById('ct-pre-sal'); if (ps) ps.value = '';
+  ctOnSaisie();
+  ctRenderClauses();
+  _ctEtat('brouillon vidé — les libellés d’attente sont de nouveau visibles', '');
+};
+
+// ── Bloc D : le PDF, fabriqué par le moteur Rust ──────────────────────────────
+function _ctEtat(msg, cls) {
+  const el = document.getElementById('ct-pdf-etat');
+  if (!el) return;
+  el.className = 'ct-pdf-etat' + (cls ? ' ' + cls : '');
+  el.textContent = msg;
+}
+
+function _ctNomFichier() {
+  const brut = ['contrat', _ctD.sal_nom_usage || _ctD.sal_nom, _ctD.sal_prenoms,
+                _ctD.ctr_date_effet || _gaabAujourdhui()].filter(Boolean).join('_');
+  return brut.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+             .replace(/[^A-Za-z0-9_-]+/g, '_').replace(/_+/g, '_') + '.pdf';
+}
+
+window.ctGenererPdf = async function () {
+  const doc = _ctComposer();
+  if (!doc.articles.length) {
+    _ctEtat('aucune clause retenue — rien à imprimer', 'err');
+    return;
+  }
+  _ctEtat('composition en cours…', '');
+  try {
+    const r = await api('generer_contrat_pdf', { contrat: doc });
+    const bin = atob(r.pdf_base64);
+    const u8  = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+
+    const url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
+    const nom = _ctNomFichier();
+    const a = document.createElement('a');
+    a.href = url; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    _ctEtat('✓ ' + nom + ' — ' + r.pages + ' page' + (r.pages > 1 ? 's' : '')
+            + ', ' + Math.max(1, Math.round(u8.length / 1024)) + ' Ko', 'ok');
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    _ctEtat('échec de la génération : ' + msg + ' — le moteur tourne-t-il ? (cargo run --bin web)', 'err');
+  }
+};
+
+// ── Entrée ────────────────────────────────────────────────────────────────────
+function contratInit() {
+  if (_ctInited) {
+    _ctMajListeSalaries();   // l'effectif a pu s'agrandir depuis la dernière visite
+    return;
+  }
+  _ctInited = true;
+  _ctClauses = _ctClausesNeuves();
+  ctRenderForm();
+  _ctDefauts();
+  // Un formulaire vide ne montre rien de la mise en page : à la première ouverture,
+  // tout est garni au hasard. « Vider le brouillon » rend l'état vierge, celui où
+  // chaque clause affiche le libellé de l'information qu'elle attend.
+  if (!_ctCharger()) Object.assign(_ctD, _ctAleatoire());
+  _ctEcrireForm();
+  _ctLireForm();
+  _ctMajCond();
+  _ctMajCompteurs();
+  ctRenderClauses();
+  ctRenderApercu();
+}
+
+// Appelée depuis Gaabrielle : bouton « § Contrat » de la barre d'outils, et
+// bouton « Contrat » de l'écran de suite d'embauche (qui passe le matricule
+// du salarié tout juste enregistré).
+window.ctDepuisGaabrielle = function (mat) {
+  setView('contrat');
+  if (mat) {
+    const sel = document.getElementById('ct-pre-sal');
+    if (sel) { sel.value = mat; ctPrefillSal(); }
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // ── Quizz Paie ────────────────────────────────────────────────────────────────
@@ -6145,25 +7765,15 @@ async function mlLoadLibrary() {
     }
     list.innerHTML = data.map(s => `
       <div class="ml-seq-item" data-id="${s.id}">
-        <span class="ml-seq-lbl">${s.label || '(sans label)'}</span>
+        <span class="ml-seq-lbl">${esc(s.label || '(sans label)')}</span>
         <span class="ml-seq-id">${s.id.slice(0,8)}…</span>
         <span class="ml-seq-date">${new Date(s.created_at).toLocaleString('fr-FR')}</span>
-        <button class="ml-btn ml-danger ml-del" data-id="${s.id}" style="padding:0.25rem 0.6rem;font-size:0.58rem">✕</button>
       </div>`).join('');
+    // Pas de bouton de suppression ici : la bibliothèque est publique, et
+    // l'endpoint DELETE est désormais réservé à l'espace admin.
     list.querySelectorAll('.ml-seq-item').forEach(el => {
-      el.addEventListener('click', ev => {
-        if (ev.target.classList.contains('ml-del')) return;
-        mlLoadAndReplay(el.dataset.id);
-      });
+      el.addEventListener('click', () => mlLoadAndReplay(el.dataset.id));
     });
-    list.querySelectorAll('.ml-del').forEach(btn =>
-      btn.addEventListener('click', async ev => {
-        ev.stopPropagation();
-        if (!confirm('Supprimer cette séquence ?')) return;
-        await fetch(`/api/meliinda/sequence/${btn.dataset.id}`, { method: 'DELETE' });
-        mlLoadLibrary();
-      })
-    );
   } catch { list.innerHTML = '<span style="font-size:0.65rem;color:var(--red)">Erreur de chargement.</span>'; }
 }
 

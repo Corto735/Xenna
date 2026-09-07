@@ -45,6 +45,20 @@ serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 chrono    = { version = "0.4", features = ["serde"] }
+
+# Génération du PDF du contrat de travail. Aucune feature par défaut : ni moteur
+# HTML, ni décodeurs d'images — la mise en page est écrite à la main dans
+# src/contrat/, et printpdf ne sert qu'à écrire le fichier et à donner les
+# métriques de glyphes.
+#
+# COMPROMIS ASSUMÉ : le sous-ensemblage des fontes n'existe chez printpdf que sous
+# la feature `text_layout`. Sans elle, chaque PDF embarque les trois fichiers
+# entiers et pèse ~630 Ko au lieu d'une centaine. Avec elle, on tire tout
+# l'empilement azul — moteur de mise en forme, taffy, rust-fontconfig — dans
+# l'image Docker, et le code se met à dépendre de noms de méthodes internes qui
+# changent avec la feature. Un contrat de 630 Ko s'envoie très bien par courriel ;
+# une dépendance à fontconfig dans un conteneur, beaucoup moins.
+printpdf = { version = "0.12", default-features = false }
 thiserror = "2"
 anyhow    = "1"
 

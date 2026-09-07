@@ -37,7 +37,14 @@ cargo clippy                          # Lint Rust code
 ```bash
 cargo test --test fiabilite          # filet de sécurité multi-pays + golden France
 cargo test --test i18n               # couverture des 6 langues (libellés, explications, réfs légales)
+cargo test --test contrat_pdf        # moteur de composition du contrat de travail
 ```
+`src-tauri/tests/contrat_pdf.rs` vérifie ce qu'un PDF ne laisse pas relire : magie
+`%PDF-`, pagination proportionnelle à la longueur, aucun titre d'article seul en
+bas de page, aucun débordement de la colonne de texte, couverture typographique
+française des fontes. Un test `#[ignore]` écrit un PDF pour inspection à l'œil :
+`cargo test --test contrat_pdf -- --ignored --nocapture` (chemin via `CONTRAT_PDF_OUT`).
+
 `src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 39 pays (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
 
 ## Déploiement (production)
@@ -74,7 +81,13 @@ src-tauri/src/
 │   ├── cotisations.rs — individual deduction/contribution calculators
 │   └── annee.rs      — monthly projections + Fillon annualization
 ├── commands/
-│   └── paie.rs       — Tauri commands: calculer_bulletin, simuler_annee
+│   ├── paie.rs       — Tauri commands: calculer_bulletin, simuler_annee
+│   └── contrat.rs    — Tauri command: generer_contrat_pdf
+├── contrat/          — génération du PDF du contrat de travail (module RH)
+│   ├── modele.rs     — DTO reçus du front (runs stylés, articles)
+│   ├── police.rs     — 3 fontes embarquées + mesure de largeur des glyphes
+│   ├── mise_en_page.rs — découpe des lignes, justification, pagination
+│   └── pdf.rs        — assemblage printpdf → octets
 ├── db/
 │   ├── context.rs    — ContextPaie: loads rates from SQLite for a given date
 │   └── mod.rs        — SQLx async migration runner
@@ -103,3 +116,36 @@ Rates, ceilings (SMIC, PMSS), and employer organisations are stored in SQLite wi
 - **Fillon reduction** — calculated monthly then regularized annually; the annualization logic in `annee.rs` is intentionally non-trivial
 - **PMSS / SMIC** — historical ceiling values stored per date in the DB; always fetch from `ContextPaie`, never hardcode
 - **Cotisations** are split between salariale (employee) and patronale (employer); both appear on the bulletin
+
+## Module RH « Gaabrielle » — contrat de travail
+
+La vue `contrat` (`index.html`, `<div class="view-contrat">` ; `src/main.js`,
+section « Contrat de travail », préfixe CSS `ct-`) compose un contrat français :
+saisie exhaustive (employeur, salarié, contrat, poste, rémunération), catalogue de
+20 clauses cochables et réordonnables, aperçu temps réel, puis PDF fabriqué par le
+back Rust.
+
+Deux règles à respecter en y touchant :
+
+1. **`CT_CHAMPS` est la seule déclaration d'une information.** Chaque entrée
+   produit à la fois le champ de saisie, la variable `{{cle}}` utilisable dans les
+   clauses, et le libellé affiché tant que rien n'est saisi. Ajouter une
+   information, c'est ajouter une ligne — pas trois.
+2. **La numérotation des articles est le rang parmi les clauses cochées**, jamais
+   un numéro stocké. Décocher un article ne laisse donc pas de trou, et les renvois
+   `{{ref:cle}}` suivent tout seuls (ou affichent `[ARTICLE NON RETENU]`).
+
+Le front assemble, numérote et substitue ; le Rust ne fait que la composition
+typographique. Ne pas dupliquer le catalogue de clauses côté Rust : les clauses
+sont éditables par l'utilisateur, la vérité est donc côté front.
+
+**Le formulaire s'ouvre garni au hasard** (`_ctAleatoire`) : un contrat vide ne
+montre rien de la mise en page. Les valeurs sont cohérentes entre elles — dates
+ordonnées, taux horaire déduit du brut mensuel et de la quotité, essai et préavis
+selon le statut. « Vider le brouillon » rend l'état vierge, celui où chaque clause
+affiche le libellé de l'information qu'elle attend. Le bouton 🎲 rejoue un tirage.
+
+Contenu des clauses volontairement loufoque (futur proche dystopique) : cette
+itération sert à éprouver la mise en page, pas à produire un contrat opposable.
+Le fond des valeurs tirées au sort emprunte à la fantasy européenne, dans le
+registre de l'effectif de Gaabrielle.
