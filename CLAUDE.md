@@ -80,9 +80,10 @@ src-tauri/src/
 │   ├── bulletin.rs   — assembles all cotisations into a Bulletin
 │   ├── cotisations.rs — individual deduction/contribution calculators
 │   └── annee.rs      — monthly projections + Fillon annualization
-├── commands/
+├── commands/         — compilé sous la seule feature `desktop`
 │   ├── paie.rs       — Tauri commands: calculer_bulletin, simuler_annee
-│   └── contrat.rs    — Tauri command: generer_contrat_pdf
+│   ├── contrat.rs    — Tauri command: generer_contrat_pdf
+│   └── ccn.rs        — Tauri commands: dossier_ccn, conventions_ccn
 ├── contrat/          — génération du PDF du contrat de travail (module RH)
 │   ├── modele.rs     — DTO reçus du front (runs stylés, articles)
 │   ├── police.rs     — 3 fontes embarquées + mesure de largeur des glyphes
