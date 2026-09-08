@@ -13,6 +13,70 @@
       window.matchMedia('(max-width: 680px)').matches ? 'init-mobile' : 'init-desktop'
     );
   </script>
+
+  <!-- Couleur du titre « paye ton bulletin » — tirage au sort à chaque chargement.
+       Rien n'est mémorisé : recharger la page redonne la main au hasard.
+       Contrastes vérifiés sur le fond #060810 de l'en-tête, de 4,04:1 (violet)
+       à 20:1 (blanc) — tous au-dessus du seuil AA grand texte (3:1). -->
+  <script>
+    (() => {
+      // Les 9 couleurs du tirage courant. Elles servent aussi à la rotation de
+      // l'easter egg : le blanc n'entre ni dans l'une ni dans l'autre.
+      const FLASH = [
+        '#ff1e1e', // rouge vif
+        '#7cff3f', // vert pomme
+        '#2f81ff', // bleu électrique
+        '#ffe400', // jaune pétant
+        '#9b2fff', // violet intense
+        '#ff7a00', // orange vif
+        '#4169e1', // bleu roi
+        '#ff2ec4', // rose fuchsia
+        '#00e5ff', // cyan vif — 9ᵉ couleur ajoutée d'office, 8 avaient été données
+      ];
+      const BLANC              = '#ffffff';
+      const CHANCE_BLANC       = 0.001;  // 1 chargement sur 1 000
+      const CHANCE_ARC_EN_CIEL = 0.01;   // 1 % des chargements
+      const PERIODE_MS         = 5000;   // rotation ordinaire
+      const PAUSE_BLANC_MS     = 4000;   // jackpot : le blanc tient d'abord 4 s
+      const PERIODE_JACKPOT_MS = 200;    // puis ça s'emballe
+
+      const tire = () => FLASH[Math.floor(Math.random() * FLASH.length)];
+      // Une variable CSS, pas un style en dur sur l'élément : une couleur posée
+      // en ligne écraserait les thèmes et laisserait un titre fuchsia en Minitel.
+      const pose = c => document.documentElement.style.setProperty('--titre-flash', c);
+
+      // Les deux tirages sont indépendants et se font tous les deux : c'est leur
+      // CONJONCTION qui déclenche le jackpot, il faut donc connaître les deux.
+      const blanc     = Math.random() < CHANCE_BLANC;
+      const arcEnCiel = Math.random() < CHANCE_ARC_EN_CIEL;
+
+      // Le blanc est hors palette : il ne sort ni du tirage courant ni de la
+      // rotation, il tombe 1 fois sur 1 000 et il RESTE — sauf jackpot.
+      let courante = blanc ? BLANC : tire();
+      pose(courante);
+
+      // Mouvement réduit : on s'en tient à la couleur posée, aucune rotation.
+      if (!arcEnCiel || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      // Blanc ET arc-en-ciel : 1 chance sur 100 000. Le blanc tient 4 s — le
+      // temps de réaliser ce qu'on a sous les yeux — puis la rotation s'emballe
+      // à 0,2 s au lieu de 5. Sans jackpot, l'arc-en-ciel ordinaire démarre tout
+      // de suite. Dans les deux cas la rotation ne pioche que dans les 9, et ne
+      // retombe jamais deux fois de suite sur la même couleur.
+      const demarre = periode => setInterval(() => {
+        let suivante;
+        do { suivante = tire(); } while (suivante === courante);
+        courante = suivante;
+        pose(courante);
+      }, periode);
+
+      if (!blanc) { demarre(PERIODE_MS); return; }
+      // À 0,2 s d'intervalle, le fondu de 0,6 s empilerait les couleurs en
+      // bouillie : on le raccourcit le temps du jackpot.
+      document.documentElement.classList.add('titre-jackpot');
+      setTimeout(() => demarre(PERIODE_JACKPOT_MS), PAUSE_BLANC_MS);
+    })();
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -33,6 +97,16 @@
       --purple: #c084fc;
       --gray:   #7a9ab8;
       --white:  #e8f4ff;
+      /* ── Rampe « encre » : la couleur du TEXTE, séparée de la structure ──
+         --dim / --muted / --gray restent bleus car ils portent aussi des
+         bordures, des fonds et des traits de graphique. Seules ces trois
+         variables-ci colorent des caractères, et elles passent en jaune pâle :
+         le bleu clair sur fond bleu foncé plafonnait à 2,15:1 de contraste.
+         Rapports mesurés sur --bg : 7,14 / 9,48 / 12,32 — tous AAA, et tous
+         sous --text (13,74) pour préserver la hiérarchie de lecture. */
+      --dim-txt:   #aa9c66;
+      --muted-txt: #c4b47e;
+      --gray-txt:  #dccd97;
       /* Police unique : Roboto Regular partout (libellés, tableaux, SVG).
          `--font-mono` conserve son nom historique mais pointe sur Roboto. */
       --font-mono: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
@@ -70,13 +144,17 @@
     .banner-title {
       font-size: 1.55rem;
       font-weight: bold;
-      color: var(--blue);
+      color: var(--titre-flash, var(--blue));
       letter-spacing: 0.1em;
-      text-shadow: 0 0 20px rgba(56,189,248,0.4);
+      /* Le halo suit la couleur tirée, sinon il jure avec elle. */
+      text-shadow: 0 0 20px color-mix(in srgb, var(--titre-flash, var(--blue)) 40%, transparent);
       line-height: 1;
+      transition: color 0.6s ease, text-shadow 0.6s ease;
     }
+    @media (prefers-reduced-motion: reduce) { .banner-title { transition: none; } }
+    html.titre-jackpot .banner-title { transition-duration: 0.12s; }
     .banner-sub {
-      color: var(--muted);
+      color: var(--muted-txt);
       font-size: 0.7rem;
       margin-top: 0.35rem;
     }
@@ -92,11 +170,11 @@
       align-items: center;
       gap: 0.5rem;
     }
-    .view-label { color: var(--muted); font-size: 0.72rem; margin-right: 0.25rem; }
+    .view-label { color: var(--muted-txt); font-size: 0.72rem; margin-right: 0.25rem; }
     .btn-view {
       background: none;
       border: 1px solid var(--dim);
-      color: var(--muted);
+      color: var(--muted-txt);
       font-family: inherit;
       font-size: 0.72rem;
       padding: 0.2rem 0.7rem;
@@ -151,7 +229,7 @@
     .trad-btn {
       background: none;
       border: 1px solid var(--dim);
-      color: var(--muted);
+      color: var(--muted-txt);
       font-family: inherit;
       font-size: 0.72rem;
       padding: 0.2rem 0.7rem;
@@ -175,7 +253,7 @@
       min-width: 160px;
     }
     .trad-panel.open { display: flex; }
-    .trad-panel-title { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+    .trad-panel-title { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
     .trad-lang-btn {
       background: none;
       border: 1px solid var(--dim);
@@ -192,7 +270,7 @@
     .trad-lang-btn.active { background: var(--blue); border-color: var(--blue); color: var(--bg); }
     .a11y-panel-title {
       font-size: 0.6rem;
-      color: var(--dim);
+      color: var(--dim-txt);
       letter-spacing: 0.1em;
       margin-bottom: 0.1rem;
     }
@@ -249,7 +327,7 @@
       border: 1px solid #ffe066;
       border-right: none;
       border-bottom: none;
-      color: var(--muted);
+      color: var(--muted-txt);
       font-size: 0.62rem;
       width: 1.8rem;
       height: 3rem;
@@ -271,7 +349,7 @@
     @keyframes a11y-wakeup {
       0%   { opacity: 1; color: var(--wakeup-color); border-color: var(--wakeup-color); }
       75%  { opacity: 1; color: var(--wakeup-color); border-color: var(--wakeup-color); }
-      100% { opacity: 0.2; color: var(--muted); border-color: #ffe066; }
+      100% { opacity: 0.2; color: var(--muted-txt); border-color: #ffe066; }
     }
     .a11y-float-btn.wakeup { animation: a11y-wakeup 3.5s ease-out forwards; }
     .a11y-float-btn.active {
@@ -296,6 +374,8 @@
       --orange: #000000; --green:  #000000; --purple: #000000;
       --gray:   #000000; --yellow: #000000; --white:  #000000;
       --electric-blue: #000000;
+      --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
+      --titre-flash: var(--blue);
     }
     /* Zébrures mobile — deux gris très clairs, texte noir partout */
     body.bw-mode .mob-row:nth-child(odd)  { background: #ffffff !important; }
@@ -368,6 +448,8 @@
       --green:  #66ff66;
       --purple: #cc99ff;
       --gray:   #dddddd;
+      --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
+      --titre-flash: var(--blue);
       font-size: 1.25rem;
     }
     body.hv-mode *:focus-visible {
@@ -444,6 +526,8 @@
       --purple: var(--mnt-mid);
       --gray:   var(--mnt-mid);
       --white:  var(--mnt-bright);
+      --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
+      --titre-flash: var(--blue);
 
       background: #000000;
       letter-spacing: 0.06em;
@@ -562,7 +646,7 @@
     .field label {
       display: block;
       font-size: 0.65rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       margin-bottom: 0.15rem;
       letter-spacing: 0.06em;
     }
@@ -606,7 +690,7 @@
     .result-panel { flex: 1; overflow: auto; }
     .empty-ascii {
       padding: 2rem 2.5rem;
-      color: var(--dim);
+      color: var(--dim-txt);
       font-size: 0.78rem;
       line-height: 1.7;
     }
@@ -631,7 +715,7 @@
       border-right: 1px solid var(--border);
     }
     .sb-cell:last-child { border-right: none; }
-    .sb-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .sb-lbl { font-size: 0.6rem; color: var(--muted-txt); text-transform: uppercase; letter-spacing: 0.08em; }
     .sb-val { font-size: 1rem; font-weight: bold; margin-top: 0.1rem; font-variant-numeric: tabular-nums; }
 
     /* Cellule retenues (cot. salariales + PAS) */
@@ -643,7 +727,7 @@
       gap: 0.6rem;
       font-size: 0.72rem;
     }
-    .sb-ded-row span:first-child { color: var(--muted); }
+    .sb-ded-row span:first-child { color: var(--muted-txt); }
     .sb-ded-row span:last-child  { font-variant-numeric: tabular-nums; font-weight: bold; white-space: nowrap; }
     .sb-ded-total {
       display: flex;
@@ -657,8 +741,8 @@
       margin-top: 0.05rem;
       font-variant-numeric: tabular-nums;
     }
-    .sb-ded-total span:first-child { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .sb-val.c-gray   { color: var(--gray); }
+    .sb-ded-total span:first-child { color: var(--muted-txt); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sb-val.c-gray   { color: var(--gray-txt); }
     .sb-val.c-green  { color: var(--green); }
     .sb-val.c-red    { color: var(--red); }
     .sb-val.c-orange { color: var(--orange); }
@@ -678,6 +762,137 @@
       border-bottom: 1px solid var(--border);
       border-top: 1px solid var(--border);
     }
+    /* ── Extrait DSN (bas de bulletin) ────────────────────────── */
+    /* Uniquement des var() : les thèmes N&B, minitel et dyslexie
+       redéfinissent les variables, la section suit sans règle dédiée. */
+    .dsn-wrap { border-top: 1px solid var(--border); }
+    .dsn-intro {
+      padding: 0.7rem 0.9rem 0.5rem;
+      font-size: 0.7rem;
+      line-height: 1.55;
+      color: var(--muted-txt);
+      max-width: 62ch;
+    }
+    .dsn-btn {
+      margin: 0 0.9rem 0.9rem;
+      padding: 0.4rem 0.9rem;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--yellow);
+      font-family: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+    .dsn-btn:hover { border-color: var(--yellow); }
+    .dsn-panel { border-top: 1px solid var(--border); }
+    .dsn-warn {
+      padding: 0.45rem 0.9rem;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem;
+      color: var(--orange);
+    }
+    .dsn-tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+    .dsn-tab {
+      padding: 0.35rem 0.8rem;
+      background: none;
+      border: none;
+      border-right: 1px solid var(--border);
+      color: var(--dim-txt);
+      font-family: inherit;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+    .dsn-tab:hover { color: var(--text); }
+    .dsn-tab.is-on { color: var(--yellow); background: var(--bg3); }
+    .dsn-vue { padding: 0.2rem 0 1rem; }
+    .dsn-bloc { border-bottom: 1px solid var(--border); }
+    .dsn-bloc-head {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline;
+      padding: 0.4rem 0.9rem 0.2rem;
+      background: var(--bg3);
+    }
+    .dsn-bloc-code { font-size: 0.68rem; font-weight: bold; color: var(--blue); }
+    .dsn-bloc-lib  { font-size: 0.66rem; color: var(--text); }
+    .dsn-bloc-role {
+      padding: 0.25rem 0.9rem 0.5rem;
+      background: var(--bg3);
+      font-size: 0.65rem;
+      line-height: 1.5;
+      color: var(--muted-txt);
+      /* Pas de max-width ici : le bloc porte un fond, une largeur bridée
+         laisserait un rectangle tronqué au milieu de l'en-tête. */
+    }
+    .dsn-rub { padding: 0.35rem 0.9rem 0.4rem 1.6rem; }
+    .dsn-rub + .dsn-rub { border-top: 1px dotted var(--border); }
+    .dsn-rub-line { font-size: 0.7rem; word-break: break-all; }
+    .dsn-code { color: var(--blue); }
+    .dsn-virg { color: var(--muted-txt); }
+    .dsn-val  { color: var(--green); }
+    .dsn-rub-lib  { font-size: 0.64rem; color: var(--text); margin-top: 0.15rem; }
+    .dsn-rub-sens { font-size: 0.64rem; color: var(--muted-txt); line-height: 1.5; margin-top: 0.15rem; max-width: 78ch; }
+    .dsn-note {
+      margin: 0.6rem 0.9rem;
+      font-size: 0.65rem;
+      line-height: 1.5;
+      color: var(--muted-txt);
+      max-width: 78ch;
+    }
+    .dsn-note code { color: var(--green); }
+    .dsn-copy {
+      margin: 0 0.9rem 0.5rem;
+      padding: 0.28rem 0.7rem;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.62rem;
+      cursor: pointer;
+    }
+    .dsn-copy:hover { border-color: var(--green); color: var(--green); }
+    .dsn-raw {
+      margin: 0 0.9rem;
+      padding: 0.6rem 0.8rem;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      font-size: 0.66rem;
+      line-height: 1.45;
+      color: var(--text);
+      max-height: 26rem;
+      overflow: auto;
+      white-space: pre;
+    }
+    .dsn-det { margin: 0.5rem 0.9rem; border: 1px solid var(--border); }
+    .dsn-det > summary, .dsn-det-t {
+      padding: 0.35rem 0.7rem;
+      background: var(--bg3);
+      font-size: 0.66rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .dsn-det-t { cursor: default; }
+    .dsn-n { color: var(--dim-txt); font-size: 0.6rem; }
+    .dsn-tbl { width: 100%; border-collapse: collapse; font-size: 0.64rem; }
+    .dsn-tbl th {
+      text-align: left; padding: 0.25rem 0.7rem;
+      color: var(--dim-txt); font-weight: normal;
+      border-bottom: 1px solid var(--border);
+    }
+    .dsn-tbl td { padding: 0.2rem 0.7rem; color: var(--muted-txt); vertical-align: top; }
+    .dsn-tbl tr:nth-child(even) td { background: var(--bg3); }
+    /* width:1% + nowrap = la colonne se réduit à son contenu, le libellé
+       récupère toute la largeur restante. */
+    .dsn-tbl .dsn-c { color: var(--blue); white-space: nowrap; width: 1%; }
+    .dsn-tbl .dsn-r { text-align: right; white-space: nowrap; width: 1%; }
+    .dsn-tbl tr.dsn-on td { color: var(--text); }
+    .dsn-tbl tr.dsn-on .dsn-c { color: var(--green); font-weight: bold; }
+    .dsn-tag { color: var(--green); font-size: 0.6rem; }
+    .dsn-lac { margin: 0.6rem 0.9rem 0; padding-left: 1.1rem; max-width: 82ch; }
+    .dsn-lac li { font-size: 0.66rem; line-height: 1.55; color: var(--muted-txt); margin-bottom: 0.55rem; }
+    .dsn-lac b { color: var(--text); }
+
     .btn-add-rem {
       width: 22px; height: 22px; flex-shrink: 0;
       background: transparent; border: 1.5px solid #ffd700; color: #ffd700;
@@ -759,7 +974,7 @@
     .absence-preview {
       display: flex; flex-direction: column; gap: 0.15rem;
       border-top: 1px solid var(--border); padding-top: 0.3rem; margin-bottom: 0.35rem;
-      font-size: 0.65rem; color: var(--muted);
+      font-size: 0.65rem; color: var(--muted-txt);
     }
     .absence-preview .retenue-val { color: #ff6b6b; font-weight: bold; font-size: 0.72rem; }
     .absence-actions { display: flex; gap: 0.5rem; }
@@ -769,11 +984,11 @@
     }
     .btn-absence-clear {
       padding: 0.15rem 0.6rem; font-size: 0.65rem; cursor: pointer;
-      background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 2px;
+      background: transparent; border: 1px solid var(--border); color: var(--muted-txt); border-radius: 2px;
     }
     .rem-absence-line {
       display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: var(--muted);
+      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: var(--muted-txt);
     }
     /* Montants alignés en colonne tabulaire, cohérente avec les autres lignes
        (Salaire de base, Total brut, .mob-val) — pas collés au bord droit. */
@@ -798,7 +1013,7 @@
        négative pour annuler le padding 0,9rem de .rem-section → les montants
        s'alignent nativement sur la colonne PART SALARIÉ (4e colonne). */
     .ascii-tbl.abs-embed { margin: 0 -0.9rem; width: calc(100% + 1.8rem); }
-    .ascii-tbl.abs-embed td { font-size: 0.68rem; color: var(--muted); padding: 0.2rem 0.75rem; }
+    .ascii-tbl.abs-embed td { font-size: 0.68rem; color: var(--muted-txt); padding: 0.2rem 0.75rem; }
     .ascii-tbl.abs-embed td:first-child { padding-left: 1.7rem; }
     .ascii-tbl.abs-embed td.r { text-align: right; font-variant-numeric: tabular-nums; }
     .ascii-tbl.abs-embed td.c-red   { color: #ff6b6b; font-weight: bold; }
@@ -819,11 +1034,11 @@
     /* Maintien, IJSS et cartouches perte/coût alignés sur une même ligne. */
     .frise-row { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: flex-start; }
     .frise-wrap { margin: 0; }
-    .frise-title { font-size: 0.62rem; color: var(--gray); margin-bottom: 0.2rem; letter-spacing: 0.03em; }
+    .frise-title { font-size: 0.62rem; color: var(--gray-txt); margin-bottom: 0.2rem; letter-spacing: 0.03em; }
     /* Colonnes en largeur FIXE (14 px) : la taille des carrés ne dépend plus de
        la largeur du conteneur ni du libellé → maintien et IJSS strictement identiques. */
     .frise-grid { display: grid; grid-template-columns: repeat(7, 14px); gap: 2px; justify-content: start; }
-    .frise-head { font-size: 0.5rem; color: var(--muted); text-align: center; text-transform: uppercase; line-height: 1.3; }
+    .frise-head { font-size: 0.5rem; color: var(--muted-txt); text-align: center; text-transform: uppercase; line-height: 1.3; }
     .frise-sq { aspect-ratio: 1 / 1; border-radius: 2px; cursor: help; box-sizing: border-box; }
     /* Carence (maintien & IJSS) : transparente, cernée d'un liseré gris clair épais. */
     .frise-sq--carence { background: transparent; border: 2px solid color-mix(in srgb, var(--gray) 55%, #ffffff); }
@@ -839,10 +1054,10 @@
     .frise-sq--out { opacity: 0.28; }
     .frise-note { border: 1px solid var(--border); border-left: 3px solid var(--blue); background: var(--bg3); border-radius: 4px; padding: 0.4rem 0.55rem; margin-bottom: 0.5rem; }
     .frise-note-title { font-size: 0.68rem; font-weight: bold; color: var(--text); margin-bottom: 0.2rem; }
-    .frise-note-line { font-size: 0.64rem; color: var(--muted); }
+    .frise-note-line { font-size: 0.64rem; color: var(--muted-txt); }
     .frise-note-dim { font-style: italic; opacity: 0.85; }
     .frise-card { flex: 1 1 150px; border: 1px solid var(--border); background: var(--bg3); border-radius: 4px; padding: 0.35rem 0.5rem; display: flex; flex-direction: column; gap: 0.15rem; }
-    .frise-card-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .frise-card-lbl { font-size: 0.6rem; color: var(--muted-txt); text-transform: uppercase; letter-spacing: 0.04em; }
     .frise-card-val { font-size: 0.85rem; font-weight: bold; font-variant-numeric: tabular-nums; }
     /* Impression / noir & blanc : les couleurs ne distinguent plus rien → motifs
        et styles de bordure pour différencier carence / taux fort / taux réduit. */
@@ -869,7 +1084,7 @@
     .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
       background: var(--bg3);
-      color: var(--muted);
+      color: var(--muted-txt);
       font-size: 0.62rem;
       text-transform: uppercase;
       letter-spacing: 0.07em;
@@ -890,7 +1105,7 @@
     .ascii-tbl td.r { text-align: right; font-variant-numeric: tabular-nums; }
     .ascii-tbl td.c-sal  { color: #ffe033;        }
     .ascii-tbl td.c-pat  { color: var(--orange); }
-    .ascii-tbl td.c-dim  { color: var(--dim);    }
+    .ascii-tbl td.c-dim  { color: var(--dim-txt);    }
     .ascii-tbl tr.tbl-total td {
       background: var(--bg2);
       border-top: 1px solid var(--border);
@@ -899,7 +1114,7 @@
     }
 
     /* expand indicator */
-    .expand-icon { color: var(--dim); font-size: 0.7rem; margin-right: 0.35rem; }
+    .expand-icon { color: var(--dim-txt); font-size: 0.7rem; margin-right: 0.35rem; }
     .data-row.open .expand-icon { color: var(--blue); }
 
     /* explication */
@@ -916,7 +1131,7 @@
     .expl-txt  { font-size: 0.73rem; color: #fef3a3; line-height: 1.6; flex: 1; }
     .expl-ref  {
       font-size: 0.65rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       border: 1px solid var(--dim);
       padding: 0.25rem 0.5rem;
       flex-shrink: 0;
@@ -980,7 +1195,7 @@
       align-items: center;
     }
     .mob-head-title { font-size: 0.72rem; font-weight: bold; color: var(--blue); letter-spacing: 0.1em; }
-    .mob-head-name  { font-size: 0.72rem; color: var(--gray); }
+    .mob-head-name  { font-size: 0.72rem; color: var(--gray-txt); }
 
     .mob-row {
       display: flex;
@@ -1037,7 +1252,7 @@
     .mob-stripe-pat-b .mob-row,
     .mob-stripe-alleg-b .mob-row { background: #13161f; }
 
-    .mob-lbl { color: var(--gray); flex: 1; padding-right: 0.5rem; }
+    .mob-lbl { color: var(--gray-txt); flex: 1; padding-right: 0.5rem; }
     .mob-val {
       font-size: inherit;
       white-space: nowrap;
@@ -1048,7 +1263,7 @@
     .mob-badge { display:inline-block; padding:0.15rem 0.55rem; border-radius:999px; font-size:0.6rem; font-weight:600; letter-spacing:0.06em; background: transparent; }
     .mob-badge-sal { color: var(--yellow); border: 1.5px solid var(--yellow); }
     .mob-badge-pat { color: var(--orange); border: 1.5px solid var(--orange); }
-    .mob-val.c-gray   { color: var(--gray);   }
+    .mob-val.c-gray   { color: var(--gray-txt);   }
     .mob-val.c-green  { color: var(--green);  }
     .mob-val.c-red    { color: var(--red);    }
     .mob-val.c-orange { color: var(--orange); }
@@ -1066,6 +1281,9 @@
 
     /* ── Accordéon mobile cotisations ─────────────────────── */
     .mob-cot-lbl {
+      /* Les autres libellés de ligne suivent la rampe encre ; les NOMS DE
+         COTISATIONS restent au blanc de --text, comme en vue bureau. */
+      color: var(--text);
       cursor: pointer;
       transition: color 0.12s;
     }
@@ -1133,7 +1351,7 @@
     /* Table annuelle */
     .ann-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
     .ann-tbl thead th {
-      background: var(--bg3); color: var(--muted);
+      background: var(--bg3); color: var(--muted-txt);
       font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em;
       padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border);
       text-align: right; font-weight: normal;
@@ -1157,7 +1375,7 @@
     /* Δ régularisation non nul */
     .delta-nonzero { color: var(--blue); }
     .delta-info-btn {
-      background: none; border: none; color: var(--dim); cursor: pointer;
+      background: none; border: none; color: var(--dim-txt); cursor: pointer;
       font: 0.6rem/1 var(--font-mono, monospace); padding: 0 0.1rem;
       vertical-align: middle; letter-spacing: 0; margin-left: 0.2rem;
     }
@@ -1170,7 +1388,7 @@
     .sim-period {
       padding: 0.22rem 0.9rem;
       font-size: 0.62rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       background: var(--bg3);
       border-bottom: 1px solid var(--border);
       letter-spacing: 0.07em;
@@ -1178,7 +1396,7 @@
     .sim-period .sp-accent { color: var(--blue); font-weight: bold; }
 
     /* Date sur l'en-tête du bulletin mobile */
-    .mob-head-date { font-size: 0.62rem; color: var(--muted); margin-top: 0.1rem; }
+    .mob-head-date { font-size: 0.62rem; color: var(--muted-txt); margin-top: 0.1rem; }
 
     /* Responsive auto-mobile */
     @media (max-width: 680px) {
@@ -1274,7 +1492,7 @@
     }
     .fm-title { font-size: 0.78rem; font-weight: bold; color: var(--yellow); letter-spacing: 0.04em; }
     .fm-close {
-      background: none; border: none; color: var(--muted);
+      background: none; border: none; color: var(--muted-txt);
       font-family: inherit; font-size: 1.1rem; cursor: pointer;
       padding: 0; line-height: 1; flex-shrink: 0;
     }
@@ -1284,7 +1502,7 @@
       font-size: 0.6rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--muted);
+      color: var(--muted-txt);
       background: var(--bg3);
       border-bottom: 1px solid var(--border);
     }
@@ -1314,18 +1532,18 @@
     .fm-type-pas   .fm-base-note { border-left-color: var(--purple); }
     .fm-calc { width: 100%; border-collapse: collapse; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
     .fm-calc td { padding: 0.2rem 0; vertical-align: baseline; }
-    .fm-calc td:first-child { color: var(--muted); width: 52%; }
-    .fm-calc td.fm-op { width: 8%; text-align: center; color: var(--dim); }
+    .fm-calc td:first-child { color: var(--muted-txt); width: 52%; }
+    .fm-calc td.fm-op { width: 8%; text-align: center; color: var(--dim-txt); }
     .fm-calc td.fm-val { text-align: right; }
-    .fm-calc td.c-base  { color: var(--gray); }
-    .fm-calc td.c-taux  { color: var(--muted); }
+    .fm-calc td.c-base  { color: var(--gray-txt); }
+    .fm-calc td.c-taux  { color: var(--muted-txt); }
     .fm-calc tr.fm-sep td { border-top: 1px solid var(--border); padding-top: 0.45rem; }
     .fm-calc tr.fm-result td:first-child { color: var(--text); font-weight: bold; }
     .fm-calc tr.fm-result td.fm-val { font-weight: bold; font-size: 0.88rem; }
     .fm-fillon {
       font-size: 0.71rem;
       line-height: 1.85;
-      color: var(--gray);
+      color: var(--gray-txt);
       white-space: pre-wrap;
       margin: 0;
     }
@@ -1335,7 +1553,7 @@
       width: 100%;
       background: none;
       border: 1px solid var(--dim);
-      color: var(--muted);
+      color: var(--muted-txt);
       font-family: inherit;
       font-size: 0.64rem;
       padding: 0.25rem 0.5rem;
@@ -1379,7 +1597,7 @@
       text-align: right;
       font-family: inherit;
     }
-    .duree-unit { font-size: 0.65rem; color: var(--muted); min-width: 0.8rem; }
+    .duree-unit { font-size: 0.65rem; color: var(--muted-txt); min-width: 0.8rem; }
     .chk-apply-brut {
       display: flex; align-items: center; gap: 0.45rem;
       margin-top: 0.55rem; cursor: pointer; user-select: none;
@@ -1420,7 +1638,7 @@
     .param-item:hover { color: var(--blue); }
     .param-item .param-badge {
       font-size: 0.58rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       border: 1px solid var(--dim);
       padding: 0 0.28rem;
       margin-left: 0.3rem;
@@ -1433,7 +1651,7 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       font-weight: 700;
-      color: var(--muted);
+      color: var(--muted-txt);
       margin: 0.55rem 0 0.2rem;
       padding-top: 0.4rem;
       border-top: 1px solid var(--dim);
@@ -1458,7 +1676,7 @@
       margin-top: 0.5rem;
     }
     .pas-tbl th {
-      color: var(--muted);
+      color: var(--muted-txt);
       font-size: 0.62rem;
       font-weight: normal;
       text-transform: uppercase;
@@ -1470,15 +1688,15 @@
     .pas-tbl th:not(:first-child) { text-align: right; }
     .pas-tbl td { padding: 0.2rem 0; color: var(--text); }
     .pas-tbl td:not(:first-child) { text-align: right; }
-    .pas-tbl td:first-child { color: var(--muted); width: 46%; }
-    .pas-tbl tr.pas-zero td { color: var(--dim); }
+    .pas-tbl td:first-child { color: var(--muted-txt); width: 46%; }
+    .pas-tbl tr.pas-zero td { color: var(--dim-txt); }
     .pas-tbl tfoot tr td {
       border-top: 1px solid var(--border);
       padding-top: 0.45rem;
       font-weight: bold;
     }
     .pas-tbl tfoot td:first-child { color: var(--text); }
-    .c-taux  { color: var(--muted); }
+    .c-taux  { color: var(--muted-txt); }
 
     /* ══════════════════════════════
        BURGER MENU
@@ -1553,7 +1771,7 @@
     .burger-item-sub {
       display: block;
       font-size: 0.62rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       margin-top: 0.1rem;
       letter-spacing: 0.03em;
       font-weight: normal;
@@ -1572,18 +1790,18 @@
 
     /* ── Le Chakrram (conventions collectives) ── */
     /* Exposant du titre : « IDCC » posé sur le nom, comme une référence. */
-    .ccn-idcc       { font-size: 0.42em; color: var(--muted); letter-spacing: 0.14em;
+    .ccn-idcc       { font-size: 0.42em; color: var(--muted-txt); letter-spacing: 0.14em;
                       margin-left: 0.2em; vertical-align: super; font-weight: normal; }
 
     .ccn-ident      { border: 1px solid var(--border); background: var(--bg2); padding: 1rem 1.1rem; margin-bottom: 1.4rem; }
     .ccn-ident-code { font-size: 0.62rem; color: var(--yellow); letter-spacing: 0.16em; text-transform: uppercase; }
     .ccn-ident-lib  { font-size: 0.78rem; color: var(--white); letter-spacing: 0.04em; margin: 0.35rem 0 0.6rem; }
-    .ccn-ident-champ{ font-size: 0.66rem; color: var(--muted); letter-spacing: 0.03em; line-height: 1.55; }
-    .ccn-ident-meta { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.08em; margin-top: 0.7rem;
+    .ccn-ident-champ{ font-size: 0.66rem; color: var(--muted-txt); letter-spacing: 0.03em; line-height: 1.55; }
+    .ccn-ident-meta { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.08em; margin-top: 0.7rem;
                       display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; }
 
     .ccn-warn       { border-left: 2px solid var(--yellow); background: var(--bg2);
-                      padding: 0.65rem 0.9rem; font-size: 0.62rem; color: var(--muted);
+                      padding: 0.65rem 0.9rem; font-size: 0.62rem; color: var(--muted-txt);
                       letter-spacing: 0.03em; line-height: 1.5; margin-bottom: 1.4rem; }
 
     /* Sélecteurs branche / catégorie : deux menus déroulants, c'est
@@ -1592,20 +1810,20 @@
                       border: 1px solid var(--border); background: var(--bg2);
                       padding: 0.9rem 1.1rem; margin-bottom: 1.6rem; }
     .ccn-pick       { display: flex; flex-direction: column; gap: 0.35rem; min-width: 15rem; flex: 1; }
-    .ccn-pick-lbl   { font-size: 0.56rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase; }
+    .ccn-pick-lbl   { font-size: 0.56rem; color: var(--dim-txt); letter-spacing: 0.16em; text-transform: uppercase; }
     .ccn-select     { width: 100%; font-family: inherit; font-size: 0.68rem; letter-spacing: 0.04em;
                       background: var(--bg); color: var(--text); border: 1px solid var(--border);
                       padding: 0.5rem 0.6rem; border-radius: 2px; cursor: pointer; }
     .ccn-select:focus { outline: none; border-color: var(--blue); }
-    .ccn-pick-detail{ flex-basis: 100%; font-size: 0.58rem; color: var(--dim); letter-spacing: 0.04em; }
+    .ccn-pick-detail{ flex-basis: 100%; font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.04em; }
 
     /* Titre de section : grille d'un côté, maintien de salaire de l'autre. */
-    .ccn-sec-lbl    { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.16em; text-transform: uppercase;
+    .ccn-sec-lbl    { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.16em; text-transform: uppercase;
                       margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1rem; }
     .ccn-bloc       { border: 1px solid var(--border); padding: 1rem 1.1rem 1.1rem; }
     .ccn-bloc-titre { font-size: 0.76rem; color: var(--white); letter-spacing: 0.04em; margin-bottom: 0.7rem; }
     .ccn-vide       { border: 1px solid var(--border); background: var(--bg2); padding: 1rem 1.1rem;
-                      font-size: 0.64rem; color: var(--muted); letter-spacing: 0.03em; line-height: 1.6; }
+                      font-size: 0.64rem; color: var(--muted-txt); letter-spacing: 0.03em; line-height: 1.6; }
 
     .ccn-corps      { font-size: 0.66rem; color: var(--text); letter-spacing: 0.03em; line-height: 1.7;
                       white-space: pre-wrap; }
@@ -1628,15 +1846,15 @@
     .ccn-table tbody tr:nth-child(even) td { background: var(--bg2); }
     .ccn-table th.num, .ccn-table td.num   { text-align: right; }
     .ccn-table td:first-child { color: var(--white); }
-    .ccn-bareme-note  { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.03em;
+    .ccn-bareme-note  { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.03em;
                         line-height: 1.5; margin-top: 0.4rem; }
 
     .ccn-meta       { margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px solid rgba(255,255,255,0.05);
                       display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem;
                       font-size: 0.58rem; letter-spacing: 0.04em; }
-    .ccn-meta dt    { color: var(--dim); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; }
-    .ccn-meta dd    { color: var(--muted); margin: 0; }
-    .ccn-empty      { font-size: 0.66rem; color: var(--dim); letter-spacing: 0.06em; padding: 2rem 0; text-align: center; }
+    .ccn-meta dt    { color: var(--dim-txt); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; }
+    .ccn-meta dd    { color: var(--muted-txt); margin: 0; }
+    .ccn-empty      { font-size: 0.66rem; color: var(--dim-txt); letter-spacing: 0.06em; padding: 2rem 0; text-align: center; }
 
     @media (max-width: 680px) {
       .ccn-picks    { flex-direction: column; align-items: stretch; }
@@ -1647,9 +1865,9 @@
 
     /* ── Hercule Compta ── */
     .herc-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 4rem; }
-    .herc-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.8rem; }
-    .herc-group-lbl { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }
-    .herc-info { font-size: 0.68rem; color: var(--muted); margin-bottom: 1.2rem; letter-spacing: 0.04em; }
+    .herc-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.8rem; }
+    .herc-group-lbl { font-size: 0.58rem; color: var(--muted-txt); letter-spacing: 0.18em; text-transform: uppercase; margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }
+    .herc-info { font-size: 0.68rem; color: var(--muted-txt); margin-bottom: 1.2rem; letter-spacing: 0.04em; }
     .herc-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
     .herc-table th { padding: 0.4rem 0.6rem; text-align: left; font-size: 0.58rem; color: var(--blue); letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
     .herc-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: middle; }
@@ -1657,7 +1875,7 @@
     .herc-table td:nth-child(3), .herc-table td:nth-child(4) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .herc-d  { color: var(--blue);   }
     .herc-c  { color: var(--yellow); }
-    .herc-num { color: var(--dim); font-size: 0.62rem; letter-spacing: 0.06em; }
+    .herc-num { color: var(--dim-txt); font-size: 0.62rem; letter-spacing: 0.06em; }
     .herc-total td { background: var(--bg3) !important; color: var(--white); font-size: 0.62rem; letter-spacing: 0.08em; }
     .herc-equilibre { font-size: 0.6rem; color: var(--green); margin-top: 0.4rem; letter-spacing: 0.06em; }
     .herc-gate-msg { font-size: 0.65rem; color: var(--blue); letter-spacing: 0.08em; margin-top: 1rem; }
@@ -1668,9 +1886,9 @@
                        background: var(--bg2); gap: 1rem; user-select: none; }
     .herc-vir-hdr:hover { background: var(--bg3); }
     .herc-vir-nom    { font-size: 0.68rem; color: var(--text); letter-spacing: 0.06em; flex: 1; min-width: 0; }
-    .herc-vir-desc   { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.04em; white-space: nowrap; }
+    .herc-vir-desc   { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.04em; white-space: nowrap; }
     .herc-vir-amt    { font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--green); white-space: nowrap; }
-    .herc-vir-caret  { font-size: 0.65rem; color: var(--dim); transition: transform 0.15s; flex-shrink: 0; }
+    .herc-vir-caret  { font-size: 0.65rem; color: var(--dim-txt); transition: transform 0.15s; flex-shrink: 0; }
     .herc-vir-card.open .herc-vir-caret { transform: rotate(90deg); }
     .herc-vir-detail { display: none; padding: 0 0.5rem 0.6rem; overflow-x: auto; }
     .herc-vir-card.open .herc-vir-detail { display: block; }
@@ -1680,7 +1898,7 @@
     .herc-vir-table td { padding: 0.35rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04);
       color: var(--text); vertical-align: middle; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .herc-vir-table td:nth-child(n+2) { text-align: right; }
-    .herc-vir-table td:first-child { text-align: left; color: var(--muted); white-space: normal; }
+    .herc-vir-table td:first-child { text-align: left; color: var(--muted-txt); white-space: normal; }
     .herc-vir-table tr:hover td { background: rgba(255,255,255,0.025); }
     .herc-vir-reduc td { color: var(--red) !important; font-size: 0.62rem; }
     .herc-vir-subtot td { background: var(--bg3) !important; color: var(--green); font-size: 0.62rem;
@@ -1758,7 +1976,7 @@
       border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem;
     }
     .ml-lbl {
-      font-size: 0.55rem; color: var(--dim); letter-spacing: 0.18em;
+      font-size: 0.55rem; color: var(--dim-txt); letter-spacing: 0.18em;
       text-transform: uppercase; margin-bottom: 0.8rem;
     }
     .ml-header {
@@ -1766,7 +1984,7 @@
       border-bottom: 1px solid var(--border); padding-bottom: 1rem;
     }
     .ml-header h2 { font-size: 1.1rem; color: var(--white); letter-spacing: 0.12em; }
-    .ml-header p  { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.15em;
+    .ml-header p  { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.15em;
                     text-transform: uppercase; margin-top: 0.3rem; }
     #ml-editor {
       width: 100%; min-height: 140px; background: var(--bg3);
@@ -1777,7 +1995,7 @@
     }
     #ml-editor:focus { border-color: var(--blue); }
     .ml-stats {
-      font-size: 0.6rem; color: var(--muted); margin-top: 0.6rem;
+      font-size: 0.6rem; color: var(--muted-txt); margin-top: 0.6rem;
       display: flex; gap: 1.5rem; flex-wrap: wrap;
     }
     .ml-stats span { display: flex; gap: 0.4rem; align-items: center; }
@@ -1790,18 +2008,18 @@
       transition: border-color 0.15s;
     }
     #ml-label-input:focus { border-color: var(--blue); }
-    #ml-label-input::placeholder { color: var(--dim); }
+    #ml-label-input::placeholder { color: var(--dim-txt); }
     .ml-btn {
       background: none; border: 1px solid var(--blue); color: var(--blue);
       font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
       padding: 0.45rem 1rem; cursor: pointer; transition: all 0.15s;
     }
     .ml-btn:hover:not(:disabled) { background: var(--blue); color: var(--bg); }
-    .ml-btn:disabled { opacity: 0.35; cursor: default; border-color: var(--dim); color: var(--dim); }
+    .ml-btn:disabled { opacity: 0.35; cursor: default; border-color: var(--dim); color: var(--dim-txt); }
     .ml-btn.ml-danger { border-color: var(--red); color: var(--red); }
     .ml-btn.ml-danger:hover:not(:disabled) { background: var(--red); color: var(--bg); }
     #ml-status {
-      font-size: 0.6rem; color: var(--muted); margin-top: 0.5rem;
+      font-size: 0.6rem; color: var(--muted-txt); margin-top: 0.5rem;
       min-height: 1.2em; letter-spacing: 0.05em;
     }
     #ml-status.ok  { color: var(--green); }
@@ -1827,8 +2045,8 @@
     }
     .ml-seq-item:hover { border-color: var(--blue); }
     .ml-seq-item .ml-seq-lbl  { color: var(--white); flex: 1; }
-    .ml-seq-item .ml-seq-id   { color: var(--dim); font-size: 0.55rem; flex-shrink: 0; }
-    .ml-seq-item .ml-seq-date { color: var(--muted); font-size: 0.55rem; flex-shrink: 0; }
+    .ml-seq-item .ml-seq-id   { color: var(--dim-txt); font-size: 0.55rem; flex-shrink: 0; }
+    .ml-seq-item .ml-seq-date { color: var(--muted-txt); font-size: 0.55rem; flex-shrink: 0; }
 
     /* ── Quiz paie ── */
     .qz-wrap { max-width: 640px; margin: 0 auto; }
@@ -1841,7 +2059,7 @@
       border: 1px solid var(--border); background: var(--bg2);
       padding: 1.5rem; margin-bottom: 1.25rem; position: relative;
     }
-    .qz-num  { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.7rem; }
+    .qz-num  { font-size: 0.58rem; color: var(--muted-txt); letter-spacing: 0.1em; margin-bottom: 0.7rem; }
     .qz-q    { font-size: 0.95rem; color: var(--white); line-height: 1.65; }
     .qz-clock {
       position: absolute; top: 0.7rem; right: 0.9rem;
@@ -1863,7 +2081,7 @@
     .qz-btn:hover { background: var(--blue); color: var(--bg); }
     .qz-btn-next { margin-top: 0.5rem; }
     .qz-carre-label {
-      font-size: 0.58rem; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 0.65rem;
+      font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.1em; margin-bottom: 0.65rem;
     }
     .qz-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem; }
     .qz-choice {
@@ -1880,17 +2098,17 @@
     .qz-verdict { font-size: 1.15rem; font-weight: bold; margin-bottom: 0.6rem; letter-spacing: 0.05em; }
     .qz-verdict.ok  { color: var(--green); }
     .qz-verdict.ko  { color: var(--red); }
-    .qz-ans-line { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .qz-ans-line { font-size: 0.78rem; color: var(--muted-txt); margin-bottom: 0.35rem; }
     .qz-ans-line strong { color: var(--green); }
     .qz-time-line { font-size: 0.7rem; color: var(--yellow); margin-bottom: 0.35rem; }
     .qz-src-line {
-      font-size: 0.63rem; color: var(--dim);
+      font-size: 0.63rem; color: var(--dim-txt);
       border-left: 2px solid var(--border);
       padding-left: 0.7rem; margin: 0.7rem 0 1.1rem; letter-spacing: 0.04em;
     }
     .qz-carre-toggle {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em;
+      font-size: 0.68rem; color: var(--muted-txt); letter-spacing: 0.08em;
       cursor: pointer; user-select: none;
     }
     .qz-carre-toggle input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
@@ -1915,20 +2133,20 @@
     .qz-lb-submit { margin-bottom:1.25rem; }
     .qz-lb-row { display:flex; gap:.5rem; align-items:stretch; margin-bottom:.5rem; }
     .qz-lb-table { width:100%; border-collapse:collapse; font-size:0.68rem; color:var(--text); margin-top:.75rem; }
-    .qz-lb-table th { color:var(--muted); font-weight:normal; letter-spacing:.08em; text-align:left; padding:.25rem .5rem; border-bottom:1px solid var(--border); }
+    .qz-lb-table th { color:var(--muted-txt); font-weight:normal; letter-spacing:.08em; text-align:left; padding:.25rem .5rem; border-bottom:1px solid var(--border); }
     .qz-lb-table td { padding:.3rem .5rem; }
     .qz-lb-table tr:first-child td { color:var(--yellow); }
-    .qz-lb-empty { font-size:0.68rem; color:var(--muted); padding:.5rem 0; }
-    .qz-lb-msg   { font-size:0.68rem; color:var(--muted); margin-top:.4rem; }
+    .qz-lb-empty { font-size:0.68rem; color:var(--muted-txt); padding:.5rem 0; }
+    .qz-lb-msg   { font-size:0.68rem; color:var(--muted-txt); margin-top:.4rem; }
     .qz-lb-msg.ok  { color:var(--green); }
     .qz-lb-msg.err { color:var(--red); }
 
     /* Suggestion panel */
     .qz-sugg-panel { display:none; margin-top:1rem; border:1px solid var(--border); background:var(--bg2); padding:1.25rem; }
     .qz-sugg-panel.open { display:block; }
-    .qz-sugg-title { font-size:0.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
+    .qz-sugg-title { font-size:0.58rem; color:var(--muted-txt); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
     .qz-sugg-field { margin-bottom:.65rem; }
-    .qz-sugg-field label { display:block; font-size:0.62rem; color:var(--muted); letter-spacing:.08em; margin-bottom:.25rem; }
+    .qz-sugg-field label { display:block; font-size:0.62rem; color:var(--muted-txt); letter-spacing:.08em; margin-bottom:.25rem; }
     .qz-sugg-field textarea { width:100%; box-sizing:border-box; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:inherit; font-size:0.9rem; padding:.55rem .85rem; outline:none; resize:vertical; min-height:3.5rem; }
     .qz-sugg-field textarea:focus { border-color:var(--blue); }
     .qz-sugg-actions { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
@@ -1938,16 +2156,16 @@
     /* Vote panel */
     .qz-vote-panel { display:none; margin-top:1rem; border:1px solid var(--border); background:var(--bg2); padding:1.25rem; }
     .qz-vote-panel.open { display:block; }
-    .qz-vote-title { font-size:0.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
+    .qz-vote-title { font-size:0.58rem; color:var(--muted-txt); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; }
     .qz-vote-card { border:1px solid var(--border); background:var(--bg3); padding:.75rem 1rem; margin-bottom:.5rem; display:flex; align-items:flex-start; gap:.75rem; }
     .qz-vote-q { flex:1; font-size:0.8rem; color:var(--text); line-height:1.5; }
     .qz-vote-right { display:flex; flex-direction:column; align-items:center; gap:.3rem; flex-shrink:0; }
-    .qz-vote-count { font-size:0.62rem; color:var(--muted); letter-spacing:.06em; }
-    .qz-vote-btn { background:none; border:1px solid var(--border); color:var(--muted); font-family:inherit; font-size:0.68rem; padding:.25rem .55rem; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .qz-vote-count { font-size:0.62rem; color:var(--muted-txt); letter-spacing:.06em; }
+    .qz-vote-btn { background:none; border:1px solid var(--border); color:var(--muted-txt); font-family:inherit; font-size:0.68rem; padding:.25rem .55rem; cursor:pointer; transition:all .15s; white-space:nowrap; }
     .qz-vote-btn:hover:not(:disabled) { border-color:var(--blue); color:var(--blue); }
     .qz-vote-btn:disabled { opacity:.4; cursor:default; }
     .qz-vote-btn.voted { border-color:var(--green); color:var(--green); }
-    .qz-vote-empty { font-size:0.68rem; color:var(--muted); padding:.5rem 0; }
+    .qz-vote-empty { font-size:0.68rem; color:var(--muted-txt); padding:.5rem 0; }
 
     @media (max-width:480px) {
       .qz-lb-row    { flex-direction:column; }
@@ -1961,7 +2179,7 @@
     .qz-pays-btn {
       font: 0.62rem/1 var(--font-mono, monospace); letter-spacing: 0.08em; text-transform: uppercase;
       padding: 0.3rem 0.65rem; border: 1px solid var(--border); background: transparent;
-      color: var(--muted); border-radius: 3px; cursor: pointer; transition: all 0.15s;
+      color: var(--muted-txt); border-radius: 3px; cursor: pointer; transition: all 0.15s;
     }
     .qz-pays-btn:hover { border-color: var(--blue); color: var(--blue); }
     .qz-pays-btn.on { border-color: var(--yellow); color: var(--yellow); background: rgba(255,224,102,0.06); }
@@ -1976,7 +2194,7 @@
 
     /* ── Gaabrielle RH ── */
     .gaab-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-    .gaab-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
+    .gaab-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
     .gaab-initiales { display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem; margin-bottom: 2rem; font-size: 0.72rem; letter-spacing: 0.08em; }
     .gaab-init {
       position: relative; color: var(--blue); cursor: default;
@@ -1992,9 +2210,9 @@
       opacity: 0; transition: opacity 0.15s; z-index: 10;
     }
     .gaab-init:hover::after { opacity: 1; }
-    .gaab-sep { color: var(--dim); user-select: none; }
+    .gaab-sep { color: var(--dim-txt); user-select: none; }
     .gaab-th-sel {
-      background: transparent; border: none; color: var(--dim);
+      background: transparent; border: none; color: var(--dim-txt);
       font: 0.58rem/1 var(--font-mono, monospace); letter-spacing: 0.12em;
       text-transform: uppercase; cursor: pointer; outline: none; padding: 0;
     }
@@ -2067,7 +2285,7 @@
       border-bottom: 1px solid var(--border); padding-bottom: 0.6rem;
     }
     .gaab-form-close {
-      background: none; border: none; color: var(--dim);
+      background: none; border: none; color: var(--dim-txt);
       font-family: inherit; font-size: 1.1rem; line-height: 1;
       cursor: pointer; padding: 0 0.2rem; transition: color 0.15s;
     }
@@ -2083,7 +2301,7 @@
       min-height: 1rem; margin-top: 0.3rem;
     }
     .gaab-form-note {
-      font-size: 0.62rem; color: var(--dim); letter-spacing: 0.03em;
+      font-size: 0.62rem; color: var(--dim-txt); letter-spacing: 0.03em;
       line-height: 1.6; margin-top: 0.5rem;
     }
     .gaab-form-err {
@@ -2099,7 +2317,7 @@
       margin-bottom: 1.2rem;
     }
     .gaab-next-lbl {
-      font-size: 0.58rem; color: var(--dim); letter-spacing: 0.14em;
+      font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.14em;
       text-transform: uppercase; margin-bottom: 0.6rem;
     }
     .gaab-next-grid {
@@ -2116,11 +2334,11 @@
     .gaab-next-btn:hover { background: rgba(56,189,248,0.10); color: var(--white); }
     .gaab-next-ico { font-size: 0.9rem; opacity: 0.8; }
     .gaab-next-note {
-      font-size: 0.66rem; color: var(--muted); letter-spacing: 0.03em;
+      font-size: 0.66rem; color: var(--muted-txt); letter-spacing: 0.03em;
       line-height: 1.7; margin-top: 0.8rem; min-height: 1rem;
     }
     .gaab-next-back {
-      background: none; border: 1px solid var(--dim); color: var(--muted);
+      background: none; border: 1px solid var(--dim); color: var(--muted-txt);
       font-family: inherit; font-size: 0.7rem; letter-spacing: 0.05em;
       padding: 0.35rem 0.9rem; cursor: pointer; border-radius: 0.3rem;
       transition: all 0.15s;
@@ -2172,22 +2390,22 @@
     .gaab-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
     .gaab-table th {
       text-align: left; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--dim); border-bottom: 1px solid var(--border); padding: 0.5rem 0.6rem 0.4rem;
+      color: var(--dim-txt); border-bottom: 1px solid var(--border); padding: 0.5rem 0.6rem 0.4rem;
     }
     .gaab-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); vertical-align: top; }
     .gaab-table tr:hover td { background: rgba(255,255,255,0.025); }
-    .gaab-mat { color: var(--dim); font-size: 0.62rem; letter-spacing: 0.06em; white-space: nowrap; }
-    .gaab-age { color: var(--muted); white-space: nowrap; }
+    .gaab-mat { color: var(--dim-txt); font-size: 0.62rem; letter-spacing: 0.06em; white-space: nowrap; }
+    .gaab-age { color: var(--muted-txt); white-space: nowrap; }
     .gaab-poste { color: var(--purple); font-style: italic; }
     .gaab-sal { color: var(--yellow); white-space: nowrap; text-align: right; }
 
     /* Répartition des salaires — boîte à moustaches */
     .gaab-box-section { margin-top: 2.8rem; }
     .gaab-box-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.7rem; margin-bottom: 0.6rem; }
-    .gaab-box-title { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.14em; text-transform: uppercase; }
+    .gaab-box-title { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.14em; text-transform: uppercase; }
     .gaab-box-basis { font-size: 0.58rem; color: var(--blue); letter-spacing: 0.08em; }
     .gaab-box-locked {
-      font-size: 0.66rem; color: var(--muted); letter-spacing: 0.04em;
+      font-size: 0.66rem; color: var(--muted-txt); letter-spacing: 0.04em;
       border: 1px dashed var(--dim); border-radius: 0.3rem;
       padding: 1.4rem 1rem; text-align: center;
     }
@@ -2201,11 +2419,11 @@
     .gb-whisk { stroke: var(--muted);  stroke-width: 1.4; }
     .gb-dot   { fill: var(--purple); opacity: 0.6; }
     .gb-out   { fill: var(--red);    opacity: 0.95; }
-    .gb-tick  { fill: var(--dim);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
+    .gb-tick  { fill: var(--dim-txt);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
     .gb-val   { fill: var(--text); font-size: 13px; font-family: var(--font-mono, monospace); }
     .gaab-box-legend {
       display: flex; flex-wrap: wrap; gap: 0.45rem 1.2rem; justify-content: center;
-      margin-top: 0.7rem; font-size: 0.64rem; color: var(--muted); letter-spacing: 0.03em;
+      margin-top: 0.7rem; font-size: 0.64rem; color: var(--muted-txt); letter-spacing: 0.03em;
     }
     .gaab-box-legend b { color: var(--text); font-weight: 500; }
     .gb-num    { color: var(--yellow); font-variant-numeric: tabular-nums; }
@@ -2217,35 +2435,35 @@
     .gaab-rqth-section { margin-top: 2.8rem; }
     .gaab-rqth-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1.1rem; margin-top: 0.5rem; }
     .gaab-rqth-pct { font-size: 1.8rem; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
-    .gaab-rqth-frac { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.04em; }
+    .gaab-rqth-frac { font-size: 0.68rem; color: var(--muted-txt); letter-spacing: 0.04em; }
     .gaab-rqth-badge { font-size: 0.6rem; letter-spacing: 0.05em; padding: 0.15rem 0.5rem; border-radius: 3px; white-space: nowrap; }
     .gaab-rqth-badge.ok { color: var(--green); border: 1px solid rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
     .gaab-rqth-badge.ko { color: var(--yellow); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
     .gaab-rqth-bar { position: relative; height: 8px; max-width: 420px; margin: 0.7rem 0 0; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
     .gaab-rqth-bar > span { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
     .gaab-rqth-bar .gaab-rqth-seuil { position: absolute; top: -3px; right: 0; width: 2px; height: 14px; background: var(--green); }
-    .gaab-rqth-note { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.03em; margin-top: 0.6rem; line-height: 1.5; max-width: 640px; }
-    .gaab-rqth-note b { color: var(--muted); font-weight: 600; }
+    .gaab-rqth-note { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.03em; margin-top: 0.6rem; line-height: 1.5; max-width: 640px; }
+    .gaab-rqth-note b { color: var(--muted-txt); font-weight: 600; }
 
     /* Pyramide des âges H/F */
     .gaab-pyr-section { margin-top: 2.8rem; }
     .gaab-pyr-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0.4rem auto 0; overflow: visible; }
     .gp-bar-h { fill: var(--blue);   opacity: 0.7; }
     .gp-bar-f { fill: var(--purple); opacity: 0.7; }
-    .gp-band  { fill: var(--dim);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+    .gp-band  { fill: var(--dim-txt);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
     .gp-cnt   { fill: var(--text); font-size: 12px; font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
     .gp-axis  { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
     .gp-head  { font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.05em; }
     .gp-head.gp-h { fill: var(--blue); }
     .gp-head.gp-f { fill: var(--purple); }
-    .gp-moy   { fill: var(--dim); font-size: 12px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+    .gp-moy   { fill: var(--dim-txt); font-size: 12px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
 
     /* ── Contrat de travail ────────────────────────────────────────────────────
        Trois blocs empilés : saisie (employeur / salarié / contrat), catalogue de
        clauses cochables, aperçu du contrat composé. Toute couleur passe par une
        variable : les cinq modes accessibilité redéfinissent les mêmes noms. */
     .ct-wrap { max-width: 1180px; margin: 0 auto; padding: 0 1rem 4rem; }
-    .ct-section-lbl { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
+    .ct-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
 
     .ct-step {
       font-size: 0.62rem; color: var(--blue); letter-spacing: 0.16em;
@@ -2253,7 +2471,7 @@
       border-bottom: 1px solid var(--border); padding-bottom: 0.35rem;
     }
     .ct-step:first-of-type { margin-top: 0.6rem; }
-    .ct-step-note { color: var(--dim); letter-spacing: 0.04em; text-transform: none; font-size: 0.9em; margin-left: 0.6rem; }
+    .ct-step-note { color: var(--dim-txt); letter-spacing: 0.04em; text-transform: none; font-size: 0.9em; margin-left: 0.6rem; }
 
     /* ── Bloc A : saisie ─────────────────────────────────────────────────────── */
     .ct-fieldset { border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem; margin-bottom: 0.7rem; }
@@ -2264,10 +2482,10 @@
       display: flex; align-items: center; gap: 0.55rem;
     }
     .ct-legend:hover { color: var(--blue); }
-    .ct-legend .ct-caret { color: var(--muted); font-size: 0.8em; transition: transform 0.15s; display: inline-block; }
+    .ct-legend .ct-caret { color: var(--muted-txt); font-size: 0.8em; transition: transform 0.15s; display: inline-block; }
     .ct-fieldset.open .ct-legend { border-bottom-color: var(--border); color: var(--blue); }
     .ct-fieldset.open .ct-caret { transform: rotate(90deg); }
-    .ct-legend-count { margin-left: auto; font-size: 0.66rem; color: var(--dim); letter-spacing: 0.04em; text-transform: none; }
+    .ct-legend-count { margin-left: auto; font-size: 0.66rem; color: var(--dim-txt); letter-spacing: 0.04em; text-transform: none; }
     .ct-fieldset-body { display: none; padding: 1rem 0.9rem 1.1rem; }
     .ct-fieldset.open .ct-fieldset-body { display: block; }
 
@@ -2277,12 +2495,12 @@
     @media (max-width: 620px) { .ct-half { grid-column: 1 / -1; } }
 
     .ct-subhead {
-      grid-column: 1 / -1; font-size: 0.6rem; color: var(--muted); letter-spacing: 0.14em;
+      grid-column: 1 / -1; font-size: 0.6rem; color: var(--muted-txt); letter-spacing: 0.14em;
       text-transform: uppercase; margin: 0.6rem 0 -0.1rem; padding-top: 0.5rem;
       border-top: 1px dotted var(--border);
     }
     .ct-subhead:first-child { margin-top: 0; padding-top: 0; border-top: none; }
-    .ct-hint { grid-column: 1 / -1; font-size: 0.62rem; color: var(--dim); line-height: 1.5; letter-spacing: 0.02em; }
+    .ct-hint { grid-column: 1 / -1; font-size: 0.62rem; color: var(--dim-txt); line-height: 1.5; letter-spacing: 0.02em; }
 
     /* Les blocs conditionnels au type de contrat / à la durée du travail */
     .ct-cond { display: none; }
@@ -2292,7 +2510,7 @@
     .ct-prefill .field { flex: 1 1 240px; }
     .ct-prefill .ct-de { flex: 0 0 auto; padding: 0.34rem 0.75rem; border-color: var(--purple); color: var(--purple); }
     .ct-prefill .ct-de:hover { border-color: var(--purple); background: var(--purple); color: var(--bg); }
-    .ct-prefill-note { flex: 1 1 100%; font-size: 0.62rem; color: var(--dim); letter-spacing: 0.02em; line-height: 1.5; }
+    .ct-prefill-note { flex: 1 1 100%; font-size: 0.62rem; color: var(--dim-txt); letter-spacing: 0.02em; line-height: 1.5; }
 
     /* ── Bloc B : catalogue des clauses ──────────────────────────────────────── */
     .ct-clauses { border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem; overflow: hidden; }
@@ -2303,7 +2521,7 @@
     }
     .ct-clause-row:last-child { border-bottom: none; }
     .ct-clause-row:hover { background: var(--bg3); }
-    .ct-clause-row.off .ct-clause-titre { color: var(--dim); }
+    .ct-clause-row.off .ct-clause-titre { color: var(--dim-txt); }
     .ct-clause-row.libre .ct-clause-titre::after {
       content: ' ajoutée'; color: var(--green); font-size: 0.72em; letter-spacing: 0.08em; text-transform: uppercase;
     }
@@ -2312,7 +2530,7 @@
       flex-shrink: 0; width: 2.1rem; text-align: right; font-size: 0.72rem;
       color: var(--blue); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
     }
-    .ct-clause-row.off .ct-clause-num { color: var(--dim); }
+    .ct-clause-row.off .ct-clause-num { color: var(--dim-txt); }
     .ct-clause-titre { flex: 1; font-size: 0.76rem; color: var(--text); letter-spacing: 0.02em; cursor: pointer; }
     .ct-clause-tag {
       flex-shrink: 0; font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
@@ -2321,7 +2539,7 @@
     }
     .ct-clause-acts { flex-shrink: 0; display: flex; gap: 0.22rem; }
     .ct-act {
-      background: none; border: 1px solid var(--dim); color: var(--muted);
+      background: none; border: 1px solid var(--dim); color: var(--muted-txt);
       font-family: inherit; font-size: 0.68rem; line-height: 1;
       width: 1.5rem; height: 1.5rem; padding: 0; cursor: pointer; border-radius: 0.2rem;
       display: inline-flex; align-items: center; justify-content: center; transition: all 0.12s;
@@ -2345,16 +2563,16 @@
       color: var(--text); font-family: inherit; font-size: 0.66rem; padding: 0.2rem 0.35rem; max-width: 15rem;
     }
     .ct-mini {
-      background: none; border: 1px solid var(--dim); color: var(--muted);
+      background: none; border: 1px solid var(--dim); color: var(--muted-txt);
       font-family: inherit; font-size: 0.64rem; letter-spacing: 0.05em;
       padding: 0.2rem 0.6rem; cursor: pointer; border-radius: 0.25rem; transition: all 0.12s;
     }
     .ct-mini:hover { border-color: var(--blue); color: var(--blue); }
     .ct-mini.ct-mini-warn:hover { border-color: var(--red); color: var(--red); }
-    .ct-edit-note { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.02em; flex: 1 1 100%; }
+    .ct-edit-note { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.02em; flex: 1 1 100%; }
 
     .ct-clauses-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.7rem; }
-    .ct-clauses-bar .ct-count { margin-left: auto; font-size: 0.64rem; color: var(--dim); letter-spacing: 0.04em; }
+    .ct-clauses-bar .ct-count { margin-left: auto; font-size: 0.64rem; color: var(--dim-txt); letter-spacing: 0.04em; }
 
     /* ── Bloc C : aperçu ─────────────────────────────────────────────────────── */
     .ct-feuille {
@@ -2367,13 +2585,13 @@
       text-align: center; font-size: 0.95rem; letter-spacing: 0.13em; text-transform: uppercase;
       color: var(--white); margin-bottom: 2.4rem; line-height: 1.5;
     }
-    .ct-doc-sstitre { display: block; font-size: 0.66rem; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.5rem; }
+    .ct-doc-sstitre { display: block; font-size: 0.66rem; letter-spacing: 0.1em; color: var(--muted-txt); margin-top: 0.5rem; }
     .ct-doc-chapeau { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); margin: 1.6rem 0 0.7rem; }
     .ct-doc-partie { margin-bottom: 0.9rem; }
     .ct-doc-mention { display: flex; gap: 0.6rem; align-items: baseline; }
-    .ct-doc-mention-lbl { flex: 0 0 12.5rem; color: var(--muted); font-size: 0.7rem; letter-spacing: 0.03em; }
+    .ct-doc-mention-lbl { flex: 0 0 12.5rem; color: var(--muted-txt); font-size: 0.7rem; letter-spacing: 0.03em; }
     @media (max-width: 680px) { .ct-doc-mention { display: block; } .ct-doc-mention-lbl { display: block; } }
-    .ct-doc-dune { text-align: right; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0.5rem 0 1.4rem; }
+    .ct-doc-dune { text-align: right; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-txt); margin: 0.5rem 0 1.4rem; }
     .ct-doc-art-t {
       font-size: 0.8rem; letter-spacing: 0.05em; color: var(--white);
       margin: 1.9rem 0 0.55rem; padding-bottom: 0.2rem; border-bottom: 1px dotted var(--border);
@@ -2389,25 +2607,25 @@
     .ct-doc-fait { margin: 2.6rem 0 0; }
     .ct-doc-sign { display: flex; gap: 2.5rem; margin-top: 2.2rem; }
     .ct-doc-sign > div { flex: 1; border-top: 1px solid var(--border); padding-top: 0.5rem; }
-    .ct-doc-sign-r { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-    .ct-doc-sign-m { font-size: 0.66rem; color: var(--dim); font-style: italic; margin-top: 0.2rem; }
+    .ct-doc-sign-r { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-txt); }
+    .ct-doc-sign-m { font-size: 0.66rem; color: var(--dim-txt); font-style: italic; margin-top: 0.2rem; }
     .ct-doc-sign-box { height: 4.2rem; }
-    .ct-doc-vide { color: var(--dim); font-style: italic; text-align: center; padding: 2rem 0; }
+    .ct-doc-vide { color: var(--dim-txt); font-style: italic; text-align: center; padding: 2rem 0; }
 
     /* ── Bloc D : sortie ─────────────────────────────────────────────────────── */
     .ct-sortie { margin-top: 1.6rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; }
     .ct-sortie .btn-calc { margin: 0; }
-    .ct-pdf-etat { font-size: 0.66rem; letter-spacing: 0.03em; color: var(--dim); }
+    .ct-pdf-etat { font-size: 0.66rem; letter-spacing: 0.03em; color: var(--dim-txt); }
     .ct-pdf-etat.err { color: var(--red); }
     .ct-pdf-etat.ok  { color: var(--green); }
-    .ct-rgpd { flex: 1 1 100%; font-size: 0.6rem; color: var(--dim); line-height: 1.55; letter-spacing: 0.02em; }
+    .ct-rgpd { flex: 1 1 100%; font-size: 0.6rem; color: var(--dim-txt); line-height: 1.55; letter-spacing: 0.02em; }
 
     /* Boutons de navigation des vues secondaires */
     .page-exit,
     .page-nav {
       background: none;
       border: 1px solid var(--dim);
-      color: var(--dim);
+      color: var(--dim-txt);
       font-family: inherit;
       font-size: 1.1rem;
       line-height: 1;
@@ -2490,7 +2708,7 @@
       letter-spacing: 0.12em;
     }
     .about-sub {
-      color: var(--muted);
+      color: var(--muted-txt);
       font-size: 0.72rem;
       margin-top: 0.4rem;
       line-height: 1.7;
@@ -2498,14 +2716,14 @@
 
     /* ── Human input ── */
     .human-input { margin-bottom: 1.75rem; }
-    .human-input .hi-empty { color: var(--muted); font-size: 0.7rem; }
+    .human-input .hi-empty { color: var(--muted-txt); font-size: 0.7rem; }
     .hi-post {
       border-left: 2px solid var(--green);
       background: var(--bg3);
       padding: 0.75rem 1rem;
       margin-bottom: 0.65rem;
     }
-    .hi-post-date { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .hi-post-date { font-size: 0.62rem; color: var(--muted-txt); letter-spacing: 0.05em; margin-bottom: 0.5rem; }
     .hi-post-text {
       font-size: 0.78rem; color: var(--text); line-height: 1.75;
       white-space: pre-wrap; word-break: break-word;
@@ -2522,7 +2740,7 @@
       padding: 0.3rem 0.7rem; cursor: pointer; transition: all 0.15s;
     }
     .hi-replay-btn:hover, .hi-show-btn:hover { background: var(--green); color: var(--bg); }
-    .hi-show-btn { border-color: var(--muted); color: var(--muted); }
+    .hi-show-btn { border-color: var(--muted); color: var(--muted-txt); }
     .hi-show-btn:hover { background: var(--muted); color: var(--bg); }
 
     /* ── Grille stack technique ── */
@@ -2538,11 +2756,11 @@
       padding: 0.85rem 1rem;
     }
     .stack-name    { font-size: 0.9rem; font-weight: bold; color: var(--blue); letter-spacing: 0.05em; }
-    .stack-version { font-size: 0.62rem; color: var(--muted); margin: 0.08rem 0 0.55rem; letter-spacing: 0.03em; }
+    .stack-version { font-size: 0.62rem; color: var(--muted-txt); margin: 0.08rem 0 0.55rem; letter-spacing: 0.03em; }
     .stack-why     { font-size: 0.6rem; font-weight: bold; color: var(--yellow); text-transform: uppercase;
                      letter-spacing: 0.08em; margin-bottom: 0.3rem; }
     .stack-why::before { content: '· '; }
-    .stack-body    { font-size: 0.71rem; color: var(--gray); line-height: 1.65; }
+    .stack-body    { font-size: 0.71rem; color: var(--gray-txt); line-height: 1.65; }
     .stack-body strong { color: var(--text); }
     .stack-body code   { color: var(--orange); font-family: inherit; }
 
@@ -2552,7 +2770,7 @@
       background: var(--bg3);
       padding: 0.75rem 1rem;
       font-size: 0.72rem;
-      color: var(--gray);
+      color: var(--gray-txt);
       line-height: 1.9;
       margin-bottom: 1.75rem;
     }
@@ -2565,7 +2783,7 @@
       background: var(--bg3);
       padding: 1rem 1.1rem;
       font-size: 0.72rem;
-      color: var(--gray);
+      color: var(--gray-txt);
       line-height: 1.9;
       margin-bottom: 1.75rem;
     }
@@ -2577,7 +2795,7 @@
       gap: 0.3rem 1.5rem;
       margin: 0.65rem 0 0.85rem;
       font-size: 0.69rem;
-      color: var(--muted);
+      color: var(--muted-txt);
     }
     .gpl-libertes span::before { content: '✓ '; color: var(--green); }
     @media (max-width: 480px) { .gpl-libertes { grid-template-columns: 1fr; } }
@@ -2589,7 +2807,7 @@
       background: var(--bg3);
       padding: 0.75rem 1rem;
       font-size: 0.7rem;
-      color: var(--muted);
+      color: var(--muted-txt);
       line-height: 1.8;
       margin-top: 0.65rem;
       margin-bottom: 1.75rem;
@@ -2611,7 +2829,7 @@
 
     .genre-ecart-hint {
       font-size: 0.57rem;
-      color: var(--dim);
+      color: var(--dim-txt);
       letter-spacing: 0.04em;
       font-style: italic;
     }
@@ -2641,7 +2859,7 @@
       font-size: 0.62rem;
       font-weight: bold;
       line-height: 1;
-      color: var(--muted);
+      color: var(--muted-txt);
       transition: color 0.15s;
     }
     .hf-knob {
@@ -2688,7 +2906,7 @@
       font-size: 0.62rem;
       font-weight: bold;
       line-height: 1;
-      color: var(--muted);
+      color: var(--muted-txt);
       transition: color 0.15s;
     }
     .bn-knob {
@@ -2707,7 +2925,7 @@
     /* Le mot actif passe sous la pastille bleue → contraste sombre */
     .bn-toggle.is-brut .bn-end-brut,
     .bn-toggle.is-net  .bn-end-net { color: var(--bg); }
-    .bn-reconst { font-size: 0.68rem; color: var(--muted); margin-top: 0.25rem; }
+    .bn-reconst { font-size: 0.68rem; color: var(--muted-txt); margin-top: 0.25rem; }
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
@@ -2718,7 +2936,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique de bulletin de paye français et international · v0.1.8</div>
+      <div class="banner-sub">// simulateur pédagogique de bulletin de paye français et international · v0.1.9</div>
     </div>
 
     <!-- Burger menu -->
@@ -2733,23 +2951,23 @@
           <span class="burger-item-icon" style="display:inline-flex;align-items:center;justify-content:center">
             <span style="display:block;width:0.8rem;height:0.8rem;border-radius:50%;border:2px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
           </span>
-          Xenna <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
+          Xenna <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
         <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
           <span class="burger-item-icon">/</span>
-          Gaabrielle <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">RH</span>
+          Gaabrielle <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">RH</span>
         </button>
         <button class="burger-item" onclick="setView('contrat'); closeBurger()">
           <span class="burger-item-icon">§</span>
-          Contrat <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">de travail</span>
+          Contrat <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">de travail</span>
         </button>
         <button class="burger-item" onclick="setView('hercule'); closeBurger()">
           <span class="burger-item-icon">□</span>
-          Hercuule <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Compta</span>
+          Hercuule <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Compta</span>
         </button>
         <button class="burger-item" onclick="setView('meliinda'); closeBurger()">
           <span class="burger-item-icon">✎</span>
-          Meliinda <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">prototype</span>
+          Meliinda <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">prototype</span>
         </button>
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
           <span class="burger-item-icon">?</span>
@@ -2765,7 +2983,7 @@
         </button>
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
-          Quizz <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">Paie</span>
+          Quizz <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
         <button id="burger-mecenat" class="burger-item" style="display:none" onclick="setView('mecenat'); closeBurger()">
           <span class="burger-item-icon">♥</span>
@@ -2773,11 +2991,11 @@
         </button>
         <button id="burger-login" class="burger-item" style="display:none" onclick="window.location.href='/la_forge'; closeBurger()">
           <span class="burger-item-icon">⬡</span>
-          La Forge <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">connexion</span>
+          La Forge <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">connexion</span>
         </button>
         <button id="burger-admin" class="burger-item" style="display:none">
           <span class="burger-item-icon">⚷</span>
-          Admin <span style="color:var(--muted);font-size:0.65em;margin-left:0.3em">modération</span>
+          Admin <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">modération</span>
         </button>
       </nav>
     </div>
@@ -2822,7 +3040,7 @@
           <div class="a11y-switch" id="zoom-switch"></div>
         </div>
         <div class="a11y-row" onclick="toggleDyslexia()">
-          <span>Mode dyslexie <span style="font-size:0.6rem;color:var(--dim)">OpenDyslexic · lettres colorées</span></span>
+          <span>Mode dyslexie <span style="font-size:0.6rem;color:var(--dim-txt)">OpenDyslexic · lettres colorées</span></span>
           <div class="a11y-switch" id="dyslexia-switch"></div>
         </div>
         <div class="a11y-row" onclick="toggleBWMode()">
@@ -2834,7 +3052,7 @@
           <div class="a11y-switch" id="dactylo-switch"></div>
         </div>
         <div class="a11y-row" onclick="toggleMinitel()">
-          <span>Mode Minitel <span style="font-size:0.6rem;color:var(--dim)">vert phosphore · 3615</span></span>
+          <span>Mode Minitel <span style="font-size:0.6rem;color:var(--dim-txt)">vert phosphore · 3615</span></span>
           <div class="a11y-switch" id="minitel-switch"></div>
         </div>
       </div>
@@ -3315,8 +3533,8 @@
     </div>
 
   </div><!-- /view-desktop -->
-  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-desktop" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-desktop" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
        VUE MOBILE
@@ -3779,7 +3997,7 @@
       <!-- Bulletin vertical -->
       <div id="res-mobile">
         <div class="mob-bulletin">
-          <div class="mob-row" style="justify-content:center;color:var(--dim);font-size:0.75rem;padding:1.5rem">
+          <div class="mob-row" style="justify-content:center;color:var(--dim-txt);font-size:0.75rem;padding:1.5rem">
             En attente de saisie...
           </div>
         </div>
@@ -3787,8 +4005,8 @@
 
     </div>
   </div><!-- /view-mobile -->
-  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
        VUE ANNUELLE
@@ -3812,7 +4030,7 @@
     </div>
 
     <div id="res-annuel">
-      <div style="color:var(--dim);font-size:0.78rem;padding:1rem">
+      <div style="color:var(--dim-txt);font-size:0.78rem;padding:1rem">
         Saisissez un salaire brut mensuel et une année, puis cliquez sur [ SIMULER L'ANNÉE ].
       </div>
     </div>
@@ -4420,8 +4638,8 @@
       <div id="herc-gate">
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;gap:1.5rem;padding:2rem 1rem;text-align:center">
           <div style="font-size:1.05rem;color:var(--text);letter-spacing:0.08em">... et sans Hercule</div>
-          <div style="font-size:0.65rem;color:var(--dim);letter-spacing:0.12em">// MODULE COMPTABILITÉ — APERÇU</div>
-          <div style="font-size:0.7rem;color:var(--muted);line-height:2;letter-spacing:0.04em">
+          <div style="font-size:0.65rem;color:var(--dim-txt);letter-spacing:0.12em">// MODULE COMPTABILITÉ — APERÇU</div>
+          <div style="font-size:0.7rem;color:var(--muted-txt);line-height:2;letter-spacing:0.04em">
             Grand livre · Journal · Balance<br>
             Rapprochement bancaire · Clôture
           </div>
@@ -4544,7 +4762,7 @@
       <div class="qz-lb-panel" id="qz-lb-panel">
         <div class="qz-lb-title">🏆 CLASSEMENT — <span id="qz-lb-pays-label">FRANCE</span></div>
         <div class="qz-lb-submit" id="qz-lb-submit" style="display:none">
-          <div style="font-size:0.68rem;color:var(--muted);margin-bottom:.6rem">
+          <div style="font-size:0.68rem;color:var(--muted-txt);margin-bottom:.6rem">
             Votre score : <strong id="qz-lb-score-display" style="color:var(--yellow)">—</strong>
           </div>
           <div class="qz-lb-row">
@@ -4560,7 +4778,7 @@
       <!-- Toggle suggestion -->
       <div style="margin-top:1.25rem;text-align:center">
         <button class="qz-btn" onclick="quizzToggleSugg()"
-                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted)">
+                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted-txt)">
           💡 Proposer une question
         </button>
       </div>
@@ -4573,19 +4791,19 @@
           <textarea id="qz-sugg-q" maxlength="500" placeholder="Énoncez votre question…"></textarea>
         </div>
         <div class="qz-sugg-field">
-          <label>BONNE RÉPONSE <span style="color:var(--dim)">(optionnel)</span></label>
+          <label>BONNE RÉPONSE <span style="color:var(--dim-txt)">(optionnel)</span></label>
           <input id="qz-sugg-rep" class="qz-input" type="text" maxlength="200"
                  placeholder="la réponse principale…" style="width:100%;box-sizing:border-box"/>
         </div>
         <div class="qz-sugg-field">
-          <label>RÉPONSES ALTERNATIVES <span style="color:var(--dim)">(optionnel — autres formulations acceptées)</span></label>
+          <label>RÉPONSES ALTERNATIVES <span style="color:var(--dim-txt)">(optionnel — autres formulations acceptées)</span></label>
           <div class="qz-sugg-alts">
             <input id="qz-sugg-alt1" class="qz-input" type="text" maxlength="200" placeholder="ex : 9.2 %"/>
             <input id="qz-sugg-alt2" class="qz-input" type="text" maxlength="200" placeholder="ex : 9,20%"/>
           </div>
         </div>
         <div class="qz-sugg-field">
-          <label>MAUVAISES RÉPONSES / DISTRACTEURS <span style="color:var(--dim)">(optionnel)</span></label>
+          <label>MAUVAISES RÉPONSES / DISTRACTEURS <span style="color:var(--dim-txt)">(optionnel)</span></label>
           <div class="qz-sugg-wrongs">
             <input id="qz-sugg-mr1" class="qz-input" type="text" maxlength="200" placeholder="fausse réponse 1"/>
             <input id="qz-sugg-mr2" class="qz-input" type="text" maxlength="200" placeholder="fausse réponse 2"/>
@@ -4593,12 +4811,12 @@
           </div>
         </div>
         <div class="qz-sugg-field">
-          <label>SOURCE LÉGALE <span style="color:var(--dim)">(optionnel)</span></label>
+          <label>SOURCE LÉGALE <span style="color:var(--dim-txt)">(optionnel)</span></label>
           <input id="qz-sugg-src" class="qz-input" type="text" maxlength="300"
                  placeholder="ex : Art. L3141-1 Code du travail…" style="width:100%;box-sizing:border-box"/>
         </div>
         <div class="qz-sugg-field">
-          <label>PSEUDO <span style="color:var(--dim)">(optionnel)</span></label>
+          <label>PSEUDO <span style="color:var(--dim-txt)">(optionnel)</span></label>
           <input id="qz-sugg-pseudo" class="qz-input" type="text" maxlength="50"
                  placeholder="anonyme…" style="width:60%;box-sizing:border-box"/>
         </div>
@@ -4611,7 +4829,7 @@
       <!-- Toggle vote -->
       <div style="margin-top:1rem;text-align:center">
         <button class="qz-btn" onclick="quizzToggleVote()"
-                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted)">
+                style="font-size:0.68rem;border-color:var(--muted);color:var(--muted-txt)">
           🗳 Voter pour une question
         </button>
       </div>
@@ -4630,15 +4848,15 @@
        VUE MÉCÉNAT
   ════════════════════════════════ -->
   <div class="view-mecenat">
-    <div style="font-size:0.58rem;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:2rem">
+    <div style="font-size:0.58rem;color:var(--dim-txt);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:2rem">
       // Mécénat · Soutenir Xenna
     </div>
     <div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;margin-bottom:2.5rem;padding:2rem 0">
       <span style="display:flex;align-items:center;justify-content:center;width:2.9rem;height:2.9rem;border-radius:50%;border:3px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
-      <span style="font-size:2.8rem;line-height:1;color:var(--dim);font-family:var(--font-mono,monospace)">/</span>
-      <span style="font-size:3.2rem;line-height:1;color:var(--dim);font-family:var(--font-mono,monospace)">□</span>
+      <span style="font-size:2.8rem;line-height:1;color:var(--dim-txt);font-family:var(--font-mono,monospace)">/</span>
+      <span style="font-size:3.2rem;line-height:1;color:var(--dim-txt);font-family:var(--font-mono,monospace)">□</span>
     </div>
-    <div style="font-size:0.72rem;color:var(--muted);line-height:2;margin-bottom:1.5rem">
+    <div style="font-size:0.72rem;color:var(--muted-txt);line-height:2;margin-bottom:1.5rem">
       Xenna est un projet open source et libre. Si il vous est utile,<br>
       vous pouvez soutenir son développement sur Tipeee.
     </div>
@@ -4687,7 +4905,7 @@
 
     <div class="ml-card">
       <div class="ml-lbl">// Bibliothèque</div>
-      <div id="ml-seq-list"><span style="font-size:0.65rem;color:var(--dim)">Chargement…</span></div>
+      <div id="ml-seq-list"><span style="font-size:0.65rem;color:var(--dim-txt)">Chargement…</span></div>
     </div>
   </div><!-- /view-meliinda -->
 

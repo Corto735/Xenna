@@ -253,12 +253,12 @@ export const STATIC_DICT = {
   'Retenue':                 ['Deduction', 'Einbehalt', 'Inhouding', 'Trattenuta', 'Retención'],
 
   // ── App meta ─────────────────────────────────────────────────────────────
-  '// simulateur pédagogique de bulletin de paye français et international · v0.1.8': [
-    '// educational simulator for French and international payslips · v0.1.8',
-    '// pädagogischer Simulator für französische und internationale Gehaltsabrechnungen · v0.1.8',
-    '// educatieve simulator voor Franse en internationale loonbrieven · v0.1.8',
-    '// simulatore didattico di buste paga francesi e internazionali · v0.1.8',
-    '// simulador pedagógico de nóminas francesas e internacionales · v0.1.8',
+  '// simulateur pédagogique de bulletin de paye français et international · v0.1.9': [
+    '// educational simulator for French and international payslips · v0.1.9',
+    '// pädagogischer Simulator für französische und internationale Gehaltsabrechnungen · v0.1.9',
+    '// educatieve simulator voor Franse en internationale loonbrieven · v0.1.9',
+    '// simulatore didattico di buste paga francesi e internazionali · v0.1.9',
+    '// simulador pedagógico de nóminas francesas e internacionales · v0.1.9',
   ],
   'paye ton bulletin':       ['your payslip', 'Deine Gehaltsabrechnung', 'Jouw loonbrief', 'la tua busta paga', 'tu nómina'],
 

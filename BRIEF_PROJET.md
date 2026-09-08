@@ -42,7 +42,7 @@ l'estimer. Une lacune assumée vaut mieux qu'une valeur plausible et fausse.
 
 | Couche | Choix |
 |---|---|
-| Backend | **Rust** (edition 2021), crate `xenna-paie` v0.1.8 |
+| Backend | **Rust** (edition 2021), crate `xenna-paie` v0.1.9 |
 | Serveur web | **Axum 0.8** + Tokio + tower-http |
 | Bureau | **Tauri 2** (feature `desktop`, optionnelle) |
 | Base | **SQLite** via **SQLx 0.8** (runtime-tokio-rustls), migrations versionnées |

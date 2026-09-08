@@ -1,6 +1,6 @@
 {
   "productName": "Xenna Paye",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "identifier": "fr.xenna.paie",
   "build": {
     "frontendDist": "../dist",

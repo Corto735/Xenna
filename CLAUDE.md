@@ -118,6 +118,40 @@ Rates, ceilings (SMIC, PMSS), and employer organisations are stored in SQLite wi
 - **PMSS / SMIC** — historical ceiling values stored per date in the DB; always fetch from `ContextPaie`, never hardcode
 - **Cotisations** are split between salariale (employee) and patronale (employer); both appear on the bulletin
 
+## Module DSN — extrait de déclaration annoté
+
+`src/dsn.js` traduit un bulletin **France privé** déjà calculé en extrait de DSN
+mensuelle (norme NEODeS, cahier technique CT2026.1) et l'affiche en bas de
+bulletin — vues bureau et mobile — sous quatre onglets : **annoté** (chaque ligne
+avec le libellé officiel de sa rubrique et la signification de sa valeur),
+**fichier brut** (copiable), **tous les codes** (les listes fermées complètes,
+valeur retenue surlignée, plus la table CTP Urssaf), **lacunes**.
+
+Trois règles à respecter en y touchant :
+
+1. **Le module est côté front, et c'est délibéré.** La DSN n'est pas un calcul
+   mais une traduction d'un bulletin déjà produit par Rust. Deux données ne
+   vivent que côté front : le PAS (`calculerPas`) et la date du formulaire.
+2. **Les tables de référence sont GÉNÉRÉES, pas retapées** (libellés de blocs et
+   de rubriques, listes de valeurs autorisées, codes de cotisation). Ne pas les
+   corriger à la main : revenir à la source (cahier technique NEODeS ; table CTP
+   en open data sur `open.urssaf.fr`, dataset `histocodestypescsv`).
+3. **Aucune valeur inventée.** Ce que le simulateur ne sait pas est ABSENT de
+   l'extrait et déclaré dans l'onglet « lacunes ». Le fichier est marqué envoi de
+   test (S10.G00.00.005 = 01), les identifiants sont des zéros non attribuables
+   (SIREN 000000000 : clé de Luhn valide, jamais attribué par l'Insee) et
+   l'individu est déclaré sous NTT, pas sous NIR — conduite normative correcte
+   quand ni NIR ni NIA ne sont connus, pas un pis-aller.
+
+Le panneau se **monte à la demande** (premier clic) : le glossaire complet pèse
+près de 2 000 lignes de tableau, inutile de les poser dans le DOM à chaque
+calcul. Le conteneur porte `trad-skip` : la terminologie officielle ne passe pas
+par le traducteur automatique.
+
+Le bouton n'apparaît que pour `pays === 'france'`. La fonction publique parle un
+autre dialecte de la norme (rubriques `[FP]`, régimes CNRACL/SRE/RAFP,
+cotisations de la série 300) : ce serait un second mapping, pas une variante.
+
 ## Module RH « Gaabrielle » — contrat de travail
 
 La vue `contrat` (`index.html`, `<div class="view-contrat">` ; `src/main.js`,

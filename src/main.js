@@ -1,4 +1,6 @@
 import { trStatic, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
+import { renderDsnPanel } from './dsn.js';
+import pkg from '../package.json';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
@@ -2124,7 +2126,7 @@ function buildPasFormulaContent(netImposable) {
         <tr>
           <td>Net imposable</td>
           <td class="r c-gray">${fmt(netImposable)}</td>
-          <td class="r c-taux">${(r.taux_effectif * 100).toFixed(2)} %&nbsp;<span style="color:var(--dim);font-size:0.7em">(taux effectif)</span></td>
+          <td class="r c-taux">${(r.taux_effectif * 100).toFixed(2)} %&nbsp;<span style="color:var(--dim-txt);font-size:0.7em">(taux effectif)</span></td>
           <td class="r c-purple" style="font-weight:bold">${fmt(r.total)}</td>
         </tr>
       </tfoot>
@@ -2229,7 +2231,7 @@ window.openCommentFillon = function() {
     face à l'absurdité du calcul incroyable de la réduction Fillon…<br>
     et pour au final favoriser l'emploi au plus proche possible des minimas sociaux...<br>
     non sans une pointe de zèle ironique… je ne sais pas…
-    <div style="margin-top:1.2rem;font-size:0.63rem;color:var(--dim);font-style:normal;letter-spacing:0.08em">[2026/05/04] [JNF]</div>
+    <div style="margin-top:1.2rem;font-size:0.63rem;color:var(--dim-txt);font-style:normal;letter-spacing:0.08em">[2026/05/04] [JNF]</div>
   </div>`;
   document.getElementById('fm-modal').classList.add('open');
 };
@@ -2491,7 +2493,24 @@ function renderDesktop(b) {
 
   el.innerHTML = simBanner + summaryBar
     + `<div id="rem-result-d">${buildRemSection()}</div>`
-    + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${tableAlleg}</div>`;
+    + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${tableAlleg}</div>`
+    + buildDsnSection(b, 'd', pas);
+}
+
+// ── Extrait de DSN — bas de bulletin ────────────────────────────────────────
+// N'a de sens que pour la France du secteur privé : la DSN est une obligation
+// française, et la déclinaison fonction publique parle un autre dialecte de la
+// norme (rubriques [FP], régimes CNRACL/SRE/RAFP, cotisations de la série 300).
+// Le PAS passe en paramètre parce qu'il est calculé ici, pas par le back.
+function buildDsnSection(b, id, pas) {
+  if (b.salarie?.pays !== 'france') return '';
+  return renderDsnPanel(b, {
+    id,
+    datePaie:        getDatePaie(),
+    pasTotal:        pas?.total ?? 0,
+    pasTaux:         pas?.taux_effectif ?? 0,
+    versionLogiciel: pkg.version,
+  });
 }
 
 // ─── Accordéon mobile ───────────────────────────────────────────────────────
@@ -2745,7 +2764,8 @@ function renderMobile(b) {
         <span class="mob-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(superBrut)}${buildFormulaStar('TOT_SUPER_BRUT')}</span>
       </div>
 
-    </div>`;
+    </div>
+    ${buildDsnSection(b, 'm', pas)}`;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3019,7 +3039,7 @@ function renderAnnuel(sim) {
     const delta       = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
     const infoBtn     = i === _centElu ? ` <button class="delta-info-btn" onclick="openCommentFillon()" title="Note JNF">(i)</button>` : '';
     const deltaTxt    = Math.abs(delta) < 0.005
-      ? `<span style="color:var(--dim)">—</span>`
+      ? `<span style="color:var(--dim-txt)">—</span>`
       : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>${infoBtn}`;
     const rowCls = [smicChange ? "smic-change" : "", is13e ? "treizieme-mois" : ""].filter(Boolean).join(" ");
 
@@ -3055,24 +3075,24 @@ function renderAnnuel(sim) {
   const recap = `
     <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.75rem;font-size:0.72rem">
       <div style="border:1px solid var(--border);padding:0.5rem 0.9rem;background:var(--bg3)">
-        <div style="color:var(--muted)">ÉCONOMIE FILLON (annuelle)</div>
+        <div style="color:var(--muted-txt)">ÉCONOMIE FILLON (annuelle)</div>
         <div style="color:var(--green);font-size:1.1rem;font-weight:bold">− ${fmt(sim.total_fillon)}</div>
       </div>
       <div style="border:1px solid var(--border);padding:0.5rem 0.9rem;background:var(--bg3)">
-        <div style="color:var(--muted)">TAUX FILLON MOYEN</div>
+        <div style="color:var(--muted-txt)">TAUX FILLON MOYEN</div>
         <div style="color:var(--blue);font-size:1.1rem;font-weight:bold">
           ${totalPat > 0 ? ((fillon / parseFloat(sim.total_brut)) * 100).toFixed(2) + " %" : "—"}
         </div>
       </div>
       <div style="border:1px solid var(--border);padding:0.5rem 0.9rem;background:var(--bg3)">
-        <div style="color:var(--muted)">COÛT EMPLOYEUR ANNUEL</div>
+        <div style="color:var(--muted-txt)">COÛT EMPLOYEUR ANNUEL</div>
         <div style="color:var(--electric-blue);font-size:1.1rem;font-weight:bold">${fmt(sim.total_cout)}</div>
       </div>
     </div>`;
 
   el.innerHTML = `
     <div class="tbl-section-head">── SIMULATION ANNUELLE ${sim.annee} ────────────────────────────────────</div>
-    <div style="font-size:0.70rem;color:var(--muted);margin-bottom:0.4rem">
+    <div style="font-size:0.70rem;color:var(--muted-txt);margin-bottom:0.4rem">
       Décembre inclut un 13e mois (salaire doublé). Brut total = 13 mois. Fillon régularisé sur rémunération annuelle réelle.
     </div>
     <table class="ann-tbl">
@@ -3103,7 +3123,7 @@ async function calculerAnnee() {
     return;
   }
 
-  el.innerHTML = `<div style="color:var(--muted);padding:1rem;font-size:0.78rem">Calcul en cours…</div>`;
+  el.innerHTML = `<div style="color:var(--muted-txt);padding:1rem;font-size:0.78rem">Calcul en cours…</div>`;
 
   try {
     const sim = await api("simuler_annee", {
@@ -4541,7 +4561,7 @@ function herculeInit() {
       pcaRows.push(`<tr class="herc-pca-classe"><td colspan="5">${PCG_CLASSES[cl]}</td></tr>`);
       lastClasse = cl;
     }
-    pcaRows.push(`<tr><td><span class="herc-num">${x.num}</span></td><td>${x.lib}</td><td style="color:var(--dim);font-size:0.6rem;text-align:left">${x.categ}</td><td style="${RA}">${fmtE(x.d)}</td><td style="${RA}">${fmtE(x.c)}</td></tr>`);
+    pcaRows.push(`<tr><td><span class="herc-num">${x.num}</span></td><td>${x.lib}</td><td style="color:var(--dim-txt);font-size:0.6rem;text-align:left">${x.categ}</td><td style="${RA}">${fmtE(x.d)}</td><td style="${RA}">${fmtE(x.c)}</td></tr>`);
   }
   pcaRows.push(`<tr class="herc-total"><td colspan="3">TOTAL</td><td style="${RA}">${fmtE(totalD)}</td><td style="${RA}">${fmtE(totalC)}</td></tr>`);
   document.querySelector('#herc-pca tbody').innerHTML = pcaRows.join('');
@@ -4723,7 +4743,7 @@ function gaabRenderEffectif(matNouveau) {
   const tbody = document.getElementById('gaab-tbody');
   if (tbody) {
     tbody.innerHTML = GAAB_EMPLOYES.map(e => {
-      const etpCls = e.etp < 100 ? 'style="color:var(--yellow)"' : 'style="color:var(--dim)"';
+      const etpCls = e.etp < 100 ? 'style="color:var(--yellow)"' : 'style="color:var(--dim-txt)"';
       const trCls  = e.mat === matNouveau ? ' class="gaab-row-new"' : '';
       return `<tr${trCls}>
         <td class="gaab-mat">${esc(e.mat)}</td>
@@ -7760,7 +7780,7 @@ async function mlLoadLibrary() {
     const res  = await fetch('/api/meliinda/sequences');
     const data = await res.json();
     if (!data.length) {
-      list.innerHTML = '<span style="font-size:0.65rem;color:var(--dim)">Aucune séquence enregistrée.</span>';
+      list.innerHTML = '<span style="font-size:0.65rem;color:var(--dim-txt)">Aucune séquence enregistrée.</span>';
       return;
     }
     list.innerHTML = data.map(s => `
