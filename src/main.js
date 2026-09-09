@@ -1,5 +1,6 @@
 import { trStatic, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
 import { renderDsnPanel } from './dsn.js';
+import { composerBulletinPdf, modeleApplicable, nomFichierBulletin } from './bulletin_pdf.js';
 import pkg from '../package.json';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
@@ -2497,21 +2498,158 @@ function renderDesktop(b) {
     + buildDsnSection(b, 'd', pas);
 }
 
-// ── Extrait de DSN — bas de bulletin ────────────────────────────────────────
-// N'a de sens que pour la France du secteur privé : la DSN est une obligation
-// française, et la déclinaison fonction publique parle un autre dialecte de la
-// norme (rubriques [FP], régimes CNRACL/SRE/RAFP, cotisations de la série 300).
+// ── Bas de bulletin : extrait de DSN et bulletin PDF ────────────────────────
+//
+// Deux traductions du même bulletin, deux périmètres différents :
+//
+//   - la DSN n'a de sens que pour la France du secteur PRIVÉ (la déclinaison
+//     fonction publique parle un autre dialecte de la norme — rubriques [FP],
+//     régimes CNRACL/SRE/RAFP, cotisations de la série 300) ;
+//   - le bulletin PDF vaut aussi pour la fonction publique territoriale, dont
+//     le simulateur calcule le traitement.
+//
+// Les deux boutons partagent la même ligne. Quand la DSN n'est pas offerte, le
+// bouton PDF garde sa place dans une barre à lui : c'est la même ligne pour le
+// lecteur, pas la même origine dans le code.
+//
 // Le PAS passe en paramètre parce qu'il est calculé ici, pas par le back.
 function buildDsnSection(b, id, pas) {
-  if (b.salarie?.pays !== 'france') return '';
+  const pays = b.salarie?.pays;
+  const pdfBtn = (pays === 'france' || pays === 'fonction_publique')
+    ? boutonBulletinPdf(id)
+    : '';
+
+  if (pays !== 'france') {
+    return pdfBtn
+      ? `<div class="dsn-wrap trad-skip"><div class="dsn-actions dsn-actions-seule">${pdfBtn}</div>
+         <div class="bp-etat" id="bp-etat-${id}"></div></div>`
+      : '';
+  }
+
   return renderDsnPanel(b, {
     id,
     datePaie:        getDatePaie(),
     pasTotal:        pas?.total ?? 0,
     pasTaux:         pas?.taux_effectif ?? 0,
     versionLogiciel: pkg.version,
-  });
+    actions:         pdfBtn,
+  }) + `<div class="bp-etat" id="bp-etat-${id}"></div>`;
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// BULLETIN DE PAIE PDF
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Le regroupement réglementaire et la composition du document vivent dans
+// src/bulletin_pdf.js, à côté de la DSN et pour la même raison : ce n'est pas un
+// calcul, c'est une traduction. Ici on ne fait que trois choses — tirer au sort
+// l'employeur que le simulateur ne connaît pas, rassembler le contexte de la
+// page, et poser le fichier dans le navigateur.
+
+// L'identité fictive est tirée UNE FOIS par session et conservée : deux PDF
+// engendrés à la suite doivent sortir du même employeur, sinon le document
+// change de tête à chaque clic et on ne sait plus ce qu'on compare.
+let _bpIdent = null;
+
+const BP_COLLECTIVITES = [
+  'Commune de Lud-en-Brume', "Communauté d'agglomération du Vieux Royaume",
+  'Département des Marches du Nord', 'Commune de Gormenghast',
+  "Syndicat intercommunal des Brumes de l'Extrême-Amont",
+  'Centre communal d’action sociale de Ciudalia',
+];
+
+const BP_GRADES = [
+  'Adjoint administratif territorial', 'Rédacteur territorial',
+  'Attaché territorial', 'Technicien territorial',
+  'Agent de maîtrise territorial', 'Adjoint technique territorial',
+  'Assistant territorial socio-éducatif',
+];
+
+// Le tirage réutilise _ctAleatoire() du module contrat : raison sociale, SIRET,
+// code APE, URSSAF, convention collective, matricule, emploi et classification y
+// sont déjà déclarés et cohérents entre eux. Ce qui manque au bulletin — la
+// collectivité, le grade et l'échelon de la fonction publique — s'y ajoute.
+function bpIdentite() {
+  if (!_bpIdent) {
+    _bpIdent = {
+      ..._ctAleatoire(),
+      fpt_collectivite: _ctPick(BP_COLLECTIVITES),
+      fpt_grade:        _ctPick(BP_GRADES),
+      fpt_echelon:      `${_ctEntre(1, 12)}ᵉ échelon`,
+    };
+  }
+  return _bpIdent;
+}
+
+function boutonBulletinPdf(id) {
+  const modele = modeleApplicable(getDatePaie()) === 'renove' ? 'rénové' : 'adapté';
+  return `<button class="dsn-btn bp-btn" id="bp-btn-${id}" onclick="bpGenererPdf('${id}')"
+    title="Modèle ${modele} — document SPÉCIMEN, employeur tiré au sort">⇩ BULLETIN DE PAIE PDF</button>`;
+}
+
+// Les deux formulaires (bureau et mobile) portent les mêmes champs sous deux
+// préfixes, et rien ne les synchronise : on lit celui de la vue affichée, avec
+// l'autre en repli — même convention que getDatePaie().
+function _bpChampDuree(champ, defaut) {
+  const vue   = document.body.classList.contains('is-mobile') ? 'm' : 'd';
+  const autre = vue === 'm' ? 'd' : 'm';
+  const v = parseFloat(document.getElementById(`${vue}-${champ}`)?.value);
+  if (Number.isFinite(v) && v > 0) return v;
+  const w = parseFloat(document.getElementById(`${autre}-${champ}`)?.value);
+  return Number.isFinite(w) && w > 0 ? w : defaut;
+}
+
+function _bpEtat(id, msg, cls) {
+  const el = document.getElementById('bp-etat-' + id);
+  if (!el) return;
+  el.className = 'bp-etat' + (cls ? ' ' + cls : '');
+  el.textContent = msg;
+}
+
+window.bpGenererPdf = async function (id) {
+  const b = lastBulletin;
+  if (!b) { _bpEtat(id, 'aucun bulletin calculé', 'err'); return; }
+
+  const btn = document.getElementById('bp-btn-' + id);
+  const libelle = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '… COMPOSITION'; }
+  _bpEtat(id, 'composition en cours…', '');
+
+  try {
+    const datePaie = getDatePaie();
+    const doc = composerBulletinPdf(b, {
+      datePaie,
+      pas:             calculerPas(b.net_imposable),
+      identite:        bpIdentite(),
+      remBase:         _remBase,
+      remLignes:       _remLines,
+      // L'ETP vient du bulletin, pas du formulaire : c'est celui avec lequel le
+      // calcul a tourné, et le formulaire a pu bouger depuis.
+      etp:             b.salarie?.etp ?? _bpChampDuree('etp', 100),
+      heuresMois:      _bpChampDuree('h-mois', 151.67),
+      versionLogiciel: pkg.version,
+    });
+
+    const r = await api('generer_bulletin_pdf', { bulletin: doc });
+    const bin = atob(r.pdf_base64);
+    const u8  = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+
+    const url = URL.createObjectURL(new Blob([u8], { type: 'application/pdf' }));
+    const nom = nomFichierBulletin(b, datePaie);
+    const a = document.createElement('a');
+    a.href = url; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    _bpEtat(id, `✓ ${nom} — ${r.pages} page${r.pages > 1 ? 's' : ''}, `
+      + `${Math.max(1, Math.round(u8.length / 1024))} Ko — SPÉCIMEN, employeur fictif`, 'ok');
+  } catch (e) {
+    _bpEtat(id, 'échec de la génération : ' + errToStr(e), 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = libelle; }
+  }
+};
 
 // ─── Accordéon mobile ───────────────────────────────────────────────────────
 // panel : 'why' (explication + loi) | 'how' (formule de calcul)

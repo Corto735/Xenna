@@ -21,6 +21,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 use xenna_paie_lib::{
     admin::admin_router,
     contrat::{pdf as contrat_pdf, ContratPdf, ReponsePdf},
+    paie_pdf::{pdf as bulletin_pdf, BulletinPdf},
     altcha::{generate_challenge, AltchaChallenge},
     calculs::{generer_annee, generer_bulletin},
     ccn::ccn_router,
@@ -254,6 +255,27 @@ async fn handle_contrat_pdf(
 struct ContratReq {
     contrat: ContratPdf,
 }
+
+// ── POST /api/generer_bulletin_pdf ────────────────────────────────────────────
+// Même contrat que ci-dessus : le bulletin arrive composé — regroupement
+// réglementaire, libellés et montants formatés —, le back n'en fait que la mise
+// en page. Le corps de la requête porte un nom, une adresse et une rémunération :
+// il n'est jamais journalisé, y compris en cas d'échec, où seule la cause
+// technique l'est.
+async fn handle_bulletin_pdf(
+    Json(req): Json<BulletinPdfReq>,
+) -> Result<impl IntoResponse, ApiError> {
+    let (pdf_base64, pages) = bulletin_pdf::generer_base64(&req.bulletin).map_err(|e| {
+        tracing::error!("generer_bulletin_pdf: {e}");
+        ApiError("Le moteur PDF n'a pas pu composer le bulletin".into())
+    })?;
+    Ok(Json(ReponsePdf { pdf_base64, pages }))
+}
+
+#[derive(Deserialize)]
+struct BulletinPdfReq {
+    bulletin: BulletinPdf,
+}
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -347,6 +369,7 @@ async fn main() {
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/generer_contrat_pdf", post(handle_contrat_pdf))
+        .route("/api/generer_bulletin_pdf", post(handle_bulletin_pdf))
         .route("/altcha/challenge", get(altcha_challenge))
         .merge(forge_router())
         .merge(quizz_router())

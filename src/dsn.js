@@ -1587,8 +1587,12 @@ const _dsnCtx = new Map();
  * fabriqué qu'au premier dépliage (cf. window.dsnBascule).
  * Ne rendre que pour la France du secteur privé — la DSN publique parle une
  * autre langue (rubriques [FP], régimes CNRACL/SRE/RAFP, cotisations série 300).
+ * `opt.actions` reçoit du HTML posé À DROITE du bouton, sur la même ligne. Le
+ * module ne sait pas ce que c'est et n'a pas à le savoir : c'est main.js qui
+ * possède ces boutons-là. Le seul service rendu ici est la barre qui les aligne.
+ *
  * @param {object} b   Bulletin France.
- * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, versionLogiciel }
+ * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, versionLogiciel, actions }
  */
 export function renderDsnPanel(b, opt = {}) {
   const id = opt.id || 'd';
@@ -1602,7 +1606,10 @@ export function renderDsnPanel(b, opt = {}) {
       les organismes complémentaires, sous la forme d'un fichier texte normalisé — la
       DSN. Voici à quoi ressemble la traduction de CE bulletin, rubrique par rubrique.
     </div>
-    <button class="dsn-btn" id="dsn-btn-${id}" onclick="dsnBascule('${id}')">▸ VOIR L'EXTRAIT DE DSN</button>
+    <div class="dsn-actions">
+      <button class="dsn-btn" id="dsn-btn-${id}" onclick="dsnBascule('${id}')">▸ VOIR L'EXTRAIT DE DSN</button>
+      ${opt.actions || ''}
+    </div>
     <div class="dsn-panel" id="dsn-panel-${id}" style="display:none"></div>
   </div>`;
 }

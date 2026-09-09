@@ -4,6 +4,8 @@ pub mod membre;
 pub mod calculs;
 pub mod ccn;
 pub mod contrat;
+pub mod pdf;
+pub mod paie_pdf;
 pub mod crypto;
 pub mod db;
 pub mod i18n;
@@ -16,7 +18,10 @@ pub mod models;
 pub mod commands;
 
 #[cfg(feature = "desktop")]
-use commands::{calculer_bulletin, conventions_ccn, dossier_ccn, generer_contrat_pdf, simuler_annee};
+use commands::{
+    calculer_bulletin, conventions_ccn, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
+    simuler_annee,
+};
 #[cfg(feature = "desktop")]
 use sqlx::SqlitePool;
 #[cfg(feature = "desktop")]
@@ -65,6 +70,7 @@ pub fn run() {
             calculer_bulletin,
             simuler_annee,
             generer_contrat_pdf,
+            generer_bulletin_pdf,
             dossier_ccn,
             conventions_ccn,
         ])

@@ -3,15 +3,16 @@
 //!
 //! Le repère est celui de la lecture : `y` est une **ligne de base mesurée depuis
 //! le haut de la page**. La conversion vers le repère PDF (origine en bas à gauche)
-//! est faite au dernier moment, dans `pdf.rs`.
+//! est faite au dernier moment, dans `crate::pdf::rendu`.
 
 use crate::contrat::modele::{ContratPdf, Mention, Run};
-use crate::contrat::police::{Face, Polices};
+use crate::pdf::police::{Face, Polices};
+
+// Réexportés sous leur ancien nom : `contrat::mise_en_page::{Dessin, PAGE_H}`
+// est l'adresse que connaissent les tests et `contrat::pdf`.
+pub use crate::pdf::rendu::{Dessin, MM, PAGE_H, PAGE_L};
 
 // ── Géométrie de la page ──────────────────────────────────────────────────────
-const MM: f32 = 72.0 / 25.4;
-pub const PAGE_L: f32 = 210.0 * MM;
-pub const PAGE_H: f32 = 297.0 * MM;
 const MARGE_G: f32 = 22.0 * MM;
 const MARGE_D: f32 = 22.0 * MM;
 const MARGE_H: f32 = 24.0 * MM;
@@ -32,27 +33,6 @@ const T_PIED: f32 = 8.0;
 
 const NOIR: f32 = 0.0;
 const GRIS: f32 = 0.42;
-
-#[derive(Debug, Clone)]
-pub enum Dessin {
-    Texte {
-        x: f32,
-        /// Ligne de base, mesurée depuis le haut de la page.
-        y: f32,
-        texte: String,
-        face: Face,
-        taille: f32,
-        gris: f32,
-    },
-    Filet {
-        x1: f32,
-        y1: f32,
-        x2: f32,
-        y2: f32,
-        ep: f32,
-        gris: f32,
-    },
-}
 
 /// Un mot, avec le style qu'il porte et sa largeur déjà mesurée.
 struct Mot {

@@ -8,11 +8,15 @@
 //!
 //! Rien n'est écrit sur disque ni en base : les octets du PDF sont fabriqués en
 //! mémoire et rendus à l'appelant.
+//!
+//! Les fontes et l'écriture du fichier vivent un cran plus bas, dans
+//! `crate::pdf`, partagées avec le bulletin de paie. `contrat::police` reste
+//! exposé sous ce nom : c'est l'adresse que connaissent les tests.
 
 pub mod mise_en_page;
 pub mod modele;
 pub mod pdf;
-pub mod police;
 
+pub use crate::pdf::police;
 pub use modele::{Article, ContratPdf, Mention, ReponsePdf, Run};
 pub use pdf::generer;

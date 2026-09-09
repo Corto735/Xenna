@@ -1,29 +1,52 @@
-//! Les trois fontes du contrat, embarquées dans le binaire.
+//! Les six fontes embarquées dans le binaire — trois romaines, trois linéales.
 //!
 //! `include_bytes!` plutôt qu'une lecture de fichier : le module doit produire le
 //! même PDF sur le poste de l'utilisateur (Tauri) et dans le conteneur de
 //! production, sans dépendre de ce qui est installé sur la machine. Liberation
-//! Serif (SIL Open Font License 1.1) couvre le français complet — œ, €, guillemets
+//! (SIL Open Font License 1.1) couvre le français complet — œ, €, guillemets
 //! et apostrophe typographique compris —, ce que les quatorze fontes de base du
 //! format PDF ne garantissent pas.
+//!
+//! Deux familles parce que deux documents : le contrat de travail est un texte
+//! courant, il se lit en romaine ; le bulletin de paie est une grille de
+//! chiffres, il se lit en linéale. Aucun PDF ne les embarque toutes les six —
+//! `crate::pdf::rendu::rendre` n'inclut que les faces réellement tracées.
 
 use printpdf::font::ParsedFont;
 
-const REGULIER: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Regular.ttf");
-const GRAS: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Bold.ttf");
-const ITALIQUE: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Italic.ttf");
+const SERIF_REGULIER: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Regular.ttf");
+const SERIF_GRAS: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Bold.ttf");
+const SERIF_ITALIQUE: &[u8] = include_bytes!("../../assets/fonts/LiberationSerif-Italic.ttf");
+const SANS_REGULIER: &[u8] = include_bytes!("../../assets/fonts/LiberationSans-Regular.ttf");
+const SANS_GRAS: &[u8] = include_bytes!("../../assets/fonts/LiberationSans-Bold.ttf");
+const SANS_ITALIQUE: &[u8] = include_bytes!("../../assets/fonts/LiberationSans-Italic.ttf");
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Les trois premières valeurs sont les romaines (Liberation Serif), les trois
+/// dernières les linéales (Liberation Sans). Les noms courts vont à la romaine
+/// parce que le contrat de travail, plus ancien, les portait déjà.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Face {
     Regulier,
     Gras,
     Italique,
+    Sans,
+    SansGras,
+    SansItalique,
+}
+
+impl Face {
+    pub const TOUTES: [Face; 6] = [
+        Face::Regulier,
+        Face::Gras,
+        Face::Italique,
+        Face::Sans,
+        Face::SansGras,
+        Face::SansItalique,
+    ];
 }
 
 pub struct Polices {
-    regulier: Fonte,
-    gras: Fonte,
-    italique: Fonte,
+    fontes: Vec<Fonte>,
 }
 
 /// Une fonte analysée, accompagnée de son em.
@@ -71,10 +94,16 @@ impl Polices {
                 .ok_or_else(|| format!("police {nom} : table head illisible"))?;
             Ok(Fonte { police, em: f32::from(em) })
         };
+        // L'ordre suit celui des variantes de `Face` : c'est lui qui sert d'index.
         Ok(Self {
-            regulier: lire(REGULIER, "Regular")?,
-            gras: lire(GRAS, "Bold")?,
-            italique: lire(ITALIQUE, "Italic")?,
+            fontes: vec![
+                lire(SERIF_REGULIER, "Serif Regular")?,
+                lire(SERIF_GRAS, "Serif Bold")?,
+                lire(SERIF_ITALIQUE, "Serif Italic")?,
+                lire(SANS_REGULIER, "Sans Regular")?,
+                lire(SANS_GRAS, "Sans Bold")?,
+                lire(SANS_ITALIQUE, "Sans Italic")?,
+            ],
         })
     }
 
@@ -83,11 +112,7 @@ impl Polices {
     }
 
     fn fonte(&self, f: Face) -> &Fonte {
-        match f {
-            Face::Regulier => &self.regulier,
-            Face::Gras => &self.gras,
-            Face::Italique => &self.italique,
-        }
+        &self.fontes[f as usize]
     }
 
     /// Largeur d'une chaîne, en points, à la taille donnée.

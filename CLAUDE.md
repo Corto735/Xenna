@@ -38,12 +38,20 @@ cargo clippy                          # Lint Rust code
 cargo test --test fiabilite          # filet de sécurité multi-pays + golden France
 cargo test --test i18n               # couverture des 6 langues (libellés, explications, réfs légales)
 cargo test --test contrat_pdf        # moteur de composition du contrat de travail
+cargo test --test bulletin_pdf       # moteur de composition du bulletin de paie
 ```
 `src-tauri/tests/contrat_pdf.rs` vérifie ce qu'un PDF ne laisse pas relire : magie
 `%PDF-`, pagination proportionnelle à la longueur, aucun titre d'article seul en
 bas de page, aucun débordement de la colonne de texte, couverture typographique
 française des fontes. Un test `#[ignore]` écrit un PDF pour inspection à l'œil :
 `cargo test --test contrat_pdf -- --ignored --nocapture` (chemin via `CONTRAT_PDF_OUT`).
+
+`src-tauri/tests/bulletin_pdf.rs` éprouve la grille du bulletin, dont les modes de
+défaillance ne sont pas ceux d'un texte courant : somme des six colonnes égale à la
+largeur utile, aucun bandeau de rubrique seul en bas de page, en-tête de colonnes
+répété sur chaque page de grille, filigrane tracé par-dessus et translucide,
+document vide non fatal. Un test `#[ignore]` écrit un PDF pour inspection :
+`cargo test --test bulletin_pdf -- --ignored --nocapture` (chemin via `BULLETIN_PDF_OUT`).
 
 `src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 39 pays (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
 
@@ -84,11 +92,17 @@ src-tauri/src/
 │   ├── paie.rs       — Tauri commands: calculer_bulletin, simuler_annee
 │   ├── contrat.rs    — Tauri command: generer_contrat_pdf
 │   └── ccn.rs        — Tauri commands: dossier_ccn, conventions_ccn
+├── pdf/              — socle PDF commun, sans aucune règle métier
+│   ├── police.rs     — 6 fontes embarquées (3 romaines, 3 linéales) + mesure des glyphes
+│   └── rendu.rs      — Dessin (texte, filet, pavé, filigrane) → opérateurs printpdf
 ├── contrat/          — génération du PDF du contrat de travail (module RH)
 │   ├── modele.rs     — DTO reçus du front (runs stylés, articles)
-│   ├── police.rs     — 3 fontes embarquées + mesure de largeur des glyphes
 │   ├── mise_en_page.rs — découpe des lignes, justification, pagination
-│   └── pdf.rs        — assemblage printpdf → octets
+│   └── pdf.rs        — compose puis délègue à pdf::rendu
+├── paie_pdf/         — génération du PDF du bulletin de paie
+│   ├── modele.rs     — DTO reçus du front (rubriques, lignes à six colonnes, totaux)
+│   ├── mise_en_page.rs — grille, bandeaux, pagination, annexe
+│   └── pdf.rs        — compose puis délègue à pdf::rendu
 ├── db/
 │   ├── context.rs    — ContextPaie: loads rates from SQLite for a given date
 │   └── mod.rs        — SQLx async migration runner
@@ -151,6 +165,58 @@ par le traducteur automatique.
 Le bouton n'apparaît que pour `pays === 'france'`. La fonction publique parle un
 autre dialecte de la norme (rubriques `[FP]`, régimes CNRACL/SRE/RAFP,
 cotisations de la série 300) : ce serait un second mapping, pas une variante.
+
+## Module « bulletin de paie PDF » — bas de bulletin
+
+Le bouton **⇩ BULLETIN DE PAIE PDF** siège à droite du bouton DSN, dans la barre
+`.dsn-actions` (`src/dsn.js`, paramètre `opt.actions` — dsn.js aligne, main.js
+possède le bouton). Il produit le bulletin au **modèle réglementaire**, plus une
+annexe détaillant ligne à ligne ce que ce modèle regroupe.
+
+Quatre règles à respecter en y touchant :
+
+1. **Le regroupement réglementaire est côté front** (`src/bulletin_pdf.js`), au
+   même titre et pour la même raison que la DSN : ce n'est pas un calcul mais
+   une traduction d'un bulletin déjà produit par Rust. Le back (`src-tauri/src/paie_pdf/`)
+   ne sait ni ce qu'est une cotisation ni ce qu'est un net social — il place une
+   grille de six colonnes sur une page A4. **Toutes les valeurs lui arrivent déjà
+   formatées** : il n'arrondit rien.
+2. **Deux modèles coexistent, la bascule se fait sur la DATE DE PAIE.** L'arrêté
+   du 25 février 2016 fixe libellés, ordre et regroupement ; l'arrêté du
+   31 janvier 2023 institue un modèle *rénové* dont l'arrêté du 11 août 2025 a
+   reporté l'obligation au **1er janvier 2027**. Jusqu'au 31/12/2026 le modèle
+   *adapté* (2016 + montant net social) reste utilisable. Le simulateur remonte à
+   2015 : la frontière est déclarée une seule fois, dans `MODELE_BASCULE`.
+   Ne pas la remplacer par « l'année en cours ».
+3. **Aucune valeur inventée, et les rubriques vides le disent.** L'employeur, le
+   SIRET, l'URSSAF, la convention collective et la classification sont TIRÉS AU
+   SORT via `_ctAleatoire()` — le simulateur ne les connaît pas. D'où le filigrane
+   SPÉCIMEN, le bandeau d'avertissement, et les rubriques réglementaires
+   imprimées vides suivies de la liste de ce qui manque (FNAL, versement
+   mobilité, taxe d'apprentissage…), exactement comme l'onglet « lacunes » de la
+   DSN. Une cotisation qu'aucun poste du gabarit ne reconnaît atterrit dans
+   « AUTRES COTISATIONS ET CONTRIBUTIONS » plutôt que de disparaître.
+4. **La fonction publique territoriale a ses propres lacunes et son propre
+   cartouche.** Un agent titulaire n'a pas de convention collective ; le modèle
+   du code du travail ne lui est pas applicable et le PDF le dit. Ne pas lui
+   servir les lacunes du privé.
+
+⚠️ **Réserve sur le modèle rénové.** L'annexe de l'arrêté du 31 janvier 2023 n'a
+pas pu être relevée sur Légifrance (texte rendu en JavaScript) ni sur le portail
+BOSS. La structure du modèle rénové codée dans `MODELE_RENOVE` — cotisations
+obligatoires / facultatives, regroupement des allègements, rubrique
+« remboursements et déductions diverses » — vient de sources secondaires
+concordantes (ADP, LégiSocial, Compta Online), pas du texte lui-même. Les
+libellés exacts restent donc **à confirmer sur l'annexe officielle** avant le
+1er janvier 2027. Le modèle adapté, lui, est celui de 2016, largement documenté.
+
+L'identité fictive est tirée **une fois par session** (`_bpIdent`) : deux PDF
+engendrés à la suite doivent sortir du même employeur, sinon le document change
+de tête à chaque clic et on ne sait plus ce qu'on compare.
+
+Le bouton n'apparaît que pour `france` et `fonction_publique` — le modèle
+réglementaire du bulletin est une notion française, il n'a pas de sens pour les
+37 autres pays.
 
 ## Module RH « Gaabrielle » — contrat de travail
 
