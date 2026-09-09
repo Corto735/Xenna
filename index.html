@@ -99,11 +99,18 @@
       --white:  #e8f4ff;
       /* ── Rampe « encre » : la couleur du TEXTE, séparée de la structure ──
          --dim / --muted / --gray restent bleus car ils portent aussi des
-         bordures, des fonds et des traits de graphique. Seules ces trois
-         variables-ci colorent des caractères, et elles passent en jaune pâle :
-         le bleu clair sur fond bleu foncé plafonnait à 2,15:1 de contraste.
-         Rapports mesurés sur --bg : 7,14 / 9,48 / 12,32 — tous AAA, et tous
-         sous --text (13,74) pour préserver la hiérarchie de lecture. */
+         bordures, des fonds et des traits de graphique. Ce sont ces trois
+         variables-ci qui colorent les caractères, et elles passent en jaune
+         pâle : le bleu clair sur fond bleu foncé plafonnait à 2,15:1 de
+         contraste. Rapports mesurés sur --bg : 7,14 / 9,48 / 12,32 — tous AAA,
+         et tous sous --text (13,74) pour préserver la hiérarchie de lecture.
+
+         UNE EXCEPTION ASSUMÉE : l'adresse de contact et la phrase sur les
+         données, tout en bas des vues bureau et mobile, gardent var(--dim) —
+         2,16:1, sous le seuil AA. C'est un choix délibéré : ces deux lignes ne
+         portent rien qu'il faille lire, et le bleu sourd les efface à dessein.
+         Le mode noir & blanc (body.bw-mode) les ramène à #555555 sur blanc pour
+         qui a besoin de les lire. Ne pas les « corriger » sans le demander. */
       --dim-txt:   #aa9c66;
       --muted-txt: #c4b47e;
       --gray-txt:  #dccd97;
@@ -3565,8 +3572,8 @@
     </div>
 
   </div><!-- /view-desktop -->
-  <div class="view-desktop view-foot" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-desktop view-foot" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-desktop view-foot" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-desktop view-foot" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
        VUE MOBILE
@@ -4037,8 +4044,8 @@
 
     </div>
   </div><!-- /view-mobile -->
-  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
        VUE ANNUELLE
