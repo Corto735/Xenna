@@ -1785,6 +1785,8 @@
     .view-contact,
     .view-gaabrielle,
     .view-quizz   { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    /* Le contrat gère sa propre largeur via .ct-wrap : ici on ne pose que le masquage. */
+    .view-contrat { display: none; padding: 1.5rem 0; margin: 0 auto 3rem; }
     .view-hercule { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto 3rem; }
     .view-ccn     { display: none; padding: 1.5rem; max-width: 1000px; margin: 0 auto 3rem; }
 
@@ -2957,10 +2959,6 @@
           <span class="burger-item-icon">/</span>
           Gaabrielle <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">RH</span>
         </button>
-        <button class="burger-item" onclick="setView('contrat'); closeBurger()">
-          <span class="burger-item-icon">§</span>
-          Contrat <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">de travail</span>
-        </button>
         <button class="burger-item" onclick="setView('hercule'); closeBurger()">
           <span class="burger-item-icon">□</span>
           Hercuule <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Compta</span>
@@ -3533,7 +3531,7 @@
     </div>
 
   </div><!-- /view-desktop -->
-  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
   <div class="view-desktop" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
@@ -4005,7 +4003,7 @@
 
     </div>
   </div><!-- /view-mobile -->
-  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 1.5rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
   <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
