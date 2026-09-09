@@ -121,12 +121,18 @@
       font-display: swap;
     }
 
+    /* Lisibilité : toute la typographie est en rem, donc la racine sert de
+       levier unique. 119 % agrandit d'un coup polices et espacements, tout en
+       respectant la taille de base choisie par le lecteur dans son navigateur.
+       (1,4 jugé trop gros à l'essai, repris à 0,85 : 1,4 x 0,85 = 1,19.) */
+    html { font-size: 119%; }
+
     body {
       font-family: var(--font-mono);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      font-size: 22.5px;
+      font-size: 1.40625rem;
       line-height: 1.4;
     }
 
@@ -212,12 +218,12 @@
     .a11y-panel {
       display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + 0.375rem);
       right: 0;
       background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.8rem 1rem;
-      min-width: 210px;
+      min-width: 13.125rem;
       z-index: 300;
       flex-direction: column;
       gap: 0.7rem;
@@ -242,7 +248,7 @@
     .trad-panel {
       display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + 0.375rem);
       right: 0;
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -250,7 +256,7 @@
       z-index: 300;
       flex-direction: column;
       gap: 0.3rem;
-      min-width: 160px;
+      min-width: 10rem;
     }
     .trad-panel.open { display: flex; }
     .trad-panel-title { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
@@ -617,7 +623,7 @@
     /* ══════════════════════════════
        LAYOUT BUREAU
     ══════════════════════════════ */
-    .view-desktop { display: flex; min-height: calc(100vh - 100px); }
+    .view-desktop { display: flex; min-height: calc(100vh - 6.25rem); }
     .view-mobile  { display: none; }
     /* Les lignes de pied de page portent .view-desktop pour suivre le basculement
        de vue, mais ne doivent pas en hériter la hauteur plein écran : sinon chacune
@@ -628,7 +634,7 @@
 
     /* ── Panneau formulaire ── */
     .form-panel {
-      width: 240px;
+      width: 15rem;
       flex-shrink: 0;
       border-right: 1px solid var(--border);
       background: var(--bg3);
@@ -898,7 +904,7 @@
     .dsn-lac b { color: var(--text); }
 
     .btn-add-rem {
-      width: 22px; height: 22px; flex-shrink: 0;
+      width: 1.375rem; height: 1.375rem; flex-shrink: 0;
       background: transparent; border: 1.5px solid #ffd700; color: #ffd700;
       font-size: 1rem; line-height: 1; cursor: pointer;
       display: flex; align-items: center; justify-content: center; padding: 0;
@@ -910,26 +916,26 @@
     }
     .rem-base-lbl { flex: 1; text-transform: uppercase; letter-spacing: 0.06em; }
     .rem-base-row input[type="number"] {
-      width: 100px; background: var(--bg2); color: var(--fg);
+      width: 6.25rem; background: var(--bg2); color: var(--fg);
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
     .rem-line {
       display: flex; align-items: center; gap: 0.4rem;
-      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px;
+      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 1.875rem;
     }
     .rem-type-sel {
       flex: 1; background: var(--bg2); color: var(--fg);
       border: 1px solid var(--border); padding: 0.15rem 0.3rem; font-size: 0.65rem;
     }
     .rem-amt-inp {
-      width: 80px; background: var(--bg2); color: var(--fg);
+      width: 5rem; background: var(--bg2); color: var(--fg);
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
     .rem-h-hint {
       font-size: 0.6rem; color: var(--accent, #8aa); white-space: nowrap;
-      opacity: 0.9; min-width: 64px; text-align: right;
+      opacity: 0.9; min-width: 4rem; text-align: right;
     }
     .btn-rm-rem {
       background: transparent; border: none; color: var(--red);
@@ -944,7 +950,7 @@
     .rem-total-val { color: var(--fg); }
     /* ── Absence ──────────────────────────────────────────────────────────── */
     .btn-absence-toggle {
-      width: 22px; height: 22px; flex-shrink: 0;
+      width: 1.375rem; height: 1.375rem; flex-shrink: 0;
       background: transparent; border: 1.5px solid #00b4ff; color: #00b4ff;
       font-size: 1rem; line-height: 1; cursor: pointer;
       display: flex; align-items: center; justify-content: center; padding: 0;
@@ -966,13 +972,13 @@
     .absence-methode-row label { display: flex; align-items: center; gap: 0.35rem; }
     .absence-toggle-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem; }
     .absence-toggle-btn {
-      padding: 0 6px; height: 18px; font-size: 0.62rem; cursor: pointer;
+      padding: 0 0.375rem; height: 1.125rem; font-size: 0.62rem; cursor: pointer;
       background: var(--bg3); border: 1px solid var(--border); color: var(--fg); border-radius: 2px;
     }
     .absence-toggle-btn.active { border-color: #00b4ff; color: #00b4ff; background: #00b4ff18; }
     .absence-heures-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap; }
     .absence-heures-row input[type="number"] {
-      width: 64px; background: var(--bg3); color: var(--fg);
+      width: 4rem; background: var(--bg3); color: var(--fg);
       border: 1px solid var(--border); padding: 0.15rem 0.3rem; font-size: 0.65rem; text-align: right;
     }
     .absence-preview {
@@ -992,7 +998,7 @@
     }
     .rem-absence-line {
       display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 30px; color: var(--muted-txt);
+      font-size: 0.65rem; margin-bottom: 0.2rem; margin-left: 1.875rem; color: var(--muted-txt);
     }
     /* Montants alignés en colonne tabulaire, cohérente avec les autres lignes
        (Salaire de base, Total brut, .mob-val) — pas collés au bord droit. */
@@ -1041,7 +1047,7 @@
     .frise-title { font-size: 0.62rem; color: var(--gray-txt); margin-bottom: 0.2rem; letter-spacing: 0.03em; }
     /* Colonnes en largeur FIXE (14 px) : la taille des carrés ne dépend plus de
        la largeur du conteneur ni du libellé → maintien et IJSS strictement identiques. */
-    .frise-grid { display: grid; grid-template-columns: repeat(7, 14px); gap: 2px; justify-content: start; }
+    .frise-grid { display: grid; grid-template-columns: repeat(7, 0.875rem); gap: 0.125rem; justify-content: start; }
     .frise-head { font-size: 0.5rem; color: var(--muted-txt); text-align: center; text-transform: uppercase; line-height: 1.3; }
     .frise-sq { aspect-ratio: 1 / 1; border-radius: 2px; cursor: help; box-sizing: border-box; }
     /* Carence (maintien & IJSS) : transparente, cernée d'un liseré gris clair épais. */
@@ -1161,7 +1167,7 @@
        VUE MOBILE — BULLETIN VERTICAL
     ══════════════════════════════ */
     .mob-wrap {
-      max-width: 500px;
+      max-width: 31.25rem;
       margin: 0.75rem auto;
       padding: 0 0.75rem 2rem;
     }
@@ -1349,7 +1355,7 @@
       border: 1px solid var(--border); background: var(--bg3);
       padding: 0.75rem 1rem; margin-bottom: 1rem;
     }
-    .ann-form .field { margin: 0; min-width: 140px; }
+    .ann-form .field { margin: 0; min-width: 8.75rem; }
     .ann-form .btn-calc { width: auto; padding: 0.35rem 1.2rem; margin: 0; }
 
     /* Table annuelle */
@@ -1424,7 +1430,7 @@
       color: var(--blue);
       font-size: 0.63em;
       vertical-align: super;
-      margin-left: 3px;
+      margin-left: 0.1875rem;
       user-select: none;
       font-style: italic;
       font-weight: bold;
@@ -1481,7 +1487,7 @@
     #fm-box {
       background: var(--bg2);
       border: 1px solid var(--border);
-      width: min(580px, 100%);
+      width: min(36.25rem, 100%);
       max-height: 85vh;
       overflow-y: auto;
     }
@@ -1607,7 +1613,7 @@
       margin-top: 0.55rem; cursor: pointer; user-select: none;
     }
     .chk-apply-brut input[type="checkbox"] {
-      accent-color: #00e676; width: 13px; height: 13px; cursor: pointer;
+      accent-color: #00e676; width: 0.8125rem; height: 0.8125rem; cursor: pointer;
     }
     .chk-apply-brut span {
       font-size: 0.65rem; font-family: inherit;
@@ -1635,8 +1641,8 @@
     .param-item input[type="checkbox"] {
       accent-color: var(--blue);
       cursor: pointer;
-      width: 11px;
-      height: 11px;
+      width: 0.6875rem;
+      height: 0.6875rem;
       flex-shrink: 0;
     }
     .param-item:hover { color: var(--blue); }
@@ -1717,7 +1723,7 @@
       padding: 0.38rem 0.5rem;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 0.25rem;
       align-items: center;
       justify-content: center;
       transition: border-color 0.15s;
@@ -1726,8 +1732,8 @@
     .burger-btn.open { border-color: var(--blue); }
     .burger-btn span {
       display: block;
-      width: 18px;
-      height: 2px;
+      width: 1.125rem;
+      height: 0.125rem;
       background: var(--muted);
       transition: background 0.15s;
     }
@@ -1737,11 +1743,11 @@
     .burger-menu {
       display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + 0.375rem);
       right: 0;
       background: var(--bg2);
       border: 1px solid var(--border);
-      min-width: 210px;
+      min-width: 13.125rem;
       z-index: 200;
       flex-direction: column;
     }
@@ -1788,11 +1794,11 @@
     .view-carnet,
     .view-contact,
     .view-gaabrielle,
-    .view-quizz   { display: none; padding: 1.5rem; max-width: 860px; margin: 0 auto 3rem; }
+    .view-quizz   { display: none; padding: 1.5rem; max-width: 53.75rem; margin: 0 auto 3rem; }
     /* Le contrat gère sa propre largeur via .ct-wrap : ici on ne pose que le masquage. */
     .view-contrat { display: none; padding: 1.5rem 0; margin: 0 auto 3rem; }
-    .view-hercule { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto 3rem; }
-    .view-ccn     { display: none; padding: 1.5rem; max-width: 1000px; margin: 0 auto 3rem; }
+    .view-hercule { display: none; padding: 1.5rem; max-width: 68.75rem; margin: 0 auto 3rem; }
+    .view-ccn     { display: none; padding: 1.5rem; max-width: 62.5rem; margin: 0 auto 3rem; }
 
     /* ── Le Chakrram (conventions collectives) ── */
     /* Exposant du titre : « IDCC » posé sur le nom, comme une référence. */
@@ -1870,7 +1876,7 @@
     }
 
     /* ── Hercule Compta ── */
-    .herc-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 4rem; }
+    .herc-wrap { max-width: 68.75rem; margin: 0 auto; padding: 0 0 4rem; }
     .herc-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.8rem; }
     .herc-group-lbl { font-size: 0.58rem; color: var(--muted-txt); letter-spacing: 0.18em; text-transform: uppercase; margin: 2rem 0 0.8rem; border-top: 1px solid var(--border); padding-top: 1.2rem; }
     .herc-info { font-size: 0.68rem; color: var(--muted-txt); margin-bottom: 1.2rem; letter-spacing: 0.04em; }
@@ -1964,7 +1970,7 @@
     body.is-mecenat .view-bar     { display: none !important; }
     body.is-mecenat .view-mecenat { display: block; }
 
-    .view-mecenat { display: none; padding: 1.5rem; max-width: 560px; margin: 0 auto 3rem; }
+    .view-mecenat { display: none; padding: 1.5rem; max-width: 35rem; margin: 0 auto 3rem; }
 
     /* ── Meliinda ── */
     body.is-meliinda .view-desktop,
@@ -1978,7 +1984,7 @@
       padding: 2rem 1rem; width: 100%;
     }
     .ml-card {
-      width: 100%; max-width: 720px; background: var(--bg2);
+      width: 100%; max-width: 45rem; background: var(--bg2);
       border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem;
     }
     .ml-lbl {
@@ -1986,14 +1992,14 @@
       text-transform: uppercase; margin-bottom: 0.8rem;
     }
     .ml-header {
-      width: 100%; max-width: 720px; margin-bottom: 2rem;
+      width: 100%; max-width: 45rem; margin-bottom: 2rem;
       border-bottom: 1px solid var(--border); padding-bottom: 1rem;
     }
     .ml-header h2 { font-size: 1.1rem; color: var(--white); letter-spacing: 0.12em; }
     .ml-header p  { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.15em;
                     text-transform: uppercase; margin-top: 0.3rem; }
     #ml-editor {
-      width: 100%; min-height: 140px; background: var(--bg3);
+      width: 100%; min-height: 8.75rem; background: var(--bg3);
       border: 1px solid var(--border); color: var(--white);
       font-family: inherit; font-size: 0.9rem; padding: 0.8rem;
       outline: none; resize: vertical; line-height: 1.7;
@@ -2032,14 +2038,14 @@
     #ml-status.err { color: var(--red); }
     #ml-replay-wrap { display: none; }
     #ml-replay-stage {
-      width: 100%; min-height: 140px; background: var(--bg3);
+      width: 100%; min-height: 8.75rem; background: var(--bg3);
       border: 1px solid var(--border); padding: 0.8rem;
       font-size: 0.9rem; line-height: 1.7; color: var(--white);
       white-space: pre-wrap; word-break: break-word;
     }
     .ml-ghost { color: var(--red); text-decoration: line-through; opacity: 0.55; font-style: italic; }
     .ml-cursor {
-      display: inline-block; width: 2px; height: 1em;
+      display: inline-block; width: 0.125rem; height: 1em;
       background: var(--blue); vertical-align: text-bottom;
       animation: blink 0.9s step-start infinite;
     }
@@ -2055,7 +2061,7 @@
     .ml-seq-item .ml-seq-date { color: var(--muted-txt); font-size: 0.55rem; flex-shrink: 0; }
 
     /* ── Quiz paie ── */
-    .qz-wrap { max-width: 640px; margin: 0 auto; }
+    .qz-wrap { max-width: 40rem; margin: 0 auto; }
     .qz-head {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
@@ -2199,7 +2205,7 @@
     .qz-start-btn:hover { background: var(--yellow); color: var(--bg); }
 
     /* ── Gaabrielle RH ── */
-    .gaab-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    .gaab-wrap { max-width: 68.75rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
     .gaab-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
     .gaab-initiales { display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem; margin-bottom: 2rem; font-size: 0.72rem; letter-spacing: 0.08em; }
     .gaab-init {
@@ -2209,7 +2215,7 @@
     .gaab-init:hover { color: var(--white); }
     .gaab-init::after {
       content: attr(data-name);
-      position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+      position: absolute; bottom: calc(100% + 0.3125rem); left: 50%; transform: translateX(-50%);
       background: var(--bg); border: 1px solid var(--border);
       color: var(--white); padding: 0.25rem 0.6rem; font-size: 0.66rem;
       white-space: nowrap; border-radius: 3px; pointer-events: none;
@@ -2298,7 +2304,7 @@
     .gaab-form-close:hover { color: var(--red); }
     .gaab-form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(11.25rem, 1fr));
       gap: 0 1rem;
     }
     .gaab-form-wide { grid-column: 1 / -1; }
@@ -2327,7 +2333,7 @@
       text-transform: uppercase; margin-bottom: 0.6rem;
     }
     .gaab-next-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(9.375rem, 1fr));
       gap: 0.6rem;
     }
     .gaab-next-btn {
@@ -2418,15 +2424,15 @@
     .gaab-box-inner { display: none; }
     .gaab-box-section.revealed .gaab-box-inner  { display: block; }
     .gaab-box-section.revealed .gaab-box-locked { display: none; }
-    .gaab-box-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0.2rem auto 0; overflow: visible; }
+    .gaab-box-svg { width: 100%; height: auto; max-width: 55rem; display: block; margin: 0.2rem auto 0; overflow: visible; }
     .gb-box   { fill: rgba(56,189,248,0.10); stroke: var(--blue);   stroke-width: 1.4; }
     .gb-med   { stroke: var(--yellow); stroke-width: 2.2; }
     .gb-mean  { stroke: var(--green);  stroke-width: 1.4; stroke-dasharray: 3 3; }
     .gb-whisk { stroke: var(--muted);  stroke-width: 1.4; }
     .gb-dot   { fill: var(--purple); opacity: 0.6; }
     .gb-out   { fill: var(--red);    opacity: 0.95; }
-    .gb-tick  { fill: var(--dim-txt);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
-    .gb-val   { fill: var(--text); font-size: 13px; font-family: var(--font-mono, monospace); }
+    .gb-tick  { fill: var(--dim-txt);  font-size: 0.8125rem; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
+    .gb-val   { fill: var(--text); font-size: 0.8125rem; font-family: var(--font-mono, monospace); }
     .gaab-box-legend {
       display: flex; flex-wrap: wrap; gap: 0.45rem 1.2rem; justify-content: center;
       margin-top: 0.7rem; font-size: 0.64rem; color: var(--muted-txt); letter-spacing: 0.03em;
@@ -2445,30 +2451,30 @@
     .gaab-rqth-badge { font-size: 0.6rem; letter-spacing: 0.05em; padding: 0.15rem 0.5rem; border-radius: 3px; white-space: nowrap; }
     .gaab-rqth-badge.ok { color: var(--green); border: 1px solid rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
     .gaab-rqth-badge.ko { color: var(--yellow); border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.08); }
-    .gaab-rqth-bar { position: relative; height: 8px; max-width: 420px; margin: 0.7rem 0 0; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .gaab-rqth-bar { position: relative; height: 0.5rem; max-width: 26.25rem; margin: 0.7rem 0 0; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
     .gaab-rqth-bar > span { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
-    .gaab-rqth-bar .gaab-rqth-seuil { position: absolute; top: -3px; right: 0; width: 2px; height: 14px; background: var(--green); }
-    .gaab-rqth-note { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.03em; margin-top: 0.6rem; line-height: 1.5; max-width: 640px; }
+    .gaab-rqth-bar .gaab-rqth-seuil { position: absolute; top: -0.1875rem; right: 0; width: 0.125rem; height: 0.875rem; background: var(--green); }
+    .gaab-rqth-note { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.03em; margin-top: 0.6rem; line-height: 1.5; max-width: 40rem; }
     .gaab-rqth-note b { color: var(--muted-txt); font-weight: 600; }
 
     /* Pyramide des âges H/F */
     .gaab-pyr-section { margin-top: 2.8rem; }
-    .gaab-pyr-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0.4rem auto 0; overflow: visible; }
+    .gaab-pyr-svg { width: 100%; height: auto; max-width: 55rem; display: block; margin: 0.4rem auto 0; overflow: visible; }
     .gp-bar-h { fill: var(--blue);   opacity: 0.7; }
     .gp-bar-f { fill: var(--purple); opacity: 0.7; }
-    .gp-band  { fill: var(--dim-txt);  font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
-    .gp-cnt   { fill: var(--text); font-size: 12px; font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
+    .gp-band  { fill: var(--dim-txt);  font-size: 0.8125rem; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+    .gp-cnt   { fill: var(--text); font-size: 0.75rem; font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; }
     .gp-axis  { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
-    .gp-head  { font-size: 13px; font-family: var(--font-mono, monospace); letter-spacing: 0.05em; }
+    .gp-head  { font-size: 0.8125rem; font-family: var(--font-mono, monospace); letter-spacing: 0.05em; }
     .gp-head.gp-h { fill: var(--blue); }
     .gp-head.gp-f { fill: var(--purple); }
-    .gp-moy   { fill: var(--dim-txt); font-size: 12px; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
+    .gp-moy   { fill: var(--dim-txt); font-size: 0.75rem; font-family: var(--font-mono, monospace); letter-spacing: 0.03em; }
 
     /* ── Contrat de travail ────────────────────────────────────────────────────
        Trois blocs empilés : saisie (employeur / salarié / contrat), catalogue de
        clauses cochables, aperçu du contrat composé. Toute couleur passe par une
        variable : les cinq modes accessibilité redéfinissent les mêmes noms. */
-    .ct-wrap { max-width: 1180px; margin: 0 auto; padding: 0 1rem 4rem; }
+    .ct-wrap { max-width: 73.75rem; margin: 0 auto; padding: 0 1rem 4rem; }
     .ct-section-lbl { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.4rem; }
 
     .ct-step {
@@ -2495,7 +2501,7 @@
     .ct-fieldset-body { display: none; padding: 1rem 0.9rem 1.1rem; }
     .ct-fieldset.open .ct-fieldset-body { display: block; }
 
-    .ct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem 1.1rem; }
+    .ct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14.375rem, 1fr)); gap: 0.75rem 1.1rem; }
     .ct-wide { grid-column: 1 / -1; }
     .ct-half { grid-column: span 2; }
     @media (max-width: 620px) { .ct-half { grid-column: 1 / -1; } }
@@ -2583,7 +2589,7 @@
     /* ── Bloc C : aperçu ─────────────────────────────────────────────────────── */
     .ct-feuille {
       border: 1px solid var(--border); background: var(--bg2); border-radius: 0.3rem;
-      padding: 3rem 3.2rem 3.4rem; max-width: 860px; margin: 0 auto;
+      padding: 3rem 3.2rem 3.4rem; max-width: 53.75rem; margin: 0 auto;
       font-size: 0.78rem; line-height: 1.85; color: var(--text); letter-spacing: 0.01em;
     }
     @media (max-width: 680px) { .ct-feuille { padding: 1.6rem 1.2rem 2rem; } }
@@ -2607,7 +2613,7 @@
     .ct-val { color: var(--blue); }
     .ct-ph {
       color: var(--yellow); border-bottom: 1px dashed var(--yellow);
-      font-size: 0.94em; letter-spacing: 0.05em; padding-bottom: 1px;
+      font-size: 0.94em; letter-spacing: 0.05em; padding-bottom: 0.0625rem;
     }
     .ct-ref-off { color: var(--red); font-size: 0.94em; letter-spacing: 0.05em; }
     .ct-doc-fait { margin: 2.6rem 0 0; }
@@ -2752,7 +2758,7 @@
     /* ── Grille stack technique ── */
     .stack-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
       gap: 0.65rem;
       margin-bottom: 1.75rem;
     }
@@ -2942,7 +2948,7 @@
   <div class="ascii-header">
     <div>
       <div class="banner-title">paye ton bulletin</div>
-      <div class="banner-sub">// simulateur pédagogique de bulletin de paye français et international · v0.1.9</div>
+      <div class="banner-sub">// simulateur pédagogique de bulletin de paie français et international · v0.1.9</div>
     </div>
 
     <!-- Burger menu -->
@@ -3125,7 +3131,7 @@
           <div id="d-france-sub-wrap" style="padding-left:1.1rem;display:flex;flex-direction:column;gap:0.1rem">
             <label class="param-item" id="d-alsace-moselle-wrap">
               <input type="checkbox" id="d-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-              <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+              <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:0.125rem" /> Alsace-Moselle
             </label>
             <label class="param-item">
               <input type="checkbox" id="d-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
@@ -3597,7 +3603,7 @@
             <div id="m-france-sub-wrap" style="padding-left:1.1rem;display:flex;flex-direction:column;gap:0.1rem">
               <label class="param-item" id="m-alsace-moselle-wrap">
                 <input type="checkbox" id="m-alsace-moselle" onchange="syncParam('alsace-moselle', this.checked)" />
-                <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:2px" /> Alsace-Moselle
+                <img class="flag-img" src="/Alsace.jpeg" alt="Alsace" /><img class="flag-img" src="/Moselle.jpg" alt="Moselle" style="margin-left:0.125rem" /> Alsace-Moselle
               </label>
               <label class="param-item">
                 <input type="checkbox" id="m-fpt" onchange="syncParam('fpt', this.checked); onTogglePays('fpt', this.checked)" />
@@ -4017,7 +4023,7 @@
 
     <div class="ann-form">
       <div class="field"><label>ANNÉE</label>
-        <input type="number" id="a-annee" value="2026" min="2015" step="1" style="width:90px" /></div>
+        <input type="number" id="a-annee" value="2026" min="2015" step="1" style="width:5.625rem" /></div>
       <div class="field"><label>SALAIRE BRUT MENSUEL (€)</label>
         <input type="number" id="a-brut" value="2500" step="50" min="0" /></div>
       <div class="field"><label>STATUT</label>
@@ -4026,7 +4032,7 @@
           <option value="cadre">Cadre</option>
         </select></div>
       <div class="field"><label>ETP (%)</label>
-        <input type="number" id="a-etp" value="100" min="1" max="100" step="1" style="width:80px"
+        <input type="number" id="a-etp" value="100" min="1" max="100" step="1" style="width:5rem"
                title="Quotité de travail — proratise le PMSS et le SMIC du Fillon (100 % = temps plein)." /></div>
       <button class="btn-calc" id="a-calc">[ SIMULER L'ANNÉE ]</button>
     </div>
@@ -4769,7 +4775,7 @@
           </div>
           <div class="qz-lb-row">
             <input id="qz-lb-pseudo" class="qz-input" type="text"
-                   placeholder="pseudo…" maxlength="50" autocomplete="off" style="max-width:180px"/>
+                   placeholder="pseudo…" maxlength="50" autocomplete="off" style="max-width:11.25rem"/>
             <button class="qz-btn" onclick="quizzSoumettrScore()">SOUMETTRE</button>
           </div>
           <div class="qz-lb-msg" id="qz-lb-msg"></div>
