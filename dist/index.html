@@ -619,6 +619,10 @@
     ══════════════════════════════ */
     .view-desktop { display: flex; min-height: calc(100vh - 100px); }
     .view-mobile  { display: none; }
+    /* Les lignes de pied de page portent .view-desktop pour suivre le basculement
+       de vue, mais ne doivent pas en hériter la hauteur plein écran : sinon chacune
+       ajoute un écran de vide sous le bulletin. */
+    .view-desktop.view-foot { min-height: 0; }
     body.is-mobile .view-desktop { display: none; }
     body.is-mobile .view-mobile  { display: block; }
 
@@ -3532,8 +3536,8 @@
     </div>
 
   </div><!-- /view-desktop -->
-  <div class="view-desktop" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-desktop" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-desktop view-foot" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim-txt);letter-spacing:0.08em">jnfavari@proton.me</div>
+  <div class="view-desktop view-foot" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim-txt);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
 
   <!-- ════════════════════════════════
        VUE MOBILE
