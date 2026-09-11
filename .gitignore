@@ -44,3 +44,7 @@ tauri
 vite
 xenna-paie@*
 meliinda/target
+
+# ── Fonte Minitel : la source téléchargée est un cache, le .woff2 produit est
+#    commité (l'application le sert) ──────────────────────────────────────────
+scripts/.minitel-source.ttf

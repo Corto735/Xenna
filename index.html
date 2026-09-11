@@ -90,6 +90,8 @@
       --text:   #c8daf0;
       --blue:   #38bdf8;
       --electric-blue: #2f81ff;
+      --sal:    #ffe033;   /* part salarié — colonne, formules, barre de synthèse */
+      --float-edge: #ffe066;  /* liseré des boutons d'accessibilité flottants */
       --green:  #4ade80;
       --red:    #f87171;
       --orange: #fb923c;
@@ -176,51 +178,114 @@
        TOGGLE DE VUE
     ══════════════════════════════ */
     .view-bar {
+      /* Hauteur commune à TOUS les contrôles de la barre : la bascule et les
+         trois boutons s'alignent sur cette seule valeur, jamais sur un padding
+         calculé au jugé. */
+      --vb-h: 1.5rem;
       background: var(--bg2);
       border-bottom: 1px solid var(--border);
       padding: 0.4rem 1.5rem;
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .view-label { color: var(--muted-txt); font-size: 0.72rem; margin-right: 0.25rem; }
-    .btn-view {
+    .view-label {
+      color: var(--muted-txt);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      line-height: var(--vb-h);
+      margin-right: 0.1rem;
+    }
+
+    /* Bascule Bureau/Mobile — même motif que .hf-toggle / .bn-toggle :
+       pastille coulissante, le libellé actif passant en contraste sombre. */
+    .vw-toggle {
+      position: relative;
+      /* Grille de deux colonnes 1fr : l'algorithme fr force des colonnes de
+         largeur ÉGALE et jamais inférieures au plus long des deux libellés.
+         La pastille peut donc rester à 50 % quelle que soit la langue — ce
+         qu'un flex:1 (base 0) ne garantit pas, il laisserait déborder. */
+      display: inline-grid;
+      grid-template-columns: repeat(2, 1fr);
+      align-items: center;
+      min-width: 11.5rem;
+      height: var(--vb-h);
+      padding: 0 0.13rem;
+      box-sizing: border-box;
+      border: 1px solid var(--dim);
+      border-radius: calc(var(--vb-h) / 2);
+      background: var(--bg3);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .vw-toggle:hover { border-color: var(--blue); }
+    .vw-end {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 0.55rem;
+      font-size: 0.72rem;
+      font-weight: bold;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      color: var(--muted-txt);
+      transition: color 0.15s;
+    }
+    .vw-knob {
+      position: absolute;
+      top: 50%;
+      width: calc(50% - 0.13rem);
+      height: calc(var(--vb-h) - 0.3rem);
+      border-radius: calc(var(--vb-h) / 2);
+      background: var(--blue);
+      transform: translateY(-50%);
+      transition: left 0.18s ease;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.55);
+    }
+    .vw-toggle.is-desk .vw-knob { left: 0.13rem; }
+    .vw-toggle.is-mob  .vw-knob { left: 50%; }
+    /* Le libellé actif passe sous la pastille bleue → contraste sombre */
+    .vw-toggle.is-desk .vw-end-desk,
+    .vw-toggle.is-mob  .vw-end-mob { color: var(--bg); }
+
+    /* Boutons de la barre de vue — socle unique : simulation annuelle, langue
+       et affichage partagent hauteur, rayon, graisse et interlettrage. Le bleu
+       plein y signifie « ouvert / actif », jamais « ce bouton est important ». */
+    .vb-btn {
+      display: inline-flex;
+      align-items: center;
+      height: var(--vb-h);
+      box-sizing: border-box;
       background: none;
       border: 1px solid var(--dim);
+      border-radius: calc(var(--vb-h) / 2);
       color: var(--muted-txt);
       font-family: inherit;
       font-size: 0.72rem;
-      padding: 0.2rem 0.7rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      padding: 0 0.8rem;
+      white-space: nowrap;
       cursor: pointer;
       transition: all 0.15s;
-      letter-spacing: 0.05em;
     }
-    .btn-view:hover { border-color: var(--blue); color: var(--blue); }
-    .btn-view.active {
+    .vb-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .vb-btn.active,
+    .vb-btn.open {
       border-color: var(--blue);
-      color: var(--bg);
       background: var(--blue);
-      font-weight: bold;
+      color: var(--bg);
     }
 
     /* ══════════════════════════════
        ACCESSIBILITÉ
     ══════════════════════════════ */
-    .a11y-wrap { position: relative; }
-    .a11y-btn {
-      background: var(--blue);
-      border: 1px solid var(--blue);
-      color: #071e38;
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.2rem 0.7rem;
-      cursor: pointer;
-      letter-spacing: 0.05em;
-      transition: all 0.15s;
-      border-radius: 0.3rem;
-    }
-    .a11y-btn:hover,
-    .a11y-btn.open { background: #1aabf0; border-color: #1aabf0; color: #071e38; }
+    .a11y-wrap { position: relative; display: inline-flex; }
 
     .a11y-panel {
       display: none;
@@ -238,19 +303,7 @@
     .a11y-panel.open { display: flex; }
 
     /* Bouton traduction */
-    .trad-wrap { position: relative; }
-    .trad-btn {
-      background: none;
-      border: 1px solid var(--dim);
-      color: var(--muted-txt);
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.2rem 0.7rem;
-      cursor: pointer;
-      letter-spacing: 0.05em;
-      transition: all 0.15s;
-    }
-    .trad-btn:hover, .trad-btn.open { border-color: var(--blue); color: var(--blue); }
+    .trad-wrap { position: relative; display: inline-flex; }
     .trad-btn.loading { opacity: 0.6; pointer-events: none; }
     .trad-panel {
       display: none;
@@ -337,7 +390,7 @@
     body.is-annuel  .a11y-float { display: flex; }
     .a11y-float-btn {
       background: var(--bg2);
-      border: 1px solid #ffe066;
+      border: 1px solid var(--float-edge);
       border-right: none;
       border-bottom: none;
       color: var(--muted-txt);
@@ -356,13 +409,13 @@
       opacity: 0.2;
       border-radius: 4px;
     }
-    .a11y-float-btn:last-child { border-bottom: 1px solid #ffe066; }
+    .a11y-float-btn:last-child { border-bottom: 1px solid var(--float-edge); }
     .a11y-float-btn:hover { color: var(--blue); border-color: var(--blue); opacity: 1; }
 
     @keyframes a11y-wakeup {
       0%   { opacity: 1; color: var(--wakeup-color); border-color: var(--wakeup-color); }
       75%  { opacity: 1; color: var(--wakeup-color); border-color: var(--wakeup-color); }
-      100% { opacity: 0.2; color: var(--muted-txt); border-color: #ffe066; }
+      100% { opacity: 0.2; color: var(--muted-txt); border-color: var(--float-edge); }
     }
     .a11y-float-btn.wakeup { animation: a11y-wakeup 3.5s ease-out forwards; }
     .a11y-float-btn.active {
@@ -379,11 +432,20 @@
     }
     .flash-67 { animation: flash67 0.45s ease forwards; border-radius: 2px; }
 
-    /* Mode noir & blanc — fond clair, texte noir partout */
-    body.bw-mode {
+    /* Mode noir & blanc — fond clair, texte noir partout.
+
+       `html body.bw-mode` et non `body.bw-mode` : « mode malvoyant » est une
+       case de la MÊME liste que « noir & blanc », et sa palette, déclarée plus
+       bas, gagnait par simple ordre de cascade — cocher les deux annulait le
+       noir & blanc sans rien dire. Le sélecteur descendant lui donne un poids
+       supérieur ; le mode malvoyant conserve tout ce qui n'est pas une teinte
+       (corps de texte agrandi, bordures épaissies), ce qui est bien la
+       combinaison utile : gros caractères ET noir sur blanc. */
+    html body.bw-mode {
       --bg:     #ffffff; --bg2:    #f4f4f4; --bg3:    #e8e8e8;
       --text:   #000000; --muted:  #333333; --dim:    #555555;
       --border: #000000; --blue:   #000000; --red:    #000000;
+      --sal:    #000000; --float-edge: #000000;
       --orange: #000000; --green:  #000000; --purple: #000000;
       --gray:   #000000; --yellow: #000000; --white:  #000000;
       --electric-blue: #000000;
@@ -405,9 +467,17 @@
     body.bw-mode .summary-bar .sb-cell { background: #f2f2f2; border-color: #000; }
     /* Bouton calculer et toggles : noir/blanc pour rester lisibles */
     body.bw-mode .btn-calc { background: #000000; color: #ffffff; border-color: #000000; }
-    body.bw-mode .hf-knob { background: #000000; box-shadow: none; }
+    body.bw-mode .hf-knob,
+    body.bw-mode .bn-knob,
+    body.bw-mode .vw-knob { background: #000000; box-shadow: none; }
     body.bw-mode .hf-toggle.is-h .hf-end-h,
-    body.bw-mode .hf-toggle.is-f .hf-end-f { color: #ffffff; }
+    body.bw-mode .hf-toggle.is-f .hf-end-f,
+    body.bw-mode .bn-toggle.is-brut .bn-end-brut,
+    body.bw-mode .bn-toggle.is-net  .bn-end-net,
+    body.bw-mode .vw-toggle.is-desk .vw-end-desk,
+    body.bw-mode .vw-toggle.is-mob  .vw-end-mob { color: #ffffff; }
+    body.bw-mode .vb-btn.active,
+    body.bw-mode .vb-btn.open { background: #000000; border-color: #000000; color: #ffffff; }
     /* Champs de saisie */
     body.bw-mode input, body.bw-mode select { color: #000000 !important; }
     /* Panneaux d'explication dépliables */
@@ -433,6 +503,93 @@
     body.bw-mode .mob-expand .fm-calc td.c-taux { color: #000000 !important; }
     body.bw-mode .mob-expand .fm-calc td.fm-op { color: #555555 !important; opacity: 1 !important; }
     /* Desktop — couleurs contextuelles fm-type-* (jaune/orange/vert/violet hardcodés) */
+    /* ── Teintes codées en dur, hors rampe de variables ──────────────────
+       Tout ce qui suit peignait une couleur littérale : le remappage des
+       variables ne pouvait rien pour elles. Deux familles de défauts :
+       du texte coloré resté illisible-mais-visible, et surtout des fonds
+       SOMBRES restés sombres sous du texte devenu noir. */
+
+    /* Séparateurs de lignes : #0c1520 était un trait sombre pensé pour un fond
+       sombre — sur blanc il ne séparait plus rien. */
+    body.bw-mode .ascii-tbl tbody tr.data-row,
+    body.bw-mode .ann-tbl tbody tr,
+    body.bw-mode .mob-row,
+    body.bw-mode .mob-expand { border-bottom-color: #cccccc; }
+    body.bw-mode .ascii-tbl tbody tr.data-row.open { background: #eeeeee; }
+    body.bw-mode .mob-row.net-row { border-top-color: #000000; }
+
+    /* Fonds sombres sous du texte noir — illisibles */
+    body.bw-mode .params-panel,
+    body.bw-mode .ann-tbl tr.treizieme-mois { background: #f4f4f4 !important; }
+    body.bw-mode .etp-sel {
+      background: #ffffff; color: #000000; border-color: #000000;
+    }
+
+    /* Titres de rubrique et libellés dorés */
+    body.bw-mode .tbl-section-head,
+    body.bw-mode .rem-total-lbl,
+    body.bw-mode .warn-box strong,
+    body.bw-mode .chk-apply-brut span,
+    body.bw-mode .absence-preview .retenue-val { color: #000000; }
+    body.bw-mode .chk-apply-brut input[type="checkbox"] { accent-color: #000000; }
+
+    /* Pastilles de catégorie : la couleur ne distingue plus rien en monochrome,
+       les crochets du libellé suffisent. */
+    body.bw-mode .cat-ss,   body.bw-mode .cat-csg, body.bw-mode .cat-ret,
+    body.bw-mode .cat-prev, body.bw-mode .cat-cho, body.bw-mode .cat-alleg,
+    body.bw-mode .cat-acc { color: #000000; }
+
+    /* Boutons cerclés : ajout de rémunération (or), absence (cyan), sortie de
+       page (rouge brique), accessibilité flottante (jaune pâle). */
+    body.bw-mode .btn-add-rem,
+    body.bw-mode .btn-absence-toggle,
+    body.bw-mode .absence-toggle-btn.active,
+    body.bw-mode .btn-absence-apply,
+    body.bw-mode .page-exit,
+    body.bw-mode .page-exit:hover,
+    body.bw-mode .a11y-float-btn,
+    body.bw-mode .a11y-float-btn:last-child {
+      border-color: #000000;
+      color: #000000;
+    }
+    body.bw-mode .btn-absence-toggle.active,
+    body.bw-mode .absence-toggle-btn.active,
+    body.bw-mode .btn-absence-apply,
+    body.bw-mode .qz-pays-btn.on,
+    body.bw-mode .gaab-rqth-badge.ok { background: #e8e8e8; }
+    body.bw-mode .gaab-rqth-badge.ok { border-color: #000000; color: #000000; }
+    body.bw-mode .absence-panel { border-color: #000000; }
+    /* Pastille jaune posée en style inline dans le balisage du mécénat */
+    body.bw-mode [style*="#f5c842"] { border-color: #000000 !important; }
+
+    /* Liens : le bleu par défaut du navigateur n'est pas une teinte du thème,
+       aucune variable ne l'atteignait. */
+    body.bw-mode a { color: #000000; text-decoration-color: #000000; }
+
+    /* Filigrane de crédit : blanc à 18 %, donc rigoureusement invisible sur
+       fond blanc. Même discrétion, polarité inverse. */
+    body.bw-mode .ai-credit { color: rgba(0, 0, 0, 0.22); }
+
+    /* ── Ce que le CSS calculé ne dit pas ────────────────────────────────
+       Trois surfaces peintes par le navigateur, pas par la feuille de style,
+       et donc invisibles à tout audit des couleurs déclarées. */
+
+    /* Cases et boutons radio : rendus par le moteur, en bleu système. */
+    body.bw-mode input[type="checkbox"],
+    body.bw-mode input[type="radio"],
+    body.bw-mode input[type="range"],
+    body.bw-mode progress { accent-color: #000000; }
+
+    /* Sélecteur de date natif : sa fenêtre suivait le thème sombre. */
+    body.bw-mode .field input[type="date"] { color-scheme: light; }
+
+    /* Émojis (🌐, drapeaux) : leur couleur est dans la fonte, aucune propriété
+       CSS ne l'atteint. La désaturation est le seul levier. */
+    body.bw-mode .flag-emoji,
+    body.bw-mode #trad-btn,
+    body.bw-mode .trad-lang-btn,
+    body.bw-mode .qz-pays-btn { filter: grayscale(1); }
+
     body.bw-mode .fm-type-sal .fm-generic,   body.bw-mode .fm-type-sal .fm-base-note,
     body.bw-mode .fm-type-pat .fm-generic,   body.bw-mode .fm-type-pat .fm-base-note,
     body.bw-mode .fm-type-alleg .fm-generic, body.bw-mode .fm-type-alleg .fm-base-note,
@@ -469,11 +626,13 @@
       outline: 3px solid #ffff00 !important;
       outline-offset: 3px;
     }
+    body.hv-mode.bw-mode *:focus-visible { outline-color: #000000 !important; }
     body.hv-mode input,
     body.hv-mode select,
     body.hv-mode button,
     body.hv-mode .hf-toggle,
-    body.hv-mode .btn-view,
+    body.hv-mode .vw-toggle,
+    body.hv-mode .vb-btn,
     body.hv-mode .btn-calc { border-width: 2px !important; }
     body.hv-mode .mob-row { border-bottom: 2px solid var(--border); }
 
@@ -494,25 +653,32 @@
     body.hv-mode .field select { padding: 0.5rem 0.6rem; }
 
     /* ── Mode Minitel ─────────────────────────────────────────────────────
-       Vert phosphore sur fond noir + le jeu de caractères EF9345 du Minitel 1.
-       La fonte d'origine ignore les capitales accentuées et le « € » (elle est
-       antérieure à l'euro) : ces glyphes-là retombent sur VT323, qui reste dans
-       le même registre pixel. */
+       Vert phosphore sur fond noir et le jeu de caractères EF9345 du Minitel 1B.
+
+       La fonte est construite par `scripts/build-minitel-font.py` à partir du
+       tracé CC0 de Frédéric Bisson (Zigazou, dépôt Minitel-Canvas), étendu sur
+       la même grille de 8 × 10 pixels avec ce qui lui manquait : les filets et
+       les pavés — indispensables pour dessiner l'interface en caractères — et
+       le « € ». Les capitales accentuées y sont repliées sur leur lettre de
+       base : le Vidéotex n'a jamais su afficher « É », et c'est la disparition
+       de ce repli vers une SECONDE fonte, aux proportions étrangères, qui
+       faisait apparaître des accents minuscules au milieu du texte.
+
+       Servie depuis l'application : la fonte d'un mode d'affichage n'a rien à
+       faire sur un CDN tiers. */
     @font-face {
       font-family: 'MinitelXenna';
-      src: url('https://cdn.jsdelivr.net/gh/Zigazou/miedit@b88a99f36bc084167948b8fc2e5526cbbc0c64a7/font/Minitel.ttf') format('truetype');
+      src: url('/minitel.woff2') format('woff2');
       font-weight: normal;
       font-style: normal;
       font-display: swap;
-    }
-    /* Repli pixel pour les glyphes absents de la fonte Minitel : capitales
-       accentuées (É, À, Ç) et « € ». */
-    @font-face {
-      font-family: 'VT323';
-      src: url('https://cdn.jsdelivr.net/npm/@fontsource/vt323@5/files/vt323-latin-400-normal.woff2') format('woff2');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
+      /* La cellule EF9345 occupe UN em entier, là où le Roboto de
+         l'application tourne autour de 0,52 em par caractère : sans
+         correction, chaque libellé doublerait de longueur et la mise en page
+         éclaterait. `size-adjust` réduit le tracé sans toucher aux boîtes.
+         Cette valeur est reprise telle quelle par `--mnt-s` plus bas — les
+         deux doivent rester d'accord, sinon la grille de filets se décale. */
+      size-adjust: 62%;
     }
 
     body.minitel-mode {
@@ -532,6 +698,8 @@
       --border: var(--mnt-mid);
       --blue:   var(--mnt-fg);
       --electric-blue: var(--mnt-bright);
+      --sal:    var(--mnt-bright);
+      --float-edge: var(--mnt-mid);
       --green:  var(--mnt-fg);
       --red:    var(--mnt-bright);
       --orange: #5cff8a;
@@ -543,12 +711,32 @@
       --titre-flash: var(--blue);
 
       background: #000000;
-      letter-spacing: 0.06em;
       text-shadow: 0 0 4px rgba(51, 255, 102, 0.35);
+
+      /* ── La grille de caractères ──────────────────────────────────────
+         La cellule EF9345 fait 8 pixels de large pour 10 de haut : en unités
+         de fonte, 1 em d'avance pour 1,25 em de hauteur. Ces deux valeurs
+         NE SONT PAS décoratives — c'est à cette hauteur de ligne exacte, et
+         à interlettrage nul, que deux caractères de filet voisins se
+         raccordent sans fissure, horizontalement comme verticalement. Tout
+         écart et le cadre se disloque. */
+      letter-spacing: 0;
+      --mnt-s: 0.62;                              /* = size-adjust ci-dessus */
+      --mnt-cw: calc(1em * var(--mnt-s));         /* largeur d'une cellule */
+      --mnt-ch: calc(1.25em * var(--mnt-s));      /* hauteur d'une cellule */
+      line-height: calc(1.25 * var(--mnt-s));
+
+      /* Les deux primitives de tracé : une file de filets horizontaux et une
+         colonne de filets verticaux, l'une et l'autre volontairement plus
+         longues que n'importe quel élément, le débordement masqué les coupant
+         à la bonne dimension. */
+      --mnt-h: "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────";
+      --mnt-v: "│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A│\A";
     }
     body.minitel-mode,
     body.minitel-mode * {
-      font-family: 'MinitelXenna', 'VT323', 'Courier New', monospace !important;
+      font-family: 'MinitelXenna', 'Courier New', monospace !important;
+      letter-spacing: 0 !important;
     }
 
     /* Zébrures — un seul vert très sombre au lieu des deux gris */
@@ -573,9 +761,17 @@
     body.minitel-mode input,
     body.minitel-mode select { color: var(--mnt-fg) !important; background: #001206; }
     body.minitel-mode .btn-calc { background: var(--mnt-fg); color: #000000; border-color: var(--mnt-fg); }
-    body.minitel-mode .hf-knob { background: var(--mnt-fg); box-shadow: none; }
+    body.minitel-mode .hf-knob,
+    body.minitel-mode .bn-knob,
+    body.minitel-mode .vw-knob { background: var(--mnt-fg); box-shadow: none; }
     body.minitel-mode .hf-toggle.is-h .hf-end-h,
-    body.minitel-mode .hf-toggle.is-f .hf-end-f { color: #000000; }
+    body.minitel-mode .hf-toggle.is-f .hf-end-f,
+    body.minitel-mode .bn-toggle.is-brut .bn-end-brut,
+    body.minitel-mode .bn-toggle.is-net  .bn-end-net,
+    body.minitel-mode .vw-toggle.is-desk .vw-end-desk,
+    body.minitel-mode .vw-toggle.is-mob  .vw-end-mob { color: #000000; }
+    body.minitel-mode .vb-btn.active,
+    body.minitel-mode .vb-btn.open { background: var(--mnt-fg); border-color: var(--mnt-fg); color: #000000; }
 
     /* Panneaux d'explication (couleurs en dur dans le CSS de base) */
     body.minitel-mode .expl-box { background: #001206 !important; border-left-color: var(--mnt-mid) !important; }
@@ -610,6 +806,186 @@
     body.minitel-mode img {
       filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(5) brightness(0.95);
     }
+
+    /* ── Teintes codées en dur ───────────────────────────────────────────
+       Les mêmes que celles qui échappaient au mode noir & blanc : elles ne
+       passent par aucune variable, donc le remappage du phosphore ne pouvait
+       rien pour elles. Un Minitel couleur affichait huit teintes, jamais de
+       l'or ni du cyan. */
+    body.minitel-mode .tbl-section-head,
+    body.minitel-mode .mob-row.section .mob-lbl,
+    body.minitel-mode .rem-total-lbl,
+    body.minitel-mode .warn-box strong,
+    body.minitel-mode .chk-apply-brut span,
+    body.minitel-mode .absence-preview .retenue-val,
+    body.minitel-mode .cat-ss,   body.minitel-mode .cat-csg, body.minitel-mode .cat-ret,
+    body.minitel-mode .cat-prev, body.minitel-mode .cat-cho, body.minitel-mode .cat-alleg,
+    body.minitel-mode .cat-acc,
+    body.minitel-mode a { color: var(--mnt-fg) !important; }
+    body.minitel-mode .chk-apply-brut input[type="checkbox"],
+    body.minitel-mode input[type="checkbox"],
+    body.minitel-mode input[type="radio"] { accent-color: var(--mnt-fg); }
+    body.minitel-mode .field input[type="date"] { color-scheme: dark; }
+
+    body.minitel-mode .btn-add-rem,
+    body.minitel-mode .btn-absence-toggle,
+    body.minitel-mode .absence-toggle-btn.active,
+    body.minitel-mode .btn-absence-apply,
+    body.minitel-mode .page-exit,
+    body.minitel-mode .page-exit:hover { color: var(--mnt-fg) !important; }
+    body.minitel-mode .btn-absence-toggle.active,
+    body.minitel-mode .absence-toggle-btn.active,
+    body.minitel-mode .btn-absence-apply,
+    body.minitel-mode .qz-pays-btn.on,
+    body.minitel-mode .gaab-rqth-badge.ok,
+    body.minitel-mode .params-panel,
+    body.minitel-mode .ann-tbl tr.treizieme-mois,
+    body.minitel-mode .ascii-tbl tbody tr.data-row.open { background: #001206 !important; }
+    body.minitel-mode .etp-sel {
+      background: #001206; color: var(--mnt-fg);
+    }
+    body.minitel-mode .ai-credit { color: rgba(51, 255, 102, 0.25); }
+
+    /* Les drapeaux sont les seuls signes que la fonte ne peut pas reprendre :
+       ils tomberaient sur une fonte d'émojis, hors grille et hors phosphore.
+       Un Minitel n'en affichait pas ; le nom du pays suit de toute façon. */
+    body.minitel-mode .flag-emoji { display: none; }
+
+    /* ── Tout se trace au caractère ──────────────────────────────────────
+       Un Minitel n'a pas de bordures : il a des caractères, et rien d'autre.
+       On éteint donc toutes les bordures du mode — en leur laissant leur
+       épaisseur, pour que rien ne bouge dans la mise en page — puis on les
+       retrace avec les filets de la fonte.
+
+       Deux mécaniques, et deux seulement :
+         • un pseudo-élément portant `--mnt-h`, longue file de « ─ », posé à
+           cheval sur une arête horizontale ;
+         • un pseudo-élément portant `--mnt-v`, colonne de « │ » empilés,
+           posé à cheval sur une arête verticale.
+       Dans les deux cas le débordement masqué coupe la file à la dimension de
+       l'élément : aucune longueur n'a besoin d'être connue à l'avance. */
+    body.minitel-mode *,
+    body.minitel-mode *::before,
+    body.minitel-mode *::after { border-color: transparent !important; }
+
+    body.minitel-mode .mnt-rule-h,
+    body.minitel-mode .ascii-tbl thead th::after,
+    body.minitel-mode .ascii-tbl tbody tr::after,
+    body.minitel-mode .ann-tbl thead th::after,
+    body.minitel-mode .ann-tbl tbody tr::after,
+    body.minitel-mode .mob-row::after,
+    body.minitel-mode .view-bar::after,
+    body.minitel-mode .banner::after,
+    body.minitel-mode .summary-bar::after,
+    body.minitel-mode .rem-embed-head::after,
+    body.minitel-mode .params-panel::after,
+    body.minitel-mode .absence-panel::after,
+    body.minitel-mode .fp-body::after,
+    body.minitel-mode .field::after,
+    body.minitel-mode .btn-params-toggle::after,
+    body.minitel-mode .btn-absence-clear::after {
+      content: var(--mnt-h);
+      position: absolute;
+      left: 0;
+      right: 0;
+      /* Le trait du « ─ » passe à 55 % de la hauteur de cellule : on descend
+         le pseudo-élément d'autant pour le poser pile sur l'arête. */
+      bottom: calc(-0.55 * var(--mnt-ch));
+      height: var(--mnt-ch);
+      line-height: var(--mnt-ch);
+      white-space: pre;
+      overflow: hidden;
+      pointer-events: none;
+      color: var(--mnt-mid);
+      text-shadow: none;
+      z-index: 1;
+    }
+
+    body.minitel-mode .mnt-rule-v,
+    body.minitel-mode .ascii-tbl td:not(:last-child)::after,
+    body.minitel-mode .ascii-tbl th:not(:last-child)::before,
+    body.minitel-mode .ann-tbl td:not(:last-child)::after,
+    body.minitel-mode .ann-tbl th:not(:last-child)::before,
+    body.minitel-mode .sb-cell:not(:last-child)::after,
+    body.minitel-mode .form-panel::after,
+    body.minitel-mode .expl-box::before,
+    body.minitel-mode .mob-expand::before {
+      content: var(--mnt-v);
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: var(--mnt-cw);
+      line-height: var(--mnt-ch);
+      white-space: pre;
+      overflow: hidden;
+      pointer-events: none;
+      color: var(--mnt-mid);
+      text-shadow: none;
+      z-index: 1;
+    }
+    /* Le « │ » occupe la 4e colonne de sa cellule : on recule le pseudo-élément
+       d'autant pour que le trait tombe exactement sur l'arête. */
+    body.minitel-mode .ascii-tbl td:not(:last-child)::after,
+    body.minitel-mode .ascii-tbl th:not(:last-child)::before,
+    body.minitel-mode .ann-tbl td:not(:last-child)::after,
+    body.minitel-mode .ann-tbl th:not(:last-child)::before,
+    body.minitel-mode .sb-cell:not(:last-child)::after,
+    body.minitel-mode .form-panel::after { right: calc(-0.5625 * var(--mnt-cw)); }
+    body.minitel-mode .expl-box::before,
+    body.minitel-mode .mob-expand::before { left: calc(-0.4375 * var(--mnt-cw)); }
+
+    /* Les porteurs de filets doivent servir de repère de positionnement. */
+    body.minitel-mode .ascii-tbl thead th,
+    body.minitel-mode .ascii-tbl tbody tr,
+    body.minitel-mode .ascii-tbl td,
+    body.minitel-mode .ann-tbl thead th,
+    body.minitel-mode .ann-tbl tbody tr,
+    body.minitel-mode .ann-tbl td,
+    body.minitel-mode .mob-row,
+    body.minitel-mode .view-bar,
+    body.minitel-mode .banner,
+    body.minitel-mode .summary-bar,
+    body.minitel-mode .sb-cell,
+    body.minitel-mode .rem-embed-head,
+    body.minitel-mode .params-panel,
+    body.minitel-mode .absence-panel,
+    body.minitel-mode .form-panel,
+    body.minitel-mode .fp-body,
+    body.minitel-mode .expl-box,
+    body.minitel-mode .field,
+    body.minitel-mode .btn-params-toggle,
+    body.minitel-mode .btn-absence-clear,
+    body.minitel-mode .mob-expand { position: relative; }
+
+    /* Une zone de saisie Vidéotex se signalait par un fond en vidéo inverse et
+       un soulignement, jamais par un cadre : les bordures supprimées plus haut
+       ne laissent donc pas les champs sans affordance. */
+    body.minitel-mode input,
+    body.minitel-mode select,
+    body.minitel-mode textarea { background: #002d10 !important; }
+
+    /* Cases et boutons radio : le moteur les dessine lui-même, en blanc, et
+       aucune couleur de thème ne l'en empêche. On les remplace par les quatre
+       signes que la fonte porte déjà — c'est aussi ce qu'affichait un Minitel,
+       qui n'avait pas d'autre widget que ses caractères. */
+    body.minitel-mode input[type="checkbox"],
+    body.minitel-mode input[type="radio"] {
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent !important;
+      width: var(--mnt-cw);
+      height: var(--mnt-ch);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mnt-fg);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    body.minitel-mode input[type="checkbox"]::after { content: "□"; }
+    body.minitel-mode input[type="checkbox"]:checked::after { content: "▦"; }
+    body.minitel-mode input[type="radio"]::after { content: "◎"; }
+    body.minitel-mode input[type="radio"]:checked::after { content: "◉"; }
 
     /* Lignes de balayage CRT — décoratif, ne capte jamais le pointeur */
     body.minitel-mode::after {
@@ -1144,7 +1520,7 @@
     .ascii-tbl tbody tr.data-row.open  { background: #060a14; }
     .ascii-tbl td { padding: 0.38rem 0.75rem; font-size: 0.78rem; }
     .ascii-tbl td.r { text-align: right; font-variant-numeric: tabular-nums; }
-    .ascii-tbl td.c-sal  { color: #ffe033;        }
+    .ascii-tbl td.c-sal  { color: var(--sal);     }
     .ascii-tbl td.c-pat  { color: var(--orange); }
     .ascii-tbl td.c-dim  { color: var(--dim-txt);    }
     .ascii-tbl tr.tbl-total td {
@@ -1563,8 +1939,8 @@
       line-height: 1.5;
     }
     /* Couleurs contextuelles — correspondance avec la cotisation cliquée */
-    .fm-type-sal   .fm-generic, .fm-type-sal   .fm-base-note { color: #ffe033;       }
-    .fm-type-sal   .fm-base-note { border-left-color: #ffe033;       }
+    .fm-type-sal   .fm-generic, .fm-type-sal   .fm-base-note { color: var(--sal);    }
+    .fm-type-sal   .fm-base-note { border-left-color: var(--sal);    }
     .fm-type-pat   .fm-generic, .fm-type-pat   .fm-base-note { color: var(--orange); }
     .fm-type-pat   .fm-base-note { border-left-color: var(--orange); }
     .fm-type-alleg .fm-generic, .fm-type-alleg .fm-base-note { color: #4ade80;       }
@@ -3047,12 +3423,16 @@
   <!-- ══ BARRE DE VUE ══ -->
   <div class="view-bar">
     <span class="view-label">VUE :</span>
-    <button class="btn-view active" id="btn-desk" onclick="setView('desktop')">⊞ BUREAU</button>
-    <button class="btn-view" id="btn-mob"  onclick="setView('mobile')">☰ MOBILE</button>
-    <button class="btn-view" id="btn-ann"  onclick="setView('annuel')" style="display:none">▦ SIMULATION ANNUELLE</button>
+    <button type="button" class="vw-toggle is-desk" id="btn-view-toggle" role="switch" aria-checked="false"
+            title="Basculer entre la vue bureau et la vue mobile" onclick="toggleViewMode()">
+      <span class="vw-end vw-end-desk">⊞ BUREAU</span>
+      <span class="vw-end vw-end-mob">☰ MOBILE</span>
+      <span class="vw-knob"></span>
+    </button>
+    <button class="vb-btn" id="btn-ann" onclick="setView('annuel')" style="display:none">▦ SIMULATION ANNUELLE</button>
 
     <div class="trad-wrap">
-      <button class="trad-btn" id="trad-btn" onclick="toggleTradPanel()" title="Traduction">🌐 LANGUE</button>
+      <button class="vb-btn trad-btn" id="trad-btn" onclick="toggleTradPanel()" title="Traduction">🌐 LANGUE</button>
       <div class="trad-panel" id="trad-panel">
         <div class="trad-panel-title">TRADUIRE EN</div>
         <button class="trad-lang-btn" onclick="translateApp('fr')">🇫🇷 Français</button>
@@ -3065,9 +3445,7 @@
     </div>
 
     <div class="a11y-wrap">
-      <button class="a11y-btn" id="a11y-btn" onclick="toggleA11yPanel()" title="Accessibilité">
-        AFFICHAGE
-      </button>
+      <button class="vb-btn a11y-btn" id="a11y-btn" onclick="toggleA11yPanel()" title="Accessibilité">AFFICHAGE</button>
       <div class="a11y-panel" id="a11y-panel">
         <div class="a11y-panel-title">ACCESSIBILITÉ</div>
         <div class="a11y-row" onclick="toggleHVMode()">

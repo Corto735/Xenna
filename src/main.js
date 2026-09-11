@@ -236,7 +236,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Animation wakeup des boutons flottants
-  const _wakeupColors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#f06595'];
+  // La teinte part d'ici en style inline : aucune règle CSS de thème ne peut la
+  // reprendre. C'est donc ici que le mode noir & blanc doit être respecté,
+  // sinon huit couleurs saturées clignotent 3,5 s dans une page monochrome.
+  const _wakeupColors = document.body.classList.contains('bw-mode')
+    ? ['#000000']
+    : ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997','#f06595'];
   const _shuffled = [..._wakeupColors].sort(() => Math.random() - 0.5);
   document.querySelectorAll('.a11y-float-btn').forEach((btn, i) => {
     btn.style.setProperty('--wakeup-color', _shuffled[i % _shuffled.length]);
@@ -827,9 +832,17 @@ window.setView = function (v) {
   ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'contrat', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
-  document.getElementById("btn-desk").classList.toggle("active", v === "desktop");
-  document.getElementById("btn-mob") .classList.toggle("active", v === "mobile");
-  document.getElementById("btn-ann") .classList.toggle("active", v === "annuel");
+  // La bascule ne reflète que le couple bureau/mobile : dans la vue annuelle
+  // elle conserve la vue de base vers laquelle on reviendra.
+  if (v === 'desktop' || v === 'mobile') {
+    const t = document.getElementById("btn-view-toggle");
+    if (t) {
+      t.classList.toggle("is-mob",  v === "mobile");
+      t.classList.toggle("is-desk", v === "desktop");
+      t.setAttribute("aria-checked", v === "mobile" ? "true" : "false");
+    }
+  }
+  document.getElementById("btn-ann")?.classList.toggle("active", v === "annuel");
   if (lastBulletin && (v === 'desktop' || v === 'mobile')) renderAll(lastBulletin);
   if (v === 'desktop' || v === 'mobile') _applyNoms(_genre);
   if (v === 'quizz')      quizzInit();
@@ -840,6 +853,13 @@ window.setView = function (v) {
   if (v === 'carnet')     _carnetLoad();
   if (v === 'ccn')        ccnInit();
   if (v === 'meliinda')   meliindaInit();
+};
+
+// Bascule bureau ⇄ mobile — s'appuie sur l'état porté par le toggle lui-même,
+// pour revenir à la bonne vue de base depuis la vue annuelle.
+window.toggleViewMode = function () {
+  const t = document.getElementById('btn-view-toggle');
+  setView(t?.classList.contains('is-mob') ? 'desktop' : 'mobile');
 };
 
 // ── Le Chakrram — grilles conventionnelles ───────────────────────────────────
@@ -2313,7 +2333,7 @@ function renderDesktop(b) {
         <div class="sb-ded">
           <div class="sb-ded-row">
             <span>Cot. salariales</span>
-            <span style="color:#ffe033">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
+            <span style="color:var(--sal)">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
           </div>
           ${isChCot ? `<div class="sb-ded-row">
             <span>Impôt à la source (${(isChTaux * 100).toFixed(1)} %)</span>
@@ -2337,7 +2357,7 @@ function renderDesktop(b) {
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
-            <span style="color:#ffe033">− ${fmt(totalSal + pas.total)}</span>
+            <span style="color:var(--sal)">− ${fmt(totalSal + pas.total)}</span>
           </div>
         </div>
       </div>
@@ -2765,7 +2785,7 @@ function renderMobile(b) {
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
     const amtsSal = hasSal
-      ? `<span class="mob-val mob-cot-amt" style="color:#ffe033" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
+      ? `<span class="mob-val mob-cot-amt" style="color:var(--sal)" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
       : `<span class="mob-val c-dim">0 ${devSym().trim()}</span>`;
     const amtsPat = hasPat
       ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">− ${fmt(c.montant_pat)}</span>`
@@ -2942,7 +2962,7 @@ function renderAll(b) {
 // Utilisé pour les validations côté JS — évite d'envoyer des args invalides à
 // Rust, ce qui provoque des erreurs opaques de désérialisation dans Tauri.
 function showInputError(msg) {
-  const errHtml = `<div style="padding:1.5rem;color:#f87171;font-size:0.8rem">⚠ ${esc(msg)}</div>`;
+  const errHtml = `<div style="padding:1.5rem;color:var(--red);font-size:0.8rem">⚠ ${esc(msg)}</div>`;
   document.getElementById("res-desktop").innerHTML = errHtml;
   document.getElementById("res-mobile").innerHTML  = errHtml;
 }
@@ -3135,7 +3155,7 @@ async function calculate(source) {
     // même quand l'affichage UI est tronqué.
     console.error("[calculer_bulletin] erreur brute :", e);
     const msg     = errToStr(e);
-    const errHtml = `<div style="padding:1.5rem;color:#f87171;font-size:0.8rem">ERREUR : ${esc(msg)}</div>`;
+    const errHtml = `<div style="padding:1.5rem;color:var(--red);font-size:0.8rem">ERREUR : ${esc(msg)}</div>`;
     document.getElementById("res-desktop").innerHTML = errHtml;
     document.getElementById("res-mobile").innerHTML  = errHtml;
   }

@@ -25,6 +25,16 @@ npm run tauri dev      # Rust + Tauri dev with hot reload
 npm run tauri build    # Release bundles (.deb, .AppImage, .exe, .dmg)
 ```
 
+**Fonte du mode Minitel :**
+```bash
+python3 scripts/build-minitel-font.py   # → public/minitel.woff2
+```
+Reconstruit la fonte à partir du tracé EF9345 de Zigazou (CC0, dépôt
+Minitel-Canvas) en y ajoutant filets, pavés, « € » et les pictogrammes employés
+par l'interface, tous dessinés sur la grille 8 × 10 de la fonte d'origine. À ne
+relancer qu'en cas d'ajout d'un caractère non couvert : le `.woff2` produit est
+commité, l'application le sert elle-même. Nécessite `fonttools` et `brotli`.
+
 **Web server only:**
 ```bash
 cargo run --release --bin web         # Standalone Axum server (port 8080)
