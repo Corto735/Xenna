@@ -1343,6 +1343,10 @@
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
+    /* Le pas (5 €, 0,5 h) ne règle que les flèches : un montant libre hors pas
+       reste une saisie légitime, pas une erreur à entourer de rouge (Firefox). */
+    .rem-amt-inp:invalid,
+    .rem-amt-inp:user-invalid { box-shadow: none; outline: none; }
     .rem-h-unit { font-size: 0.65rem; color: var(--muted-txt); }
     /* Détail d'une ligne d'heures : heures × taux horaire majoré = montant,
        sous la ligne de saisie (trop long pour tenir à côté en mobile). */
@@ -3367,7 +3371,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DYRvJxjI.js"></script>
+  <script type="module" crossorigin src="/assets/index-CEjg-zA9.js"></script>
 </head>
 <body>
 

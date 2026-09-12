@@ -3707,7 +3707,9 @@ function _remHeureDetail(l, etp) {
 }
 
 // Rendu d'une ligne de rémunération. Pour les types « heures » la saisie est en
-// heures (pas de pas 0,01 €), le détail du calcul s'affiche sous la ligne.
+// heures (pas de 0,5 h), le détail du calcul s'affiche sous la ligne. Les
+// montants en euros avancent de 5 € en 5 € aux flèches, mais la saisie reste
+// libre au centime : le pas ne sert qu'à l'incrément, pas à la validation.
 function _remLineHtml(l, opts, etp) {
   const selOpts = opts.map(o =>
     `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
@@ -3716,7 +3718,7 @@ function _remLineHtml(l, opts, etp) {
   return `
       <div class="rem-line">
         <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
-        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${isHour ? 'heures' : '0.00'}" min="0" step="${isHour ? '0.5' : '0.01'}"
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${isHour ? 'heures' : '0.00'}" min="0" step="${isHour ? '0.5' : '5'}" inputmode="decimal"
                oninput="onRemAmountChange('${l.id}',this.value)" />
         ${isHour ? '<span class="rem-h-unit">h</span>' : ''}
         <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
