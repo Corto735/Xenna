@@ -13,7 +13,7 @@
 //! de chaque page — sans quoi les chiffres de la deuxième page ne veulent plus
 //! rien dire.
 
-use crate::paie_pdf::modele::{Annexe, BulletinPdf, Champ, Ligne, Total};
+use crate::paie_pdf::modele::{Annexe, BulletinPdf, Champ, Groupe, Ligne, Total};
 use crate::pdf::police::{Face, Polices};
 use crate::pdf::rendu::{Dessin, MM, PAGE_H, PAGE_L};
 
@@ -24,15 +24,25 @@ const MARGE_H: f32 = 13.0 * MM;
 const MARGE_B: f32 = 15.0 * MM;
 const COL: f32 = PAGE_L - MARGE_G - MARGE_D;
 
-/// Largeurs des six colonnes, en points, dans l'ordre du modèle réglementaire :
-/// libellé · base · taux salarial · part salarié · taux patronal · part employeur.
+/// Largeurs des colonnes de chiffres de la grille du bulletin, en points, dans
+/// l'ordre de la disposition commune aux logiciels de paie :
+/// nombre · base · [part salarié : taux · à payer · à déduire] ·
+/// [part employeur : taux · montant].
 ///
-/// Les cinq colonnes de chiffres sont dimensionnées pour leur contenu — un
-/// montant à six chiffres, un taux à trois décimales — et le libellé prend tout
-/// le reste. C'est lui qui absorbe un changement de marge ou de format de page,
-/// et c'est bien : il se découpe en lignes, une colonne de chiffres non.
-const CHIFFRES: f32 = 68.0 + 50.0 + 74.0 + 50.0 + 74.0;
-const LARGEURS: [f32; 6] = [COL - CHIFFRES, 68.0, 50.0, 74.0, 50.0, 74.0];
+/// Chaque colonne est dimensionnée pour son contenu — un montant à six chiffres,
+/// un taux à trois décimales, un taux horaire à quatre — et la désignation prend
+/// tout le reste. C'est elle qui absorbe un changement de marge ou de format de
+/// page, et c'est bien : elle se découpe en lignes, une colonne de chiffres non.
+const CHIFFRES_BULLETIN: [f32; 7] = [34.0, 48.0, 44.0, 48.0, 48.0, 44.0, 48.0];
+/// L'annexe détaille les cotisations seules : base · [taux · montant] × 2.
+const CHIFFRES_ANNEXE: [f32; 5] = [68.0, 50.0, 74.0, 50.0, 74.0];
+
+/// Largeurs complètes d'une grille : la désignation d'abord, qui prend le reste.
+fn grille(chiffres: &[f32]) -> Vec<f32> {
+    let mut l = vec![COL - chiffres.iter().sum::<f32>()];
+    l.extend_from_slice(chiffres);
+    l
+}
 
 // ── Échelle typographique ─────────────────────────────────────────────────────
 const T_TITRE: f32 = 14.0;
@@ -69,14 +79,26 @@ struct Composeur<'a> {
     cur: Vec<Dessin>,
     /// Ligne de base courante, depuis le haut de la page.
     y: f32,
+    /// Largeurs de la grille en cours (bulletin ou annexe).
+    grille: Vec<f32>,
     /// En-têtes de colonnes à répéter en tête de page. Vide tant qu'on n'est pas
     /// entré dans la grille (l'en-tête du document n'en a pas besoin).
     entetes: Vec<String>,
+    /// Titres chapeautant des colonnes voisines, répétés avec les en-têtes.
+    groupes: Vec<Groupe>,
 }
 
 impl<'a> Composeur<'a> {
     fn nouveau(p: &'a Polices) -> Self {
-        Self { p, pages: Vec::new(), cur: Vec::new(), y: MARGE_H, entetes: Vec::new() }
+        Self {
+            p,
+            pages: Vec::new(),
+            cur: Vec::new(),
+            y: MARGE_H,
+            grille: grille(&CHIFFRES_BULLETIN),
+            entetes: Vec::new(),
+            groupes: Vec::new(),
+        }
     }
 
     fn bas(&self) -> f32 {
@@ -87,8 +109,7 @@ impl<'a> Composeur<'a> {
         self.pages.push(std::mem::take(&mut self.cur));
         self.y = MARGE_H;
         if !self.entetes.is_empty() {
-            let titres = self.entetes.clone();
-            self.entete_colonnes(&titres);
+            self.entete_colonnes();
         }
     }
 
@@ -242,24 +263,52 @@ impl<'a> Composeur<'a> {
         }
     }
 
-    /// Abscisses de fin de chacune des six colonnes.
-    fn bords(&self) -> [f32; 6] {
-        let mut b = [0.0f32; 6];
+    /// Abscisses de fin de chacune des colonnes de la grille en cours.
+    fn bords(&self) -> Vec<f32> {
         let mut x = MARGE_G;
-        for i in 0..6 {
-            x += LARGEURS[i];
-            b[i] = x;
-        }
-        b
+        self.grille.iter().map(|l| { x += l; x }).collect()
     }
 
-    fn entete_colonnes(&mut self, titres: &[String]) {
-        let haut = self.y;
-        let h = T_ENTETE + 9.0;
-        self.pave(haut, h, MARGE_G, COL, TRAME_FORTE);
+    /// Groupes valides pour la grille en cours, en abscisses : (gauche, droite).
+    /// Un groupe mal formé (colonne 0, bornes inversées, hors grille) est ignoré
+    /// plutôt que de tracer un titre au milieu de nulle part.
+    fn spans(&self) -> Vec<(f32, f32, String)> {
         let bords = self.bords();
+        self.groupes
+            .iter()
+            .filter(|g| g.de >= 1 && g.de <= g.a && g.a < bords.len())
+            .map(|g| (bords[g.de - 1], bords[g.a], g.titre.clone()))
+            .collect()
+    }
+
+    /// Filets verticaux au bord gauche de chaque groupe, de `haut` à `bas` :
+    /// c'est ce qui fait lire la part salarié et la part employeur comme deux
+    /// colonnes, et non comme sept chiffres alignés.
+    fn separateurs(&mut self, haut: f32, bas: f32) {
+        for (x, _, _) in self.spans() {
+            self.cur.push(Dessin::Filet { x1: x, y1: haut, x2: x, y2: bas, ep: 0.5, gris: GRIS_CLAIR });
+        }
+    }
+
+    /// En-tête de la grille. Avec des groupes, deux étages : les titres de
+    /// groupe, soulignés sur la largeur qu'ils couvrent, puis les titres de
+    /// colonne. La désignation, la base et le nombre descendent sur l'étage du
+    /// bas, au niveau des autres titres de colonne.
+    fn entete_colonnes(&mut self) {
+        let titres = self.entetes.clone();
+        let spans = self.spans();
+        let bords = self.bords();
+        let haut = self.y;
+        let h_groupe = if spans.is_empty() { 0.0 } else { T_ENTETE + 6.0 };
+        let h = h_groupe + T_ENTETE + 9.0;
+        self.pave(haut, h, MARGE_G, COL, TRAME_FORTE);
+        for (x1, x2, titre) in &spans {
+            let large = self.p.largeur(Face::SansGras, titre, T_ENTETE);
+            self.ecrire(x1 + (x2 - x1 - large) / 2.0, haut + h_groupe - 2.8, titre, Face::SansGras, T_ENTETE, NOIR);
+            self.filet(haut + h_groupe, x1 + 3.0, x2 - 3.0, 0.5, ENCRE);
+        }
         let y = haut + h - 3.5;
-        for (i, t) in titres.iter().enumerate().take(6) {
+        for (i, t) in titres.iter().enumerate().take(bords.len()) {
             if t.is_empty() {
                 continue;
             }
@@ -269,6 +318,7 @@ impl<'a> Composeur<'a> {
                 self.ecrire_droite(bords[i] - 4.0, y, t, Face::SansGras, T_ENTETE, NOIR);
             }
         }
+        self.separateurs(haut, haut + h);
         self.y = haut + h;
     }
 
@@ -289,8 +339,8 @@ impl<'a> Composeur<'a> {
 
         // Une note n'a pas de montant : elle a droit à toute la largeur. La
         // cantonner à la colonne des libellés la ferait courir sur cinq lignes
-        // en laissant les cinq sixièmes de la page blancs.
-        let large_lbl = if l.note { COL - 10.0 } else { LARGEURS[0] - 10.0 };
+        // en laissant les deux tiers de la page blancs.
+        let large_lbl = if l.note { COL - 10.0 } else { self.grille[0] - 10.0 };
         let lignes_lbl = self.decouper(&l.libelle, face, T_LIGNE, large_lbl);
         let h = (H_LIGNE * lignes_lbl.len() as f32).max(H_LIGNE);
         self.besoin(h);
@@ -303,9 +353,12 @@ impl<'a> Composeur<'a> {
         for (i, t) in lignes_lbl.iter().enumerate() {
             self.ecrire(MARGE_G + 4.0, haut + H_LIGNE - 3.6 + i as f32 * H_LIGNE, t, face, T_LIGNE, gris);
         }
-        let cols = [&l.base, &l.taux_sal, &l.montant_sal, &l.taux_pat, &l.montant_pat];
-        for (i, v) in cols.iter().enumerate() {
+        let cols = [&l.nombre, &l.base, &l.taux_sal, &l.a_payer, &l.a_deduire, &l.taux_pat, &l.montant_pat];
+        for (i, v) in cols.iter().enumerate().take(bords.len() - 1) {
             self.ecrire_droite(bords[i + 1] - 4.0, base_y, v, face, T_LIGNE, gris);
+        }
+        if !l.note {
+            self.separateurs(haut, haut + h);
         }
         if !l.fort {
             self.filet(haut + h, MARGE_G, MARGE_G + COL, 0.25, TRAME_FORTE);
@@ -407,17 +460,19 @@ impl<'a> Composeur<'a> {
             self.y += 6.0;
         }
 
+        self.grille = grille(&CHIFFRES_ANNEXE);
         self.entetes = a.colonnes.clone();
-        let titres = self.entetes.clone();
-        self.entete_colonnes(&titres);
+        self.groupes = a.groupes.clone();
+        self.entete_colonnes();
 
         let bords = self.bords();
+        let (l_lbl, l_ref) = (self.grille[0] - 10.0, self.grille[0] + self.grille[1] - 10.0);
         for l in &a.lignes {
-            let lbl = self.decouper(&l.libelle, Face::Sans, T_LIGNE, LARGEURS[0] - 10.0);
+            let lbl = self.decouper(&l.libelle, Face::Sans, T_LIGNE, l_lbl);
             let refs = if l.reference.is_empty() {
                 Vec::new()
             } else {
-                self.decouper(&l.reference, Face::SansItalique, T_MENTION, LARGEURS[0] + LARGEURS[1] - 10.0)
+                self.decouper(&l.reference, Face::SansItalique, T_MENTION, l_ref)
             };
             let h = H_LIGNE * lbl.len() as f32 + refs.len() as f32 * (T_MENTION + 2.0) + 2.0;
             self.besoin(h);
@@ -438,6 +493,7 @@ impl<'a> Composeur<'a> {
                 let y = haut + H_LIGNE * lbl.len() as f32 + (i as f32 + 1.0) * (T_MENTION + 2.0) - 1.0;
                 self.ecrire(MARGE_G + 8.0, y, r, Face::SansItalique, T_MENTION, GRIS_CLAIR);
             }
+            self.separateurs(haut, haut + h);
             self.filet(haut + h, MARGE_G, MARGE_G + COL, 0.25, TRAME_FORTE);
             self.y = haut + h;
         }
@@ -452,13 +508,13 @@ pub fn composer(b: &BulletinPdf, p: &Polices) -> Vec<Vec<Dessin>> {
     co.identites(b);
 
     if !b.rubriques.is_empty() {
-        let entetes = if b.colonnes.is_empty() {
-            vec![String::new(); 6]
+        co.entetes = if b.colonnes.is_empty() {
+            vec![String::new(); CHIFFRES_BULLETIN.len() + 1]
         } else {
             b.colonnes.clone()
         };
-        co.entetes = entetes.clone();
-        co.entete_colonnes(&entetes);
+        co.groupes = b.groupes.clone();
+        co.entete_colonnes();
         for r in &b.rubriques {
             if !r.titre.is_empty() {
                 co.bandeau(&r.titre);
@@ -468,6 +524,7 @@ pub fn composer(b: &BulletinPdf, p: &Polices) -> Vec<Vec<Dessin>> {
             }
         }
         co.entetes.clear();
+        co.groupes.clear();
     }
 
     co.totaux(&b.totaux);
@@ -562,6 +619,8 @@ fn habiller(pages: &mut [Vec<Dessin>], b: &BulletinPdf, p: &Polices) {
 
 /// Exposées pour le test : la grille doit tenir dans la colonne, et c'est une
 /// propriété qu'on vérifie plutôt qu'on ne la commente.
-pub fn metriques() -> (f32, [f32; 6], f32, f32) {
-    (COL, LARGEURS, MARGE_G, MARGE_B)
+/// Rend la largeur utile, les largeurs des deux grilles (bulletin, annexe) et
+/// les marges gauche et basse.
+pub fn metriques() -> (f32, [Vec<f32>; 2], f32, f32) {
+    (COL, [grille(&CHIFFRES_BULLETIN), grille(&CHIFFRES_ANNEXE)], MARGE_G, MARGE_B)
 }

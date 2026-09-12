@@ -59,8 +59,10 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         etp: 100.0,
         entreprise_adaptee: false,
         tranche_age_ea: None,
-        heures_supp: 0.0,
-        heures_comp: 0.0,
+        heures_supp_25: 0.0,
+        heures_supp_50: 0.0,
+        heures_comp_10: 0.0,
+        heures_comp_25: 0.0,
         salaire_base: None,
         effectif: Some("moins20".into()),
         anciennete: None,
@@ -156,7 +158,8 @@ async fn france_heures_sup() {
     let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
 
     let mut s = salarie_base(Pays::France, "1.00");
-    s.heures_supp = 10.0;
+    s.heures_supp_25 = 8.0;
+    s.heures_supp_50 = 2.0;
     let cible = dec!(2600);
     let b = resoudre_brut_pour_net(cible, &s, &ctx, None);
 

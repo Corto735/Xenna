@@ -19,19 +19,29 @@ pub struct Champ {
     pub v: String,
 }
 
-/// Une ligne de la grille des cotisations, sur les six colonnes du modèle
-/// réglementaire. Une colonne vide ne s'imprime pas : la ligne « Famille » n'a
-/// pas de part salariale, et cette absence est une information.
+/// Une ligne de la grille du bulletin, sur ses huit colonnes — la disposition
+/// commune aux logiciels de paie : désignation · nombre · base · puis la part
+/// salarié (taux, à payer, à déduire) et la part employeur (taux, montant).
+/// Une colonne vide ne s'imprime pas : la ligne « Famille » n'a pas de part
+/// salariale, et cette absence est une information.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Ligne {
     #[serde(default)]
     pub libelle: String,
+    /// Quantité : heures, jours… (« 151,67 », « 8,00 »).
+    #[serde(default)]
+    pub nombre: String,
+    /// Assiette d'une cotisation, ou valeur unitaire d'un élément de salaire.
     #[serde(default)]
     pub base: String,
     #[serde(default)]
     pub taux_sal: String,
+    /// Gain : ce qui s'ajoute à la rémunération du salarié.
     #[serde(default)]
-    pub montant_sal: String,
+    pub a_payer: String,
+    /// Retenue : ce qui se retranche (cotisations salariales, absences).
+    #[serde(default)]
+    pub a_deduire: String,
     #[serde(default)]
     pub taux_pat: String,
     #[serde(default)]
@@ -42,6 +52,19 @@ pub struct Ligne {
     /// Ligne sans montant — un commentaire dans la grille, en italique grisé.
     #[serde(default)]
     pub note: bool,
+}
+
+/// Un titre qui chapeaute plusieurs colonnes voisines de l'en-tête — « PART
+/// SALARIÉ » au-dessus de taux, à payer et à déduire. Indices de colonnes
+/// inclusifs, la désignation étant la colonne 0.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Groupe {
+    #[serde(default)]
+    pub titre: String,
+    #[serde(default)]
+    pub de: usize,
+    #[serde(default)]
+    pub a: usize,
 }
 
 /// Un regroupement du modèle réglementaire : SANTÉ, RETRAITE, FAMILLE…
@@ -77,8 +100,11 @@ pub struct Annexe {
     pub titre: String,
     #[serde(default)]
     pub chapeau: String,
+    /// Les six en-têtes de la grille de l'annexe.
     #[serde(default)]
     pub colonnes: Vec<String>,
+    #[serde(default)]
+    pub groupes: Vec<Groupe>,
     #[serde(default)]
     pub lignes: Vec<LigneAnnexe>,
 }
@@ -124,9 +150,12 @@ pub struct BulletinPdf {
     pub salarie: Vec<Champ>,
     #[serde(default)]
     pub periode: Vec<Champ>,
-    /// Les six en-têtes de la grille, dans l'ordre des colonnes.
+    /// Les huit en-têtes de la grille, dans l'ordre des colonnes.
     #[serde(default)]
     pub colonnes: Vec<String>,
+    /// Titres chapeautant des colonnes voisines (part salarié, part employeur).
+    #[serde(default)]
+    pub groupes: Vec<Groupe>,
     #[serde(default)]
     pub rubriques: Vec<Rubrique>,
     #[serde(default)]

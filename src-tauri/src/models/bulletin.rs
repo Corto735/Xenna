@@ -221,14 +221,19 @@ pub struct Salarie {
     /// Tranche d'âge pour l'aide au poste EA : "m50" | "50_55" | "56p". Défaut "m50".
     #[serde(default)]
     pub tranche_age_ea: Option<String>,
-    /// Nombre d'heures supplémentaires du mois (temps plein). Majoration légale :
-    /// 8 premières à +25 %, au-delà +50 % (seuil mensuel forfaitaire dans le simulateur).
+    /// Heures supplémentaires du mois (temps plein), saisies par taux de majoration :
+    /// l'utilisateur choisit la tranche, le simulateur ne découpe rien. Légalement,
+    /// +25 % pour les 8 premières heures de la semaine, +50 % au-delà.
     #[serde(default)]
-    pub heures_supp: f64,
-    /// Nombre d'heures complémentaires du mois (temps partiel). +10 % dans la limite
-    /// du dixième des heures contractuelles, +25 % au-delà.
+    pub heures_supp_25: f64,
     #[serde(default)]
-    pub heures_comp: f64,
+    pub heures_supp_50: f64,
+    /// Heures complémentaires du mois (temps partiel), saisies par taux de majoration.
+    /// Légalement, +10 % dans la limite du dixième des heures contractuelles, +25 % au-delà.
+    #[serde(default)]
+    pub heures_comp_10: f64,
+    #[serde(default)]
+    pub heures_comp_25: f64,
     /// Salaire de base mensuel (hors primes/HS), sert à dériver le taux horaire
     /// = salaire_base / (151,67 × ETP/100). TEXT pour précision ; fallback salaire_brut si absent.
     #[serde(default)]
@@ -489,11 +494,11 @@ pub struct Bulletin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HeuresSupResult {
     #[serde(with = "rust_decimal::serde::str")] pub taux_horaire: Decimal,
-    /// Heures supp à +25 % (≤ 8) et leur gain brut.
+    /// Heures supp à +25 % et à +50 %, et leur gain brut.
     pub h_supp_25: f64,
     pub h_supp_50: f64,
     #[serde(with = "rust_decimal::serde::str")] pub gain_hs: Decimal,
-    /// Heures complémentaires à +10 % (≤ 1/10 contractuel) et à +25 %.
+    /// Heures complémentaires à +10 % et à +25 %.
     pub h_comp_10: f64,
     pub h_comp_25: f64,
     #[serde(with = "rust_decimal::serde::str")] pub gain_hc: Decimal,

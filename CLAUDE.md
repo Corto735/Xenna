@@ -57,8 +57,9 @@ française des fontes. Un test `#[ignore]` écrit un PDF pour inspection à l'œ
 `cargo test --test contrat_pdf -- --ignored --nocapture` (chemin via `CONTRAT_PDF_OUT`).
 
 `src-tauri/tests/bulletin_pdf.rs` éprouve la grille du bulletin, dont les modes de
-défaillance ne sont pas ceux d'un texte courant : somme des six colonnes égale à la
-largeur utile, aucun bandeau de rubrique seul en bas de page, en-tête de colonnes
+défaillance ne sont pas ceux d'un texte courant : somme des colonnes de chaque grille
+(bulletin, annexe) égale à la largeur utile, aucun bandeau de rubrique seul en bas de
+page, en-tête de colonnes — titres de groupe « Part salarié » / « Part employeur » compris —
 répété sur chaque page de grille, filigrane tracé par-dessus et translucide,
 document vide non fatal. Un test `#[ignore]` écrit un PDF pour inspection :
 `cargo test --test bulletin_pdf -- --ignored --nocapture` (chemin via `BULLETIN_PDF_OUT`).
@@ -110,7 +111,7 @@ src-tauri/src/
 │   ├── mise_en_page.rs — découpe des lignes, justification, pagination
 │   └── pdf.rs        — compose puis délègue à pdf::rendu
 ├── paie_pdf/         — génération du PDF du bulletin de paie
-│   ├── modele.rs     — DTO reçus du front (rubriques, lignes à six colonnes, totaux)
+│   ├── modele.rs     — DTO reçus du front (rubriques, lignes à huit colonnes, groupes, totaux)
 │   ├── mise_en_page.rs — grille, bandeaux, pagination, annexe
 │   └── pdf.rs        — compose puis délègue à pdf::rendu
 ├── db/
@@ -189,8 +190,19 @@ Quatre règles à respecter en y touchant :
    même titre et pour la même raison que la DSN : ce n'est pas un calcul mais
    une traduction d'un bulletin déjà produit par Rust. Le back (`src-tauri/src/paie_pdf/`)
    ne sait ni ce qu'est une cotisation ni ce qu'est un net social — il place une
-   grille de six colonnes sur une page A4. **Toutes les valeurs lui arrivent déjà
+   grille sur une page A4. **Toutes les valeurs lui arrivent déjà
    formatées** : il n'arrondit rien.
+
+   La grille suit la **disposition commune des logiciels de paie** (relevée sur
+   des bulletins Sage et Cegid) : *Désignation · Nombre · Base* puis deux groupes
+   titrés et séparés d'un filet vertical — **PART SALARIÉ** (*Taux · À payer ·
+   À déduire*) et **PART EMPLOYEUR** (*Taux · Montant*). Les gains vont dans
+   « à payer », retenues et cotisations dans « à déduire », sans signe : c'est la
+   colonne qui dit le sens. Une réduction (heures supp, allègement) s'y inscrit
+   en négatif, pour que chaque total reste la somme de sa colonne. Une ligne
+   d'heures se lit *nombre × base (taux horaire à 4 décimales) × taux = à payer*.
+   Les titres de colonne et de groupe viennent du front (`colonnes`, `groupes`),
+   les largeurs du back (`CHIFFRES_BULLETIN`, `CHIFFRES_ANNEXE`).
 2. **Deux modèles coexistent, la bascule se fait sur la DATE DE PAIE.** L'arrêté
    du 25 février 2016 fixe libellés, ordre et regroupement ; l'arrêté du
    31 janvier 2023 institue un modèle *rénové* dont l'arrêté du 11 août 2025 a

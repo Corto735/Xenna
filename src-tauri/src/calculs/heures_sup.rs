@@ -1,9 +1,11 @@
 // Heures supplémentaires et complémentaires (France) — majoration + exonérations.
 //
 // Trois dispositifs, tous en vigueur depuis le 01/01/2019 (loi du 24/12/2018) :
-//   1. Majoration de la rémunération (Code du travail) : HS +25 % les 8 premières,
-//      +50 % au-delà (seuil mensuel forfaitaire ici — le seuil légal est hebdomadaire) ;
-//      HC +10 % dans la limite du dixième des heures contractuelles, +25 % au-delà.
+//   1. Majoration de la rémunération (Code du travail) : HS +25 % les 8 premières
+//      de la semaine, +50 % au-delà ; HC +10 % dans la limite du dixième des heures
+//      contractuelles, +25 % au-delà. Le seuil légal étant hebdomadaire, un bulletin
+//      mensuel ne peut pas le reconstituer : les heures sont SAISIES par taux, le
+//      simulateur ne découpe rien.
 //   2. Réduction de cotisations salariales (CSS L241-17) : somme des taux salariaux
 //      d'assurance vieillesse (base + complémentaire), plafonnée à 11,31 %.
 //   3. Déduction forfaitaire patronale (CSS L241-18) : forfait €/heure supp selon
@@ -53,8 +55,12 @@ fn tarif_dfp(effectif: &str, ctx: &ContextPaie) -> Option<Decimal> {
 /// Calcule les gains majorés et les exonérations sociales. Retourne None si aucune
 /// heure n'est saisie (ni HS ni HC).
 pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
-    let heures_supp = salarie.heures_supp.max(0.0);
-    let heures_comp = salarie.heures_comp.max(0.0);
+    let h_supp_25 = salarie.heures_supp_25.max(0.0);
+    let h_supp_50 = salarie.heures_supp_50.max(0.0);
+    let h_comp_10 = salarie.heures_comp_10.max(0.0);
+    let h_comp_25 = salarie.heures_comp_25.max(0.0);
+    let heures_supp = h_supp_25 + h_supp_50;
+    let heures_comp = h_comp_10 + h_comp_25;
     if heures_supp <= 0.0 && heures_comp <= 0.0 {
         return None;
     }
@@ -74,18 +80,12 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
         Decimal::ZERO
     };
 
-    // ── Majoration heures supplémentaires : 8 à +25 %, le reste à +50 % ──
-    let h_supp_25 = heures_supp.min(8.0);
-    let h_supp_50 = (heures_supp - 8.0).max(0.0);
-    let gain_hs = (dec_h(h_supp_25) * taux_horaire * dec!(1.25)
-        + dec_h(h_supp_50) * taux_horaire * dec!(1.50)).round_dp(2);
-
-    // ── Majoration heures complémentaires : 1/10 contractuel à +10 %, reste à +25 % ──
-    let seuil_10 = (heures_contractuelles / dec!(10)).to_string().parse::<f64>().unwrap_or(0.0);
-    let h_comp_10 = heures_comp.min(seuil_10);
-    let h_comp_25 = (heures_comp - seuil_10).max(0.0);
-    let gain_hc = (dec_h(h_comp_10) * taux_horaire * dec!(1.10)
-        + dec_h(h_comp_25) * taux_horaire * dec!(1.25)).round_dp(2);
+    // ── Majoration : chaque tranche saisie × taux horaire de base × (1 + majoration) ──
+    // Chaque tranche est une ligne du bulletin : arrondie au centime AVANT le total,
+    // sinon la somme des lignes affichées ne retombe pas sur le brut.
+    let ligne = |h: f64, maj: Decimal| (dec_h(h) * taux_horaire * maj).round_dp(2);
+    let gain_hs = ligne(h_supp_25, dec!(1.25)) + ligne(h_supp_50, dec!(1.50));
+    let gain_hc = ligne(h_comp_10, dec!(1.10)) + ligne(h_comp_25, dec!(1.25));
 
     let gain_total = gain_hs + gain_hc;
 

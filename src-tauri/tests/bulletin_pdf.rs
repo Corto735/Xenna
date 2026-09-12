@@ -1,21 +1,22 @@
 //! Le moteur de composition du bulletin de paie.
 //!
 //! Un PDF ne se relit pas en test : on n'y vérifie donc pas une apparence, mais
-//! ce qui casse en silence. Une grille de six colonnes a ses propres façons de
+//! ce qui casse en silence. Une grille de huit colonnes a ses propres façons de
 //! mal tourner, différentes de celles d'un texte courant — d'où un fichier
 //! distinct de `contrat_pdf.rs` :
 //!
 //!   - la somme des colonnes doit valoir la largeur utile, sinon la dernière
 //!     déborde d'un demi-millimètre que personne ne verra jamais en relecture ;
 //!   - un bandeau de rubrique ne doit jamais être le dernier tracé d'une page ;
-//!   - l'en-tête des colonnes doit se répéter sur chaque page de grille, sans
+//!   - l'en-tête des colonnes — titres de groupe « Part salarié » et « Part
+//!     employeur » compris — doit se répéter sur chaque page de grille, sans
 //!     quoi les chiffres de la page 2 ne veulent plus rien dire ;
 //!   - un bulletin sans cotisation — cas de plusieurs pays, et d'un brut nul —
 //!     doit rester un document valide.
 
 use xenna_paie_lib::paie_pdf::mise_en_page::{self, metriques};
 use xenna_paie_lib::paie_pdf::modele::{
-    Annexe, BulletinPdf, Champ, Ligne, LigneAnnexe, Rubrique, Total,
+    Annexe, BulletinPdf, Champ, Groupe, Ligne, LigneAnnexe, Rubrique, Total,
 };
 use xenna_paie_lib::paie_pdf::pdf;
 use xenna_paie_lib::pdf::police::{Face, Polices};
@@ -25,12 +26,18 @@ fn champ(l: &str, v: &str) -> Champ {
     Champ { l: l.into(), v: v.into() }
 }
 
+fn groupe(titre: &str, de: usize, a: usize) -> Groupe {
+    Groupe { titre: titre.into(), de, a }
+}
+
 fn ligne(libelle: &str) -> Ligne {
     Ligne {
         libelle: libelle.into(),
+        nombre: String::new(),
         base: "3 925,00".into(),
         taux_sal: "2,450 %".into(),
-        montant_sal: "96,16".into(),
+        a_payer: String::new(),
+        a_deduire: "96,16".into(),
         taux_pat: "7,300 %".into(),
         montant_pat: "286,53".into(),
         fort: false,
@@ -65,11 +72,12 @@ fn gabarit(rubriques: usize, lignes: usize) -> BulletinPdf {
             champ("Mode de paiement", "Virement"),
         ],
         colonnes: [
-            "Libellé", "Base", "Taux salarial", "Part salarié", "Taux patronal", "Part employeur",
+            "Désignation", "Nombre", "Base", "Taux", "À payer", "À déduire", "Taux", "Montant",
         ]
         .iter()
         .map(|s| s.to_string())
         .collect(),
+        groupes: vec![groupe("PART SALARIÉ", 3, 5), groupe("PART EMPLOYEUR", 6, 7)],
         rubriques: (0..rubriques)
             .map(|r| Rubrique {
                 titre: format!("RUBRIQUE RÉGLEMENTAIRE N° {}", r + 1),
@@ -102,13 +110,11 @@ fn gabarit(rubriques: usize, lignes: usize) -> BulletinPdf {
             chapeau: "Le modèle réglementaire regroupe les cotisations par risque couvert. \
                       Cette annexe les redonne ligne à ligne."
                 .into(),
-            colonnes: [
-                "Cotisation", "Base", "Taux salarial", "Part salarié", "Taux patronal",
-                "Part employeur",
-            ]
-            .iter()
-            .map(|s| s.to_string())
-            .collect(),
+            colonnes: ["Cotisation", "Base", "Taux", "Montant", "Taux", "Montant"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            groupes: vec![groupe("PART SALARIÉ", 2, 3), groupe("PART EMPLOYEUR", 4, 5)],
             lignes: (0..rubriques * lignes)
                 .map(|i| LigneAnnexe {
                     libelle: format!("Cotisation de démonstration n° {}", i + 1),
@@ -139,17 +145,25 @@ fn produit_un_pdf_valide() {
     assert!(pages >= 2, "bulletin + annexe devraient faire au moins 2 pages, obtenu {pages}");
 }
 
-/// La somme des six colonnes doit valoir exactement la largeur utile. C'est la
-/// seule chose qui garantisse que la colonne « Part employeur » finit au bord
-/// droit du cadre et non un millimètre plus loin.
+/// La somme des colonnes de chaque grille doit valoir exactement la largeur
+/// utile. C'est la seule chose qui garantisse que la colonne « Part employeur »
+/// finit au bord droit du cadre et non un millimètre plus loin — et que la
+/// désignation, qui prend le reste, garde de quoi loger un libellé.
 #[test]
 fn les_colonnes_remplissent_exactement_la_largeur_utile() {
-    let (col, largeurs, _, _) = metriques();
-    let somme: f32 = largeurs.iter().sum();
-    assert!(
-        (somme - col).abs() < 0.5,
-        "les six colonnes font {somme:.1} pt pour une largeur utile de {col:.1} pt"
-    );
+    let (col, grilles, _, _) = metriques();
+    for (nom, largeurs) in ["bulletin", "annexe"].iter().zip(grilles.iter()) {
+        let somme: f32 = largeurs.iter().sum();
+        assert!(
+            (somme - col).abs() < 0.5,
+            "grille {nom} : {somme:.1} pt pour une largeur utile de {col:.1} pt"
+        );
+        assert!(
+            largeurs[0] > col * 0.3,
+            "grille {nom} : la désignation n'a plus que {:.1} pt",
+            largeurs[0]
+        );
+    }
 }
 
 /// Rien ne doit déborder du cadre, ni à droite (les montants, calés au fer à
@@ -181,8 +195,17 @@ fn rien_ne_deborde_du_cadre() {
                             x + larg
                         );
                     }
-                    Dessin::Filet { x1, x2, .. } => {
+                    Dessin::Filet { x1, x2, y1, y2, .. } => {
                         assert!(x1 >= 0.0 && x2 <= PAGE_L, "un filet sort de la page");
+                        // Les séparateurs verticaux des parts salarié et
+                        // employeur doivent rester dans le cadre de la grille.
+                        if (x1 - x2).abs() < 0.01 {
+                            assert!(
+                                x1 > marge_g && x1 < marge_g + col,
+                                "un séparateur vertical sort du cadre ({x1:.1} pt)"
+                            );
+                            assert!(y2 > y1, "un séparateur vertical de hauteur nulle");
+                        }
                     }
                 }
             }
@@ -233,21 +256,25 @@ fn l_entete_des_colonnes_se_repete_sur_chaque_page_de_grille() {
     let pages = mise_en_page::composer(&b, &polices);
     assert!(pages.len() >= 3, "gabarit trop court pour éprouver la répétition");
 
-    // La dernière page est celle de l'annexe, qui a ses propres en-têtes ; on
-    // regarde les pages de la grille du bulletin.
-    let porte_entete = |page: &Vec<Dessin>| {
-        page.iter().any(|d| matches!(d, Dessin::Texte { texte, .. } if texte == "Part salarié"))
+    // Les lignes du bulletin s'appellent « … 1.1 », celles de l'annexe « … n° 1 » :
+    // chaque grille doit porter ses propres en-têtes, groupes compris.
+    let porte = |page: &Vec<Dessin>, titre: &str| {
+        page.iter().any(|d| matches!(d, Dessin::Texte { texte, .. } if texte == titre))
+    };
+    let a_des = |page: &Vec<Dessin>, annexe: bool| {
+        page.iter().any(|d| matches!(d, Dessin::Texte { texte, .. }
+            if texte.starts_with("Cotisation de démonstration") && texte.contains("n°") == annexe))
     };
     for (i, page) in pages.iter().enumerate() {
-        let a_des_lignes = page.iter().any(
-            |d| matches!(d, Dessin::Texte { texte, .. } if texte.starts_with("Cotisation de démonstration")),
-        );
-        if a_des_lignes {
-            assert!(
-                porte_entete(page),
-                "page {} porte des cotisations sans en-tête de colonnes",
-                i + 1
-            );
+        let attendus: &[&str] = if a_des(page, false) {
+            &["PART SALARIÉ", "PART EMPLOYEUR", "À payer", "À déduire"]
+        } else if a_des(page, true) {
+            &["PART SALARIÉ", "PART EMPLOYEUR", "Montant"]
+        } else {
+            &[]
+        };
+        for t in attendus {
+            assert!(porte(page, t), "page {} porte des lignes de grille sans l'en-tête « {t} »", i + 1);
         }
     }
 }
@@ -305,6 +332,7 @@ fn un_document_vide_ne_fait_pas_paniquer_le_moteur() {
         salarie: vec![],
         periode: vec![],
         colonnes: vec![],
+        groupes: vec![],
         rubriques: vec![],
         totaux: vec![],
         cumuls: vec![],

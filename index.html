@@ -581,7 +581,8 @@
     body.bw-mode progress { accent-color: #000000; }
 
     /* Sélecteur de date natif : sa fenêtre suivait le thème sombre. */
-    body.bw-mode .field input[type="date"] { color-scheme: light; }
+    body.bw-mode .field input[type="date"],
+    body.bw-mode .absence-date-row input[type="date"] { color-scheme: light; }
 
     /* Émojis (🌐, drapeaux) : leur couleur est dans la fonte, aucune propriété
        CSS ne l'atteint. La désaturation est le seul levier. */
@@ -760,6 +761,7 @@
        d'un service Vidéotex */
     body.minitel-mode input,
     body.minitel-mode select { color: var(--mnt-fg) !important; background: #001206; }
+    body.minitel-mode select option { color: var(--mnt-fg); background: #001206; }
     body.minitel-mode .btn-calc { background: var(--mnt-fg); color: #000000; border-color: var(--mnt-fg); }
     body.minitel-mode .hf-knob,
     body.minitel-mode .bn-knob,
@@ -825,7 +827,8 @@
     body.minitel-mode .chk-apply-brut input[type="checkbox"],
     body.minitel-mode input[type="checkbox"],
     body.minitel-mode input[type="radio"] { accent-color: var(--mnt-fg); }
-    body.minitel-mode .field input[type="date"] { color-scheme: dark; }
+    body.minitel-mode .field input[type="date"],
+    body.minitel-mode .absence-date-row input[type="date"] { color-scheme: dark; }
 
     body.minitel-mode .btn-add-rem,
     body.minitel-mode .btn-absence-toggle,
@@ -1340,10 +1343,15 @@
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
-    .rem-h-hint {
-      font-size: 0.6rem; color: var(--accent, #8aa); white-space: nowrap;
-      opacity: 0.9; min-width: 4rem; text-align: right;
+    .rem-h-unit { font-size: 0.65rem; color: var(--muted-txt); }
+    /* Détail d'une ligne d'heures : heures × taux horaire majoré = montant,
+       sous la ligne de saisie (trop long pour tenir à côté en mobile). */
+    .rem-h-detail {
+      font-size: 0.62rem; color: var(--text); margin: -0.05rem 0 0.3rem 1.875rem;
+      padding-left: 0.4rem; border-left: 2px solid var(--border);
     }
+    .rem-h-detail b { color: var(--sal); font-weight: bold; }
+    .rem-h-detail .rem-h-base { color: var(--muted-txt); }
     .btn-rm-rem {
       background: transparent; border: none; color: var(--red);
       cursor: pointer; font-size: 0.9rem; padding: 0 0.2rem;
@@ -1370,19 +1378,25 @@
     }
     .absence-panel label { cursor: pointer; }
     .absence-type-row { display: flex; gap: 1rem; margin-bottom: 0.4rem; }
-    .absence-dates-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap; }
-    .absence-dates-row input[type="date"] {
+    /* Début puis Fin, l'un sous l'autre : deux champs côte à côte débordent en mobile. */
+    .absence-dates { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.4rem; }
+    .absence-date-row { display: grid; grid-template-columns: 2.6rem minmax(0, 12rem); align-items: center; gap: 0.5rem; }
+    .absence-date-row input[type="date"] {
+      width: 100%; box-sizing: border-box;
       background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
-      padding: 0.15rem 0.3rem; font-size: 0.65rem;
+      padding: 0.25rem 0.3rem; font-size: 0.65rem;
     }
     .absence-methode-row { display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.35rem; }
     .absence-methode-row label { display: flex; align-items: center; gap: 0.35rem; }
-    .absence-toggle-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem; }
+    /* Toggle segmenté ouvrés / ouvrables : deux boutons accolés, bordure commune. */
+    .absence-toggle-row { display: flex; margin-bottom: 0.4rem; }
     .absence-toggle-btn {
-      padding: 0 0.375rem; height: 1.125rem; font-size: 0.62rem; cursor: pointer;
-      background: var(--bg3); border: 1px solid var(--border); color: var(--fg); border-radius: 2px;
+      padding: 0 0.6rem; height: 1.5rem; font-size: 0.62rem; cursor: pointer;
+      background: var(--bg3); border: 1px solid var(--border); color: var(--fg); border-radius: 0;
     }
-    .absence-toggle-btn.active { border-color: #00b4ff; color: #00b4ff; background: #00b4ff18; }
+    .absence-toggle-btn:first-child { border-radius: 2px 0 0 2px; }
+    .absence-toggle-btn:last-child  { border-radius: 0 2px 2px 0; margin-left: -1px; }
+    .absence-toggle-btn.active { border-color: #00b4ff; color: #00b4ff; background: #00b4ff18; position: relative; }
     .absence-heures-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap; }
     .absence-heures-row input[type="number"] {
       width: 4rem; background: var(--bg3); color: var(--fg);
@@ -1498,6 +1512,10 @@
       background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
       padding: 0.12rem 0.3rem; font-size: 0.65rem;
     }
+    /* Le menu déroulant natif s'ouvre sur fond clair et ses options héritent de
+       l'encre claire du thème : illisible. On leur impose fond et encre du thème. */
+    .rem-type-sel option,
+    .absence-conv-row select option { background: var(--bg2); color: var(--text); }
     .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
       background: var(--bg3);
@@ -1799,7 +1817,8 @@
     .delta-info-btn:hover { color: var(--blue); }
 
     /* Champ date — force le mode sombre sur le picker navigateur */
-    .field input[type="date"] { color-scheme: dark; }
+    .field input[type="date"],
+    .absence-date-row input[type="date"] { color-scheme: dark; }
 
     /* Bandeau de période de simulation (vue bureau) */
     .sim-period {

@@ -11,8 +11,8 @@
 //! 11 août 2025). Cette traduction vit dans `src/bulletin_pdf.js`, aux côtés de
 //! celle de la DSN, qui est de même nature. Ce module-ci ne sait ni ce qu'est
 //! une cotisation, ni ce qu'est un net social : il sait placer une grille de
-//! six colonnes sur une page A4 sans qu'elle déborde ni se coupe au mauvais
-//! endroit.
+//! huit colonnes (six dans l'annexe) sur une page A4 sans qu'elle déborde ni se
+//! coupe au mauvais endroit.
 //!
 //! Rien n'est écrit sur disque ni en base : les octets sont fabriqués en
 //! mémoire et rendus à l'appelant.
@@ -22,6 +22,6 @@ pub mod modele;
 pub mod pdf;
 
 pub use modele::{
-    Annexe, BulletinPdf, Champ, Ligne, LigneAnnexe, ReponsePdf, Rubrique, Total,
+    Annexe, BulletinPdf, Champ, Groupe, Ligne, LigneAnnexe, ReponsePdf, Rubrique, Total,
 };
 pub use pdf::generer;

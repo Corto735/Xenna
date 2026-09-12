@@ -175,6 +175,16 @@ const _eur = v => _n(v).toLocaleString('fr-FR', {
   minimumFractionDigits: 2, maximumFractionDigits: 2,
 });
 
+/** Quantité (heures) : deux décimales, « 151,67 ». */
+const _qte = v => _n(v).toLocaleString('fr-FR', {
+  minimumFractionDigits: 2, maximumFractionDigits: 2,
+});
+
+/** Taux horaire : quatre décimales, sinon « nombre × base » ne retombe pas sur le montant. */
+const _tauxH = v => _n(v).toLocaleString('fr-FR', {
+  minimumFractionDigits: 4, maximumFractionDigits: 4,
+});
+
 /** Montant, ou chaîne vide si nul — une colonne vide vaut mieux qu'un « 0,00 ». */
 const _eurOuRien = v => (Math.abs(_n(v)) < 0.005 ? '' : _eur(v));
 
@@ -230,75 +240,82 @@ export function composerBulletinPdf(b, opt = {}) {
   const quotite  = heures * etp / 100;
 
   // ── Haut de bulletin : la rémunération ─────────────────────────────────────
+  // Disposition commune des logiciels de paie : une ligne d'heures se lit
+  // « nombre × base × taux = à payer » ; une retenue tombe dans « à déduire »,
+  // sans signe — c'est la colonne qui dit le sens.
   const rem = [];
   const base = _n(opt.remBase);
-  const tauxH = quotite > 0 ? base / quotite : 0;
+  const hs = b.heures_sup;
+  // Taux horaire de base à quatre décimales, comme le calcule le moteur.
+  const tauxH = hs ? _n(hs.taux_horaire)
+    : (quotite > 0 ? Math.round(base / quotite * 1e4) / 1e4 : 0);
   rem.push({
     libelle: fpt ? 'Traitement indiciaire brut' : 'Salaire de base',
-    base: quotite.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    taux_sal: tauxH ? _eur(tauxH) : '',
-    montant_sal: _eur(base),
+    nombre: _qte(quotite),
+    base: tauxH ? _tauxH(tauxH) : '',
+    a_payer: _eur(base),
   });
 
   for (const l of (opt.remLignes || [])) {
-    if (l.type === 'hs' || l.type === 'hc') continue; // détaillées plus bas
+    if (/^h[sc]\d+$/.test(l.type)) continue; // heures supp/compl : détaillées plus bas
     const m = _n(l.amount);
     if (!m) continue;
     rem.push({
       libelle: l.type === 'coupure_50' ? 'Majoration pour coupure (50 %)' : 'Prime',
-      montant_sal: _eur(m),
+      a_payer: _eur(m),
     });
   }
 
-  const hs = b.heures_sup;
   if (hs) {
     const th = _n(hs.taux_horaire);
-    const paire = (h, taux, lbl) => {
+    const ligneHeures = (h, maj, lbl) => {
       if (!h) return;
       rem.push({
         libelle: lbl,
-        base: h.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        taux_sal: _eur(th * taux),
-        montant_sal: _eur(h * th * taux),
+        nombre: _qte(h),
+        base: _tauxH(th),
+        taux_sal: (maj * 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' %',
+        // Arrondie au centime ligne par ligne, comme le moteur (heures_sup.rs).
+        a_payer: _eur(Math.round(h * th * maj * 100) / 100),
       });
     };
-    paire(hs.h_supp_25, 1.25, 'Heures supplémentaires à 25 %');
-    paire(hs.h_supp_50, 1.50, 'Heures supplémentaires à 50 %');
-    paire(hs.h_comp_10, 1.10, 'Heures complémentaires à 10 %');
-    paire(hs.h_comp_25, 1.25, 'Heures complémentaires à 25 %');
+    ligneHeures(hs.h_supp_25, 1.25, 'Heures supplémentaires à 25 %');
+    ligneHeures(hs.h_supp_50, 1.50, 'Heures supplémentaires à 50 %');
+    ligneHeures(hs.h_comp_10, 1.10, 'Heures complémentaires à 10 %');
+    ligneHeures(hs.h_comp_25, 1.25, 'Heures complémentaires à 25 %');
   }
 
   const abs = b.absence;
   if (abs) {
     rem.push({ libelle: `Absence — ${abs.libelle || 'arrêt de travail'}`,
-               montant_sal: '− ' + _eur(abs.retenue) });
+               a_deduire: _eur(abs.retenue) });
     if (_n(abs.maintien) > 0) {
       rem.push({ libelle: `Maintien de salaire (${abs.convention || 'régime légal'})`,
-                 montant_sal: _eur(abs.maintien) });
+                 a_payer: _eur(abs.maintien) });
     }
     if (_n(abs.ijss_brut) > 0) {
       rem.push({ libelle: 'Indemnités journalières de sécurité sociale (subrogation)',
-                 montant_sal: '− ' + _eur(abs.ijss_brut) });
+                 a_deduire: _eur(abs.ijss_brut) });
     }
     if (_n(abs.ajustement_net) > 0) {
       rem.push({ libelle: 'Ajustement au titre de la garantie du net',
-                 montant_sal: '− ' + _eur(abs.ajustement_net) });
+                 a_deduire: _eur(abs.ajustement_net) });
     }
   }
 
   const cp = b.conges;
   if (cp) {
     rem.push({ libelle: `Absence — ${cp.libelle || 'congés payés'}`,
-               montant_sal: '− ' + _eur(cp.retenue) });
+               a_deduire: _eur(cp.retenue) });
     rem.push({
       libelle: 'Indemnité de congés payés ('
         + (cp.methode_indemnite === 'dixieme' ? 'règle du dixième' : 'maintien de salaire') + ')',
-      montant_sal: _eur(cp.indemnite),
+      a_payer: _eur(cp.indemnite),
     });
   }
 
   rem.push({ libelle: fpt ? 'RÉMUNÉRATION BRUTE' : 'SALAIRE BRUT',
-             montant_sal: _eur(b.brut), fort: true });
+             a_payer: _eur(b.brut), fort: true });
 
   // ── Corps : les rubriques réglementaires ──────────────────────────────────
   const gabarit = modele === 'renove' ? modeleRenove(fpt) : modeleAdapte(fpt);
@@ -355,7 +372,7 @@ export function composerBulletinPdf(b, opt = {}) {
     titre: '',
     lignes: [{
       libelle: 'TOTAL DES COTISATIONS ET CONTRIBUTIONS',
-      montant_sal: _eur(totalSal),
+      a_deduire: _eur(totalSal),
       montant_pat: _eur(totalPat),
       fort: true,
     }],
@@ -464,7 +481,11 @@ export function composerBulletinPdf(b, opt = {}) {
     chapeau: 'Le modèle réglementaire regroupe les cotisations par risque couvert. Cette annexe '
       + 'les redonne ligne à ligne, telles que le moteur de calcul les produit, avec leur code '
       + 'interne et la référence du texte qui les fonde. Elle ne fait pas partie du bulletin.',
-    colonnes: ['Cotisation', 'Base', 'Taux salarial', 'Part salarié', 'Taux patronal', 'Part employeur'],
+    colonnes: ['Cotisation', 'Base', 'Taux', 'Montant', 'Taux', 'Montant'],
+    groupes: [
+      { titre: 'PART SALARIÉ',   de: 2, a: 3 },
+      { titre: 'PART EMPLOYEUR', de: 4, a: 5 },
+    ],
     lignes: cots.map(c => ({
       libelle: c.libelle || c.code,
       code: c.code || '',
@@ -537,7 +558,14 @@ export function composerBulletinPdf(b, opt = {}) {
     employeur,
     salarie,
     periode,
-    colonnes: ['Libellé', 'Base', 'Taux salarial', 'Part salarié', 'Taux patronal', 'Part employeur'],
+    // Disposition commune des bulletins (Sage, Cegid, Silae…) : la part salarié
+    // sépare ce qui s'ajoute (à payer) de ce qui se retranche (à déduire) ; la
+    // part employeur n'a qu'un montant, elle ne touche pas au net.
+    colonnes: ['Désignation', 'Nombre', 'Base', 'Taux', 'À payer', 'À déduire', 'Taux', 'Montant'],
+    groupes: [
+      { titre: 'PART SALARIÉ',   de: 3, a: 5 },
+      { titre: 'PART EMPLOYEUR', de: 6, a: 7 },
+    ],
     rubriques,
     totaux,
     cumuls,
@@ -547,13 +575,18 @@ export function composerBulletinPdf(b, opt = {}) {
   };
 }
 
-/** Une ligne de cotisation du moteur, mise au format des six colonnes. */
+/**
+ * Une ligne de cotisation du moteur, mise au format de la grille. La part
+ * salariale va toujours dans « à déduire » : une réduction (heures supp) y
+ * figure en négatif, comme l'allègement dans la part employeur — le total des
+ * cotisations reste ainsi la somme de sa colonne.
+ */
 function ligneDe(c, libelle) {
   return {
     libelle: libelle || c.libelle || c.code,
     base: _eurOuRien(c.base),
     taux_sal: _pct(c.taux_sal),
-    montant_sal: _eurOuRien(c.montant_sal),
+    a_deduire: _eurOuRien(c.montant_sal),
     taux_pat: _pct(c.taux_pat),
     montant_pat: _eurOuRien(c.montant_pat),
   };
@@ -575,7 +608,7 @@ function ligneFusionnee(lignes, libelle) {
     libelle,
     base: _eurOuRien(lignes[0].base),
     taux_sal: _pct(somme('taux_sal')),
-    montant_sal: _eurOuRien(somme('montant_sal')),
+    a_deduire: _eurOuRien(somme('montant_sal')),
     taux_pat: _pct(somme('taux_pat')),
     montant_pat: _eurOuRien(somme('montant_pat')),
   };

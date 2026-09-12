@@ -73,8 +73,10 @@ pub async fn generer_annee(
             tranche_age_ea: None,
             // La projection annuelle modélise le salaire de base seul (comme les
             // primes et absences, non reportées) → pas d'heures supp/compl ici.
-            heures_supp: 0.0,
-            heures_comp: 0.0,
+            heures_supp_25: 0.0,
+            heures_supp_50: 0.0,
+            heures_comp_10: 0.0,
+            heures_comp_25: 0.0,
             salaire_base: None,
             effectif: None,
             anciennete: None,

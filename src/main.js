@@ -3105,8 +3105,8 @@ async function calculate(source) {
         // Heures supplémentaires/complémentaires : France privé uniquement. Le brut
         // de base (salaire_base) sert à dériver le taux horaire côté backend.
         salaire_base: _remBase.toString(),
-        heures_supp: (!paysEtranger && !isFPT) ? remHeures.supp : 0,
-        heures_comp: (!paysEtranger && !isFPT) ? remHeures.comp : 0,
+        ...Object.fromEntries(Object.entries(remHeures)
+          .map(([champ, h]) => [champ, (!paysEtranger && !isFPT) ? h : 0])),
         effectif,
         assujetti_is: assujettiIS,
         canton:   (isSuisse && assujettiIS && canton)  ? canton  : null,
@@ -3583,16 +3583,18 @@ window.onDureeChange = function(prefix, field) {
   }
 
   // Les heures supp (temps plein) et complémentaires (temps partiel) sont
-  // mutuellement exclusives : on bascule le type des lignes selon l'ETP, puis on
-  // rafraîchit la rémunération (options + indices) et on relance le calcul.
-  const isFullTime = !isNaN(etp) && Math.abs(etp - 100) < 0.01;
+  // mutuellement exclusives : on bascule le type des lignes selon l'ETP (tranche
+  // basse ↔ tranche basse, haute ↔ haute), puis on rafraîchit la rémunération
+  // (options + indices) et on relance le calcul.
+  const isFullTime = !isNaN(etp) && _estTempsPlein(etp);
   let switched = false;
   _remLines.forEach(l => {
-    if (isFullTime && l.type === 'hc') { l.type = 'hs'; switched = true; }
-    else if (!isFullTime && l.type === 'hs') { l.type = 'hc'; switched = true; }
+    if (!_estHeure(l.type) || l.type.startsWith(isFullTime ? 'hs' : 'hc')) return;
+    l.type = HEURE_TYPES[l.type].pendant;
+    switched = true;
   });
   _reRenderRemInPlace();
-  if (switched || _remLines.some(l => HEURE_TYPES.has(l.type))) _triggerRecalculate();
+  if (switched || _remLines.some(l => _estHeure(l.type))) _triggerRecalculate();
 };
 
 window.onApplyBrutChk = function(prefix) {
@@ -3610,40 +3612,45 @@ window.onApplyBrutChk = function(prefix) {
 let _remLines = []; // [{ id, type, amount }]
 let _remBase  = 0;  // salaire de base saisi dans le formulaire
 
+// Types de ligne saisis en HEURES (et non en euros), un type par taux de
+// majoration. La tranche est CHOISIE par l'utilisateur : le seuil légal (8 h/sem.
+// pour les HS, 1/10 du contrat pour les HC) ne se reconstitue pas sur un mois.
+// `champ` = nom du compteur envoyé au backend ; `pendant` = type équivalent de
+// l'autre régime, pour la bascule temps plein ↔ temps partiel.
+const HEURE_TYPES = {
+  hs25: { label: 'Heures supp. 25 %',  maj: 1.25, champ: 'heures_supp_25', pendant: 'hc10' },
+  hs50: { label: 'Heures supp. 50 %',  maj: 1.50, champ: 'heures_supp_50', pendant: 'hc25' },
+  hc10: { label: 'Heures compl. 10 %', maj: 1.10, champ: 'heures_comp_10', pendant: 'hs25' },
+  hc25: { label: 'Heures compl. 25 %', maj: 1.25, champ: 'heures_comp_25', pendant: 'hs50' },
+};
+const _estHeure = type => Object.hasOwn(HEURE_TYPES, type);
+const _estTempsPlein = etp => Math.abs(parseFloat(etp) - 100) < 0.01;
+const HEURES_TEMPS_PLEIN = 151.67;
+
 function getRemOptions(etp) {
   const common = [
     { value: 'prime',      label: 'Prime' },
     { value: 'coupure_50', label: 'Coupures 50%' },
   ];
-  // Heures supp (temps plein) / complémentaires (temps partiel) : saisie EN HEURES,
-  // la majoration par tranche est calculée (8 h à +25 % / +50 % ; 1/10 à +10 % / +25 %).
-  if (Math.abs(parseFloat(etp) - 100) < 0.01) {
-    return [ { value: 'hs', label: 'Heures supp.' }, ...common ];
-  }
-  return [ { value: 'hc', label: 'Heures compl.' }, ...common ];
+  // Heures supp (temps plein) / complémentaires (temps partiel) : saisie EN HEURES.
+  const heures = _estTempsPlein(etp) ? ['hs25', 'hs50'] : ['hc10', 'hc25'];
+  return [ ...heures.map(v => ({ value: v, label: HEURE_TYPES[v].label })), ...common ];
 }
 
-// Types de ligne saisis en HEURES (et non en euros).
-const HEURE_TYPES = new Set(['hs', 'hc']);
-const HEURES_TEMPS_PLEIN = 151.67;
-
-// Taux horaire dérivé du salaire de base : base / (151,67 × ETP/100).
+// Taux horaire dérivé du salaire de base : base / (151,67 × ETP/100), arrondi à
+// 4 décimales comme le backend (heures_sup.rs).
 function _tauxHoraire(base, etp) {
   const h = HEURES_TEMPS_PLEIN * (parseFloat(etp) / 100);
-  return h > 0 ? base / h : 0;
+  return h > 0 ? Math.round(base / h * 1e4) / 1e4 : 0;
 }
-// Gain brut majoré (preview live ; le backend reste autoritaire).
+// Taux horaire affiché à 4 décimales, comme sur un bulletin : à 2 décimales,
+// « heures × taux » ne retombe pas sur le montant.
+const _fmtTauxH = v => v.toLocaleString('fr-FR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + devSym();
+// Gain brut majoré (preview live ; le backend reste autoritaire) :
+// heures × taux horaire de base × (1 + majoration).
 function _gainHeures(type, hours, etp) {
-  const taux = _tauxHoraire(_remBase, etp);
-  const h = parseFloat(hours) || 0;
-  if (type === 'hs') {
-    return Math.min(h, 8) * taux * 1.25 + Math.max(0, h - 8) * taux * 1.50;
-  }
-  if (type === 'hc') {
-    const seuil = HEURES_TEMPS_PLEIN * (parseFloat(etp) / 100) * 0.10;
-    return Math.min(h, seuil) * taux * 1.10 + Math.max(0, h - seuil) * taux * 1.25;
-  }
-  return 0;
+  if (!_estHeure(type)) return 0;
+  return (parseFloat(hours) || 0) * _tauxHoraire(_remBase, etp) * HEURE_TYPES[type].maj;
 }
 
 function getRemTotal() {
@@ -3651,26 +3658,25 @@ function getRemTotal() {
   // (primes, coupures). Les heures supp/compl partent en heures via getRemHeures()
   // et leur majoration est ajoutée au brut côté backend.
   return _remBase + _remLines
-    .filter(l => !HEURE_TYPES.has(l.type))
+    .filter(l => !_estHeure(l.type))
     .reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
 }
 
-// Heures supplémentaires/complémentaires saisies (sommées par type).
+// Heures supplémentaires/complémentaires saisies, sommées par compteur backend :
+// { heures_supp_25, heures_supp_50, heures_comp_10, heures_comp_25 }.
 function getRemHeures() {
-  let supp = 0, comp = 0;
+  const h = Object.fromEntries(Object.values(HEURE_TYPES).map(t => [t.champ, 0]));
   _remLines.forEach(l => {
-    const v = parseFloat(l.amount) || 0;
-    if (l.type === 'hs') supp += v;
-    else if (l.type === 'hc') comp += v;
+    if (_estHeure(l.type)) h[HEURE_TYPES[l.type].champ] += parseFloat(l.amount) || 0;
   });
-  return { supp, comp };
+  return h;
 }
 
 // Total brut affiché (base + euros + majoration estimée des heures), pour le live.
 function getRemDisplayTotal(etp) {
   const e = parseFloat(etp ?? document.getElementById('d-etp')?.value ?? '100') || 100;
   const extra = _remLines.reduce((s, l) =>
-    HEURE_TYPES.has(l.type) ? s + _gainHeures(l.type, l.amount, e) : s, 0);
+    _estHeure(l.type) ? s + _gainHeures(l.type, l.amount, e) : s, 0);
   return getRemTotal() + extra;
 }
 
@@ -3688,24 +3694,34 @@ function getAbsencePayload() {
   };
 }
 
+// Détail d'une ligne d'heures : nombre d'heures × taux horaire majoré = montant,
+// avec le taux de base et la majoration en rappel (preview ; le backend reste autoritaire).
+function _remHeureDetail(l, etp) {
+  const { maj } = HEURE_TYPES[l.type];
+  const base  = _tauxHoraire(_remBase, etp);
+  const h     = parseFloat(l.amount) || 0;
+  const hTxt  = h.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+  return `<b>${hTxt} h</b> × <b>${_fmtTauxH(base * maj)}</b>/h`
+    + ` <span class="rem-h-base">(taux de base ${_fmtTauxH(base)} + ${Math.round((maj - 1) * 100)} %)</span>`
+    + ` = <b>${fmt(_gainHeures(l.type, h, etp))}</b>`;
+}
+
 // Rendu d'une ligne de rémunération. Pour les types « heures » la saisie est en
-// heures (pas de pas 0,01 €) avec un indice du gain majoré estimé à côté.
+// heures (pas de pas 0,01 €), le détail du calcul s'affiche sous la ligne.
 function _remLineHtml(l, opts, etp) {
   const selOpts = opts.map(o =>
     `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
   ).join('');
-  const isHour = HEURE_TYPES.has(l.type);
-  const hint = isHour
-    ? `<span class="rem-h-hint" title="Taux horaire ${fmt(_tauxHoraire(_remBase, etp))} — majoration incluse">h · ≈ ${fmt(_gainHeures(l.type, l.amount, etp))}</span>`
-    : '';
+  const isHour = _estHeure(l.type);
   return `
       <div class="rem-line">
         <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
         <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${isHour ? 'heures' : '0.00'}" min="0" step="${isHour ? '0.5' : '0.01'}"
                oninput="onRemAmountChange('${l.id}',this.value)" />
-        ${hint}
+        ${isHour ? '<span class="rem-h-unit">h</span>' : ''}
         <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
-      </div>`;
+      </div>${isHour ? `
+      <div class="rem-h-detail" data-rl="${l.id}">${_remHeureDetail(l, etp)}</div>` : ''}`;
 }
 
 function buildRemSection() {
@@ -3848,7 +3864,12 @@ window.onRemTypeChange = function(id, val) {
 window.onRemAmountChange = function(id, val) {
   const l = _remLines.find(l => l.id === id);
   if (l) l.amount = parseFloat(val) || 0;
-  // Mise à jour immédiate du total sans re-render (évite de tuer le focus input)
+  // Mise à jour immédiate du détail et du total sans re-render (évite de tuer le focus input)
+  if (l && _estHeure(l.type)) {
+    const etp = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+    document.querySelectorAll(`.rem-h-detail[data-rl="${id}"]`)
+      .forEach(el => { el.innerHTML = _remHeureDetail(l, etp); });
+  }
   const total = getRemDisplayTotal();
   ['d', 'm'].forEach(p => {
     const row = document.querySelector(`#rem-result-${p} .rem-total-row`);
@@ -4254,11 +4275,10 @@ function _buildAbsencePanel(isMob) {
     </div>` : '';
 
   const toggleHtml = (methode !== 'calendaire') ? `
-    <div class="absence-toggle-row">
-      <span>Jours d'absence comptés en :</span>
-      <button class="absence-toggle-btn${jType==='ouvres'?' active':''}" type="button"
+    <div class="absence-toggle-row" role="group" aria-label="Décompte des jours d'absence">
+      <button class="absence-toggle-btn${jType==='ouvres'?' active':''}" type="button" aria-pressed="${jType==='ouvres'}"
         onclick="onAbsenceJoursType('${p}','ouvres')">Ouvrés (L–V)</button>
-      <button class="absence-toggle-btn${jType==='ouvrables'?' active':''}" type="button"
+      <button class="absence-toggle-btn${jType==='ouvrables'?' active':''}" type="button" aria-pressed="${jType==='ouvrables'}"
         onclick="onAbsenceJoursType('${p}','ouvrables')">Ouvrables (L–S)</button>
     </div>` : '';
 
@@ -4270,11 +4290,15 @@ function _buildAbsencePanel(isMob) {
         <label><input type="radio" name="abs-type-${p}" value="sans_solde" ${type==='sans_solde'?'checked':''} onchange="onAbsenceTypeChange('${p}','sans_solde')"> Congé sans solde</label>
         <label><input type="radio" name="abs-type-${p}" value="pro" ${type==='pro'?'checked':''} onchange="onAbsenceTypeChange('${p}','pro')"> Accident du travail / MP</label>
       </div>
-      <div class="absence-dates-row">
-        <span>Du</span>
-        <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
-        <span>au</span>
-        <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" oninput="onAbsenceChange('${p}')">
+      <div class="absence-dates">
+        <label class="absence-date-row" for="abs-debut-${p}">
+          <span>Début</span>
+          <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
+        </label>
+        <label class="absence-date-row" for="abs-fin-${p}">
+          <span>Fin</span>
+          <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" min="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
+        </label>
       </div>
       ${(type === 'maladie' || type === 'pro') ? `
       <div class="absence-conv-row">
