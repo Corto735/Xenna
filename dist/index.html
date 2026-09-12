@@ -96,6 +96,7 @@
       --red:    #f87171;
       --orange: #fb923c;
       --yellow: #fbbf24;
+      --or:     #f5c842;   /* pastille de Xenna, cœur du soutien */
       --purple: #c084fc;
       --gray:   #7a9ab8;
       --white:  #e8f4ff;
@@ -448,7 +449,7 @@
       --sal:    #000000; --float-edge: #000000;
       --orange: #000000; --green:  #000000; --purple: #000000;
       --gray:   #000000; --yellow: #000000; --white:  #000000;
-      --electric-blue: #000000;
+      --electric-blue: #000000; --or: #000000;
       --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
       --titre-flash: var(--blue);
     }
@@ -559,8 +560,9 @@
     body.bw-mode .gaab-rqth-badge.ok { background: #e8e8e8; }
     body.bw-mode .gaab-rqth-badge.ok { border-color: #000000; color: #000000; }
     body.bw-mode .absence-panel { border-color: #000000; }
-    /* Pastille jaune posée en style inline dans le balisage du mécénat */
-    body.bw-mode [style*="#f5c842"] { border-color: #000000 !important; }
+    /* La bannière de soutien est dessinée gris sur noir : inversée, elle
+       devient gris sur blanc, dans la polarité du mode. */
+    body.bw-mode .ap-soutien img { filter: invert(1); }
 
     /* Liens : le bleu par défaut du navigateur n'est pas une teinte du thème,
        aucune variable ne l'atteignait. */
@@ -705,6 +707,7 @@
       --red:    var(--mnt-bright);
       --orange: #5cff8a;
       --yellow: var(--mnt-bright);
+      --or:     var(--mnt-bright);
       --purple: var(--mnt-mid);
       --gray:   var(--mnt-mid);
       --white:  var(--mnt-bright);
@@ -1343,10 +1346,6 @@
       border: 1px solid var(--border); padding: 0.15rem 0.3rem;
       font-size: 0.65rem; text-align: right;
     }
-    /* Le pas (5 €, 0,5 h) ne règle que les flèches : un montant libre hors pas
-       reste une saisie légitime, pas une erreur à entourer de rouge (Firefox). */
-    .rem-amt-inp:invalid,
-    .rem-amt-inp:user-invalid { box-shadow: none; outline: none; }
     .rem-h-unit { font-size: 0.65rem; color: var(--muted-txt); }
     /* Détail d'une ligne d'heures : heures × taux horaire majoré = montant,
        sous la ligne de saisie (trop long pour tenir à côté en mobile). */
@@ -2199,6 +2198,10 @@
       gap: 0.65rem;
     }
     .burger-item:last-child { border-bottom: none; }
+    /* « Soutenir » ferme le menu, détaché des outils par un filet : ce n'est
+       pas une application de plus, c'est ce qui les fait exister. */
+    .burger-item--soutien { margin-top: 0.35rem; border-top: 1px solid var(--border); }
+    .burger-item--soutien .burger-item-icon { color: var(--or); }
     .burger-item:hover { background: var(--bg3); color: var(--blue); }
     .burger-item-icon {
       font-size: 1rem;
@@ -2400,7 +2403,51 @@
     body.is-mecenat .view-bar     { display: none !important; }
     body.is-mecenat .view-mecenat { display: block; }
 
+    /* Pastille d'or de Xenna : icône du menu et blason de la page de soutien.
+       Sa couleur passe par --or, que les modes N/B et Minitel redéfinissent. */
+    .pastille-or {
+      display: block; width: 0.8rem; height: 0.8rem; flex-shrink: 0;
+      border: 2px solid var(--or); border-radius: 50%; box-sizing: border-box;
+    }
+
     .view-mecenat { display: none; padding: 1.5rem; max-width: 35rem; margin: 0 auto 3rem; }
+    .mc-kicker {
+      font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.18em;
+      text-transform: uppercase; margin-bottom: 2rem;
+    }
+    .mc-blason {
+      display: flex; align-items: center; justify-content: center;
+      gap: 2.5rem; margin-bottom: 2.5rem; padding: 2rem 0;
+    }
+    .mc-blason .pastille-or { width: 2.9rem; height: 2.9rem; border-width: 3px; }
+    /* Le Minitel efface toutes les bordures (il les redessine en caractères) et
+       sa fonte n'a pas de cercle : la pastille y devient un pavé plein, comme
+       ceux de la mosaïque Vidéotex. */
+    body.minitel-mode .pastille-or { background: var(--or); border-radius: 0; }
+    body.minitel-mode .mc-blason .pastille-or { width: 2.2rem; height: 2.2rem; }
+    .mc-glyphe { line-height: 1; color: var(--dim-txt); font-family: var(--font-mono, monospace); }
+    .mc-glyphe--barre { font-size: 2.8rem; }
+    .mc-glyphe--carre { font-size: 3.2rem; }
+    .mc-texte { font-size: 0.72rem; color: var(--muted-txt); line-height: 2; margin-bottom: 1.5rem; }
+    .mc-btn {
+      display: inline-block; padding: 0.4rem 0.9rem; cursor: pointer;
+      font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
+      color: var(--blue); background: none; border: 1px solid var(--blue);
+    }
+    .mc-btn:hover,
+    .mc-btn:focus-visible { background: var(--blue); color: var(--bg3); }
+
+    /* Bannière de soutien, dans « À propos » seulement : la frise de l'équipe,
+       cliquable vers Tipeee. */
+    .ap-soutien {
+      display: block; width: 100%; margin: 0.9rem 0 1.6rem; padding: 0;
+      background: none; border: 1px solid var(--border); cursor: pointer;
+      font-family: inherit; color: var(--muted-txt); text-align: center;
+    }
+    .ap-soutien img { display: block; width: 100%; height: auto; }
+    .ap-soutien-legende { display: block; padding: 0.45rem 0.6rem; font-size: 0.66rem; letter-spacing: 0.08em; }
+    .ap-soutien:hover,
+    .ap-soutien:focus-visible { border-color: var(--or); color: var(--text); }
 
     /* ── Meliinda ── */
     body.is-meliinda .view-desktop,
@@ -3371,7 +3418,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-CEjg-zA9.js"></script>
+  <script type="module" crossorigin src="/assets/index-B7deTt-j.js"></script>
 </head>
 <body>
 
@@ -3392,7 +3439,7 @@
       <nav class="burger-menu" id="burger-menu" aria-label="Navigation principale">
         <button class="burger-item" style="font-size:0.88rem" onclick="setView('desktop'); closeBurger()">
           <span class="burger-item-icon" style="display:inline-flex;align-items:center;justify-content:center">
-            <span style="display:block;width:0.8rem;height:0.8rem;border-radius:50%;border:2px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
+            <span class="pastille-or"></span>
           </span>
           Xenna <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
@@ -3424,10 +3471,6 @@
           <span class="burger-item-icon">✦</span>
           Quizz <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
-        <button id="burger-mecenat" class="burger-item" style="display:none" onclick="setView('mecenat'); closeBurger()">
-          <span class="burger-item-icon">♥</span>
-          Soutenir le projet
-        </button>
         <button id="burger-login" class="burger-item" style="display:none" onclick="window.location.href='/la_forge'; closeBurger()">
           <span class="burger-item-icon">⬡</span>
           La Forge <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">connexion</span>
@@ -3435,6 +3478,10 @@
         <button id="burger-admin" class="burger-item" style="display:none">
           <span class="burger-item-icon">⚷</span>
           Admin <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">modération</span>
+        </button>
+        <button id="burger-mecenat" class="burger-item burger-item--soutien" onclick="setView('mecenat'); closeBurger()">
+          <span class="burger-item-icon">♥</span>
+          Soutenir le projet
         </button>
       </nav>
     </div>
@@ -3975,7 +4022,7 @@
 
   </div><!-- /view-desktop -->
   <div class="view-desktop view-foot" style="justify-content:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-desktop view-foot" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-desktop view-foot" style="justify-content:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em;text-align:center">// ce site ne collecte aucune donnée.</div>
 
   <!-- ════════════════════════════════
        VUE MOBILE
@@ -4707,6 +4754,11 @@
       a un coût réel. <strong>Certains modules seront à terme distribués sous licence commerciale</strong> —
       une pratique courante dans l'écosystème open source appelée <em style="color:var(--blue);font-style:normal">double licence</em> ou <em style="color:var(--blue);font-style:normal">open core</em>.
     </div>
+    <button class="ap-soutien" type="button" onclick="openExternal('https://fr.tipeee.com/xenna-paye')">
+      <img src="/tipeee-banner.svg" width="1200" height="400" loading="lazy"
+           alt="Frise de l'équipe Xenna : quatre silhouettes, dont une guerrière épée levée et Poséidon">
+      <span class="ap-soutien-legende">♥ &nbsp;Soutenir Xenna sur Tipeee — fr.tipeee.com/xenna-paye</span>
+    </button>
 
     <div class="sect-label">LES GRANDES FAMILLES DE LICENCES</div>
     <div class="stack-grid">
@@ -5289,22 +5341,17 @@
        VUE MÉCÉNAT
   ════════════════════════════════ -->
   <div class="view-mecenat">
-    <div style="font-size:0.58rem;color:var(--dim-txt);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:2rem">
-      // Mécénat · Soutenir Xenna
+    <div class="mc-kicker">// Mécénat · Soutenir Xenna</div>
+    <div class="mc-blason" aria-hidden="true">
+      <span class="pastille-or"></span>
+      <span class="mc-glyphe mc-glyphe--barre">/</span>
+      <span class="mc-glyphe mc-glyphe--carre">□</span>
     </div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;margin-bottom:2.5rem;padding:2rem 0">
-      <span style="display:flex;align-items:center;justify-content:center;width:2.9rem;height:2.9rem;border-radius:50%;border:3px solid #f5c842;box-sizing:border-box;flex-shrink:0"></span>
-      <span style="font-size:2.8rem;line-height:1;color:var(--dim-txt);font-family:var(--font-mono,monospace)">/</span>
-      <span style="font-size:3.2rem;line-height:1;color:var(--dim-txt);font-family:var(--font-mono,monospace)">□</span>
-    </div>
-    <div style="font-size:0.72rem;color:var(--muted-txt);line-height:2;margin-bottom:1.5rem">
-      Xenna est un projet open source et libre. Si il vous est utile,<br>
+    <div class="mc-texte">
+      Xenna est un projet open source et libre. S'il vous est utile,
       vous pouvez soutenir son développement sur Tipeee.
     </div>
-    <button onclick="openExternal('https://fr.tipeee.com/xenna-paye')"
-       style="display:inline-block;font-size:0.68rem;letter-spacing:0.1em;color:var(--blue);border:1px solid var(--blue);padding:0.4rem 0.9rem;background:none;cursor:pointer;font-family:inherit"
-       onmouseover="this.style.background='var(--blue)';this.style.color='var(--bg3)'"
-       onmouseout="this.style.background='';this.style.color='var(--blue)'">
+    <button class="mc-btn" type="button" onclick="openExternal('https://fr.tipeee.com/xenna-paye')">
       ♥ &nbsp;fr.tipeee.com/xenna-paye
     </button>
   </div><!-- /view-mecenat -->
@@ -5362,6 +5409,6 @@
     </div>
   </div>
 
-  <div class="ai-credit">// claude-sonnet-4-6</div>
+  <div class="ai-credit">// claude code </div>
 </body>
 </html>

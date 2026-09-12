@@ -162,15 +162,11 @@ document.addEventListener("DOMContentLoaded", () => {
     _syncToggleUI('H');
   }
 
-  // Déverrouillage JNF si tiré à l'arrivée
-  _checkJNF();
-
-  // Quand l'utilisateur tape manuellement, le toggle est désactivé + check JNF
+  // Quand l'utilisateur tape manuellement, le toggle est désactivé
   ['d-prenom', 'm-prenom', 'd-nom', 'm-nom'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => {
       const prefix = id.startsWith('d-') ? 'd' : 'm';
       _captureNoms(_genre, prefix);   // saisie permanente, mémorisée pour le sexe courant
-      _checkJNF();
       const prenom = (_noms[_genre].prenom || '').trim();
       const isLeeloo = prenom.toLowerCase() === 'leeloo';
       document.getElementById('burger-login')?.style && (document.getElementById('burger-login').style.display = isLeeloo ? '' : 'none');
@@ -849,7 +845,7 @@ window.setView = function (v) {
   if (v === 'contrat')    contratInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
-  if (v === 'apropos')  { _mecenatStart(); _humanInputLoad(); }
+  if (v === 'apropos')    _humanInputLoad();
   if (v === 'carnet')     _carnetLoad();
   if (v === 'ccn')        ccnInit();
   if (v === 'meliinda')   meliindaInit();
@@ -1251,27 +1247,6 @@ async function _hiLoadInto(boxId, destination) {
     });
   } catch {
     box.innerHTML = '<div class="hi-empty">Chargement impossible.</div>';
-  }
-}
-
-// ── Mécénat — déverrouillage silencieux 15 s après le premier passage sur À propos ──
-let _mecenatUnlocked = false;
-function _mecenatStart() {
-  if (_mecenatUnlocked) return;
-  _mecenatUnlocked = true;
-  setTimeout(() => {
-    const el = document.getElementById('burger-mecenat');
-    if (el) el.style.display = '';
-  }, 15_000);
-}
-
-// Déverrouillage immédiat si Jean-Noël Favari est dans les champs nom/prénom
-function _checkJNF() {
-  const p = (document.getElementById('d-prenom')?.value || document.getElementById('m-prenom')?.value || '').trim().toLowerCase();
-  const n = (document.getElementById('d-nom')?.value    || document.getElementById('m-nom')?.value    || '').trim().toLowerCase();
-  if (p === 'jean-noël' && n === 'favari') {
-    const el = document.getElementById('burger-mecenat');
-    if (el) el.style.display = '';
   }
 }
 
