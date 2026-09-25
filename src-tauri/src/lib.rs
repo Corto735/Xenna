@@ -14,6 +14,7 @@ pub mod quizz;
 pub mod ratelimit;
 pub mod models;
 pub mod veille;
+pub mod anecdotes;
 
 #[cfg(feature = "desktop")]
 pub mod commands;

@@ -1579,6 +1579,16 @@
       background: #050810;
     }
     .expl-txt  { font-size: 0.73rem; color: #fef3a3; line-height: 1.6; flex: 1; }
+    /* Histoire de la cotisation (anecdotes.rs) — sous l'explication, en retrait */
+    .expl-histoire, .mob-histoire {
+      margin-top: 0.5rem;
+      padding: 0.35rem 0 0.1rem 0.6rem;
+      border-left: 2px solid var(--dim);
+      color: var(--muted-txt);
+      font-size: 0.7rem;
+      line-height: 1.6;
+    }
+    .histoire-tag { font-size: 0.6rem; letter-spacing: 0.1em; color: var(--blue); font-weight: bold; }
     .expl-ref  {
       font-size: 0.65rem;
       color: var(--muted-txt);
@@ -1846,16 +1856,6 @@
     }
     .sim-period .sp-accent { color: var(--blue); font-weight: bold; }
 
-    /* Date sur l'en-tête du bulletin mobile */
-    .mob-head-date { font-size: 0.62rem; color: var(--muted-txt); margin-top: 0.1rem; }
-
-    /* Responsive auto-mobile */
-    @media (max-width: 680px) {
-      body.is-desktop .view-desktop { display: none; }
-      body.is-desktop .view-mobile  { display: block; }
-      .view-bar { display: none; }
-    }
-
     /* Fraîcheur des barèmes du pays (veille.rs) — sous l'en-tête du résultat */
     .veille-baremes {
       padding: 0.22rem 0.9rem;
@@ -1869,6 +1869,16 @@
     .veille-baremes.is-lacune .vb-titre { font-weight: bold; letter-spacing: 0.07em; }
     .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
     .veille-baremes.is-lacune .vb-releve { color: var(--muted-txt); }
+
+    /* Date sur l'en-tête du bulletin mobile */
+    .mob-head-date { font-size: 0.62rem; color: var(--muted-txt); margin-top: 0.1rem; }
+
+    /* Responsive auto-mobile */
+    @media (max-width: 680px) {
+      body.is-desktop .view-desktop { display: none; }
+      body.is-desktop .view-mobile  { display: block; }
+      .view-bar { display: none; }
+    }
 
     /* ── Lien formule f(x) ────────────────────────────────────── */
     @keyframes fxChar {
@@ -4032,6 +4042,7 @@
         </div>
 
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
+          <button class="btn-lien" id="d-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
       </div>
     </div>
 
@@ -4056,7 +4067,6 @@
     <div class="mob-wrap">
 
       <!-- Formulaire compact -->
-          <button class="btn-lien" id="d-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
       <div class="mob-form">
         <div class="mob-form-head">SAISIE</div>
         <div class="mob-form-body">
@@ -4505,6 +4515,7 @@
           </div>
 
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
+          <button class="btn-lien" id="m-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
         </div>
       </div>
 
@@ -4529,7 +4540,6 @@
 
     <div class="ann-form">
       <div class="field"><label>ANNÉE</label>
-          <button class="btn-lien" id="m-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
         <input type="number" id="a-annee" value="2026" min="2015" step="1" style="width:5.625rem" /></div>
       <div class="field"><label>SALAIRE BRUT MENSUEL (€)</label>
         <input type="number" id="a-brut" value="2500" step="50" min="0" /></div>

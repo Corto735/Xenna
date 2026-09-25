@@ -159,6 +159,19 @@ dernière modification en base ne prouve pas qu'un taux stable a été revérifi
 Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
 `fiabilite.rs` exige qu'un pays en retard sur l'année du relevé déclare ses lacunes.
 
+## Histoire des cotisations — anecdotes
+
+`src-tauri/src/anecdotes.rs` associe à un **code** de cotisation un texte fixe :
+origine, acteurs, controverses. `generer_bulletin` l'accole à l'explication derrière
+U+0002 ; le front le détache dans `extractAidePosteDetail` (AVANT le détail aide au
+poste derrière U+0001, sinon le JSON de ce dernier casse) et l'affiche dans un bloc
+« HISTOIRE ». L'explication reste le texte technique et chiffré, l'anecdote ne porte
+ni placeholder ni valeur du mois.
+
+Même règle que pour les taux : **rien d'inventé**. Seuls des faits établis ; un code
+sans anecdote sûre n'en reçoit pas. Français seulement pour l'instant — une autre
+langue ne reçoit RIEN (pas de repli français au milieu d'un bulletin traduit).
+
 ## Module DSN — extrait de déclaration annoté
 
 `src/dsn.js` traduit un bulletin **France privé** déjà calculé en extrait de DSN

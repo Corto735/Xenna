@@ -2394,7 +2394,7 @@ function renderDesktop(b) {
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
             <div class="expl-box">
-              <div class="expl-txt trad-skip">▸ ${esc(c.explication)}</div>
+              <div class="expl-txt trad-skip">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
               ${c.loi_ref ? `<div class="expl-ref trad-skip">§ ${esc(c.loi_ref)}</div>` : ""}
             </div>
           </td>
@@ -2476,7 +2476,7 @@ function renderDesktop(b) {
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
                 <div class="expl-box">
-                  <div class="expl-txt">▸ ${esc(c.explication)}</div>
+                  <div class="expl-txt">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
                   ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
                 </div>
               </td>
@@ -2680,6 +2680,7 @@ function buildMobCotRow(c, id, montantHtml, valCls, type, idx = 0) {
     : `<div class="fm-type-${type}">${buildFormulaContent(c, type)}</div>`;
   const whyHtml = `
     <div class="mob-exp-txt">${esc(c.explication)}</div>
+    ${buildHistoire(c, 'mob-histoire')}
     ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
   const stripeCls = `mob-stripe-${type}-${idx % 2 === 0 ? 'a' : 'b'}`;
   return `
@@ -2761,6 +2762,7 @@ function renderMobile(b) {
       : '';
     const whyHtml = `
       <div class="mob-exp-txt">${esc(c.explication)}</div>
+      ${buildHistoire(c, 'mob-histoire')}
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
     const amtsSal = hasSal
@@ -2804,9 +2806,9 @@ function renderMobile(b) {
           <div class="mob-head-date">simulation au ${formatDate(getDatePaie())}</div>
         </div>
       </div>
+      <div class="veille-baremes" hidden></div>
 
       <!-- Rémunération -->
-      <div class="veille-baremes" hidden></div>
       <div id="rem-result-m">${buildRemSectionMobile()}</div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
@@ -2828,7 +2830,7 @@ function renderMobile(b) {
       </div>
       <div id="is-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
         <div class="fm-type-sal">${buildFormulaContent(isChCot, 'sal')}</div>
-        <div class="mob-exp-txt" style="margin-top:0.5rem">${esc(isChCot.explication)}</div>
+        <div class="mob-exp-txt" style="margin-top:0.5rem">${esc(isChCot.explication)}</div>${buildHistoire(isChCot, 'mob-histoire')}
         ${isChCot.loi_ref ? `<div class="mob-exp-loi">§ ${esc(isChCot.loi_ref)}</div>` : ''}
       </div>` : ''}
 
@@ -2857,7 +2859,7 @@ function renderMobile(b) {
         <span class="mob-val c-purple">− ${fmt(itIrpefAmtMob)}</span>
       </div>
       <div id="irpef-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
-        <div class="mob-exp-txt">${esc(itIrpefCotMob.explication)}</div>
+        <div class="mob-exp-txt">${esc(itIrpefCotMob.explication)}</div>${buildHistoire(itIrpefCotMob, 'mob-histoire')}
         ${itIrpefCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itIrpefCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
 
@@ -2867,7 +2869,7 @@ function renderMobile(b) {
         <span class="mob-val c-green">+ ${fmt(Math.abs(itBonusAmtMob))}</span>
       </div>
       <div id="bonus-cuneo-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
-        <div class="mob-exp-txt">${esc(itBonusCotMob.explication)}</div>
+        <div class="mob-exp-txt">${esc(itBonusCotMob.explication)}</div>${buildHistoire(itBonusCotMob, 'mob-histoire')}
         ${itBonusCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itBonusCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
 
@@ -2914,6 +2916,14 @@ function renderMobile(b) {
 // et `c.aidePosteDetail` porte les valeurs chiffrées pour le modal de formule.
 function extractAidePosteDetail(b) {
   (b.cotisations || []).forEach(c => {
+    // L'histoire de la cotisation (anecdotes.rs) ferme l'explication derrière
+    // U+0002 : on la détache EN PREMIER, sinon elle se collerait au JSON du
+    // détail aide au poste ci-dessous.
+    const h = typeof c.explication === "string" ? c.explication.indexOf("\u0002") : -1;
+    if (h !== -1) {
+      c.anecdote   = c.explication.slice(h + 1);
+      c.explication = c.explication.slice(0, h).trim();
+    }
     const i = typeof c.explication === "string" ? c.explication.indexOf("\u0001") : -1;
     if (i === -1) return;
     const raw = c.explication.slice(i + 1);
@@ -2926,11 +2936,17 @@ function extractAidePosteDetail(b) {
   });
 }
 
+// Bloc « histoire » d'une ligne (anecdote détachée par extractAidePosteDetail).
+function buildHistoire(c, cls = 'expl-histoire') {
+  return c.anecdote ? `<div class="${cls}"><span class="histoire-tag">HISTOIRE</span> ${esc(c.anecdote)}</div>` : '';
+}
+
 function renderAll(b) {
   DEVISE = b.devise || "EUR";
   extractAidePosteDetail(b);
   renderDesktop(b);
   renderMobile(b);
+  _afficherVeille(b);
   if (_dactyloMode) {
     typewriterDesktop(b).then(() => applyDyslexiaColors());
   } else {
@@ -2938,22 +2954,6 @@ function renderAll(b) {
   }
 }
 
-// ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
-// Utilisé pour les validations côté JS — évite d'envoyer des args invalides à
-// Rust, ce qui provoque des erreurs opaques de désérialisation dans Tauri.
-function showInputError(msg) {
-  const errHtml = `<div style="padding:1.5rem;color:var(--red);font-size:0.8rem">⚠ ${esc(msg)}</div>`;
-  document.getElementById("res-desktop").innerHTML = errHtml;
-  document.getElementById("res-mobile").innerHTML  = errHtml;
-}
-  _afficherVeille(b);
-
-// ═════════════════════════════════════════════════════════════════════════════
-// CALCUL
-// ═════════════════════════════════════════════════════════════════════════════
-async function calculate(source) {
-  const isM = source === "mobile";
-  const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
 // ── Fraîcheur des barèmes ────────────────────────────────────────────────────
 // Au-delà des barèmes intégrés, le calcul ne lève aucune erreur : il prolonge
 // les dernières valeurs connues. Le back déclare pays par pays jusqu'où ses
@@ -2989,6 +2989,21 @@ async function _afficherVeille(b) {
   });
 }
 
+// ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
+// Utilisé pour les validations côté JS — évite d'envoyer des args invalides à
+// Rust, ce qui provoque des erreurs opaques de désérialisation dans Tauri.
+function showInputError(msg) {
+  const errHtml = `<div style="padding:1.5rem;color:var(--red);font-size:0.8rem">⚠ ${esc(msg)}</div>`;
+  document.getElementById("res-desktop").innerHTML = errHtml;
+  document.getElementById("res-mobile").innerHTML  = errHtml;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CALCUL
+// ═════════════════════════════════════════════════════════════════════════════
+async function calculate(source) {
+  const isM = source === "mobile";
+  const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
@@ -3166,6 +3181,7 @@ async function _afficherVeille(b) {
     renderAll(bulletin);
     _afficherBrutReconstitue(bulletin);
     _updateAnnuelBtn();
+    _ecrireLien();
   } catch (e) {
     // console.error permet de voir l'objet brut dans DevTools (F12 → Console)
     // même quand l'affichage UI est tronqué.
@@ -3176,60 +3192,6 @@ async function _afficherVeille(b) {
     document.getElementById("res-mobile").innerHTML  = errHtml;
   }
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
-// VUE ANNUELLE
-// ═════════════════════════════════════════════════════════════════════════════
-function renderAnnuel(sim) {
-  const el   = document.getElementById("res-annuel");
-  const rows = sim.lignes;
-
-  // Détecte les changements de SMIC pour les mettre en évidence
-  const smics = rows.map(r => r.smic);
-
-  const thead = `
-    <thead><tr>
-      <th style="text-align:left">MOIS</th>
-      <th>SMIC</th>
-      <th>BRUT</th>
-      <th>RETENUES SAL.</th>
-      <th>CHARGES PAT.</th>
-      <th>FILLON</th>
-      <th title="Différence Fillon régularisé − Fillon mensuel simple">Δ RÉGUL.</th>
-      <th>NET</th>
-      <th>COÛT EMPL.</th>
-    </tr></thead>`;
-
-  // Tirage unique : un seul (i) parmi toutes les lignes ±0,01
-  const _centIdx = rows.reduce((acc, r, i) => {
-    if (parseFloat(Math.abs(parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple)).toFixed(2)) === 0.01) acc.push(i);
-    return acc;
-  }, []);
-  const _centElu = _centIdx.length ? _centIdx[Math.floor(Math.random() * _centIdx.length)] : -1;
-
-  const tbody = rows.map((r, i) => {
-    const smicChange  = i > 0 && r.smic !== smics[i - 1];
-    const is13e       = r.mois_libelle.includes("13e");
-    const delta       = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
-    const infoBtn     = i === _centElu ? ` <button class="delta-info-btn" onclick="openCommentFillon()" title="Note JNF">(i)</button>` : '';
-    const deltaTxt    = Math.abs(delta) < 0.005
-      ? `<span style="color:var(--dim-txt)">—</span>`
-      : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>${infoBtn}`;
-    const rowCls = [smicChange ? "smic-change" : "", is13e ? "treizieme-mois" : ""].filter(Boolean).join(" ");
-
-    return `<tr class="${rowCls}">
-      <td>${r.mois_libelle}</td>
-    _ecrireLien();
-      <td>${fmt(r.smic)}</td>
-      <td>${fmt(r.brut)}</td>
-      <td class="c-sal">− ${fmt(r.total_sal)}</td>
-      <td class="c-pat">+ ${fmt(r.total_pat_brut)}</td>
-      <td class="c-alleg">− ${fmt(r.fillon_regularise)}</td>
-      <td>${deltaTxt}</td>
-      <td class="c-green">${fmt(r.net_a_payer)}</td>
-      <td class="c-eblue">${fmt(r.cout_employeur)}</td>
-    </tr>`;
-  }).join("");
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PARTAGE PAR LIEN
@@ -3411,6 +3373,59 @@ function _restaurerDepuisLien() {
 // Un lien collé dans l'onglet déjà ouvert ne recharge pas la page.
 window.addEventListener('hashchange', _restaurerDepuisLien);
 
+// ═════════════════════════════════════════════════════════════════════════════
+// VUE ANNUELLE
+// ═════════════════════════════════════════════════════════════════════════════
+function renderAnnuel(sim) {
+  const el   = document.getElementById("res-annuel");
+  const rows = sim.lignes;
+
+  // Détecte les changements de SMIC pour les mettre en évidence
+  const smics = rows.map(r => r.smic);
+
+  const thead = `
+    <thead><tr>
+      <th style="text-align:left">MOIS</th>
+      <th>SMIC</th>
+      <th>BRUT</th>
+      <th>RETENUES SAL.</th>
+      <th>CHARGES PAT.</th>
+      <th>FILLON</th>
+      <th title="Différence Fillon régularisé − Fillon mensuel simple">Δ RÉGUL.</th>
+      <th>NET</th>
+      <th>COÛT EMPL.</th>
+    </tr></thead>`;
+
+  // Tirage unique : un seul (i) parmi toutes les lignes ±0,01
+  const _centIdx = rows.reduce((acc, r, i) => {
+    if (parseFloat(Math.abs(parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple)).toFixed(2)) === 0.01) acc.push(i);
+    return acc;
+  }, []);
+  const _centElu = _centIdx.length ? _centIdx[Math.floor(Math.random() * _centIdx.length)] : -1;
+
+  const tbody = rows.map((r, i) => {
+    const smicChange  = i > 0 && r.smic !== smics[i - 1];
+    const is13e       = r.mois_libelle.includes("13e");
+    const delta       = parseFloat(r.fillon_regularise) - parseFloat(r.fillon_simple);
+    const infoBtn     = i === _centElu ? ` <button class="delta-info-btn" onclick="openCommentFillon()" title="Note JNF">(i)</button>` : '';
+    const deltaTxt    = Math.abs(delta) < 0.005
+      ? `<span style="color:var(--dim-txt)">—</span>`
+      : `<span class="delta-nonzero">${delta > 0 ? "+" : ""}${fmtS(delta.toFixed(2))}</span>${infoBtn}`;
+    const rowCls = [smicChange ? "smic-change" : "", is13e ? "treizieme-mois" : ""].filter(Boolean).join(" ");
+
+    return `<tr class="${rowCls}">
+      <td>${r.mois_libelle}</td>
+      <td>${fmt(r.smic)}</td>
+      <td>${fmt(r.brut)}</td>
+      <td class="c-sal">− ${fmt(r.total_sal)}</td>
+      <td class="c-pat">+ ${fmt(r.total_pat_brut)}</td>
+      <td class="c-alleg">− ${fmt(r.fillon_regularise)}</td>
+      <td>${deltaTxt}</td>
+      <td class="c-green">${fmt(r.net_a_payer)}</td>
+      <td class="c-eblue">${fmt(r.cout_employeur)}</td>
+    </tr>`;
+  }).join("");
+
   const tfoot = `
     <tr class="ann-total">
       <td>TOTAL ${sim.annee}</td>
@@ -3495,6 +3510,8 @@ async function calculerAnnee() {
 }
 
 // ── Gestion multi-pays (Suisse / Luxembourg / FPT) ───────────────────────────
+// Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
+const TOUS_PAYS = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
 // Appelé depuis chaque checkbox pays ; gère l'exclusion mutuelle et l'UI commune.
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
@@ -3547,8 +3564,6 @@ window.onTogglePays = function(pays, checked) {
   const isJapon       = document.getElementById('d-japon')?.checked;
   const isChine       = document.getElementById('d-chine')?.checked;
   const isAustralie   = document.getElementById('d-australie')?.checked;
-// Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
-const TOUS_PAYS = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
   const isNZ          = document.getElementById('d-nouvellezelande')?.checked;
   const isPologne     = document.getElementById('d-pologne')?.checked;
   const isCoree       = document.getElementById('d-coree')?.checked;

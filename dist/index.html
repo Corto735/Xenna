@@ -1079,6 +1079,18 @@
       margin-top: 0.25rem;
     }
     .btn-calc:hover { background: var(--green); color: var(--bg); }
+    .btn-lien {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 0.7rem;
+      padding: 0.3rem 0 0;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .btn-lien:hover { color: var(--blue); text-decoration: underline; }
 
     /* Masquage immédiat vue bureau sur mobile — évite le flash avant DOMContentLoaded */
     html.init-mobile .view-desktop { display: none !important; }
@@ -1567,6 +1579,16 @@
       background: #050810;
     }
     .expl-txt  { font-size: 0.73rem; color: #fef3a3; line-height: 1.6; flex: 1; }
+    /* Histoire de la cotisation (anecdotes.rs) — sous l'explication, en retrait */
+    .expl-histoire, .mob-histoire {
+      margin-top: 0.5rem;
+      padding: 0.35rem 0 0.1rem 0.6rem;
+      border-left: 2px solid var(--dim);
+      color: var(--muted-txt);
+      font-size: 0.7rem;
+      line-height: 1.6;
+    }
+    .histoire-tag { font-size: 0.6rem; letter-spacing: 0.1em; color: var(--blue); font-weight: bold; }
     .expl-ref  {
       font-size: 0.65rem;
       color: var(--muted-txt);
@@ -1833,6 +1855,20 @@
       letter-spacing: 0.07em;
     }
     .sim-period .sp-accent { color: var(--blue); font-weight: bold; }
+
+    /* Fraîcheur des barèmes du pays (veille.rs) — sous l'en-tête du résultat */
+    .veille-baremes {
+      padding: 0.22rem 0.9rem;
+      font-size: 0.62rem;
+      color: var(--muted-txt);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.04em;
+    }
+    .veille-baremes .vb-releve { opacity: 0.75; }
+    .veille-baremes.is-lacune { color: var(--yellow); padding-block: 0.4rem; }
+    .veille-baremes.is-lacune .vb-titre { font-weight: bold; letter-spacing: 0.07em; }
+    .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
+    .veille-baremes.is-lacune .vb-releve { color: var(--muted-txt); }
 
     /* Date sur l'en-tête du bulletin mobile */
     .mob-head-date { font-size: 0.62rem; color: var(--muted-txt); margin-top: 0.1rem; }
@@ -3418,7 +3454,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-B7deTt-j.js"></script>
+  <script type="module" crossorigin src="/assets/index-B4VDavDz.js"></script>
 </head>
 <body>
 
@@ -4007,6 +4043,7 @@
         </div>
 
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
+          <button class="btn-lien" id="d-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
       </div>
     </div>
 
@@ -4479,6 +4516,7 @@
           </div>
 
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
+          <button class="btn-lien" id="m-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
         </div>
       </div>
 

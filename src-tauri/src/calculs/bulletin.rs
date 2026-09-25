@@ -49,6 +49,19 @@ use super::ae_bulletin::generer_bulletin_ae;
 use super::in_bulletin::generer_bulletin_in;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
+    let mut bulletin = calculer_bulletin_pays(salarie, ctx, absence);
+    // Histoire de chaque cotisation (crate::anecdotes), accolée à l'explication
+    // derrière un séparateur que le front détache pour l'afficher à part.
+    for ligne in &mut bulletin.cotisations {
+        if let Some(texte) = crate::anecdotes::anecdote(&ligne.code, &ctx.lang) {
+            ligne.explication.push(crate::anecdotes::SEPARATEUR);
+            ligne.explication.push_str(texte);
+        }
+    }
+    bulletin
+}
+
+fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     match salarie.pays {
         Pays::Suisse            => return generer_bulletin_ch(salarie, ctx),
         Pays::Luxembourg        => return generer_bulletin_lu(salarie, ctx),
