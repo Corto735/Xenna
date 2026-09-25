@@ -143,6 +143,22 @@ Rates, ceilings (SMIC, PMSS), and employer organisations are stored in SQLite wi
 - **PMSS / SMIC** — historical ceiling values stored per date in the DB; always fetch from `ContextPaie`, never hardcode
 - **Cotisations** are split between salariale (employee) and patronale (employer); both appear on the bulletin
 
+## Veille des barèmes — fraîcheur par pays
+
+Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge sa
+dernière branche (`_ =>`, `annee >= …`) ou la dernière période en base
+(`date_fin NULL`). `src-tauri/src/veille.rs` **déclare** donc, pour chaque régime,
+la dernière année dont tous les barèmes sont intégrés (`integre_jusqu_a`) et ce qui
+manque au-delà (`lacunes`). Le front l'affiche sous l'en-tête du résultat, via la
+commande `veille_baremes { pays }` (Tauri) / `POST /api/veille_baremes` (web).
+
+Règle : **qui intègre des barèmes met la veille à jour dans le même commit** —
+relever `integre_jusqu_a`, retirer les lacunes comblées, et redater `AUDIT_DU` si
+tout le tableau a été revu. Rien n'y est déduit automatiquement : une date de
+dernière modification en base ne prouve pas qu'un taux stable a été revérifié.
+Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
+`fiabilite.rs` exige qu'un pays en retard sur l'année du relevé déclare ses lacunes.
+
 ## Module DSN — extrait de déclaration annoté
 
 `src/dsn.js` traduit un bulletin **France privé** déjà calculé en extrait de DSN

@@ -359,3 +359,26 @@ async fn golden_france_monotonicite() {
 
     nettoyer(&path);
 }
+
+// ────────────────────────── Veille des barèmes ──────────────────────────────
+
+/// La veille (`veille.rs`) est une déclaration, pas un calcul : on vérifie
+/// qu'elle se tient. Un pays en retard sur l'année du relevé doit dire ce qui
+/// lui manque ; un pays déclaré à jour ne doit traîner aucune lacune.
+#[test]
+fn veille_coherente_pour_tous_les_pays() {
+    use xenna_paie_lib::veille::{veille, AUDIT_DU};
+    let annee_audit: i32 = AUDIT_DU[..4].parse().expect("AUDIT_DU au format AAAA-MM-JJ");
+    for pays in tous_les_pays() {
+        let v = veille(&pays);
+        assert!(
+            (2015..=annee_audit).contains(&v.integre_jusqu_a),
+            "{pays:?} : integre_jusqu_a = {} hors de 2015..={annee_audit}", v.integre_jusqu_a
+        );
+        assert_eq!(
+            v.integre_jusqu_a < annee_audit,
+            !v.lacunes.is_empty(),
+            "{pays:?} : un retard sur {annee_audit} se déclare par ses lacunes, et seulement lui"
+        );
+    }
+}

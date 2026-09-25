@@ -276,6 +276,16 @@ async fn handle_bulletin_pdf(
 struct BulletinPdfReq {
     bulletin: BulletinPdf,
 }
+#[derive(Deserialize)]
+struct VeilleReq {
+    pays: xenna_paie_lib::models::Pays,
+}
+
+/// Fraîcheur déclarée des barèmes du pays (voir `veille.rs`) : statique, sans base.
+async fn handle_veille(Json(req): Json<VeilleReq>) -> impl IntoResponse {
+    Json(xenna_paie_lib::veille::veille(&req.pays))
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -368,6 +378,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
+        .route("/api/veille_baremes", post(handle_veille))
         .route("/api/generer_contrat_pdf", post(handle_contrat_pdf))
         .route("/api/generer_bulletin_pdf", post(handle_bulletin_pdf))
         .route("/altcha/challenge", get(altcha_challenge))

@@ -1856,6 +1856,20 @@
       .view-bar { display: none; }
     }
 
+    /* Fraîcheur des barèmes du pays (veille.rs) — sous l'en-tête du résultat */
+    .veille-baremes {
+      padding: 0.22rem 0.9rem;
+      font-size: 0.62rem;
+      color: var(--muted-txt);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.04em;
+    }
+    .veille-baremes .vb-releve { opacity: 0.75; }
+    .veille-baremes.is-lacune { color: var(--yellow); padding-block: 0.4rem; }
+    .veille-baremes.is-lacune .vb-titre { font-weight: bold; letter-spacing: 0.07em; }
+    .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
+    .veille-baremes.is-lacune .vb-releve { color: var(--muted-txt); }
+
     /* ── Lien formule f(x) ────────────────────────────────────── */
     @keyframes fxChar {
       from { opacity: 0; transform: translateY(-2px); }

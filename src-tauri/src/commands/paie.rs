@@ -14,7 +14,8 @@ use crate::{
     AppState,
     calculs::{generer_bulletin, generer_annee, paye_inverse},
     db::ContextPaie,
-    models::{AbsenceInput, Bulletin, Salarie, SimulationAnnuelle, Statut},
+    models::{AbsenceInput, Bulletin, Pays, Salarie, SimulationAnnuelle, Statut},
+    veille::{veille, Veille},
 };
 
 #[tauri::command]
@@ -76,4 +77,11 @@ pub async fn simuler_annee(
     generer_annee(&state.db, brut, statut, annee, etp.unwrap_or(100.0))
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Fraîcheur déclarée des barèmes du pays (voir `crate::veille`). Statique :
+/// ni base ni état, le front la met en cache par pays.
+#[tauri::command]
+pub fn veille_baremes(pays: Pays) -> Veille {
+    veille(&pays)
 }

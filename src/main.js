@@ -2440,7 +2440,8 @@ function renderDesktop(b) {
   const simBanner = `<div class="sim-period">
     SIMULATION AU <span class="sp-accent">${formatDate(getDatePaie())}</span>
     &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données sans le moindre état d'âme
-  </div>`;
+  </div>
+  <div class="veille-baremes" hidden></div>`;
 
   // Section allègements/exonérations — montants négatifs affichés en économie.
   // Une ligne peut être patronale (Fillon, EA, DFP) ou salariale (réduction HS).
@@ -2805,6 +2806,7 @@ function renderMobile(b) {
       </div>
 
       <!-- Rémunération -->
+      <div class="veille-baremes" hidden></div>
       <div id="rem-result-m">${buildRemSectionMobile()}</div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
@@ -2944,6 +2946,7 @@ function showInputError(msg) {
   document.getElementById("res-desktop").innerHTML = errHtml;
   document.getElementById("res-mobile").innerHTML  = errHtml;
 }
+  _afficherVeille(b);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // CALCUL
@@ -2951,6 +2954,41 @@ function showInputError(msg) {
 async function calculate(source) {
   const isM = source === "mobile";
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
+// ── Fraîcheur des barèmes ────────────────────────────────────────────────────
+// Au-delà des barèmes intégrés, le calcul ne lève aucune erreur : il prolonge
+// les dernières valeurs connues. Le back déclare pays par pays jusqu'où ses
+// barèmes vont (veille.rs, relevé daté) ; ce bandeau le dit sous l'en-tête du
+// résultat. Table statique : une requête par pays et par session suffit.
+const _veilleCache = new Map();   // pays → Promise<{ integre_jusqu_a, lacunes, audit_du }>
+
+async function _afficherVeille(b) {
+  const pays = b.salarie?.pays;
+  if (!pays) return;
+  if (!_veilleCache.has(pays)) {
+    // Un échec ne doit ni bloquer le bulletin ni rester en cache.
+    _veilleCache.set(pays, api('veille_baremes', { pays })
+      .catch(e => { _veilleCache.delete(pays); throw e; }));
+  }
+  let v;
+  try { v = await _veilleCache.get(pays); }
+  catch (e) { console.warn('[veille_baremes] indisponible :', e); return; }
+  if (lastBulletin && lastBulletin !== b) return; // un calcul plus récent a pris la main
+
+  const annee = parseInt(getDatePaie().slice(0, 4), 10);
+  const releve = `relevé du ${formatDate(v.audit_du)}`;
+  const aJour = annee <= v.integre_jusqu_a;
+  const html = aJour
+    ? `✓ Barèmes ${annee} intégrés <span class="vb-releve">· ${releve}</span>`
+    : `<div class="vb-titre">⚠ Barèmes ${annee} incomplets pour ce régime</div>
+       <ul>${v.lacunes.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+       <div class="vb-releve">Barèmes intégrés jusqu'en ${v.integre_jusqu_a} · ${releve}</div>`;
+  document.querySelectorAll('.veille-baremes').forEach(el => {
+    el.classList.toggle('is-lacune', !aJour);
+    el.innerHTML = html;
+    el.hidden = false;
+  });
+}
+
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
