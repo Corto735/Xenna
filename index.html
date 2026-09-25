@@ -1079,6 +1079,18 @@
       margin-top: 0.25rem;
     }
     .btn-calc:hover { background: var(--green); color: var(--bg); }
+    .btn-lien {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-family: inherit;
+      font-size: 0.7rem;
+      padding: 0.3rem 0 0;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .btn-lien:hover { color: var(--blue); text-decoration: underline; }
 
     /* Masquage immédiat vue bureau sur mobile — évite le flash avant DOMContentLoaded */
     html.init-mobile .view-desktop { display: none !important; }
@@ -4030,6 +4042,7 @@
     <div class="mob-wrap">
 
       <!-- Formulaire compact -->
+          <button class="btn-lien" id="d-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
       <div class="mob-form">
         <div class="mob-form-head">SAISIE</div>
         <div class="mob-form-body">
@@ -4502,6 +4515,7 @@
 
     <div class="ann-form">
       <div class="field"><label>ANNÉE</label>
+          <button class="btn-lien" id="m-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
         <input type="number" id="a-annee" value="2026" min="2015" step="1" style="width:5.625rem" /></div>
       <div class="field"><label>SALAIRE BRUT MENSUEL (€)</label>
         <input type="number" id="a-brut" value="2500" step="50" min="0" /></div>

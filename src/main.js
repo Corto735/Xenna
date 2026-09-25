@@ -252,6 +252,9 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById('a11y-btn')?.classList.remove('open');
     }
   });
+
+  // Arrivée par un lien partagé (#pays=…&brut=…) : on rejoue la simulation.
+  _restaurerDepuisLien();
 });
 
 // ── Bascule Brut / Net (paye inversée) ────────────────────────────────────────
@@ -3178,6 +3181,7 @@ function renderAnnuel(sim) {
 
     return `<tr class="${rowCls}">
       <td>${r.mois_libelle}</td>
+    _ecrireLien();
       <td>${fmt(r.smic)}</td>
       <td>${fmt(r.brut)}</td>
       <td class="c-sal">− ${fmt(r.total_sal)}</td>
@@ -3188,6 +3192,186 @@ function renderAnnuel(sim) {
       <td class="c-eblue">${fmt(r.cout_employeur)}</td>
     </tr>`;
   }).join("");
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PARTAGE PAR LIEN
+// ═════════════════════════════════════════════════════════════════════════════
+// La saisie vit dans le FRAGMENT de l'URL (#pays=…&brut=…) : un navigateur ne
+// transmet jamais le fragment au serveur. Partager une simulation ne stocke donc
+// rien, nulle part — le lien EST la simulation. Nom et prénom n'y figurent pas :
+// on partage un cas de paie, pas une personne.
+//
+// Le fragment décrit le FORMULAIRE (ids des champs), pas la requête envoyée à
+// Rust : il se relit en rejouant les handlers de l'interface, qui restent seuls
+// juges de l'exclusion des pays, des sous-menus et de la synchro bureau/mobile.
+
+// Paramètres repris tels quels du formulaire bureau, dans l'ordre de relecture :
+// une case à cocher précède les listes qu'elle dévoile (IS → canton, Kirchensteuer → Land).
+const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'be-region',
+  'ca-province', 'us-state', 'emirati-national', 'inde-regime', 'steuerklasse',
+  'kinderlos', 'kirchenmitglied', 'land', 'assujetti-is', 'canton', 'tarif-is',
+  'effectif', 'anciennete'];
+// Le bureau ne sert pas de lien partageable : on renvoie vers le site public.
+const LIEN_BASE_BUREAU = 'https://www.payetonbulletin.fr/';
+// Types d'éléments de rémunération admis à la relecture (le reste est ignoré).
+// Fonction et non constante : HEURE_TYPES est déclaré plus bas dans le module.
+const _lienRemTypeValide = t => t === 'prime' || t === 'coupure_50' || _estHeure(t);
+
+// Valeur par défaut d'un champ, lue dans le HTML : seul ce qui s'en écarte part
+// dans le lien, pour qu'il reste court et lisible.
+function _lienDefaut(el) {
+  if (el.type === 'checkbox') return el.defaultChecked;
+  if (el.tagName === 'SELECT') {
+    return ([...el.options].find(o => o.defaultSelected) || el.options[0])?.value ?? '';
+  }
+  return el.defaultValue;
+}
+
+// Un paramètre resté dans un sous-menu replié (Steuerklasse d'une Allemagne
+// décochée…) ne décrit pas la simulation affichée : il ne part pas.
+function _lienVisible(el) {
+  for (let n = el.parentElement; n && n.id !== 'd-params' && n.id !== 'd-duree'; n = n.parentElement) {
+    if (n.style.display === 'none') return false;
+  }
+  return true;
+}
+
+function _lienPaysActif() {
+  return TOUS_PAYS.find(p => p !== 'france' && document.getElementById(`d-${p}`)?.checked) || 'france';
+}
+
+// Le fragment admet « : » et « , » sans échappement (RFC 3986) : on les garde
+// lisibles dans les listes (rem=prime:150,hs25:4).
+const _lienEnc = v => encodeURIComponent(v).replace(/%3A/gi, ':').replace(/%2C/gi, ',');
+
+function _construireFragment() {
+  const p = [];
+  const pays = _lienPaysActif();
+  if (pays !== 'france') p.push(['pays', pays]);
+  p.push(['brut', document.getElementById('d-brut')?.value || '']);
+  if (_modeSaisie === 'net') p.push(['mode', 'net']);
+  // La date part toujours : sans elle, le lien changerait de sens avec le calendrier.
+  p.push(['date', document.getElementById('d-date')?.value || '']);
+  LIEN_CHAMPS.forEach(cle => {
+    const el = document.getElementById(`d-${cle}`);
+    if (!el || !_lienVisible(el)) return;
+    const v = el.type === 'checkbox' ? el.checked : el.value;
+    if (v === _lienDefaut(el)) return;
+    p.push([cle, el.type === 'checkbox' ? '1' : v]);
+  });
+  const etp = document.getElementById('d-etp')?.value;
+  if (etp && parseFloat(etp) !== 100) p.push(['etp', etp]);
+  const rem = _remLines.filter(l => parseFloat(l.amount) > 0).map(l => `${l.type}:${l.amount}`);
+  if (rem.length) p.push(['rem', rem.join(',')]);
+  if (_absence?.active) {
+    const a = _absence;
+    p.push(['abs', [a.type, a.dateDebut, a.dateFin, a.methode, a.joursType, a.conventionIDCC].join(',')]);
+  }
+  return p.map(([k, v]) => `${k}=${_lienEnc(v)}`).join('&');
+}
+
+function _lienComplet() {
+  const base = window.__TAURI__ ? LIEN_BASE_BUREAU : location.origin + location.pathname;
+  return `${base}#${_construireFragment()}`;
+}
+
+// Tient l'adresse du navigateur à jour après chaque calcul réussi (sans entrée
+// d'historique : « précédent » ne doit pas rejouer chaque frappe).
+function _ecrireLien() {
+  try { history.replaceState(null, '', `#${_construireFragment()}`); } catch { /* bureau : sans objet */ }
+  ['d-lien', 'm-lien'].forEach(id => { const b = document.getElementById(id); if (b) b.hidden = false; });
+}
+
+window.copierLien = async function(btn) {
+  const libelle = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(_lienComplet());
+    btn.textContent = '✓ lien copié';
+  } catch {
+    btn.textContent = '✗ presse-papier refusé';
+  }
+  setTimeout(() => { btn.textContent = libelle; }, 2000);
+};
+
+// Pose une valeur sur le champ bureau puis rejoue son handler : syncParam
+// recopie sur le mobile, et les sous-menus s'ouvrent comme au clic.
+// Une valeur inconnue ou illisible cède la place à la valeur par défaut.
+function _lienPoser(el, valeur) {
+  if (el.type === 'checkbox') {
+    el.checked = valeur === '1';
+  } else if (el.tagName === 'SELECT') {
+    el.value = [...el.options].some(o => o.value === valeur) ? valeur : _lienDefaut(el);
+  } else {
+    el.value = Number.isFinite(parseFloat(valeur)) ? valeur : _lienDefaut(el);
+  }
+  el.dispatchEvent(new Event('change'));
+}
+
+// Relit le fragment et relance le calcul. Tout ce qui est mal formé est ignoré
+// champ par champ : un lien abîmé donne une simulation partielle, pas une erreur.
+function _restaurerDepuisLien() {
+  const h = location.hash.slice(1);
+  if (!h.includes('brut=')) return false;
+  const q = new URLSearchParams(h);
+
+  const pays = q.get('pays') || 'france';
+  if (TOUS_PAYS.includes(pays)) {
+    ['d', 'm'].forEach(p => { const el = document.getElementById(`${p}-${pays}`); if (el) el.checked = true; });
+    window.onTogglePays(pays, true);
+    if (PAYS_EXTRA.includes(pays) && !_paysAllShown) window.togglePaysExtra();
+    if (pays !== 'france') {
+      ['d', 'm'].forEach(p => {
+        if (document.getElementById(`${p}-params`)?.style.display === 'none') window.toggleParams(p);
+      });
+    }
+  }
+
+  const brut = parseFloat(q.get('brut'));
+  if (Number.isFinite(brut) && brut > 0) {
+    ['d-brut', 'm-brut'].forEach(id => { const e = document.getElementById(id); if (e) e.value = q.get('brut'); });
+  }
+  if ((q.get('mode') === 'net') !== (_modeSaisie === 'net')) window.toggleBrutNet();
+  const date = q.get('date');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date || '') && date >= DATE_MIN) {
+    ['d-date', 'm-date'].forEach(id => { const e = document.getElementById(id); if (e) e.value = date; });
+  }
+
+  // Un champ absent du lien reprend sa valeur par défaut : collé dans un onglet
+  // déjà ouvert, le lien ne doit rien hériter de la simulation précédente.
+  LIEN_CHAMPS.forEach(cle => {
+    const el = document.getElementById(`d-${cle}`);
+    if (!el) return;
+    const defaut = _lienDefaut(el);
+    _lienPoser(el, q.has(cle) ? q.get(cle) : (el.type === 'checkbox' ? (defaut ? '1' : '') : defaut));
+  });
+
+  const etp = parseFloat(q.get('etp'));
+  document.getElementById('d-etp').value = Number.isFinite(etp) && etp > 0 && etp <= 200 ? etp : 100;
+  window.onDureeChange('d', 'etp');
+
+  _remLines = (q.get('rem') || '').split(',').map((s, i) => {
+    const [type, montant] = s.split(':');
+    const m = parseFloat(montant);
+    return _lienRemTypeValide(type) && Number.isFinite(m) && m > 0
+      ? { id: `rl-lien-${i}`, type, amount: String(m) } : null;
+  }).filter(Boolean);
+
+  const abs = (q.get('abs') || '').split(',');
+  if (abs.length === 6 && abs.every(v => /^[\w-]+$/.test(v))) {
+    const [type, dateDebut, dateFin, methode, joursType, conventionIDCC] = abs;
+    _absence = { active: true, type, dateDebut, dateFin, methode, joursType, conventionIDCC };
+  } else {
+    _absence = null;
+  }
+
+  // Les handlers rejoués ont pu programmer un recalcul différé : un seul suffit.
+  clearTimeout(_recalcTimer);
+  calculate('desktop');
+  return true;
+}
+
+// Un lien collé dans l'onglet déjà ouvert ne recharge pas la page.
+window.addEventListener('hashchange', _restaurerDepuisLien);
 
   const tfoot = `
     <tr class="ann-total">
@@ -3277,7 +3461,6 @@ async function calculerAnnee() {
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const TOUS_PAYS    = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
   const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
@@ -3326,6 +3509,8 @@ window.onTogglePays = function(pays, checked) {
   const isJapon       = document.getElementById('d-japon')?.checked;
   const isChine       = document.getElementById('d-chine')?.checked;
   const isAustralie   = document.getElementById('d-australie')?.checked;
+// Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
+const TOUS_PAYS = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
   const isNZ          = document.getElementById('d-nouvellezelande')?.checked;
   const isPologne     = document.getElementById('d-pologne')?.checked;
   const isCoree       = document.getElementById('d-coree')?.checked;
