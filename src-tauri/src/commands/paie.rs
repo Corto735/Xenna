@@ -15,7 +15,7 @@ use crate::{
     calculs::{generer_bulletin, generer_annee, paye_inverse},
     db::ContextPaie,
     models::{AbsenceInput, Bulletin, Pays, Salarie, SimulationAnnuelle, Statut},
-    veille::{veille, Veille},
+    veille::{veille, veille_tous, Veille, VeillePays},
 };
 
 #[tauri::command]
@@ -84,4 +84,10 @@ pub async fn simuler_annee(
 #[tauri::command]
 pub fn veille_baremes(pays: Pays) -> Veille {
     veille(&pays)
+}
+
+/// Fraîcheur déclarée de tous les régimes (tableau de la page « À propos »).
+#[tauri::command]
+pub fn veille_baremes_tous() -> Vec<VeillePays> {
+    veille_tous()
 }

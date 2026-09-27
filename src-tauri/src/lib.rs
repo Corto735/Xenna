@@ -22,7 +22,7 @@ pub mod commands;
 #[cfg(feature = "desktop")]
 use commands::{
     calculer_bulletin, conventions_ccn, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
-    simuler_annee, veille_baremes,
+    simuler_annee, veille_baremes, veille_baremes_tous,
 };
 #[cfg(feature = "desktop")]
 use sqlx::SqlitePool;
@@ -76,6 +76,7 @@ pub fn run() {
             dossier_ccn,
             conventions_ccn,
             veille_baremes,
+            veille_baremes_tous,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri error");

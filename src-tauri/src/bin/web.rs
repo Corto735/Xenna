@@ -286,6 +286,11 @@ async fn handle_veille(Json(req): Json<VeilleReq>) -> impl IntoResponse {
     Json(xenna_paie_lib::veille::veille(&req.pays))
 }
 
+/// Fraîcheur déclarée de tous les régimes : statique, sans base.
+async fn handle_veille_tous() -> impl IntoResponse {
+    Json(xenna_paie_lib::veille::veille_tous())
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -379,6 +384,7 @@ async fn main() {
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/veille_baremes", post(handle_veille))
+        .route("/api/veille_baremes_tous", post(handle_veille_tous))
         .route("/api/generer_contrat_pdf", post(handle_contrat_pdf))
         .route("/api/generer_bulletin_pdf", post(handle_bulletin_pdf))
         .route("/altcha/challenge", get(altcha_challenge))

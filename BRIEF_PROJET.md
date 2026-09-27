@@ -481,8 +481,7 @@ se mesurer à ce principe.
   France, inexistant ailleurs), plafonds encore codés en dur à certains
   endroits, couverture de tests inégale entre pays.
 - **DNS apex** `payetonbulletin.fr` → toujours OVH au lieu de Clever Cloud.
-- `CLAUDE.md` est **partiellement obsolète** : il annonce 39 pays (il y en a 44)
-  et son arborescence des modules Rust date d'avant `admin/`, `membre/`,
+- `CLAUDE.md` est **partiellement obsolète** : son arborescence des modules Rust date d'avant `admin/`, `membre/`,
   `forge/`, `quizz/`, `ccn/`, `crypto.rs`, `altcha.rs`, `ratelimit.rs`.
 - La base de production est en `/tmp/xenna.db` dans l'image Docker : elle est
   **reconstruite à chaque déploiement** par les migrations. Les données

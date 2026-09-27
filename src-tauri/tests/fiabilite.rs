@@ -142,6 +142,13 @@ fn _exhaustivite_pays(p: Pays) {
     }
 }
 
+/// `Pays::TOUS` (servie au front par la veille) suit l'enum : la liste du test,
+/// elle-même tenue par `_exhaustivite_pays`, en est le témoin.
+#[test]
+fn pays_tous_suit_l_enum() {
+    assert_eq!(Pays::TOUS.to_vec(), tous_les_pays());
+}
+
 // ────────────────────────── Invariants ──────────────────────────────
 
 /// Vérifie les invariants vrais pour n'importe quel bulletin valide.

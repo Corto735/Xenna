@@ -1578,7 +1578,7 @@
       align-items: flex-start;
       background: #050810;
     }
-    .expl-txt  { font-size: 0.73rem; color: #fef3a3; line-height: 1.6; flex: 1; }
+    .expl-txt  { font-size: 0.73rem; color: #f9a8d4; line-height: 1.6; flex: 1; }
     /* Histoire de la cotisation (anecdotes.rs) — sous l'explication, en retrait */
     .expl-histoire, .mob-histoire {
       margin-top: 0.5rem;
@@ -1869,6 +1869,23 @@
     .veille-baremes.is-lacune .vb-titre { font-weight: bold; letter-spacing: 0.07em; }
     .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
     .veille-baremes.is-lacune .vb-releve { color: var(--muted-txt); }
+
+    /* Même relevé, tous régimes — page « À propos » */
+    .veille-tous { margin-bottom: 1.75rem; }
+    .veille-tous .vt-intro { font-size: 0.7rem; color: var(--muted-txt); line-height: 1.6; margin-bottom: 0.6rem; }
+    .veille-tous .vt-scroll { overflow-x: auto; }
+    .veille-tableau { border-collapse: collapse; width: 100%; font-size: 0.68rem; }
+    .veille-tableau th {
+      text-align: left; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--gray-txt); border-bottom: 1px solid var(--border); padding: 0.3rem 0.5rem;
+    }
+    .veille-tableau td { padding: 0.28rem 0.5rem; border-bottom: 1px solid var(--dim); vertical-align: top; }
+    .veille-tableau .vt-pays  { white-space: nowrap; color: var(--text); }
+    .veille-tableau .vt-annee { white-space: nowrap; }
+    .veille-tableau .vt-ok .vt-annee { color: var(--green); }
+    .veille-tableau .vt-lacune .vt-annee,
+    .veille-tableau .vt-lacune .vt-lacunes { color: var(--yellow); }
+    .veille-tableau .vt-ok .vt-lacunes { color: var(--muted-txt); }
 
     /* Date sur l'en-tête du bulletin mobile */
     .mob-head-date { font-size: 0.62rem; color: var(--muted-txt); margin-top: 0.1rem; }
@@ -4531,7 +4548,7 @@
     </div>
   </div><!-- /view-mobile -->
   <div class="view-mobile" style="text-align:center;padding:0.5rem 1rem 0.35rem;font-size:0.7rem;color:var(--dim);letter-spacing:0.08em">jnfavari@proton.me</div>
-  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em">// ce site ne collecte aucune donnée, par choix. mon hébergeur fait quelques stats mais à part ça… rien. même pas un p'tit cookie&nbsp;;)</div>
+  <div class="view-mobile" style="text-align:center;padding:0 1rem 2rem;font-size:0.62rem;color:var(--dim);letter-spacing:0.06em">// ce site ne collecte aucune donnée.</div>
 
   <!-- ════════════════════════════════
        VUE ANNUELLE
@@ -4665,6 +4682,10 @@
       · <strong>Le moteur est une bibliothèque pure</strong> : aucune dépendance à Tauri ni à Axum.
         Il peut tourner en CLI, en WASM, sur mobile — sans modification.
     </div>
+
+    <!-- ── Fraîcheur des barèmes (veille.rs) ── -->
+    <div class="sect-label">FRAÎCHEUR DES BARÈMES, PAYS PAR PAYS</div>
+    <div id="apropos-veille" class="veille-tous"></div>
 
     <!-- ── Évolutions ── -->
     <div class="sect-label">CE QUE CE PROJET PEUT DEVENIR</div>

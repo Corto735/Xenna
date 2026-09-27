@@ -848,7 +848,7 @@ window.setView = function (v) {
   if (v === 'contrat')    contratInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
-  if (v === 'apropos')    _humanInputLoad();
+  if (v === 'apropos')    { _humanInputLoad(); _veilleTableau(); }
   if (v === 'carnet')     _carnetLoad();
   if (v === 'ccn')        ccnInit();
   if (v === 'meliinda')   meliindaInit();
@@ -2987,6 +2987,65 @@ async function _afficherVeille(b) {
     el.innerHTML = html;
     el.hidden = false;
   });
+}
+
+// Même relevé, tous régimes à la fois : tableau de la page « À propos ».
+// Les clés sont celles de l'enum `Pays` (snake_case) ; un régime sans nom ici
+// s'affiche sous sa clé plutôt que de disparaître.
+const VEILLE_NOMS = {
+  france: '🇫🇷 France', fonction_publique: '🇫🇷 Fonction publique territoriale',
+  suisse: '🇨🇭 Suisse', luxembourg: '🇱🇺 Luxembourg', italia: '🇮🇹 Italie',
+  canada: '🇨🇦 Canada (Ontario)', quebec: '🇨🇦 Québec', allemagne: '🇩🇪 Allemagne',
+  espagne: '🇪🇸 Espagne', portugal: '🇵🇹 Portugal', belgique: '🇧🇪 Belgique',
+  angleterre: '🇬🇧 Angleterre', japon: '🇯🇵 Japon', chine: '🇨🇳 Chine',
+  pays_bas: '🇳🇱 Pays-Bas', australie: '🇦🇺 Australie', nouvelle_zelande: '🇳🇿 Nouvelle-Zélande',
+  pologne: '🇵🇱 Pologne', coree_du_sud: '🇰🇷 Corée du Sud', andorre: '🇦🇩 Andorre',
+  monaco: '🇲🇨 Monaco', danemark: '🇩🇰 Danemark', finlande: '🇫🇮 Finlande',
+  suede: '🇸🇪 Suède', estonie: '🇪🇪 Estonie', lettonie: '🇱🇻 Lettonie',
+  lituanie: '🇱🇹 Lituanie', autriche: '🇦🇹 Autriche', tchequie: '🇨🇿 Tchéquie',
+  slovaquie: '🇸🇰 Slovaquie', hongrie: '🇭🇺 Hongrie', slovenie: '🇸🇮 Slovénie',
+  grece: '🇬🇷 Grèce', chypre: '🇨🇾 Chypre', malte: '🇲🇹 Malte', croatie: '🇭🇷 Croatie',
+  irlande: '🇮🇪 Irlande', roumanie: '🇷🇴 Roumanie', bulgarie: '🇧🇬 Bulgarie',
+  etats_unis: '🇺🇸 États-Unis', mexique: '🇲🇽 Mexique', bresil: '🇧🇷 Brésil',
+  emirats: '🇦🇪 Émirats arabes unis', inde: '🇮🇳 Inde',
+};
+let _veilleTousCharge = false;
+
+async function _veilleTableau() {
+  const el = document.getElementById('apropos-veille');
+  if (!el || _veilleTousCharge) return;
+  let liste;
+  try { liste = await api('veille_baremes_tous', {}); }
+  catch (e) { console.warn('[veille_baremes_tous] indisponible :', e); return; }
+  _veilleTousCharge = true;
+
+  // « À jour » s'entend de l'année du relevé, comme dans tests/fiabilite.rs.
+  // Les régimes en retard d'abord, du plus ancien au plus récent.
+  const audit = liste[0]?.audit_du || '';
+  const annee = parseInt(audit.slice(0, 4), 10);
+  const aJour = liste.filter(v => v.integre_jusqu_a >= annee);
+  const enRetard = liste.filter(v => v.integre_jusqu_a < annee)
+    .sort((a, b) => a.integre_jusqu_a - b.integre_jusqu_a);
+  const nom = v => esc(VEILLE_NOMS[v.pays] || v.pays);
+  const ligne = v => {
+    const ok = v.integre_jusqu_a >= annee;
+    return `<tr class="${ok ? 'vt-ok' : 'vt-lacune'}">
+      <td class="vt-pays">${nom(v)}</td>
+      <td class="vt-annee">${ok ? '✓' : '⚠'} ${v.integre_jusqu_a}</td>
+      <td class="vt-lacunes">${ok ? '—' : v.lacunes.map(esc).join('<br>')}</td>
+    </tr>`;
+  };
+  el.innerHTML = `
+    <div class="vt-intro">
+      Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge les
+      dernières valeurs connues. Ce tableau dit, régime par régime, la dernière année
+      dont tous les barèmes sont intégrés — ${aJour.length} à jour sur ${liste.length}.
+      Relevé du ${formatDate(audit)}.
+    </div>
+    <div class="vt-scroll"><table class="veille-tableau">
+      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th></tr></thead>
+      <tbody>${enRetard.map(ligne).join('')}${aJour.map(ligne).join('')}</tbody>
+    </table></div>`;
 }
 
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────

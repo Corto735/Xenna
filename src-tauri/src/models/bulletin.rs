@@ -149,6 +149,23 @@ pub enum Pays {
     Inde,
 }
 
+impl Pays {
+    /// Tous les régimes, dans l'ordre de l'enum. `tests/fiabilite.rs` vérifie
+    /// qu'elle suit l'enum : un variant oublié ici y casse un test.
+    pub const TOUS: [Pays; 44] = [
+        Pays::France, Pays::Suisse, Pays::Luxembourg, Pays::FonctionPublique,
+        Pays::Italia, Pays::Canada, Pays::Quebec, Pays::Allemagne, Pays::Espagne,
+        Pays::Portugal, Pays::Belgique, Pays::Angleterre, Pays::Japon, Pays::Chine,
+        Pays::PaysBas, Pays::Australie, Pays::NouvelleZelande, Pays::Pologne,
+        Pays::CoreeDuSud, Pays::Andorre, Pays::Monaco, Pays::Danemark, Pays::Finlande,
+        Pays::Suede, Pays::Estonie, Pays::Lettonie, Pays::Lituanie, Pays::Autriche,
+        Pays::Tchequie, Pays::Slovaquie, Pays::Hongrie, Pays::Slovenie, Pays::Grece,
+        Pays::Chypre, Pays::Malte, Pays::Croatie, Pays::Irlande, Pays::Roumanie,
+        Pays::Bulgarie, Pays::EtatsUnis, Pays::Mexique,
+        Pays::Bresil, Pays::Emirats, Pays::Inde,
+    ];
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Salarie {
     pub nom:          String,

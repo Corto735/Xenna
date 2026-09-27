@@ -35,6 +35,21 @@ pub struct Veille {
     pub audit_du: &'static str,
 }
 
+/// Veille d'un régime, étiquetée de son pays (tableau récapitulatif du front).
+#[derive(Debug, Clone, Serialize)]
+pub struct VeillePays {
+    pub pays: Pays,
+    #[serde(flatten)]
+    pub veille: Veille,
+}
+
+/// La veille de tous les régimes, dans l'ordre de `Pays::TOUS`.
+pub fn veille_tous() -> Vec<VeillePays> {
+    Pays::TOUS.iter()
+        .map(|p| VeillePays { pays: p.clone(), veille: veille(p) })
+        .collect()
+}
+
 const fn v(integre_jusqu_a: i32, lacunes: &'static [&'static str]) -> Veille {
     Veille { integre_jusqu_a, lacunes, audit_du: AUDIT_DU }
 }

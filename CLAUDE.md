@@ -64,7 +64,7 @@ répété sur chaque page de grille, filigrane tracé par-dessus et translucide,
 document vide non fatal. Un test `#[ignore]` écrit un PDF pour inspection :
 `cargo test --test bulletin_pdf -- --ignored --nocapture` (chemin via `BULLETIN_PDF_OUT`).
 
-`src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 39 pays (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
+`src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 44 régimes (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
 
 ## Déploiement (production)
 
@@ -267,7 +267,7 @@ de tête à chaque clic et on ne sait plus ce qu'on compare.
 
 Le bouton n'apparaît que pour `france` et `fonction_publique` — le modèle
 réglementaire du bulletin est une notion française, il n'a pas de sens pour les
-37 autres pays.
+42 autres régimes.
 
 ## Module RH « Gaabrielle » — contrat de travail
 
