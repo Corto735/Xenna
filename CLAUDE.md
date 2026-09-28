@@ -161,7 +161,7 @@ Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
 
 ## Histoire des cotisations — anecdotes
 
-`src-tauri/src/anecdotes.rs` associe à un **code** de cotisation un texte fixe :
+`src-tauri/src/anecdotes/` associe à un **code** de cotisation un texte fixe :
 origine, acteurs, controverses. `generer_bulletin` l'accole à l'explication derrière
 U+0002 ; le front le détache dans `extractAidePosteDetail` (AVANT le détail aide au
 poste derrière U+0001, sinon le JSON de ce dernier casse) et l'affiche dans un bloc
@@ -169,8 +169,13 @@ poste derrière U+0001, sinon le JSON de ce dernier casse) et l'affiche dans un 
 ni placeholder ni valeur du mois.
 
 Même règle que pour les taux : **rien d'inventé**. Seuls des faits établis ; un code
-sans anecdote sûre n'en reçoit pas. Français seulement pour l'instant — une autre
-langue ne reçoit RIEN (pas de repli français au milieu d'un bulletin traduit).
+sans anecdote sûre n'en reçoit pas.
+
+Six langues, un fichier par langue (`fr.rs` fait référence ; `en/de/nl/it/es.rs` en
+sont des traductions fidèles, rien d'ajouté). **Qui ajoute une anecdote l'ajoute dans
+les six fichiers** : le test `memes_codes_dans_toutes_les_langues` exige les mêmes codes
+partout. Une langue inconnue ne reçoit RIEN (pas de repli français au milieu d'un
+bulletin traduit). Le bloc front porte `trad-skip` : pas de MyMemory par-dessus.
 
 ## Module DSN — extrait de déclaration annoté
 

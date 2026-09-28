@@ -2938,7 +2938,9 @@ function extractAidePosteDetail(b) {
 
 // Bloc « histoire » d'une ligne (anecdote détachée par extractAidePosteDetail).
 function buildHistoire(c, cls = 'expl-histoire') {
-  return c.anecdote ? `<div class="${cls}"><span class="histoire-tag">HISTOIRE</span> ${esc(c.anecdote)}</div>` : '';
+  // Déjà traduite par le back (anecdotes/<lang>.rs) : trad-skip, pas de MyMemory.
+  const tag = trStatic('HISTOIRE', _currentLang) || 'HISTOIRE';
+  return c.anecdote ? `<div class="${cls} trad-skip"><span class="histoire-tag">${tag}</span> ${esc(c.anecdote)}</div>` : '';
 }
 
 function renderAll(b) {
