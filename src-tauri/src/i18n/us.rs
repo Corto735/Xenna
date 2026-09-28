@@ -113,19 +113,19 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         "US_CA_SDI" => match lang {
-            "en" => "California State Disability Insurance: 1.2 % borne by the employee in 2025, with \
+            "en" => "California State Disability Insurance: {t} % borne by the employee in {annee}, with \
                 no wage cap since 01/01/2024 (SB 951). Funds disability insurance and paid family leave \
                 (PFL). Legal basis: California Unemployment Insurance Code §984.",
-            "de" => "California State Disability Insurance: 1,2 % zulasten des Arbeitnehmers 2025, ohne \
+            "de" => "California State Disability Insurance: {t} % zulasten des Arbeitnehmers {annee}, ohne \
                 Bemessungsgrenze seit 01.01.2024 (SB 951). Finanziert Invaliditätsversicherung und \
                 bezahlten Familienurlaub (PFL). Rechtsgrundlage: California Unemployment Insurance Code §984.",
-            "nl" => "California State Disability Insurance: 1,2 % ten laste van de werknemer in 2025, \
+            "nl" => "California State Disability Insurance: {t} % ten laste van de werknemer in {annee}, \
                 zonder loonplafond sinds 01-01-2024 (SB 951). Financiert arbeidsongeschiktheids­verzekering \
                 en betaald familieverlof (PFL). Wettelijke basis: California Unemployment Insurance Code §984.",
-            "it" => "California State Disability Insurance: 1,2 % a carico del dipendente nel 2025, senza \
+            "it" => "California State Disability Insurance: {t} % a carico del dipendente nel {annee}, senza \
                 massimale dal 01/01/2024 (SB 951). Finanzia l'assicurazione invalidità e il congedo \
                 familiare retribuito (PFL). Base giuridica: California Unemployment Insurance Code §984.",
-            "es" => "California State Disability Insurance: 1,2 % a cargo del trabajador en 2025, sin tope \
+            "es" => "California State Disability Insurance: {t} % a cargo del trabajador en {annee}, sin tope \
                 salarial desde el 01/01/2024 (SB 951). Financia el seguro de invalidez y el permiso \
                 familiar retribuido (PFL). Base legal: California Unemployment Insurance Code §984.",
             _ => return None,

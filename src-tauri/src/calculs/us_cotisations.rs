@@ -17,7 +17,8 @@ use crate::models::LigneCotisation;
 /// (SS wage base, seuil Additional Medicare, FUTA wage base).
 fn plafonds_annuels(annee: i32) -> (Decimal, Decimal, Decimal) {
     match annee {
-        2025 | 2026 => (dec!(176100), dec!(200000), dec!(7000)), // 2026 reconduit sur 2025
+        2026        => (dec!(184500), dec!(200000), dec!(7000)), // SSA, fiche COLA 2026
+        2025        => (dec!(176100), dec!(200000), dec!(7000)),
         _           => (dec!(168600), dec!(200000), dec!(7000)), // 2024 (repli)
     }
 }
@@ -140,10 +141,12 @@ pub fn us_ca_sdi(brut: Decimal, state: &str, ctx: &ContextPaie) -> Option<LigneC
         montant_pat: Decimal::ZERO,
         categorie: "Prévoyance".into(),
         explication: ctx.expl("US_CA_SDI",
-            "State Disability Insurance de Californie : 1,2 % à la charge du salarié en 2025, \
+            "State Disability Insurance de Californie : {t} % à la charge du salarié en {annee}, \
             sans plafond de salaire depuis le 01/01/2024 (SB 951). Finance l'assurance \
             invalidité et le congé familial payé (PFL). Base légale : California Unemployment \
-            Insurance Code §984."),
+            Insurance Code §984.")
+            .replace("{t}", &format!("{:.1}", ts * dec!(100)))
+            .replace("{annee}", &ctx.date_paie.year().to_string()),
         loi_ref: Some(ctx.loi_ref("California Unemployment Insurance Code §984 — SB 951")),
     })
 }

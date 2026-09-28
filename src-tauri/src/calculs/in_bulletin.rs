@@ -4,10 +4,11 @@
 // si brut ≤ 21 000 ₹/mois ; Professional Tax (État du Karnataka : 200 ₹/mois
 // au-delà de 25 000 ₹, variable selon l'État) ; impôt sur le revenu (TDS mensuel,
 // ancien/nouveau régime). Employeur : EPF 12 % + ESI 3,25 % (si applicable).
-// Devise INR. Données : FY 2025-26. Barème d'impôt en Rust (in_impot.rs).
+// Devise INR. Données : FY 2025-26, reconduites en 2026-27 (Budget 2026-27 : barèmes,
+// déduction standard et rebate inchangés). Barème d'impôt en Rust (in_impot.rs).
 //
 // Sources : EPF & MP Act 1952 ; ESI Act 1948 ; Karnataka Tax on Professions Act 1976 ;
-// Income-tax Act 1961 + Finance Act 2025.
+// Income-tax Act 1961 + Finance Act 2025 ; Income-tax Act 2025 dès le 01/04/2026.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -31,7 +32,7 @@ pub fn generer_bulletin_in(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     if annee < 2025 {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "INR", "IN",
-            "Inde : données disponibles pour l'exercice fiscal 2025-26.", ctx);
+            "Inde : données disponibles à partir de 2025 (exercices 2025-26 et 2026-27).", ctx);
     }
 
     let regime = salarie.inde_regime.clone().unwrap_or_else(|| "nouveau".into());
@@ -119,7 +120,12 @@ pub fn generer_bulletin_in(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             .replace("{marginal}", &format!("{:.0}", r.marginal * dec!(100)))
             .replace("{ann}", &format!("{:.2}", r.annuel))
             .replace("{mens}", &format!("{:.2}", r.mensuel)),
-        loi_ref: Some(ctx.loi_ref("Income-tax Act 1961 — Finance Act 2025")),
+        loi_ref: Some(ctx.loi_ref(
+            if ctx.date_paie >= chrono::NaiveDate::from_ymd_opt(2026, 4, 1).unwrap() {
+                "Income-tax Act 2025 — Finance Act 2026"
+            } else {
+                "Income-tax Act 1961 — Finance Act 2025"
+            })),
     });
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

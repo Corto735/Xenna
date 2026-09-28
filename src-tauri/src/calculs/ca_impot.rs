@@ -37,13 +37,32 @@ fn impot_fed_annuel(revenu: Decimal, annee: i32) -> Decimal {
         else if revenu <= dec!(165430) { dec!(18942.24) + (revenu - dec!(106717)) * dec!(0.26) }
         else if revenu <= dec!(235675) { dec!(34207.26) + (revenu - dec!(165430)) * dec!(0.29) }
         else { dec!(54581.01) + (revenu - dec!(235675)) * dec!(0.33) }
-    } else {
-        // 2024+
+    } else if annee == 2024 {
         if revenu <= dec!(55867) { revenu * dec!(0.15) }
         else if revenu <= dec!(111733) { dec!(8380.05) + (revenu - dec!(55867)) * dec!(0.205) }
         else if revenu <= dec!(154906) { dec!(19832.58) + (revenu - dec!(111733)) * dec!(0.26) }
         else if revenu <= dec!(220000) { dec!(31057.56) + (revenu - dec!(154906)) * dec!(0.29) }
         else { dec!(49934.82) + (revenu - dec!(220000)) * dec!(0.33) }
+    } else {
+        // 2025 : taux de la 1ʳᵉ tranche ramené de 15 à 14 % au 01/07/2025, soit 14,5 %
+        // pour l'année d'imposition ; 2026 : 14 %. ARC, T4127 (121ᵉ et 122ᵉ éditions).
+        let (s, t1): ([Decimal; 4], Decimal) = if annee == 2025 {
+            ([dec!(57375), dec!(114750), dec!(177882), dec!(253414)], dec!(0.145))
+        } else {
+            ([dec!(58523), dec!(117045), dec!(181440), dec!(258482)], dec!(0.14))
+        };
+        impot_prov_brackets(revenu,
+            &[s[0], s[1], s[2], s[3], dec!(999999999)],
+            &[t1, dec!(0.205), dec!(0.26), dec!(0.29), dec!(0.33)])
+    }
+}
+
+/// Taux de la 1ʳᵉ tranche fédérale, qui sert aussi au crédit du MPB.
+fn taux_base_fed(annee: i32) -> Decimal {
+    match annee {
+        i32::MIN..=2024 => dec!(0.15),
+        2025            => dec!(0.145),
+        _               => dec!(0.14),
     }
 }
 
@@ -56,17 +75,31 @@ fn bpa_credit_fed(annee: i32) -> Decimal {
         2022            => dec!(14398),
         2023            => dec!(15000),
         2024            => dec!(15705),
-        _               => dec!(16129), // 2025+ estimation
+        2025            => dec!(16129),
+        _               => dec!(16452), // 2026 (T4127, 122ᵉ édition)
     };
-    (bpa * dec!(0.15)).round_dp(2)
+    (bpa * taux_base_fed(annee)).round_dp(2)
 }
 
 pub fn ca_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+    impot_federal(brut, ctx, false)
+}
+
+/// Impôt fédéral d'un résident du Québec : l'impôt fédéral de base est réduit de
+/// l'abattement du Québec remboursable de 16,5 % (Loi de l'impôt sur le revenu,
+/// art. 120(2) ; Loi sur les arrangements fiscaux, art. 27).
+pub fn ca_impot_federal_qc(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+    impot_federal(brut, ctx, true)
+}
+
+fn impot_federal(brut: Decimal, ctx: &ContextPaie, quebec: bool) -> LigneCotisation {
     let annee        = ctx.date_paie.year();
     let revenu_ann   = brut * dec!(12);
     let impot_brut   = impot_fed_annuel(revenu_ann, annee);
     let credit_bpa   = bpa_credit_fed(annee);
-    let impot_net    = (impot_brut - credit_bpa).max(Decimal::ZERO);
+    let impot_base   = (impot_brut - credit_bpa).max(Decimal::ZERO);
+    let abattement   = if quebec { (impot_base * dec!(0.165)).round_dp(2) } else { Decimal::ZERO };
+    let impot_net    = impot_base - abattement;
     let impot_mens   = (impot_net / dec!(12)).round_dp(2);
     let taux_eff     = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
 
@@ -88,23 +121,28 @@ pub fn ca_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Revenu annuel estimé    : {rev} CAD\n\
             Impôt brut annuel       : {ib} CAD\n\
             Crédit personnel (MPB)  : − {cred} CAD\n\
+            Abattement du Québec    : − {abat} CAD\n\
             Impôt net annuel        : {inet} CAD\n\
             Retenue mensuelle       : {mens} CAD (÷ 12)\n\
             Taux effectif           : {teff} %\n\
             \n\
-            Barème {an} : 15/20,5/26/29/33 %. \
-            Le Montant personnel de base ({mpb} CAD) génère un crédit de 15 % = {cred} CAD/an. \
+            Barème {an} : {t1}/20,5/26/29/33 %. \
+            Le Montant personnel de base ({mpb} CAD) génère un crédit de {t1} % = {cred} CAD/an. \
+            Résident du Québec : impôt fédéral réduit de l'abattement de 16,5 %. \
             Régularisation en décembre ou déclaration T1 annuelle.")
             .replace("{an}", &annee.to_string())
             .replace("{rev}", &format!("{:.2}", revenu_ann))
             .replace("{ib}", &format!("{:.2}", impot_brut))
             .replace("{cred}", &format!("{:.2}", credit_bpa))
+            .replace("{abat}", &format!("{:.2}", abattement))
+            .replace("{t1}", &format!("{}", (taux_base_fed(annee) * dec!(100)).normalize()).replace('.', ","))
             .replace("{inet}", &format!("{:.2}", impot_net))
             .replace("{mens}", &format!("{:.2}", impot_mens))
             .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100)))
             .replace("{mpb}", match annee {
                 i32::MIN..=2019 => "12 069", 2020 => "13 229", 2021 => "13 808",
-                2022 => "14 398", 2023 => "15 000", 2024 => "15 705", _ => "16 129"
+                2022 => "14 398", 2023 => "15 000", 2024 => "15 705", 2025 => "16 129",
+                _ => "16 452"
             }),
         loi_ref: Some(ctx.loi_ref("L.R.C. 1985, ch. 1 (5e suppl.), art. 117-117.1 — Formulaire TD1")),
     }
@@ -112,22 +150,55 @@ pub fn ca_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
 // ── Impôt provincial Ontario (référence hors Québec) ─────────────────────────
 
-fn impot_on_annuel(revenu: Decimal) -> Decimal {
-    // Barème Ontario 2024
-    if revenu <= dec!(51446) { revenu * dec!(0.0505) }
-    else if revenu <= dec!(102894) { dec!(2598.02) + (revenu - dec!(51446)) * dec!(0.0915) }
-    else if revenu <= dec!(150000) { dec!(7305.51) + (revenu - dec!(102894)) * dec!(0.1116) }
-    else if revenu <= dec!(220000) { dec!(12562.54) + (revenu - dec!(150000)) * dec!(0.1216) }
-    else { dec!(21074.54) + (revenu - dec!(220000)) * dec!(0.1316) }
+/// Barème de l'Ontario : (seuils d'entrée, MPB). ARC, T4127 ; TD1ON 2026 pour le MPB 2026.
+fn bareme_on(annee: i32) -> ([Decimal; 4], Decimal) {
+    match annee {
+        i32::MIN..=2024 => ([dec!(51446), dec!(102894), dec!(150000), dec!(220000)], dec!(11865)),
+        2025            => ([dec!(52886), dec!(105775), dec!(150000), dec!(220000)], dec!(12747)),
+        _               => ([dec!(53891), dec!(107785), dec!(150000), dec!(220000)], dec!(12989)),
+    }
+}
+
+fn impot_on_annuel(revenu: Decimal, annee: i32) -> Decimal {
+    let (a, _) = bareme_on(annee);
+    impot_prov_brackets(revenu,
+        &[a[0], a[1], a[2], a[3], dec!(999999999)],
+        &[dec!(0.0505), dec!(0.0915), dec!(0.1116), dec!(0.1216), dec!(0.1316)])
+}
+
+/// Surtaxe de l'Ontario sur l'impôt provincial de base : 20 % au-delà du 1ᵉʳ seuil,
+/// + 36 % au-delà du 2ᵉ (T4127 : 5 710 / 7 307 $ en 2025 ; 5 818 / 7 446 $ en 2026).
+/// Seuils antérieurs non relevés : pas de surtaxe avant 2025.
+fn surtaxe_on(impot_base: Decimal, annee: i32) -> Decimal {
+    let (s1, s2) = match annee {
+        i32::MIN..=2024 => return Decimal::ZERO,
+        2025            => (dec!(5710), dec!(7307)),
+        _               => (dec!(5818), dec!(7446)),
+    };
+    (impot_base - s1).max(Decimal::ZERO) * dec!(0.20) + (impot_base - s2).max(Decimal::ZERO) * dec!(0.36)
+}
+
+/// Contribution-santé de l'Ontario (barème non indexé, Loi de 2007 sur les impôts, art. 33.1).
+fn contribution_sante_on(revenu: Decimal) -> Decimal {
+    let r = revenu;
+    if r <= dec!(20000) { Decimal::ZERO }
+    else if r <= dec!(36000) { ((r - dec!(20000)) * dec!(0.06)).min(dec!(300)) }
+    else if r <= dec!(48000) { (dec!(300) + (r - dec!(36000)) * dec!(0.06)).min(dec!(450)) }
+    else if r <= dec!(72000) { (dec!(450) + (r - dec!(48000)) * dec!(0.25)).min(dec!(600)) }
+    else if r <= dec!(200000) { (dec!(600) + (r - dec!(72000)) * dec!(0.25)).min(dec!(750)) }
+    else { (dec!(750) + (r - dec!(200000)) * dec!(0.25)).min(dec!(900)) }
 }
 
 pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee      = ctx.date_paie.year();
     let revenu_ann = brut * dec!(12);
-    // MPB Ontario 2024 : 11 865 CAD × 5,05 % = 599,18 CAD
-    let impot_brut = impot_on_annuel(revenu_ann);
-    let credit_bpa = dec!(599.18);
-    let impot_net  = (impot_brut - credit_bpa).max(Decimal::ZERO);
+    let (_, mpb)   = bareme_on(annee);
+    let impot_brut = impot_on_annuel(revenu_ann, annee);
+    let credit_bpa = (mpb * dec!(0.0505)).round_dp(2);
+    let impot_base = (impot_brut - credit_bpa).max(Decimal::ZERO);
+    let surtaxe    = surtaxe_on(impot_base, annee).round_dp(2);
+    let sante      = contribution_sante_on(revenu_ann).round_dp(2);
+    let impot_net  = impot_base + surtaxe + sante;
     let impot_mens = (impot_net / dec!(12)).round_dp(2);
     let taux_eff   = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
 
@@ -143,12 +214,14 @@ pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         categorie:   "Impôt provincial".into(),
         explication: ctx.expl("ON_IMPOT_PROV",
             "Retenue mensuelle d'impôt provincial de l'Ontario (province de référence hors Québec). \
-            Barème 2024 : 5,05/9,15/11,16/12,16/13,16 %. \
-            MPB Ontario 2024 : 11 865 CAD → crédit de 599,18 CAD/an. \
+            Barème {an} : 5,05/9,15/11,16/12,16/13,16 %. \
+            MPB Ontario {an} : {mpb} CAD → crédit de {cred} CAD/an. \
             \n\n\
             Revenu annuel estimé  : {rev} CAD\n\
             Impôt brut annuel     : {ib} CAD\n\
-            Crédit MPB            : − 599,18 CAD\n\
+            Crédit MPB            : − {cred} CAD\n\
+            Surtaxe de l'Ontario  : + {surt} CAD\n\
+            Contribution-santé    : + {sante} CAD\n\
             Impôt net annuel      : {inet} CAD\n\
             Retenue mensuelle     : {mens} CAD\n\
             Taux effectif         : {teff} %\n\
@@ -156,6 +229,11 @@ pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Note : non applicable au Québec (province ayant son propre impôt séparé). \
             Les autres provinces (CB, AB, QC excl.) ont leurs propres barèmes — \
             utiliser Ontario comme approximation générale.")
+            .replace("{an}", &annee.to_string())
+            .replace("{mpb}", &mpb.to_string())
+            .replace("{cred}", &format!("{:.2}", credit_bpa))
+            .replace("{surt}", &format!("{:.2}", surtaxe))
+            .replace("{sante}", &format!("{:.2}", sante))
             .replace("{rev}", &format!("{:.2}", revenu_ann))
             .replace("{ib}", &format!("{:.2}", impot_brut))
             .replace("{inet}", &format!("{:.2}", impot_net))
@@ -167,32 +245,37 @@ pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
 // ── Impôt provincial Québec ───────────────────────────────────────────────────
 
-fn impot_qc_annuel(revenu: Decimal, annee: i32) -> Decimal {
-    if annee <= 2023 {
-        // Barème 2019-2023 (taux stables, seuils légèrement indexés)
-        // Utilisation du barème 2023 pour 2019-2023 (approximation raisonnable)
-        if revenu <= dec!(51780) { revenu * dec!(0.14) }
-        else if revenu <= dec!(103545) { dec!(7249.20) + (revenu - dec!(51780)) * dec!(0.19) }
-        else if revenu <= dec!(126000) { dec!(17084.55) + (revenu - dec!(103545)) * dec!(0.24) }
-        else { dec!(22473.75) + (revenu - dec!(126000)) * dec!(0.2575) }
-    } else {
-        // 2024+
-        if revenu <= dec!(51780) { revenu * dec!(0.14) }
-        else if revenu <= dec!(103545) { dec!(7249.20) + (revenu - dec!(51780)) * dec!(0.19) }
-        else if revenu <= dec!(126000) { dec!(17084.55) + (revenu - dec!(103545)) * dec!(0.24) }
-        else { dec!(22473.75) + (revenu - dec!(126000)) * dec!(0.2575) }
+/// Table d'imposition du Québec : seuils des tranches à 14/19/24/25,75 %.
+/// 2025-2026 : ministère des Finances du Québec, « Paramètres du régime
+/// d'imposition des particuliers » (novembre 2025), tableau 3.
+fn seuils_qc(annee: i32) -> [Decimal; 3] {
+    match annee {
+        i32::MIN..=2024 => [dec!(51780), dec!(103545), dec!(126000)],
+        2025            => [dec!(53255), dec!(106495), dec!(129590)],
+        _               => [dec!(54345), dec!(108680), dec!(132245)],
     }
 }
 
-fn bpa_credit_qc(annee: i32) -> Decimal {
-    let bpa = match annee {
+fn impot_qc_annuel(revenu: Decimal, annee: i32) -> Decimal {
+    let s = seuils_qc(annee);
+    impot_prov_brackets(revenu,
+        &[s[0], s[1], s[2], dec!(999999999)],
+        &[dec!(0.14), dec!(0.19), dec!(0.24), dec!(0.2575)])
+}
+
+fn bpa_qc(annee: i32) -> Decimal {
+    match annee {
         i32::MIN..=2021 => dec!(15270),
         2022            => dec!(16143),
         2023            => dec!(16143),
         2024            => dec!(17183),
-        _               => dec!(17600), // 2025+ estimation
-    };
-    (bpa * dec!(0.14)).round_dp(2)
+        2025            => dec!(18571),
+        _               => dec!(18952),
+    }
+}
+
+fn bpa_credit_qc(annee: i32) -> Decimal {
+    (bpa_qc(annee) * dec!(0.14)).round_dp(2)
 }
 
 pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
@@ -232,10 +315,7 @@ pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation 
             L'employeur produit le relevé 1 (RL-1) au lieu du T4. \
             Le salarié québécois produit deux déclarations : T1 (fédéral) + TP-1 (provincial).")
             .replace("{an}", &annee.to_string())
-            .replace("{mpb}", match annee {
-                i32::MIN..=2021 => "15 270", 2022 | 2023 => "16 143",
-                2024 => "17 183", _ => "17 600"
-            })
+            .replace("{mpb}", &bpa_qc(annee).to_string())
             .replace("{cred}", &format!("{:.2}", credit_bpa))
             .replace("{rev}", &format!("{:.2}", revenu_ann))
             .replace("{ib}", &format!("{:.2}", impot_brut))
@@ -265,6 +345,61 @@ fn impot_prov_brackets(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) ->
     impot
 }
 
+/// Barème provincial (hors Québec et Ontario) : seuils d'entrée des tranches (A),
+/// taux (V) et montant personnel de base, par année. Sources : ARC, T4127
+/// « Payroll Deductions Formulas » — 120ᵉ/121ᵉ éditions (2025) et 122ᵉ (2026),
+/// tableaux 8.1 et 8.2. Pour 2025, les valeurs sont celles de l'année d'imposition
+/// (Alberta : taux de 8 % sur les 60 000 premiers $ ; Î.-P.-É. : MPB 14 650 $ ;
+/// Saskatchewan : MPB 19 491 $), non les taux « au prorata » du second semestre.
+/// Manitoba : MPB gelé à 15 780 $ (réduit au-delà de 200 000 $ de revenu, non
+/// modélisé) ; Yukon : MPB égal au fédéral.
+fn bareme_prov(province: &str, annee: i32) -> Option<(&'static [u32], &'static [&'static str], u32)> {
+    Some(match (province, annee) {
+        ("AB", 2026..) => (&[0, 61200, 154259, 185111, 246813, 370220], &["0.08", "0.10", "0.12", "0.13", "0.14", "0.15"], 22769),
+        ("AB", 2025)   => (&[0, 60000, 151234, 181481, 241974, 362961], &["0.08", "0.10", "0.12", "0.13", "0.14", "0.15"], 22323),
+        ("AB", _)      => (&[0, 148269, 177922, 237230, 355845], &["0.10", "0.12", "0.13", "0.14", "0.15"], 21003),
+        ("BC", 2026..) => (&[0, 50363, 100728, 115648, 140430, 190405, 265545], &["0.0506", "0.077", "0.105", "0.1229", "0.147", "0.168", "0.205"], 13216),
+        ("BC", 2025)   => (&[0, 49279, 98560, 113158, 137407, 186306, 259829], &["0.0506", "0.077", "0.105", "0.1229", "0.147", "0.168", "0.205"], 12932),
+        ("BC", _)      => (&[0, 45654, 91310, 104835, 127299, 172602, 240716], &["0.0506", "0.077", "0.105", "0.1229", "0.147", "0.168", "0.205"], 11981),
+        ("MB", 2026..) => (&[0, 47000, 100000], &["0.108", "0.1275", "0.174"], 15780),
+        ("MB", 2025)   => (&[0, 46513, 98796], &["0.108", "0.1275", "0.174"], 15780),
+        ("MB", _)      => (&[0, 36842, 79625], &["0.108", "0.1275", "0.174"], 15780),
+        ("NB", 2026..) => (&[0, 52333, 104666, 193861], &["0.094", "0.14", "0.16", "0.195"], 13664),
+        ("NB", 2025)   => (&[0, 51306, 102614, 190060], &["0.094", "0.14", "0.16", "0.195"], 13396),
+        ("NB", _)      => (&[0, 49958, 99916, 185064], &["0.094", "0.1482", "0.1652", "0.1784"], 12458),
+        ("NL", 2026..) => (&[0, 44678, 89354, 159528, 223340, 285319, 570638, 1141275], &["0.087", "0.145", "0.158", "0.178", "0.198", "0.208", "0.213", "0.218"], 11188),
+        ("NL", 2025)   => (&[0, 44192, 88382, 157792, 220910, 282214, 564429, 1128858], &["0.087", "0.145", "0.158", "0.178", "0.198", "0.208", "0.213", "0.218"], 11067),
+        ("NL", _)      => (&[0, 43198, 86395, 154244, 215943, 275870, 551739], &["0.087", "0.145", "0.158", "0.178", "0.198", "0.208", "0.213"], 10818),
+        ("NS", 2026..) => (&[0, 30995, 61991, 97417, 157124], &["0.0879", "0.1495", "0.1667", "0.175", "0.21"], 11932),
+        ("NS", 2025)   => (&[0, 30507, 61015, 95883, 154650], &["0.0879", "0.1495", "0.1667", "0.175", "0.21"], 11744),
+        ("NS", _)      => (&[0, 29590, 59180, 93000, 150000], &["0.0879", "0.1495", "0.1667", "0.175", "0.21"], 8481),
+        ("NT", 2026..) => (&[0, 53003, 106009, 172346], &["0.059", "0.086", "0.122", "0.1405"], 18198),
+        ("NT", 2025)   => (&[0, 51964, 103930, 168967], &["0.059", "0.086", "0.122", "0.1405"], 17842),
+        ("NT", _)      => (&[0, 50597, 101198, 164525], &["0.059", "0.086", "0.122", "0.1405"], 16593),
+        ("NU", 2026..) => (&[0, 55801, 111602, 181439], &["0.04", "0.07", "0.09", "0.115"], 19659),
+        ("NU", 2025)   => (&[0, 54707, 109413, 177881], &["0.04", "0.07", "0.09", "0.115"], 19274),
+        ("NU", _)      => (&[0, 53268, 106537, 173205], &["0.04", "0.07", "0.09", "0.115"], 17925),
+        ("PE", 2026..) => (&[0, 33928, 65820, 106890, 142520], &["0.095", "0.1347", "0.166", "0.1762", "0.19"], 15000),
+        ("PE", 2025)   => (&[0, 33328, 64656, 105000, 140000], &["0.095", "0.1347", "0.166", "0.1762", "0.19"], 14650),
+        ("PE", _)      => (&[0, 32656, 64313, 105000, 140000], &["0.0965", "0.1363", "0.1665", "0.18", "0.1875"], 12000),
+        ("SK", 2026..) => (&[0, 54532, 155805], &["0.105", "0.125", "0.145"], 20381),
+        ("SK", 2025)   => (&[0, 53463, 152750], &["0.105", "0.125", "0.145"], 19491),
+        ("SK", _)      => (&[0, 49720, 142058], &["0.105", "0.125", "0.145"], 17661),
+        ("YT", 2026..) => (&[0, 58523, 117045, 181440, 500000], &["0.064", "0.09", "0.109", "0.128", "0.15"], 16452),
+        ("YT", 2025)   => (&[0, 57375, 114750, 177882, 500000], &["0.064", "0.09", "0.109", "0.128", "0.15"], 16129),
+        ("YT", _)      => (&[0, 55867, 111733, 154906, 500000], &["0.064", "0.09", "0.109", "0.128", "0.15"], 15705),
+        _ => return None,
+    })
+}
+
+/// « 5,06/7,70/… %. MPB 12 932 CAD. » à partir d'un barème.
+fn desc_bareme(taux: &[Decimal], bpa: Decimal) -> String {
+    let t: Vec<String> = taux.iter()
+        .map(|x| format!("{:.2}", x * dec!(100)).replace('.', ","))
+        .collect();
+    format!("{} %. MPB {} CAD.", t.join("/"), bpa.round_dp(0))
+}
+
 pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> LigneCotisation {
     if province == "ON" {
         return ca_impot_ontario(brut, ctx);
@@ -273,98 +408,30 @@ pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> 
     let annee      = ctx.date_paie.year();
     let revenu_ann = brut * dec!(12);
 
-    let (impot_brut, bpa_credit, nom, loi, tranches_desc) = match province {
-
-        "AB" => {
-            let s = [dec!(148269), dec!(177922), dec!(237230), dec!(355845), dec!(9999999)];
-            let t = [dec!(0.10),   dec!(0.12),   dec!(0.13),   dec!(0.14),   dec!(0.15)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(21003) * dec!(0.10)).round_dp(2),
-             "Alberta", "Alberta Personal Income Tax Act, SA 1999 c A-33.5",
-             "10/12/13/14/15 %. MPB 21 003 CAD.")
-        },
-        "BC" => {
-            let s = [dec!(45654), dec!(91310), dec!(104835), dec!(127299), dec!(172602), dec!(240716), dec!(9999999)];
-            let t = [dec!(0.0506), dec!(0.077), dec!(0.105),  dec!(0.1229), dec!(0.147),  dec!(0.168),  dec!(0.205)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(11981) * dec!(0.0506)).round_dp(2),
-             "Colombie-Britannique", "Income Tax Act (B.C.), RSBC 1996 c 215",
-             "5,06/7,70/10,50/12,29/14,70/16,80/20,50 %. MPB 11 981 CAD.")
-        },
-        "MB" => {
-            let s = [dec!(36842), dec!(79625), dec!(9999999)];
-            let t = [dec!(0.108),  dec!(0.1275), dec!(0.174)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(15780) * dec!(0.108)).round_dp(2),
-             "Manitoba", "Income Tax Act (Manitoba), CCSM c I10",
-             "10,80/12,75/17,40 %. MPB 15 780 CAD.")
-        },
-        "NB" => {
-            let s = [dec!(49958), dec!(99916), dec!(185064), dec!(9999999)];
-            let t = [dec!(0.094),  dec!(0.1482), dec!(0.1652), dec!(0.1784)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(12458) * dec!(0.094)).round_dp(2),
-             "Nouveau-Brunswick", "Loi de l'impôt sur le revenu (N.-B.), LRN-B 2000 c I-2.2",
-             "9,40/14,82/16,52/17,84 %. MPB 12 458 CAD.")
-        },
-        "NL" => {
-            let s = [dec!(43198), dec!(86395), dec!(154244), dec!(215943), dec!(275870), dec!(551739), dec!(9999999)];
-            let t = [dec!(0.087), dec!(0.145), dec!(0.158), dec!(0.178), dec!(0.198), dec!(0.208), dec!(0.213)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(10818) * dec!(0.087)).round_dp(2),
-             "Terre-Neuve-et-Labrador", "Income Tax Act, 2000 (N.L.), SNL2000 c I-1.1",
-             "8,70/14,50/15,80/17,80/19,80/20,80/21,30 %. MPB 10 818 CAD.")
-        },
-        "NS" => {
-            let s = [dec!(29590), dec!(59180), dec!(93000), dec!(150000), dec!(9999999)];
-            let t = [dec!(0.0879), dec!(0.1495), dec!(0.1667), dec!(0.175), dec!(0.21)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(8481) * dec!(0.0879)).round_dp(2),
-             "Nouvelle-Écosse", "Income Tax Act (Nova Scotia), RSNS 1989 c 217",
-             "8,79/14,95/16,67/17,50/21,00 %. MPB 8 481 CAD.")
-        },
-        "NT" => {
-            let s = [dec!(50597), dec!(101198), dec!(164525), dec!(9999999)];
-            let t = [dec!(0.059),  dec!(0.086),  dec!(0.122),  dec!(0.1405)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(16593) * dec!(0.059)).round_dp(2),
-             "Territoires du Nord-Ouest", "Income Tax Act (Northwest Territories), RSNWT 1988 c I-3",
-             "5,90/8,60/12,20/14,05 %. MPB 16 593 CAD.")
-        },
-        "NU" => {
-            let s = [dec!(53268), dec!(106537), dec!(173205), dec!(9999999)];
-            let t = [dec!(0.04),  dec!(0.07),   dec!(0.09),   dec!(0.115)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(17925) * dec!(0.04)).round_dp(2),
-             "Nunavut", "Income Tax Act (Nunavut), RSNWT 1988 c I-3 (adapté)",
-             "4,00/7,00/9,00/11,50 %. MPB 17 925 CAD. Taux les plus bas au Canada.")
-        },
-        "PE" => {
-            let s = [dec!(32656), dec!(64313), dec!(105000), dec!(140000), dec!(9999999)];
-            let t = [dec!(0.0965), dec!(0.1363), dec!(0.1665), dec!(0.18), dec!(0.1875)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(12000) * dec!(0.0965)).round_dp(2),
-             "Île-du-Prince-Édouard", "Income Tax Act (P.E.I.), RSPEI 1988 c I-1",
-             "9,65/13,63/16,65/18,00/18,75 %. MPB 12 000 CAD.")
-        },
-        "SK" => {
-            let s = [dec!(49720), dec!(142058), dec!(9999999)];
-            let t = [dec!(0.105),  dec!(0.125),  dec!(0.145)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(17661) * dec!(0.105)).round_dp(2),
-             "Saskatchewan", "The Income Tax Act, 2000 (Saskatchewan), SS 2000 c I-2.01",
-             "10,50/12,50/14,50 %. MPB 17 661 CAD.")
-        },
-        "YT" => {
-            let s = [dec!(55867), dec!(111733), dec!(154906), dec!(500000), dec!(9999999)];
-            let t = [dec!(0.064), dec!(0.09),  dec!(0.109), dec!(0.128), dec!(0.15)];
-            (impot_prov_brackets(revenu_ann, &s, &t),
-             (dec!(15705) * dec!(0.064)).round_dp(2),
-             "Yukon", "Income Tax Act (Yukon), RSY 2002 c 118",
-             "6,40/9,00/10,90/12,80/15,00 %. MPB 15 705 CAD (= fédéral).")
-        },
+    let (nom, loi) = match province {
+        "AB" => ("Alberta", "Alberta Personal Income Tax Act, SA 1999 c A-33.5"),
+        "BC" => ("Colombie-Britannique", "Income Tax Act (B.C.), RSBC 1996 c 215"),
+        "MB" => ("Manitoba", "Income Tax Act (Manitoba), CCSM c I10"),
+        "NB" => ("Nouveau-Brunswick", "Loi de l'impôt sur le revenu (N.-B.), LRN-B 2000 c I-2.2"),
+        "NL" => ("Terre-Neuve-et-Labrador", "Income Tax Act, 2000 (N.L.), SNL2000 c I-1.1"),
+        "NS" => ("Nouvelle-Écosse", "Income Tax Act (Nova Scotia), RSNS 1989 c 217"),
+        "NT" => ("Territoires du Nord-Ouest", "Income Tax Act (Northwest Territories), RSNWT 1988 c I-3"),
+        "NU" => ("Nunavut", "Income Tax Act (Nunavut), RSNWT 1988 c I-3 (adapté)"),
+        "PE" => ("Île-du-Prince-Édouard", "Income Tax Act (P.E.I.), RSPEI 1988 c I-1"),
+        "SK" => ("Saskatchewan", "The Income Tax Act, 2000 (Saskatchewan), SS 2000 c I-2.01"),
+        "YT" => ("Yukon", "Income Tax Act (Yukon), RSY 2002 c 118"),
         _ => return ca_impot_ontario(brut, ctx),  // fallback Ontario
     };
+    let (entrees, taux_txt, bpa) = bareme_prov(province, annee).expect("province couverte");
+    // Seuils d'entrée → bornes hautes (dernière tranche ouverte).
+    let seuils: Vec<Decimal> = entrees.iter().skip(1).map(|a| Decimal::from(*a))
+        .chain(std::iter::once(dec!(999999999))).collect();
+    let taux: Vec<Decimal> = taux_txt.iter().map(|t| t.parse().expect("taux")).collect();
+    let bpa = Decimal::from(bpa);
+    let impot_brut = impot_prov_brackets(revenu_ann, &seuils, &taux);
+    let bpa_credit = (bpa * taux[0]).round_dp(2);
+    let tranches_desc_s = desc_bareme(&taux, bpa);
+    let tranches_desc = tranches_desc_s.as_str();
 
     let impot_net  = (impot_brut - bpa_credit).max(Decimal::ZERO);
     let impot_mens = (impot_net / dec!(12)).round_dp(2);

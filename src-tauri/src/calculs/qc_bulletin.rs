@@ -25,7 +25,7 @@ pub fn generer_bulletin_qc(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     cotisations.push(qc_cnt(brut, ctx));
 
     // ── Impôts à la source ───────────────────────────────────
-    cotisations.push(ca_impot_federal(brut, ctx));
+    cotisations.push(ca_impot_federal_qc(brut, ctx));
     cotisations.push(qc_impot_provincial(brut, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();

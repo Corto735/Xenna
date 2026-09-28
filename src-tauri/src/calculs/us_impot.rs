@@ -4,7 +4,7 @@
 // brut (× 12), on retranche la déduction standard, on applique le barème par
 // tranches, puis on redivise par 12 pour la retenue mensuelle.
 //
-// Barèmes codés en dur par année (match annee) ; année courante 2025.
+// Barèmes codés en dur par année (match annee) ; année courante 2026.
 // Sources : 26 U.S.C. §1 (barème fédéral), §63 (déduction standard) ;
 // codes fiscaux des États (Revenue and Taxation Code CA §17041, NY Tax Law
 // §601, Illinois 35 ILCS 5/, Pennsylvania 72 P.S. §7302, Colorado C.R.S. §39-22-104).
@@ -33,7 +33,13 @@ fn impot_tranches(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) -> Deci
 /// Barème fédéral (célibataire) + déduction standard, par année.
 fn federal_params(annee: i32) -> (Decimal, [Decimal; 7], [Decimal; 7]) {
     match annee {
-        2025 | 2026 => ( // 2026 reconduit sur le barème 2025 (en attendant publication IRS)
+        // 2026 : Rev. Proc. 2025-32 (barème rendu permanent par l'OBBBA du 04/07/2025).
+        2026 => (
+            dec!(16100),
+            [dec!(12400), dec!(50400), dec!(105700), dec!(201775), dec!(256225), dec!(640600), dec!(9999999999)],
+            [dec!(0.10),  dec!(0.12),  dec!(0.22),   dec!(0.24),    dec!(0.32),    dec!(0.35),    dec!(0.37)],
+        ),
+        2025 => ( // Rev. Proc. 2024-40, déduction standard relevée par l'OBBBA
             dec!(15750),
             [dec!(11925), dec!(48475), dec!(103350), dec!(197300), dec!(250525), dec!(626350), dec!(9999999999)],
             [dec!(0.10),  dec!(0.12),  dec!(0.22),   dec!(0.24),    dec!(0.32),    dec!(0.35),    dec!(0.37)],
@@ -84,7 +90,7 @@ pub fn us_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 }
 
 /// Impôt d'État. None pour les États sans impôt sur le revenu (TX, FL, WA…).
-/// `state` = code à 2 lettres. Barèmes 2025.
+/// `state` = code à 2 lettres. Barèmes 2025 ; New York 2026 (baisse des taux).
 pub fn us_impot_state(brut: Decimal, state: &str, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
     let revenu_annuel = brut * dec!(12);
@@ -101,6 +107,12 @@ pub fn us_impot_state(brut: Decimal, state: &str, ctx: &ContextPaie) -> Option<L
             vec![dec!(11079), dec!(26264), dec!(41452), dec!(57542), dec!(72724), dec!(371479), dec!(445771), dec!(742953), dec!(9999999999)],
             vec![dec!(0.01),  dec!(0.02),  dec!(0.04),  dec!(0.06),  dec!(0.08),  dec!(0.093),  dec!(0.103),  dec!(0.113),  dec!(0.123)],
             "Californie", "California Revenue and Taxation Code §17041", "progressif 1 à 12,3 % (+1 % > 1 M$)"),
+        // Budget FY2026 de l'État : les cinq premiers taux baissent de 0,1 point en 2026
+        // (et de nouveau en 2027, non intégré) ; seuils inchangés.
+        "NY" if annee >= 2026 => (dec!(8000),
+            vec![dec!(8500), dec!(11700), dec!(13900), dec!(80650), dec!(215400), dec!(1077550), dec!(5000000), dec!(25000000), dec!(9999999999)],
+            vec![dec!(0.039), dec!(0.044), dec!(0.0515), dec!(0.054), dec!(0.059), dec!(0.0685),  dec!(0.0965),  dec!(0.103),    dec!(0.109)],
+            "New York", "New York Tax Law §601", "progressif 3,9 à 10,9 %"),
         "NY" => (dec!(8000),
             vec![dec!(8500), dec!(11700), dec!(13900), dec!(80650), dec!(215400), dec!(1077550), dec!(5000000), dec!(25000000), dec!(9999999999)],
             vec![dec!(0.04), dec!(0.045), dec!(0.0525), dec!(0.055), dec!(0.06),  dec!(0.0685),  dec!(0.0965),  dec!(0.103),    dec!(0.109)],

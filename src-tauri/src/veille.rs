@@ -56,6 +56,53 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Quebec,
+        objet: "Table d'imposition du Québec 2025 (53 255 / 106 495 / 129 590 $, MPB 18 571 $) et 2026 (54 345 / 108 680 / 132 245 $, MPB 18 952 $) ; impôt fédéral 2025-2026 ; abattement du Québec de 16,5 % sur l'impôt fédéral, jusqu'ici omis",
+        sources: &[
+            "https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/finances/publications-adm/parametres/AUTFR_RegimeImpot2026.pdf",
+            "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Canada,
+        objet: "Impôt fédéral 2025 (1ʳᵉ tranche à 14,5 %, MPB 16 129 $) et 2026 (14 %, seuils 58 523 / 117 045 / 181 440 / 258 482 $, MPB 16 452 $) ; barèmes 2025 et 2026 des douze provinces et territoires hors Québec (dont la nouvelle tranche albertaine à 8 %) ; Ontario : surtaxe (2025+) et contribution-santé désormais comptées",
+        sources: &[
+            "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
+            "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/payroll-deductions-t4127-payroll-deductions-formulas/t4127-jul-121st-edition-effective-july-1-2025/t4127-jul-payroll-deductions-formulas.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::EtatsUnis,
+        objet: "2026 : barème fédéral et déduction standard (16 100 $) de la Rev. Proc. 2025-32 ; plafond Social Security 184 500 $ ; California SDI 1,3 % ; New York : cinq premiers taux baissés de 0,1 point",
+        sources: &[
+            "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
+            "https://www.ssa.gov/news/en/cola/factsheets/2026.html",
+            "https://edd.ca.gov/en/payroll_taxes/rates_and_withholding",
+            "https://www.nerdwallet.com/taxes/learn/new-york-state-tax",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Inde,
+        objet: "Exercice 2026-27 (dès le 01/04/2026) : barèmes, déduction standard (75 000 ₹) et rebate (revenu ≤ 12 lakh) inchangés par le Budget 2026-27 ; l'Income-tax Act 2025 remplace la loi de 1961",
+        sources: &[
+            "https://www.businesstoday.in/personal-finance/tax/story/tax-slabs-fy-2026-27-what-budget-2026-changed-for-individual-taxpayers-and-which-regime-works-best-514044-2026-02-01",
+            "https://cleartax.in/s/income-tax-slabs",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Australie,
+        objet: "Exercice 2026-27 (dès le 01/07/2026) : 2ᵉ taux d'impôt ramené de 16 à 15 % ; maximum contribution base annuelle 270 830 $ ; calcul désormais par exercice (juillet-juin)",
+        sources: &[
+            "https://www.ato.gov.au/about-ato/new-legislation/in-detail/individuals/personal-income-tax-new-tax-cuts-for-every-australian-taxpayer",
+            "https://rest.com.au/super/learn/essentials/maximum-super-contribution-base",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Irlande,
         objet: "PRSI Class A : 4,2 % / 11,25 % dès le 01/10/2025 et 4,35 % / 11,40 % dès le 01/10/2026 (au lieu de 4,2 % / 11,15 % toute l'année) ; taux employeur réduit sous 552 €/semaine et crédit PRSI salarié désormais appliqués",
         sources: &[
@@ -148,14 +195,8 @@ fn declaree(pays: &Pays) -> Veille {
         ]),
         Pays::Luxembourg => v(2026, &[]),
         Pays::Italia => v(2026, &[]),
-        // ca_impot.rs : branche « 2024+ » (fédéral) et MPB Ontario 2024 ;
-        // cotisations RPC/AE jusqu'en 2026.
-        Pays::Canada => v(2024, &[
-            "impôt fédéral et de l'Ontario : barèmes 2025 et 2026 non intégrés — barème 2024 appliqué",
-        ]),
-        Pays::Quebec => v(2024, &[
-            "impôt fédéral et du Québec : barèmes 2025 et 2026 non intégrés — barème 2024 appliqué",
-        ]),
+        Pays::Canada => v(2026, &[]),
+        Pays::Quebec => v(2026, &[]),
         // de_lohnsteuer.rs : les paramètres 2026 portent « estimation » /
         // « approximatif » en commentaire. Cotisations 2026 en base.
         Pays::Allemagne => v(2025, &[
@@ -183,10 +224,7 @@ fn declaree(pays: &Pays) -> Veille {
             "assurance maladie employeur (6 % en 2026) et bases de Pékin postérieures à 2024 non intégrées — valeurs 2024 appliquées",
         ]),
         Pays::PaysBas => v(2026, &[]),
-        // au_bulletin.rs : l'année civile 2026 est servie par l'exercice 2025-26.
-        Pays::Australie => v(2025, &[
-            "exercice 2026-27 (dès le 01/07/2026, 2ᵉ tranche de 16 à 15 %) non intégré — barème 2025-26 appliqué à toute l'année 2026",
-        ]),
+        Pays::Australie => v(2026, &[]),
         Pays::NouvelleZelande => v(2026, &[]),
         Pays::Pologne => v(2026, &[]),
         Pays::CoreeDuSud => v(2026, &[]),
@@ -213,9 +251,8 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Irlande => v(2026, &[]),
         Pays::Roumanie => v(2026, &[]),
         Pays::Bulgarie => v(2026, &[]),
-        // us_impot.rs : « 2026 reconduit sur le barème 2025 ».
         Pays::EtatsUnis => v(2025, &[
-            "barème fédéral 2026 non intégré — barème 2025 reconduit",
+            "impôt d'État de Californie : barème 2026 indexé pas encore publié par la FTB (publication à l'automne) — barème 2025 appliqué",
         ]),
         // mx_bulletin.rs : « Données : 2025 (2026 reconduit) ».
         Pays::Mexique => v(2025, &[
@@ -229,9 +266,6 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Emirats => v(2025, &[
             "paramètres GPSSA non relevés pour 2026 — valeurs 2025 appliquées (5 % / 12,5 %, plafond 50 000 AED)",
         ]),
-        // in_bulletin.rs : « Données : FY 2025-26 ».
-        Pays::Inde => v(2025, &[
-            "exercice 2026-27 (dès le 01/04/2026) non intégré — barème 2025-26 appliqué",
-        ]),
+        Pays::Inde => v(2026, &[]),
     }
 }

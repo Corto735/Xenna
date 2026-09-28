@@ -5,8 +5,8 @@
 //   • le Medicare levy (2 % depuis 2014-15 ; réductions bas revenus ignorées).
 // L'employeur verse la Superannuation Guarantee (taux lu en base, échéancier 9,5 → 12 %).
 //
-// Année calendaire Y → exercice fiscal (Y-1)/Y (l'exercice court du 1er juil. au 30 juin ;
-// le 1er semestre de l'année Y appartient à l'exercice (Y-1)/Y). Compromis documenté.
+// Exercice fiscal : 1er juillet → 30 juin, désigné par son année de fin (une paie de
+// septembre 2026 relève de l'exercice 2026-27, noté 2027).
 // Les crédits d'impôt (LITO, ancien LMITO) ne sont PAS modélisés → net prudent.
 // Sources : Income Tax Assessment Act 1997 ; Medicare Levy Act 1986 ; SGAA 1992 (ATO).
 
@@ -51,6 +51,10 @@ fn impot_annuel(revenu: Decimal, annee: i32) -> Option<Decimal> {
         // FY2024-25 / 2025-26 (Stage 3) : 16 % jusqu'à 45 000, 30 % jusqu'à 135 000.
         2025 | 2026 => &[(dec!(18200), dec!(0.0)), (dec!(45000), dec!(0.16)),
                          (dec!(135000), dec!(0.30)), (dec!(190000), dec!(0.37))],
+        // FY2026-27 : 2ᵉ taux ramené de 16 à 15 % (Treasury Laws Amendment (More Cost
+        // of Living Relief) Act 2025) ; 14 % prévu dès 2027-28, non intégré.
+        2027 => &[(dec!(18200), dec!(0.0)), (dec!(45000), dec!(0.15)),
+                  (dec!(135000), dec!(0.30)), (dec!(190000), dec!(0.37))],
         _ => return None,
     };
     Some(tax_from_bands(revenu, bands, dec!(0.45)))
@@ -58,12 +62,12 @@ fn impot_annuel(revenu: Decimal, annee: i32) -> Option<Decimal> {
 
 pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
-    let annee = ctx.date_paie.year();
+    let annee = if ctx.date_paie.month() >= 7 { ctx.date_paie.year() + 1 } else { ctx.date_paie.year() };
 
     let Some(impot_an) = impot_annuel(brut * dec!(12), annee) else {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "AUD", "AU",
-            "Australie : données disponibles pour les exercices 2014-15 à 2025-26.", ctx);
+            "Australie : données disponibles pour les exercices 2014-15 à 2026-27.", ctx);
     };
 
     let rev_ann = brut * dec!(12);
@@ -105,7 +109,9 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     };
 
     // Superannuation Guarantee (patronale, taux daté lu en base ; échéancier 9,5 → 12 %)
-    let plafond_super_mens = dec!(250000) / dec!(12); // maximum contribution base (≈ 2025-26)
+    // Maximum contribution base : 62 500 $/trimestre en 2025-26 (250 000 $/an) ; devenue
+    // annuelle avec le Payday Super, 270 830 $ en 2026-27 (32 500 $ de SG à 12 %).
+    let plafond_super_mens = if annee >= 2027 { dec!(270830) } else { dec!(250000) } / dec!(12);
     let base_super = brut.min(plafond_super_mens);
     let ts = ctx.taux_pat("AU_SUPER");
     let ligne_super = LigneCotisation {
