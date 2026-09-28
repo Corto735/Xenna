@@ -56,6 +56,26 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Belgique,
+        objet: "Revenus 2026 : tranches 16 720 / 29 510 / 51 070 €, quotité exemptée 11 180 €, forfait de frais professionnels plafonné à 6 070 € ; tranches 2025 corrigées (16 320 / 28 800 / 49 840 €)",
+        sources: &[
+            "https://news.bloombergtax.com/daily-tax-report-international/belgium-mof-announces-automatic-indexation-for-2026-individual-income",
+            "https://www.monsalaire-net.be/baremes-fiscaux-belgique-2026.html",
+            "https://www.advice-me.be/2024/05/31/impot-personnes-physiques-belgique/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Portugal,
+        objet: "Barème IRS 2026 (OE 2026, Lei 73-A/2025) et barème 2025 rétroactivement abaissé (Lei 55-A/2025) ; dedução específica 8,54 × IAS (4 587,09 € en 2026) ; salaire minimum 920 €",
+        sources: &[
+            "https://www.santander.pt/salto/escaloes-irs",
+            "https://www.cgd.pt/Site/Saldo-Positivo/leis-e-impostos/Pages/novidades-IRS.aspx",
+            "https://apcmc.pt/legislacao/ias-para-2026-fixado-em-e-53713/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Espagne,
         objet: "2026 : base maximale 5 101,20 €, base minimale des groupes 4-7 1 424,40 € (le calcul prenait le SMI au lieu de la base minimale, corrigé depuis 2015), MEI 0,90 % (taux 2023-2025 corrigés) ; cotisation de solidarité au-delà de la base maximale ajoutée pour 2025 et 2026",
         sources: &[
@@ -218,14 +238,8 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Quebec => v(2026, &[]),
         Pays::Allemagne => v(2026, &[]),
         Pays::Espagne => v(2026, &[]),
-        // pt_irs.rs jusqu'en 2025 ; PT_SMN depuis 2025.
-        Pays::Portugal => v(2025, &[
-            "SMN et barème IRS 2026 non intégrés — valeurs 2025 appliquées",
-        ]),
-        // be_pp.rs : branches jusqu'à 2025.
-        Pays::Belgique => v(2025, &[
-            "précompte professionnel 2026 non intégré — barème 2025 appliqué",
-        ]),
+        Pays::Portugal => v(2026, &[]),
+        Pays::Belgique => v(2026, &[]),
         Pays::Angleterre => v(2026, &[]),
         // JP_KENPO / JP_KOYO depuis 2024, plafonds 2024, 基礎控除 2024.
         Pays::Japon => v(2024, &[

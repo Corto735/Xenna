@@ -10,7 +10,8 @@
 //        (même approche que IT_IRPEF et PT_IRS dans ce projet).
 //
 // Sources :
-//   SPF Finances — Barèmes PP/BV 2015-2025 (circulaires annuelles)
+//   SPF Finances — Barèmes PP/BV 2015-2026 (circulaires annuelles) ; montants indexés
+//   revenus 2025 et 2026 (SPF Finances, 12/02/2026)
 //   CIR92 art. 130-145 (IPP, 4 tranches depuis réforme)
 //   Décret flamand — Vlaamse korting (réduction flamande)
 //   Décret wallon — additionnels régionaux
@@ -30,7 +31,8 @@ fn forfait_fp(brut_annuel: Decimal, annee: i32) -> Decimal {
         2021             => dec!(5500),
         2022             => dec!(5750),
         2023 | 2024      => dec!(5940),
-        _                => dec!(6010), // 2025+
+        2025             => dec!(6010),
+        _                => dec!(6070), // 2026
     };
     (brut_annuel * dec!(0.30)).min(cap)
 }
@@ -48,7 +50,8 @@ fn exoneration(annee: i32) -> Decimal {
         2022             => dec!(9270),
         2023             => dec!(10160),
         2024             => dec!(10570),
-        _                => dec!(10910), // 2025+
+        2025             => dec!(10910),
+        _                => dec!(11180), // revenus 2026 (EI 2027)
     }
 }
 
@@ -68,7 +71,8 @@ fn ipp_annuel(revenu_net: Decimal, annee: i32) -> Decimal {
         2022             => (dec!(13870), dec!(24800), dec!(42370)),
         2023             => (dec!(15200), dec!(26830), dec!(46440)),
         2024             => (dec!(15820), dec!(27920), dec!(48320)),
-        _                => (dec!(16340), dec!(28830), dec!(49900)), // 2025+
+        2025             => (dec!(16320), dec!(28800), dec!(49840)), // revenus 2025 (EI 2026)
+        _                => (dec!(16720), dec!(29510), dec!(51070)), // revenus 2026 (EI 2027)
     };
 
     if revenu_net <= Decimal::ZERO {

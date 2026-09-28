@@ -8,7 +8,7 @@
 // Le calcul par barème annualisé est une approximation utilisée pour la
 // simulation (même approche que IT_IRPEF dans ce projet).
 //
-// Sources : CIRS art. 68 + Lei do OE annuelles (2015-2025).
+// Sources : CIRS art. 68 + Lei do OE annuelles (2015-2026) ; Lei 55-A/2025 pour 2025.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -25,8 +25,10 @@ fn deducao_especifica(annee: i32) -> Decimal {
     match annee {
         i32::MIN..=2022 => dec!(4104),
         2023            => dec!(4208),
-        2024            => dec!(4462),
-        _               => dec!(4718), // 2025+
+        // Depuis 2024 : 8,54 × IAS (CIRS art. 25) — IAS 509,26 / 522,50 / 537,13 €.
+        2024            => dec!(4349.08),
+        2025            => dec!(4462.15),
+        _               => dec!(4587.09), // 2026 (Portaria 480-A/2025/1)
     }
 }
 
@@ -174,29 +176,33 @@ pub fn irs_annuel(rendimento: Decimal, annee: i32) -> Decimal {
                 dec!(28083.80) + (rendimento - dec!(80000)) * dec!(0.4800)
             }
         }
+        2025 => {
+            // 2025, barème rétroactif de la Lei 55-A/2025 (2ᵉ à 8ᵉ taux abaissés).
+            tranches(rendimento,
+                &[dec!(8059), dec!(12160), dec!(17233), dec!(22306), dec!(28400), dec!(41629), dec!(44987), dec!(83696)],
+                &[dec!(0.125), dec!(0.16), dec!(0.215), dec!(0.244), dec!(0.314), dec!(0.349), dec!(0.431), dec!(0.446), dec!(0.48)])
+        }
         _ => {
-            // 2025+ (OE 2025, Lei 24-D/2024) — 9 tranches
-            if rendimento <= dec!(8059) {
-                rendimento * dec!(0.1300)
-            } else if rendimento <= dec!(12160) {
-                dec!(1047.67) + (rendimento - dec!(8059)) * dec!(0.1650)
-            } else if rendimento <= dec!(17233) {
-                dec!(1724.34) + (rendimento - dec!(12160)) * dec!(0.2200)
-            } else if rendimento <= dec!(22306) {
-                dec!(2840.40) + (rendimento - dec!(17233)) * dec!(0.2500)
-            } else if rendimento <= dec!(28400) {
-                dec!(4108.65) + (rendimento - dec!(22306)) * dec!(0.3200)
-            } else if rendimento <= dec!(41629) {
-                dec!(6058.73) + (rendimento - dec!(28400)) * dec!(0.3550)
-            } else if rendimento <= dec!(44987) {
-                dec!(10755.02) + (rendimento - dec!(41629)) * dec!(0.4350)
-            } else if rendimento <= dec!(83696) {
-                dec!(12215.75) + (rendimento - dec!(44987)) * dec!(0.4500)
-            } else {
-                dec!(29634.80) + (rendimento - dec!(83696)) * dec!(0.4800)
-            }
+            // 2026+ (OE 2026, Lei 73-A/2025) — seuils relevés, 2ᵉ à 5ᵉ taux −0,3 point.
+            tranches(rendimento,
+                &[dec!(8342), dec!(12587), dec!(17838), dec!(23089), dec!(29397), dec!(43090), dec!(46566), dec!(86634)],
+                &[dec!(0.125), dec!(0.157), dec!(0.212), dec!(0.241), dec!(0.311), dec!(0.349), dec!(0.431), dec!(0.446), dec!(0.48)])
         }
     }
+}
+
+/// Impôt progressif : `seuils` = bornes hautes des tranches, `taux` = une de plus.
+fn tranches(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) -> Decimal {
+    let mut impot = Decimal::ZERO;
+    let mut bas = Decimal::ZERO;
+    for (i, t) in taux.iter().enumerate() {
+        let haut = seuils.get(i).copied().unwrap_or(Decimal::MAX);
+        if revenu > bas {
+            impot += (revenu.min(haut) - bas) * t;
+        }
+        bas = haut;
+    }
+    impot
 }
 
 // ── Retenção na fonte mensuelle ───────────────────────────────────────────────
