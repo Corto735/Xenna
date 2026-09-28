@@ -56,6 +56,15 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Espagne,
+        objet: "2026 : base maximale 5 101,20 €, base minimale des groupes 4-7 1 424,40 € (le calcul prenait le SMI au lieu de la base minimale, corrigé depuis 2015), MEI 0,90 % (taux 2023-2025 corrigés) ; cotisation de solidarité au-delà de la base maximale ajoutée pour 2025 et 2026",
+        sources: &[
+            "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296",
+            "https://www.cuatrecasas.com/es/spain/laboral/art/claves-orden-cotizacion-2026",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Allemagne,
         objet: "Lohnsteuer : tarif exact du §32a EStG pour 2023-2026 (Grundfreibetrag 2024 : 11 784 € ; 2026 : 12 348 € au lieu d'une estimation à 12 648 €) ; revenu imposable diminué des forfaits et de la Vorsorgepauschale (règles 2026) au lieu d'un double abattement ; splitting en classe III ; seuil du Soli par année (20 350 € en 2026)",
         sources: &[
@@ -208,10 +217,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Canada => v(2026, &[]),
         Pays::Quebec => v(2026, &[]),
         Pays::Allemagne => v(2026, &[]),
-        // es_cotizaciones.rs : « 2025+ » ; ES_BASE_MAX / ES_MEI depuis 2025.
-        Pays::Espagne => v(2025, &[
-            "SMI, bases minimale et maximale et MEI 2026 non intégrés — valeurs 2025 appliquées",
-        ]),
+        Pays::Espagne => v(2026, &[]),
         // pt_irs.rs jusqu'en 2025 ; PT_SMN depuis 2025.
         Pays::Portugal => v(2025, &[
             "SMN et barème IRS 2026 non intégrés — valeurs 2025 appliquées",

@@ -17,20 +17,24 @@ use crate::models::LigneCotisation;
 
 // ── Plafonds de cotisation mensuels ──────────────────────────────────────────
 
+/// Base minimale des groupes 4 à 7 (régime général) : SMI mensuel majoré d'un
+/// sixième (prorata des deux paies extraordinaires). Ordres de cotisation annuels ;
+/// 2026 : Orden PJC/297/2026, art. 3 (1 424,40 €).
 fn es_base_min(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(648.60),
-        2016            => dec!(655.20),
-        2017            => dec!(707.70),
-        2018            => dec!(735.90),
-        2019            => dec!(900.00),
-        2020            => dec!(950.00),
-        2021 if ctx.date_paie.month() < 9 => dec!(950.00),
-        2021            => dec!(965.00),
-        2022            => dec!(1000.00),
-        2023            => dec!(1080.00),
-        2024            => dec!(1134.00),
-        _               => dec!(1184.00), // 2025+
+        i32::MIN..=2015 => dec!(756.60),
+        2016            => dec!(764.40),
+        2017            => dec!(825.60),
+        2018            => dec!(858.60),
+        2019            => dec!(1050.00),
+        2020            => dec!(1108.33),
+        2021 if ctx.date_paie.month() < 9 => dec!(1108.33),
+        2021            => dec!(1125.83),
+        2022            => dec!(1166.70),
+        2023            => dec!(1260.00),
+        2024            => dec!(1323.00),
+        2025            => dec!(1381.20),
+        _               => dec!(1424.40), // 2026
     }
 }
 
@@ -44,7 +48,8 @@ fn es_base_max(ctx: &ContextPaie) -> Decimal {
         2022            => dec!(4139.40),
         2023            => dec!(4495.50),
         2024            => dec!(4720.50),
-        _               => dec!(4909.50), // 2025+
+        2025            => dec!(4909.50),
+        _               => dec!(5101.20), // 2026 — Orden PJC/297/2026
     }
 }
 
@@ -232,5 +237,62 @@ pub fn mei(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
             .replace("{ms}", &format!("{:.2}", ms))
             .replace("{mp}", &format!("{:.2}", mp)),
         loi_ref: Some(ctx.loi_ref("Ley 21/2021 art. 2 — Mecanismo de Equidad Intergeneracional")),
+    })
+}
+
+// ── Cotización adicional de solidaridad (depuis 2025) ─────────────────────────
+//
+// Sur la part du salaire qui excède la base maximale, en trois tranches (jusqu'à
+// 10 % au-dessus, de 10 à 50 %, au-delà), réparties comme les contingences
+// communes. RDL 2/2023 ; 2025 : Orden TRM/42/2025 ; 2026 : Orden PJC/297/2026 art. 17.
+// Taux (salarié, employeur) par tranche.
+fn solidaridad_taux(annee: i32) -> Option<[(Decimal, Decimal); 3]> {
+    match annee {
+        i32::MIN..=2024 => None,
+        2025 => Some([(dec!(0.0015), dec!(0.0077)), (dec!(0.0017), dec!(0.0083)), (dec!(0.0019), dec!(0.0098))]),
+        _    => Some([(dec!(0.0019), dec!(0.0096)), (dec!(0.0021), dec!(0.0104)), (dec!(0.0024), dec!(0.0122))]),
+    }
+}
+
+pub fn solidaridad(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
+    let annee = ctx.date_paie.year();
+    let taux = solidaridad_taux(annee)?;
+    let bmax = es_base_max(ctx);
+    if brut <= bmax {
+        return None;
+    }
+    let bornes = [bmax, bmax * dec!(1.10), bmax * dec!(1.50), Decimal::MAX];
+    let (mut ms, mut mp) = (Decimal::ZERO, Decimal::ZERO);
+    for i in 0..3 {
+        let tranche = (brut.min(bornes[i + 1]) - bornes[i]).max(Decimal::ZERO);
+        ms += tranche * taux[i].0;
+        mp += tranche * taux[i].1;
+    }
+    let (ms, mp) = (ms.round_dp(2), mp.round_dp(2));
+    let exces = brut - bmax;
+    Some(LigneCotisation {
+        code:        "ES_SOLIDARIDAD".into(),
+        libelle:     ctx.libelle("ES_SOLIDARIDAD", "Cotización de solidaridad {annee}")
+                        .replace("{annee}", &annee.to_string()),
+        base:        exces,
+        taux_sal:    (ms / exces).round_dp(4),
+        montant_sal: ms,
+        taux_pat:    (mp / exces).round_dp(4),
+        montant_pat: mp,
+        categorie:   "Réserve retraite".into(),
+        explication: ctx.expl("ES_SOLIDARIDAD",
+            "Cotisation additionnelle de solidarité sur la part du salaire qui dépasse la \
+            base maximale ({base_max} €) : {t1} % jusqu'à 10 % au-dessus, {t2} % de 10 à 50 %, \
+            {t3} % au-delà, répartis comme les contingences communes.\n\
+            Excédent : {base} € — salarié {ms} € — employeur {mp} €.\n\
+            Instaurée en 2025 (RDL 2/2023), taux croissants jusqu'en 2045.")
+            .replace("{base_max}", &format!("{:.2}", bmax))
+            .replace("{t1}", &format!("{:.2}", (taux[0].0 + taux[0].1) * dec!(100)))
+            .replace("{t2}", &format!("{:.2}", (taux[1].0 + taux[1].1) * dec!(100)))
+            .replace("{t3}", &format!("{:.2}", (taux[2].0 + taux[2].1) * dec!(100)))
+            .replace("{base}", &format!("{:.2}", exces))
+            .replace("{ms}", &format!("{:.2}", ms))
+            .replace("{mp}", &format!("{:.2}", mp)),
+        loi_ref: Some(ctx.loi_ref("RDL 2/2023 — LGSS art. 19 bis — Orden PJC/297/2026 art. 17")),
     })
 }

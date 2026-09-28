@@ -16,6 +16,9 @@ pub fn generer_bulletin_es(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     if let Some(mei_ligne) = mei(brut, ctx) {
         cotisations.push(mei_ligne);
     }
+    if let Some(ligne) = solidaridad(brut, ctx) {
+        cotisations.push(ligne);
+    }
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();

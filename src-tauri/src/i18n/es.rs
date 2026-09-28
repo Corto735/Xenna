@@ -35,6 +35,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "FOGASA — Fondo de Garantía Salarial",
             _ => return None,
         },
+        "ES_SOLIDARIDAD" => match lang {
+            "en" => "Solidarity contribution {annee}",
+            "de" => "Solidaritätsbeitrag {annee}",
+            "nl" => "Solidariteitsbijdrage {annee}",
+            "it" => "Contributo di solidarietà {annee}",
+            "es" => "Cotización de solidaridad {annee}",
+            _ => return None,
+        },
         "ES_MEI" => match lang {
             "en" => "MEI — Intergenerational Equity Mechanism {annee}",
             "de" => "MEI — Mechanismus der Generationengerechtigkeit {annee}",
@@ -126,6 +134,29 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Financia la formación profesional continua (FUNDAE). Trabajador: {ts_pct} % — \
                 Empleador: {tp_pct} % — Total: {total} %.\nTrabajador: {ms} € — Empleador: {mp} €. \
                 LGSS art. 7 y DA 19a.",
+            _ => return None,
+        },
+        "ES_SOLIDARIDAD" => match lang {
+            "en" => "Additional solidarity contribution on the part of the salary above the maximum \
+                base ({base_max} €): {t1} % up to 10 % above it, {t2} % from 10 to 50 %, {t3} % beyond, \
+                split like common contingencies.\nExcess: {base} € — employee {ms} € — employer {mp} €.\n\
+                Introduced in 2025 (RDL 2/2023), rates rising until 2045.",
+            "de" => "Zusätzlicher Solidaritätsbeitrag auf den Gehaltsanteil über der Höchstbemessungs\
+                grundlage ({base_max} €): {t1} % bis 10 % darüber, {t2} % von 10 bis 50 %, {t3} % \
+                darüber hinaus, aufgeteilt wie die allgemeinen Risiken.\nÜberschuss: {base} € — \
+                Arbeitnehmer {ms} € — Arbeitgeber {mp} €.\nSeit 2025 (RDL 2/2023), Sätze steigend bis 2045.",
+            "nl" => "Aanvullende solidariteitsbijdrage op het deel van het loon boven de maximale grondslag \
+                ({base_max} €): {t1} % tot 10 % erboven, {t2} % van 10 tot 50 %, {t3} % daarboven, verdeeld \
+                zoals de algemene risico's.\nOverschot: {base} € — werknemer {ms} € — werkgever {mp} €.\n\
+                Ingevoerd in 2025 (RDL 2/2023), tarieven stijgend tot 2045.",
+            "it" => "Contributo aggiuntivo di solidarietà sulla parte di retribuzione oltre la base massima \
+                ({base_max} €): {t1} % fino al 10 % oltre, {t2} % dal 10 al 50 %, {t3} % oltre, ripartito \
+                come le contingenze comuni.\nEccedenza: {base} € — dipendente {ms} € — datore {mp} €.\n\
+                Introdotto nel 2025 (RDL 2/2023), aliquote crescenti fino al 2045.",
+            "es" => "Cotización adicional de solidaridad sobre la parte del salario que supera la base \
+                máxima ({base_max} €): {t1} % hasta un 10 % por encima, {t2} % del 10 al 50 %, {t3} % a \
+                partir de ahí, repartida como las contingencias comunes.\nExceso: {base} € — trabajador \
+                {ms} € — empleador {mp} €.\nImplantada en 2025 (RDL 2/2023), tipos crecientes hasta 2045.",
             _ => return None,
         },
         "ES_MEI" => match lang {
