@@ -17,9 +17,9 @@ fn grundfreibetrag(annee: i32) -> Decimal {
         2021            => dec!(9744),
         2022            => dec!(10347),
         2023            => dec!(10908),
-        2024            => dec!(11604),
+        2024            => dec!(11784), // relevé rétroactivement (loi du 23/12/2024)
         2025            => dec!(12096),
-        _               => dec!(12648), // 2026 — estimation loi de finances
+        _               => dec!(12348), // 2026 — §32a EStG en vigueur
     }
 }
 
@@ -39,17 +39,51 @@ fn entlastungsbetrag(annee: i32) -> Decimal {
 
 // ── Barème Einkommensteuer / Lohnsteuer (EStG §32a) ──────────────────────────
 //
-// Zones de progression (valeurs 2026 — Grundfreibetrag = 12 648 €) :
-//   Zone 0 : 0 € → 12 648 € → 0 %
-//   Zone 1 : 12 649 € → ~17 220 € → formule progressive (14 % → 24 %)
-//   Zone 2 : ~17 221 € → ~68 430 € → formule progressive (24 % → 42 %)
-//   Zone 3 : ~68 431 € → 277 825 € → 42 % (Spitzensteuersatz)
-//   Zone 4 : > 277 825 € → 45 % (Reichensteuersatz)
-//
-// Les seuils des zones 1 et 2 sont ajustés chaque année proportionnellement
-// au Grundfreibetrag. On utilise des seuils fixes par tranche d'années.
+// Zones de progression (VZ 2026 — Grundfreibetrag = 12 348 €) :
+//   Zone 0 : 0 € → 12 348 € → 0 %
+//   Zone 1 : 12 349 € → 17 799 € → (914,51·y + 1 400)·y      (14 % → 24 %)
+//   Zone 2 : 17 800 € → 69 878 € → (173,10·z + 2 397)·z + 1 034,87 (24 % → 42 %)
+//   Zone 3 : 69 879 € → 277 825 € → 0,42·x − 11 135,63
+//   Zone 4 : > 277 825 € → 0,45·x − 19 470,38
+// Le tarif s'applique au revenu imposable (zvE), pas au brut.
 
+/// Tarif exact du §32a al. 1 EStG sur le revenu imposable `x` (arrondi à l'euro
+/// inférieur), 2023-2026 : (Grundfreibetrag, fin zone 1, fin zone 2,
+/// coef. zone 1, coef. zone 2, constante zone 2, abattement 42 %, abattement 45 %).
+/// Sources : gesetze-im-internet.de (VZ 2026), buzer.de (VZ 2024), EStH 2025.
+fn tarif_32a_exact(x: Decimal, annee: i32) -> Option<Decimal> {
+    let (gbf, z1, z2, a1, a2, c2, k42, k45) = match annee {
+        2023 => (dec!(10908), dec!(15999), dec!(62809), dec!(979.18), dec!(192.59), dec!(966.53),  dec!(9972.98),  dec!(18307.73)),
+        2024 => (dec!(11784), dec!(17005), dec!(66760), dec!(954.80), dec!(181.19), dec!(991.21),  dec!(10636.31), dec!(18971.06)),
+        2025 => (dec!(12096), dec!(17443), dec!(68480), dec!(932.30), dec!(176.64), dec!(1015.13), dec!(10911.92), dec!(19246.67)),
+        2026.. => (dec!(12348), dec!(17799), dec!(69878), dec!(914.51), dec!(173.10), dec!(1034.87), dec!(11135.63), dec!(19470.38)),
+        _ => return None,
+    };
+    let x = x.floor();
+    let st = if x <= gbf {
+        Decimal::ZERO
+    } else if x <= z1 {
+        let y = (x - gbf) / dec!(10000);
+        (a1 * y + dec!(1400)) * y
+    } else if x <= z2 {
+        let z = (x - z1) / dec!(10000);
+        (a2 * z + dec!(2397)) * z + c2
+    } else if x <= dec!(277825) {
+        dec!(0.42) * x - k42
+    } else {
+        dec!(0.45) * x - k45
+    };
+    Some(st.max(Decimal::ZERO).floor())
+}
+
+/// Impôt sur le revenu imposable `x` : tarif exact dès 2023, approximation
+/// historique (zones à coefficients fixes) avant.
 fn einkommensteuer_annuel(revenu: Decimal, annee: i32) -> Decimal {
+    tarif_32a_exact(revenu, annee).unwrap_or_else(|| einkommensteuer_ancien(revenu, annee))
+}
+
+/// Approximation antérieure à 2023 (coefficients 2023 appliqués à des seuils datés).
+fn einkommensteuer_ancien(revenu: Decimal, annee: i32) -> Decimal {
     if revenu <= Decimal::ZERO {
         return Decimal::ZERO;
     }
@@ -67,7 +101,7 @@ fn einkommensteuer_annuel(revenu: Decimal, annee: i32) -> Decimal {
         2023            => (dec!(10909), dec!(15999),  dec!(62809)),
         2024            => (dec!(11605), dec!(17005),  dec!(66760)),
         2025            => (dec!(12097), dec!(17430),  dec!(68430)),
-        _               => (dec!(12649), dec!(17222),  dec!(68430)), // 2026 estimation
+        _               => (dec!(12097), dec!(17430),  dec!(68430)),
     };
     let z3_fin = dec!(277825); // Reichensteuersatz — stable
 
@@ -91,11 +125,11 @@ fn einkommensteuer_annuel(revenu: Decimal, annee: i32) -> Decimal {
         (steuer_z1 + (dec!(108.73) * z + dec!(2397)) * z).round_dp(0)
     } else if revenu <= z3_fin {
         // Zone 3 : 42 % (Spitzensteuersatz) — moins abattement
-        let abat = dec!(9972); // Abzugsbetrag 2026 approximatif
+        let abat = dec!(9972); // Abzugsbetrag 2023
         (revenu * dec!(0.42) - abat).max(Decimal::ZERO).round_dp(0)
     } else {
         // Zone 4 : 45 % (Reichensteuersatz) — moins abattement
-        let abat = dec!(18307); // Abzugsbetrag zone 4 approximatif
+        let abat = dec!(18307); // Abzugsbetrag zone 4 2023
         (revenu * dec!(0.45) - abat).max(Decimal::ZERO).round_dp(0)
     }
 }
@@ -105,56 +139,97 @@ fn einkommensteuer_annuel(revenu: Decimal, annee: i32) -> Decimal {
 // Méthode : annualisation du salaire mensuel → application du barème EStG →
 // division par 12. Standard pour les salaires fixes (Lohnsteuerklassen I-VI).
 
-fn lohnsteuer_annuel(brut_mensuel: Decimal, steuerklasse: u8, annee: i32) -> Decimal {
-    let revenu_annuel = brut_mensuel * dec!(12);
-    let gbf = grundfreibetrag(annee);
+/// Cotisations sociales salariales mensuelles prises en compte dans la
+/// Vorsorgepauschale (§39b al. 2 phrase 5 n° 3 EStG).
+#[derive(Clone, Copy, Default)]
+pub struct Vorsorge {
+    pub rv: Decimal,
+    pub kv: Decimal,
+    pub pv: Decimal,
+    pub av: Decimal,
+}
 
-    // Revenu imposable selon Steuerklasse
-    let imposable = match steuerklasse {
-        // SK I et IV : abattement standard (Grundfreibetrag)
-        1 | 4 => (revenu_annuel - gbf).max(Decimal::ZERO),
-        // SK II : abattement + Entlastungsbetrag Alleinerziehende
-        2 => (revenu_annuel - gbf - entlastungsbetrag(annee)).max(Decimal::ZERO),
-        // SK III : doublement du Grundfreibetrag (époux à revenu élevé)
-        3 => (revenu_annuel - gbf * dec!(2)).max(Decimal::ZERO),
-        // SK V : pas de Grundfreibetrag (époux à faible revenu, conjoint en SK III)
-        5 => revenu_annuel,
-        // SK VI : aucun abattement (second emploi)
-        6 => revenu_annuel,
-        _ => (revenu_annuel - gbf).max(Decimal::ZERO),
+/// Arbeitnehmer-Pauschbetrag (§9a EStG).
+fn an_pauschbetrag(annee: i32) -> Decimal {
+    match annee {
+        i32::MIN..=2021 => dec!(1000),
+        2022            => dec!(1200),
+        _               => dec!(1230),
+    }
+}
+
+/// Vorsorgepauschale annuelle, simplifiée : part retraite (100 % dès 2023, 88 % en
+/// 2022…), puis maladie + dépendance au taux réel du salarié (le PAP retient le taux
+/// réduit, sans indemnités journalières — écart d'environ 4 %). Jusqu'en 2025,
+/// plancher de 12 % du salaire plafonné à 1 900 € (3 000 € en classe III) ; dès 2026,
+/// plancher supprimé et part chômage ajoutée tant que maladie + dépendance +
+/// chômage ne dépassent pas 1 900 €.
+fn vorsorgepauschale(brut_an: Decimal, v: Vorsorge, steuerklasse: u8, annee: i32) -> Decimal {
+    let part_rv = match annee {
+        i32::MIN..=2017 => dec!(0.68),
+        2018 => dec!(0.72), 2019 => dec!(0.76), 2020 => dec!(0.80),
+        2021 => dec!(0.84), 2022 => dec!(0.88),
+        _ => dec!(1),
     };
-
-    // SK V et VI ont une retenue forfaitaire minimale supplémentaire — simplifiée ici
-    let steuer_brute = einkommensteuer_annuel(imposable, annee);
-
-    // SK VI : majoration de 10 % (second emploi — approximation)
-    if steuerklasse == 6 {
-        steuer_brute * dec!(1.1)
+    let rv = v.rv * dec!(12) * part_rv;
+    let kv_pv = (v.kv + v.pv) * dec!(12);
+    let sante = if annee >= 2026 {
+        kv_pv + (v.av * dec!(12)).min((dec!(1900) - kv_pv).max(Decimal::ZERO))
     } else {
-        steuer_brute
+        let plafond = if steuerklasse == 3 { dec!(3000) } else { dec!(1900) };
+        kv_pv.max((brut_an * dec!(0.12)).min(plafond))
+    };
+    (rv + sante).ceil()
+}
+
+fn lohnsteuer_annuel(brut_mensuel: Decimal, v: Vorsorge, steuerklasse: u8, annee: i32) -> Decimal {
+    let brut_an = brut_mensuel * dec!(12);
+    // Forfaits : frais professionnels (sauf classe VI) et dépenses spéciales (36 €,
+    // 72 € en classe III), Vorsorgepauschale, Entlastungsbetrag en classe II.
+    let forfaits = match steuerklasse {
+        6 => Decimal::ZERO,
+        3 => an_pauschbetrag(annee) + dec!(72),
+        _ => an_pauschbetrag(annee) + dec!(36),
+    };
+    let mut zve = brut_an - forfaits - vorsorgepauschale(brut_an, v, steuerklasse, annee);
+    if steuerklasse == 2 { zve -= entlastungsbetrag(annee); }
+    let zve = zve.max(Decimal::ZERO);
+
+    match steuerklasse {
+        // Classe III : procédure du splitting (2 × tarif sur la moitié).
+        3 => einkommensteuer_annuel(zve / dec!(2), annee) * dec!(2),
+        // Classes V et VI : sans Grundfreibetrag, §39b al. 2 phrase 7 — impôt égal
+        // au double de l'écart entre les tarifs sur 1,25 × zvE et 0,75 × zvE, au
+        // minimum 14 % (plafonds de la formule officielle non modélisés).
+        5 | 6 => {
+            let ecart = einkommensteuer_annuel(zve * dec!(1.25), annee)
+                - einkommensteuer_annuel(zve * dec!(0.75), annee);
+            (ecart * dec!(2)).max(zve * dec!(0.14)).floor()
+        }
+        _ => einkommensteuer_annuel(zve, annee),
     }
 }
 
 // ── Solidaritätszuschlag ──────────────────────────────────────────────────────
 
-fn solidaritaetszuschlag(lohnsteuer_annuel: Decimal, annee: i32) -> Decimal {
-    if annee <= 2020 {
-        // Taux plein 5,5 %
-        (lohnsteuer_annuel * dec!(0.055)).round_dp(2)
-    } else {
-        // Depuis 2021 : exonération quasi-totale pour revenus courants
-        // Seuil annuel : 17 543 € de Lohnsteuer → mensuel : ~1 462 €
-        let seuil_an = dec!(17543);
-        let seuil_haut = dec!(66915); // zone de transition
-        if lohnsteuer_annuel <= seuil_an {
-            Decimal::ZERO
-        } else if lohnsteuer_annuel <= seuil_haut {
-            // Zone de transition : 11,9 % de (LSt - seuil)
-            ((lohnsteuer_annuel - seuil_an) * dec!(0.119)).round_dp(2)
-        } else {
-            (lohnsteuer_annuel * dec!(0.055)).round_dp(2)
-        }
+/// Solidaritätszuschlag : 5,5 % de l'impôt au-delà d'un seuil d'exonération
+/// (Freigrenze, doublé en classe III), avec zone de transition à 11,9 % de
+/// l'excédent (SolzG §3 et §4).
+fn solidaritaetszuschlag(lohnsteuer_annuel: Decimal, steuerklasse: u8, annee: i32) -> Decimal {
+    let freigrenze = match annee {
+        i32::MIN..=2020 => dec!(972),
+        2021 | 2022     => dec!(16956),
+        2023            => dec!(17543),
+        2024            => dec!(18130),
+        2025            => dec!(19950),
+        _               => dec!(20350),
+    } * if steuerklasse == 3 { dec!(2) } else { dec!(1) };
+    if lohnsteuer_annuel <= freigrenze {
+        return Decimal::ZERO;
     }
+    let plein = lohnsteuer_annuel * dec!(0.055);
+    let transition = (lohnsteuer_annuel - freigrenze) * dec!(0.119);
+    plein.min(transition).round_dp(2)
 }
 
 // ── Kirchensteuer ─────────────────────────────────────────────────────────────
@@ -170,16 +245,17 @@ fn taux_kirchensteuer(land: &str) -> Decimal {
 
 pub fn lohnsteuer_mensuel(
     brut: Decimal,
+    vorsorge: Vorsorge,
     steuerklasse: u8,
     kirchenmitglied: bool,
     land: &str,
     ctx: &ContextPaie,
 ) -> Vec<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let lst_annuel = lohnsteuer_annuel(brut, steuerklasse, annee);
+    let lst_annuel = lohnsteuer_annuel(brut, vorsorge, steuerklasse, annee);
     let lst_mensuel = (lst_annuel / dec!(12)).round_dp(2);
 
-    let soli_annuel  = solidaritaetszuschlag(lst_annuel, annee);
+    let soli_annuel  = solidaritaetszuschlag(lst_annuel, steuerklasse, annee);
     let soli_mensuel = (soli_annuel / dec!(12)).round_dp(2);
 
     let sk_libelle = ctx.libelle(
@@ -314,4 +390,32 @@ pub fn lohnsteuer_mensuel(
     }
 
     lignes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Le tarif §32a est nul jusqu'au Grundfreibetrag et continu aux bornes de
+    /// zones (à l'euro près) : une coquille dans un coefficient casse l'un ou l'autre.
+    #[test]
+    fn tarif_32a_nul_puis_continu() {
+        for annee in 2023..=2026 {
+            let gbf = grundfreibetrag(annee);
+            assert_eq!(tarif_32a_exact(gbf, annee), Some(Decimal::ZERO), "{annee}");
+            let st = |x: Decimal| tarif_32a_exact(x, annee).unwrap();
+            let bornes = match annee {
+                2023 => [dec!(15999), dec!(62809), dec!(277825)],
+                2024 => [dec!(17005), dec!(66760), dec!(277825)],
+                2025 => [dec!(17443), dec!(68480), dec!(277825)],
+                _    => [dec!(17799), dec!(69878), dec!(277825)],
+            };
+            for b in bornes {
+                let saut = st(b + dec!(1)) - st(b);
+                assert!(saut >= Decimal::ZERO && saut <= dec!(2), "{annee} : saut de {saut} € à {b} €");
+            }
+        }
+        // VZ 2026, 40 000 € de revenu imposable : 7 209 € (formule de la zone 2).
+        assert_eq!(tarif_32a_exact(dec!(40000), 2026), Some(dec!(7209)));
+    }
 }

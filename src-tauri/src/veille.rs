@@ -56,6 +56,16 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Allemagne,
+        objet: "Lohnsteuer : tarif exact du §32a EStG pour 2023-2026 (Grundfreibetrag 2024 : 11 784 € ; 2026 : 12 348 € au lieu d'une estimation à 12 648 €) ; revenu imposable diminué des forfaits et de la Vorsorgepauschale (règles 2026) au lieu d'un double abattement ; splitting en classe III ; seuil du Soli par année (20 350 € en 2026)",
+        sources: &[
+            "https://www.gesetze-im-internet.de/estg/__32a.html",
+            "https://www.buzer.de/gesetz/4499/al210146-0.htm",
+            "https://www.haufe.de/steuern/finanzverwaltung/vorsorgepauschale-im-lohnsteuerabzugsverfahren-ab-2026_164_658714.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Quebec,
         objet: "Table d'imposition du Québec 2025 (53 255 / 106 495 / 129 590 $, MPB 18 571 $) et 2026 (54 345 / 108 680 / 132 245 $, MPB 18 952 $) ; impôt fédéral 2025-2026 ; abattement du Québec de 16,5 % sur l'impôt fédéral, jusqu'ici omis",
         sources: &[
@@ -197,11 +207,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Italia => v(2026, &[]),
         Pays::Canada => v(2026, &[]),
         Pays::Quebec => v(2026, &[]),
-        // de_lohnsteuer.rs : les paramètres 2026 portent « estimation » /
-        // « approximatif » en commentaire. Cotisations 2026 en base.
-        Pays::Allemagne => v(2025, &[
-            "Lohnsteuer 2026 : Grundfreibetrag, zones de progression et Abzugsbetrag notés « estimation » dans le code — à confirmer sur source officielle",
-        ]),
+        Pays::Allemagne => v(2026, &[]),
         // es_cotizaciones.rs : « 2025+ » ; ES_BASE_MAX / ES_MEI depuis 2025.
         Pays::Espagne => v(2025, &[
             "SMI, bases minimale et maximale et MEI 2026 non intégrés — valeurs 2025 appliquées",

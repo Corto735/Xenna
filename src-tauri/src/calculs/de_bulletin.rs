@@ -2,7 +2,7 @@ use rust_decimal::Decimal;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
 use super::de_cotisations::*;
-use super::de_lohnsteuer::lohnsteuer_mensuel;
+use super::de_lohnsteuer::{lohnsteuer_mensuel, Vorsorge};
 
 pub fn generer_bulletin_de(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut        = salarie.salaire_brut;
@@ -24,7 +24,17 @@ pub fn generer_bulletin_de(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     cotisations.push(de_unfallversicherung(brut, ctx));
 
-    cotisations.extend(lohnsteuer_mensuel(brut, steuerklasse, kirchenmitglied, land, ctx));
+    // Cotisations salariales retenues dans la Vorsorgepauschale de la Lohnsteuer.
+    let part = |codes: &[&str]| -> Decimal {
+        cotisations.iter().filter(|c| codes.contains(&c.code.as_str())).map(|c| c.montant_sal).sum()
+    };
+    let vorsorge = Vorsorge {
+        rv: part(&["DE_RENTENVERSICHERUNG"]),
+        kv: part(&["DE_KRANKENVERSICHERUNG"]),
+        pv: part(&["DE_PFLEGEVERSICHERUNG", "DE_PV_KINDERLOS"]),
+        av: part(&["DE_ARBEITSLOSENVERSICHERUNG"]),
+    };
+    cotisations.extend(lohnsteuer_mensuel(brut, vorsorge, steuerklasse, kirchenmitglied, land, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
