@@ -56,6 +56,15 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Emirats,
+        objet: "GPSSA 2026 relevé : régime de la loi 7/1999 (salarié 5 %, employeur 12,5 %, État 2,5 %, plafond 50 000 AED) inchangé. Non modélisé : le régime du décret-loi 57/2023 pour les Émiratis entrés depuis le 31/10/2023 (11 % / 15 %, plafond 70 000 AED)",
+        sources: &[
+            "https://www.zoho.com/en-ae/payroll/academy/compliance/gpssa-and-adpf-pension.html",
+            "https://velmontcrest.ae/insights/gpssa-pension-uae-emirati-employee-contribution/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Mexique,
         objet: "UMA au 1er février (113,14 $/j en 2025, 117,31 $/j en 2026) ; tarif ISR mensuel 2026 (Anexo 8 RMF 2026) ; subsidio al empleo 13,8 % de l'UMA en 2025 (≤ 10 171 $) et 15,02 % en 2026 (≤ 11 492,66 $) — le calcul appliquait les valeurs de 2024",
         sources: &[
@@ -309,10 +318,7 @@ fn declaree(pays: &Pays) -> Veille {
         ]),
         Pays::Mexique => v(2026, &[]),
         Pays::Bresil => v(2026, &[]),
-        // ae_bulletin.rs : « Données : 2025 ».
-        Pays::Emirats => v(2025, &[
-            "paramètres GPSSA non relevés pour 2026 — valeurs 2025 appliquées (5 % / 12,5 %, plafond 50 000 AED)",
-        ]),
+        Pays::Emirats => v(2026, &[]),
         Pays::Inde => v(2026, &[]),
     }
 }

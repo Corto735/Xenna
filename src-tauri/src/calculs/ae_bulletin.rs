@@ -4,9 +4,14 @@
 // d'information le rappelle. National émirati (`emirati_national`) : régime de
 // retraite GPSSA — salarié 5 % + employeur 12,5 % (l'État abonde 2,5 %
 // supplémentaires, hors bulletin). Assiette contributive plafonnée à 50 000 AED.
-// Devise AED. Données : 2025.
+// C'est le régime de la loi fédérale 7/1999, qui reste celui des Émiratis employés
+// avant le 31/10/2023 (paramètres inchangés en 2026). Le décret-loi 57/2023 (entrées
+// depuis cette date : salarié 11 %, employeur 15 % dont 2,5 % pris en charge par
+// l'État sous 20 000 AED, plafond 70 000 AED) n'est pas modélisé : le simulateur ne
+// connaît pas la date d'embauche.
+// Devise AED. Données : 2025-2026.
 //
-// Sources : Federal Decree-Law No. 57 of 2023 (pensions & social securities) ;
+// Sources : Federal Law No. 7 of 1999 ; Federal Decree-Law No. 57 of 2023 ;
 // General Pension and Social Security Authority (GPSSA).
 
 use rust_decimal::Decimal;
