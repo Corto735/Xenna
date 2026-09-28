@@ -4,30 +4,54 @@
 // (art. 96 LISR, méthode cuota fija + % sur l'excédent) diminué du subsidio al
 // empleo. Employeur : INFONAVIT 5 % + retiro SAR 2 % (l'IMSS patronal complet —
 // enfermedad, IV, guarderías, riesgos — n'est pas détaillé, lacune assumée).
-// Devise MXN. Données : 2025 (2026 reconduit). Taux obrero/patronaux en base ;
+// Devise MXN. Données : 2025 et 2026. Taux obrero/patronaux en base ;
 // barème ISR, UMA et subsidio en Rust.
 //
 // Sources : Ley del Seguro Social art. 25-36 ; Ley del ISR art. 96 ;
-// Ley del INFONAVIT art. 29 ; DOF 01/05/2024 (subsidio al empleo).
+// Ley del INFONAVIT art. 29 ; DOF 31/12/2024 et 31/12/2025 (subsidio al empleo) ;
+// Anexo 8 RMF 2026 (tarif ISR).
 
-use chrono::Datelike;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// UMA mensuelle (valeur journalière × 30,4) et subsidio, par année.
-fn params_mx(annee: i32) -> (Decimal, Decimal, Decimal) {
-    // (UMA mensuelle, seuil subsidio, montant subsidio)
-    match annee {
-        2025 | 2026 => (dec!(3439.46), dec!(9081.00), dec!(406.83)), // UMA 113,14 $/j × 30,4
-        _           => (dec!(3439.46), dec!(9081.00), dec!(406.83)),
+/// (UMA mensuelle, plafond de revenu du subsidio, montant du subsidio) à une date.
+/// L'UMA change au 1ᵉʳ février (INEGI) : 113,14 $/j (2025), 117,31 $/j (2026),
+/// × 30,4. Subsidio al empleo (décrets DOF du 31/12/2024 et du 31/12/2025) :
+/// 13,8 % de l'UMA mensuelle en 2025 (≤ 10 171 $) ; 15,59 % en janvier 2026 puis
+/// 15,02 % (≤ 11 492,66 $).
+fn params_mx(d: NaiveDate) -> (Decimal, Decimal, Decimal) {
+    let fev = |a: i32| NaiveDate::from_ymd_opt(a, 2, 1).unwrap();
+    let uma = if d >= fev(2026) { dec!(3566.22) }
+              else if d >= fev(2025) { dec!(3439.46) }
+              else { dec!(3300.53) };
+    match d.year() {
+        i32::MIN..=2025 => (uma, dec!(10171.00), dec!(474.65)),
+        _ if d < fev(2026) => (uma, dec!(11492.66), dec!(536.21)),
+        _ => (uma, dec!(11492.66), dec!(535.65)),
     }
 }
 
 /// Barème ISR mensuel (art. 96 LISR) : (limite inférieure, cuota fija, taux).
+/// 2023-2025 : Anexo 8 RMF 2023 ; 2026 : Anexo 8 RMF 2026 (DOF 28/12/2025).
 fn bareme_isr(annee: i32) -> [(Decimal, Decimal, Decimal); 11] {
-    let _ = annee; // stable 2025-2026
+    if annee >= 2026 {
+        return [
+            (dec!(0.01),       dec!(0.00),       dec!(0.0192)),
+            (dec!(844.60),     dec!(16.22),      dec!(0.0640)),
+            (dec!(7168.52),    dec!(420.95),     dec!(0.1088)),
+            (dec!(12598.03),   dec!(1011.68),    dec!(0.1600)),
+            (dec!(14644.65),   dec!(1339.14),    dec!(0.1792)),
+            (dec!(17533.65),   dec!(1856.84),    dec!(0.2136)),
+            (dec!(35362.84),   dec!(5665.16),    dec!(0.2352)),
+            (dec!(55736.69),   dec!(10457.09),   dec!(0.3000)),
+            (dec!(106410.51),  dec!(25659.23),   dec!(0.3200)),
+            (dec!(141880.67),  dec!(37009.69),   dec!(0.3400)),
+            (dec!(425642.00),  dec!(133488.54),  dec!(0.3500)),
+        ];
+    }
     [
         (dec!(0.01),       dec!(0.00),       dec!(0.0192)),
         (dec!(746.05),     dec!(14.32),      dec!(0.0640)),
@@ -81,10 +105,10 @@ pub fn generer_bulletin_mx(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     if !(2025..=2026).contains(&annee) {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "MXN", "MX",
-            "Mexique : données disponibles pour 2025 (2026 reconduit).", ctx);
+            "Mexique : données disponibles pour 2025 et 2026.", ctx);
     }
 
-    let (uma_mensuelle, seuil_subsidio, subsidio) = params_mx(annee);
+    let (uma_mensuelle, seuil_subsidio, subsidio) = params_mx(ctx.date_paie);
     let mut cotisations = Vec::new();
 
     // ── IMSS obrero (base) ───────────────────────────────────
@@ -125,15 +149,17 @@ pub fn generer_bulletin_mx(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         explication: ctx.expl("MX_ISR",
             "Impôt sur le revenu (retención mensual, art. 96 LISR).\nBase : {base} $\n\
             Tranche : limite inférieure {li} $, taux marginal {taux} %\nISR brut : {isr} $\n\
-            − subsidio al empleo : {sub} $ (jusqu'à 406,83 $ pour un revenu ≤ 9 081 $)\n\
-            ISR net : {isrnet} $\nBase légale : Ley del ISR art. 96 ; DOF 01/05/2024 (subsidio).")
+            − subsidio al empleo : {sub} $ (jusqu'à {submax} $ pour un revenu ≤ {seuil} $)\n\
+            ISR net : {isrnet} $\nBase légale : Ley del ISR art. 96 ; décrets du subsidio al empleo.")
             .replace("{base}", &format!("{:.2}", brut))
             .replace("{li}", &format!("{:.2}", li))
             .replace("{taux}", &format!("{:.2}", taux_isr * dec!(100)))
             .replace("{isr}", &format!("{:.2}", isr))
             .replace("{sub}", &format!("{:.2}", sub))
+            .replace("{submax}", &format!("{:.2}", subsidio))
+            .replace("{seuil}", &format!("{:.2}", seuil_subsidio))
             .replace("{isrnet}", &format!("{:.2}", isr_net)),
-        loi_ref: Some(ctx.loi_ref("Ley del ISR art. 96 — DOF 01/05/2024 (subsidio al empleo)")),
+        loi_ref: Some(ctx.loi_ref("Ley del ISR art. 96 — DOF 31/12/2025 (subsidio al empleo)")),
     });
 
     // ── Employeur : INFONAVIT + retiro ───────────────────────

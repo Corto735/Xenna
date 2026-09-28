@@ -56,6 +56,17 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Mexique,
+        objet: "UMA au 1er février (113,14 $/j en 2025, 117,31 $/j en 2026) ; tarif ISR mensuel 2026 (Anexo 8 RMF 2026) ; subsidio al empleo 13,8 % de l'UMA en 2025 (≤ 10 171 $) et 15,02 % en 2026 (≤ 11 492,66 $) — le calcul appliquait les valeurs de 2024",
+        sources: &[
+            "https://kpmg.com/mx/es/tendencias/2026/01/flash-inegi-valor-de-la-uma-para-2026.html",
+            "https://www.sat.gob.mx/minisitio/NormatividadRMFyRGCE/documentos2026/rmf/anexos/Anexo-8-RMF-2026_DOF-28122025.pdf",
+            "https://dof.gob.mx/nota_detalle.php?codigo=5777649&fecha=31%2F12%2F2025",
+            "https://idconline.mx/fiscal-contable/2025/01/02/actualizan-estimulo-del-subsidio-al-empleo-para-2025",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Bresil,
         objet: "INSS 2026 (plancher 1 621 R$, plafond 8 475,55 R$) ; IRRF : table de mai 2025 (exonération jusqu'à 2 428,80 R$, desconto simplificado 607,20 R$) et réduction de la Lei 15.270/2025 dès 2026 (impôt nul jusqu'à 5 000 R$ de revenu, dégressif jusqu'à 7 350 R$)",
         sources: &[
@@ -296,10 +307,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::EtatsUnis => v(2025, &[
             "impôt d'État de Californie : barème 2026 indexé pas encore publié par la FTB (publication à l'automne) — barème 2025 appliqué",
         ]),
-        // mx_bulletin.rs : « Données : 2025 (2026 reconduit) ».
-        Pays::Mexique => v(2025, &[
-            "UMA et barèmes 2026 non intégrés — valeurs 2025 reconduites",
-        ]),
+        Pays::Mexique => v(2026, &[]),
         Pays::Bresil => v(2026, &[]),
         // ae_bulletin.rs : « Données : 2025 ».
         Pays::Emirats => v(2025, &[

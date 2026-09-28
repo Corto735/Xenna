@@ -63,20 +63,20 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
         },
         "MX_ISR" => match lang {
             "en" => "Income tax (monthly withholding, art. 96 LISR).\nBase: {base} $\nBracket: lower limit {li} $, marginal rate {taux} %\n\
-                Gross ISR: {isr} $\n− employment subsidy: {sub} $ (up to 406.83 $ for income ≤ 9,081 $)\nNet ISR: {isrnet} $\n\
-                Legal basis: Ley del ISR art. 96; DOF 01/05/2024.",
+                Gross ISR: {isr} $\n− employment subsidy: {sub} $ (up to {submax} $ for income ≤ {seuil} $)\nNet ISR: {isrnet} $\n\
+                Legal basis: Ley del ISR art. 96; DOF (subsidio al empleo).",
             "de" => "Einkommensteuer (monatlicher Einbehalt, Art. 96 LISR).\nBasis: {base} $\nStufe: Untergrenze {li} $, Grenzsatz {taux} %\n\
-                Brutto-ISR: {isr} $\n− Beschäftigungszuschuss: {sub} $ (bis 406,83 $ bei Einkommen ≤ 9.081 $)\nNetto-ISR: {isrnet} $\n\
-                Rechtsgrundlage: Ley del ISR art. 96; DOF 01/05/2024.",
+                Brutto-ISR: {isr} $\n− Beschäftigungszuschuss: {sub} $ (bis {submax} $ bei Einkommen ≤ {seuil} $)\nNetto-ISR: {isrnet} $\n\
+                Rechtsgrundlage: Ley del ISR art. 96; DOF (subsidio al empleo).",
             "nl" => "Inkomstenbelasting (maandelijkse inhouding, art. 96 LISR).\nGrondslag: {base} $\nSchijf: ondergrens {li} $, marginaal tarief {taux} %\n\
-                Bruto ISR: {isr} $\n− arbeidssubsidie: {sub} $ (tot 406,83 $ bij inkomen ≤ 9.081 $)\nNetto ISR: {isrnet} $\n\
-                Wettelijke basis: Ley del ISR art. 96; DOF 01/05/2024.",
+                Bruto ISR: {isr} $\n− arbeidssubsidie: {sub} $ (tot {submax} $ bij inkomen ≤ {seuil} $)\nNetto ISR: {isrnet} $\n\
+                Wettelijke basis: Ley del ISR art. 96; DOF (subsidio al empleo).",
             "it" => "Imposta sul reddito (ritenuta mensile, art. 96 LISR).\nBase: {base} $\nScaglione: limite inferiore {li} $, aliquota marginale {taux} %\n\
-                ISR lordo: {isr} $\n− sussidio all'impiego: {sub} $ (fino a 406,83 $ per reddito ≤ 9.081 $)\nISR netto: {isrnet} $\n\
-                Base giuridica: Ley del ISR art. 96; DOF 01/05/2024.",
+                ISR lordo: {isr} $\n− sussidio all'impiego: {sub} $ (fino a {submax} $ per reddito ≤ {seuil} $)\nISR netto: {isrnet} $\n\
+                Base giuridica: Ley del ISR art. 96; DOF (subsidio al empleo).",
             "es" => "Impuesto sobre la renta (retención mensual, art. 96 LISR).\nBase: {base} $\nTramo: límite inferior {li} $, tipo marginal {taux} %\n\
-                ISR bruto: {isr} $\n− subsidio al empleo: {sub} $ (hasta 406,83 $ para ingreso ≤ 9.081 $)\nISR neto: {isrnet} $\n\
-                Base legal: Ley del ISR art. 96; DOF 01/05/2024.",
+                ISR bruto: {isr} $\n− subsidio al empleo: {sub} $ (hasta {submax} $ para ingreso ≤ {seuil} $)\nISR neto: {isrnet} $\n\
+                Base legal: Ley del ISR art. 96; DOF (subsidio al empleo).",
             _ => return None,
         },
         "MX_INFONAVIT" => match lang {
