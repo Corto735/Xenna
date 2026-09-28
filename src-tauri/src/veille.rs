@@ -56,6 +56,16 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Slovaquie,
+        objet: "2026 : plafond social 16 764 €/mois ; assurance maladie salarié 5 % (hausse temporaire 2026-2027) ; nouvelles tranches d'impôt à 30 % et 35 % au-delà de 5 029,10 et 6 250,86 €/mois (3ᵉ paquet de consolidation)",
+        sources: &[
+            "https://www.socpoist.sk/news/nove-vymeriavacie-zaklady-pre-platenie-poistneho-od-1-januara-2026",
+            "https://www.vszp.sk/platitelia/platenie-poistneho/oznamenia-zmeny/zmeny-od-01-01.2026/",
+            "https://www.podnikajte.sk/dan-z-prijmov/progresivne-zdanenie-prijmov-fyzickych-osob-od-2026",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Belgique,
         objet: "Revenus 2026 : tranches 16 720 / 29 510 / 51 070 €, quotité exemptée 11 180 €, forfait de frais professionnels plafonné à 6 070 € ; tranches 2025 corrigées (16 320 / 28 800 / 49 840 €)",
         sources: &[
@@ -264,10 +274,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Lituanie => v(2026, &[]),
         Pays::Autriche => v(2026, &[]),
         Pays::Tchequie => v(2026, &[]),
-        // sk_bulletin.rs : plafond social 2025 reconduit faute de valeur sourcée.
-        Pays::Slovaquie => v(2025, &[
-            "plafond social 2026 non sourcé — plafond 2025 (15 730 €/mois) reconduit ; seuls les salaires au-delà sont concernés",
-        ]),
+        Pays::Slovaquie => v(2026, &[]),
         Pays::Hongrie => v(2026, &[]),
         Pays::Slovenie => v(2026, &[]),
         Pays::Grece => v(2026, &[]),

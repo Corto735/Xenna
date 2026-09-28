@@ -515,18 +515,18 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "Seguro de enfermedad — trabajador {ts} % / empleador {tp} %.",
         ],
         "SK_SOCIALNE" => [
-            "Social security — employee {ts} % / employer {tp} %. Base capped at 15,730 €/month.",
-            "Sozialversicherung — Arbeitnehmer {ts} % / Arbeitgeber {tp} %. Bemessungsgrundlage gedeckelt auf 15.730 €/Monat.",
-            "Sociale zekerheid — werknemer {ts} % / werkgever {tp} %. Grondslag begrensd op 15.730 €/maand.",
-            "Sicurezza sociale — dipendente {ts} % / datore di lavoro {tp} %. Base limitata a 15.730 €/mese.",
-            "Seguridad social — trabajador {ts} % / empleador {tp} %. Base limitada a 15.730 €/mes.",
+            "Social security — employee {ts} % / employer {tp} %. Base capped at {plaf} €/month.",
+            "Sozialversicherung — Arbeitnehmer {ts} % / Arbeitgeber {tp} %. Bemessungsgrundlage gedeckelt auf {plaf} €/Monat.",
+            "Sociale zekerheid — werknemer {ts} % / werkgever {tp} %. Grondslag begrensd op {plaf} €/maand.",
+            "Sicurezza sociale — dipendente {ts} % / datore di lavoro {tp} %. Base limitata a {plaf} €/mese.",
+            "Seguridad social — trabajador {ts} % / empleador {tp} %. Base limitada a {plaf} €/mes.",
         ],
         "SK_DAN" => [
-            "Income tax 2025.\n\nBase = gross − employee contributions − tax-free part 479.48 € = {b} €\n19 % up to 4,036.79 €/month, 25 % above → {im} €/month.\n\nNote: tapering of the tax-free part not modelled (conservative net).\nSource: Finančná správa.",
-            "Einkommensteuer 2025.\n\nBemessung = brutto − AN-Beiträge − steuerfreier Teil 479,48 € = {b} €\n19 % bis 4.036,79 €/Monat, 25 % darüber → {im} €/Monat.\n\nHinweis: Abschmelzung des steuerfreien Teils nicht modelliert (vorsichtiger Nettowert).\nQuelle: Finančná správa.",
-            "Inkomstenbelasting 2025.\n\nGrondslag = bruto − werknemersbijdragen − belastingvrij deel 479,48 € = {b} €\n19 % tot 4.036,79 €/maand, 25 % daarboven → {im} €/maand.\n\nNoot: afbouw van het belastingvrije deel niet gemodelleerd (voorzichtig netto).\nBron: Finančná správa.",
-            "Imposta sul reddito 2025.\n\nBase = lordo − contributi dipendente − parte esente 479,48 € = {b} €\n19 % fino a 4.036,79 €/mese, 25 % oltre → {im} €/mese.\n\nNota: decrescenza della parte esente non modellata (netto prudente).\nFonte: Finančná správa.",
-            "Impuesto sobre la renta 2025.\n\nBase = bruto − cotizaciones del trabajador − parte exenta 479,48 € = {b} €\n19 % hasta 4.036,79 €/mes, 25 % por encima → {im} €/mes.\n\nNota: decrecimiento de la parte exenta no modelado (neto prudente).\nFuente: Finančná správa.",
+            "Income tax {annee}.\n\nBase = gross − employee contributions − tax-free part {nczd} € = {b} €\nMonthly scale: {bareme} → {im} €/month.\n\nNote: tapering of the tax-free part not modelled (conservative net).\nSource: Finančná správa.",
+            "Einkommensteuer {annee}.\n\nBemessung = brutto − AN-Beiträge − steuerfreier Teil {nczd} € = {b} €\nMonatstarif: {bareme} → {im} €/Monat.\n\nHinweis: Abschmelzung des steuerfreien Teils nicht modelliert (vorsichtiger Nettowert).\nQuelle: Finančná správa.",
+            "Inkomstenbelasting {annee}.\n\nGrondslag = bruto − werknemersbijdragen − belastingvrij deel {nczd} € = {b} €\nMaandschaal: {bareme} → {im} €/maand.\n\nNoot: afbouw van het belastingvrije deel niet gemodelleerd (voorzichtig netto).\nBron: Finančná správa.",
+            "Imposta sul reddito {annee}.\n\nBase = lordo − contributi dipendente − parte esente {nczd} € = {b} €\nScaglioni mensili: {bareme} → {im} €/mese.\n\nNota: decrescenza della parte esente non modellata (netto prudente).\nFonte: Finančná správa.",
+            "Impuesto sobre la renta {annee}.\n\nBase = bruto − cotizaciones del trabajador − parte exenta {nczd} € = {b} €\nEscala mensual: {bareme} → {im} €/mes.\n\nNota: decrecimiento de la parte exenta no modelado (neto prudente).\nFuente: Finančná správa.",
         ],
         // ── Nouvelle-Zélande ──
         "NZ_PAYE" => [

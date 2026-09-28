@@ -10,9 +10,11 @@
 //
 // 2026 :
 //   • Nezdaniteľná časť 497,23 €/mois (21× životné minimum 284,13 € de juillet 2025).
-//   • Daň : 19 % jusqu'à 176,8× ŽM = 4 186,18 €/mois, 25 % au-delà.
-//   • Taux sociaux/santé inchangés (lus en base). Plafond social 2025 (15 730 €/mois)
-//     reconduit faute de valeur 2026 sourcée — n'affecte que les revenus > 15 730 €/mois.
+//   • Daň : 19 % jusqu'à 176,8× ŽM = 4 186,18 €/mois, 25 %, puis 30 % (212,4× ŽM)
+//     et 35 % (264× ŽM).
+//   • Santé salarié 5 % (hausse temporaire de consolidation, 2026-2027), employeur
+//     11 % (lus en base) ; sociaux inchangés. Plafond social 16 764 €/mois
+//     (11 × salaire moyen 2024 de 1 524 €, Sociálna poisťovňa).
 // Source : Sociálna poisťovňa ; ÚDZS ; Finančná správa (daň 2025 et 2026 ; NČZD 2026).
 
 use chrono::Datelike;
@@ -38,8 +40,9 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let ts_z = ctx.taux_sal("SK_ZDRAVOTNE");
     let tp_z = ctx.taux_pat("SK_ZDRAVOTNE");
     let z_sal = (brut * ts_z).round_dp(2);
-    // Social (assiette plafonnée à 15 730 €/mois).
-    let assiette_soc = brut.min(dec!(15730));
+    // Social (assiette plafonnée : 15 730 €/mois en 2025, 16 764 € en 2026).
+    let plafond_soc = if annee >= 2026 { dec!(16764) } else { dec!(15730) };
+    let assiette_soc = brut.min(plafond_soc);
     let ts_s = ctx.taux_sal("SK_SOCIALNE");
     let tp_s = ctx.taux_pat("SK_SOCIALNE");
     let s_sal = (assiette_soc * ts_s).round_dp(2);
@@ -61,7 +64,8 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             taux_pat: tp_s, montant_pat: (assiette_soc * tp_s).round_dp(2),
             categorie: "Sécurité sociale".into(),
             explication: ctx.expl("SK_SOCIALNE",
-                "Sécurité sociale — salarié {ts} % / employeur {tp} %. Assiette plafonnée à 15 730 €/mois.")
+                "Sécurité sociale — salarié {ts} % / employeur {tp} %. Assiette plafonnée à {plaf} €/mois.")
+                .replace("{plaf}", &plafond_soc.to_string())
                 .replace("{ts}", &format!("{:.2}", ts_s * dec!(100)))
                 .replace("{tp}", &format!("{:.2}", tp_s * dec!(100))),
             loi_ref: Some(ctx.loi_ref("Zákon o sociálnom poistení")),
@@ -70,9 +74,25 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     // Daň z príjmov : base = brut − cotisations salariales − part non imposable.
     let base = (brut - z_sal - s_sal - nczd).max(Decimal::ZERO);
-    let part_haute = (base - seuil).max(Decimal::ZERO);
-    let part_basse = base - part_haute;
-    let impot = (part_basse * dec!(0.19) + part_haute * dec!(0.25)).round_dp(2);
+    // Tranches mensuelles : 19 / 25 % jusqu'en 2025 ; dès 2026, 30 % au-delà de
+    // 212,4 × ŽM (5 029,10 €) et 35 % au-delà de 264 × ŽM (6 250,86 €) — 3ᵉ paquet
+    // de consolidation (loi du 24/09/2025), ŽM = 284,13 €.
+    let tranches: Vec<(Decimal, Decimal)> = if annee >= 2026 {
+        vec![(seuil, dec!(0.19)), (dec!(5029.10), dec!(0.25)), (dec!(6250.86), dec!(0.30)), (Decimal::MAX, dec!(0.35))]
+    } else {
+        vec![(seuil, dec!(0.19)), (Decimal::MAX, dec!(0.25))]
+    };
+    let mut impot = Decimal::ZERO;
+    let mut bas = Decimal::ZERO;
+    for (haut, t) in &tranches {
+        if base > bas { impot += (base.min(*haut) - bas) * t; }
+        bas = *haut;
+    }
+    let impot = impot.round_dp(2);
+    let bareme = tranches.iter().map(|(haut, t)| {
+        let pct = format!("{} %", (t * dec!(100)).normalize());
+        if *haut == Decimal::MAX { pct } else { format!("{pct} ≤ {:.2} €", haut) }
+    }).collect::<Vec<_>>().join(" < ");
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "SK_DAN".into(),
@@ -83,12 +103,12 @@ pub fn generer_bulletin_sk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         explication: ctx.expl("SK_DAN",
             "Impôt sur le revenu {annee}.\n\n\
             Base = brut − cotisations salariales − part non imposable {nczd} € = {b} €\n\
-            19 % jusqu'à {seuil} €/mois, 25 % au-delà → {im} €/mois.\n\n\
+            Barème mensuel : {bareme} → {im} €/mois.\n\n\
             Note : dégressivité de la part non imposable non modélisée (net prudent).\n\
             Source : Finančná správa.")
             .replace("{annee}", &annee.to_string())
             .replace("{nczd}", &format!("{:.2}", nczd))
-            .replace("{seuil}", &format!("{:.2}", seuil))
+            .replace("{bareme}", &bareme)
             .replace("{b}", &format!("{:.2}", base))
             .replace("{im}", &format!("{:.2}", impot)),
         loi_ref: Some(ctx.loi_ref("Zákon o dani z príjmov")),
