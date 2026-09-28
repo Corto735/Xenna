@@ -90,11 +90,11 @@ pub fn message(code_pays: &str, lang: &str) -> Option<String> {
             "datos disponibles desde 2015 (creación del IRPF).",
         ],
         "AU" | "NZ" => [
-            "data available for fiscal years 2014-15 to 2025-26.",
-            "Daten verfügbar für die Steuerjahre 2014-15 bis 2025-26.",
-            "gegevens beschikbaar voor de belastingjaren 2014-15 tot 2025-26.",
-            "dati disponibili per gli anni fiscali dal 2014-15 al 2025-26.",
-            "datos disponibles para los ejercicios fiscales 2014-15 a 2025-26.",
+            "data available for fiscal years 2014-15 to 2026-27.",
+            "Daten verfügbar für die Steuerjahre 2014-15 bis 2026-27.",
+            "gegevens beschikbaar voor de belastingjaren 2014-15 tot 2026-27.",
+            "dati disponibili per gli anni fiscali dal 2014-15 al 2026-27.",
+            "datos disponibles para los ejercicios fiscales 2014-15 a 2026-27.",
         ],
         _ => return None,
     };

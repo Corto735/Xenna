@@ -33,14 +33,26 @@ pub fn irpef_annuel(revenu: Decimal, annee: i32) -> Decimal {
         } else {
             dec!(14400) + (revenu - dec!(50000)) * dec!(0.43)
         }
-    } else {
-        // 3 tranches (L. 213/2023 — Bilancio 2024)
+    } else if annee <= 2025 {
+        // 3 tranches (L. 213/2023 — Bilancio 2024, rendu structurel par L. 207/2024)
         if revenu <= dec!(28000) {
             revenu * dec!(0.23)
         } else if revenu <= dec!(50000) {
             dec!(6440) + (revenu - dec!(28000)) * dec!(0.35)
         } else {
             dec!(14140) + (revenu - dec!(50000)) * dec!(0.43)
+        }
+    } else {
+        // 3 tranches, 2ᵉ ramenée de 35 à 33 % au 01/01/2026 (L. 199/2025 art. 1 c. 3 —
+        // Bilancio 2026). La « sterilizzazione » au-delà de 200 000 € de revenu passe par
+        // une réduction des détractions pour charges (oneri), réglée à la déclaration :
+        // elle ne touche pas la retenue mensuelle de l'employeur.
+        if revenu <= dec!(28000) {
+            revenu * dec!(0.23)
+        } else if revenu <= dec!(50000) {
+            dec!(6440) + (revenu - dec!(28000)) * dec!(0.33)
+        } else {
+            dec!(13700) + (revenu - dec!(50000)) * dec!(0.43)
         }
     }
 }
@@ -221,7 +233,11 @@ pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         montant_pat: Decimal::ZERO,
         categorie:   "Imposta".into(),
         explication,
-        loi_ref: Some(ctx.loi_ref("DPR 917/1986 art. 11 et 23 (TUIR) — L. 213/2023 (Bilancio 2024)")),
+        loi_ref: Some(ctx.loi_ref(if annee >= 2026 {
+            "DPR 917/1986 art. 11 et 23 (TUIR) — L. 199/2025 (Bilancio 2026)"
+        } else {
+            "DPR 917/1986 art. 11 et 23 (TUIR) — L. 213/2023 (Bilancio 2024)"
+        })),
     }
 }
 

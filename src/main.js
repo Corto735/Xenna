@@ -3016,9 +3016,11 @@ let _veilleTousCharge = false;
 async function _veilleTableau() {
   const el = document.getElementById('apropos-veille');
   if (!el || _veilleTousCharge) return;
-  let liste;
+  let liste, journal = [];
   try { liste = await api('veille_baremes_tous', {}); }
   catch (e) { console.warn('[veille_baremes_tous] indisponible :', e); return; }
+  try { journal = await api('journal_baremes', {}); }
+  catch (e) { console.warn('[journal_baremes] indisponible :', e); }
   _veilleTousCharge = true;
 
   // « À jour » s'entend de l'année du relevé, comme dans tests/fiabilite.rs.
@@ -3035,8 +3037,17 @@ async function _veilleTableau() {
       <td class="vt-pays">${nom(v)}</td>
       <td class="vt-annee">${ok ? '✓' : '⚠'} ${v.integre_jusqu_a}</td>
       <td class="vt-lacunes">${ok ? '—' : v.lacunes.map(esc).join('<br>')}</td>
+      <td class="vt-maj">${v.derniere_maj ? formatDate(v.derniere_maj) : '—'}</td>
     </tr>`;
   };
+  // Journal : ce qui a été intégré, quand, et d'après quelle source.
+  const domaine = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+  const entree = m => `<li><span class="vj-date">${formatDate(m.date)}</span>
+      <span class="vj-pays">${nom(m)}</span> — ${esc(m.objet)}
+      <span class="vj-src">${m.sources.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(domaine(u))}</a>`).join(' · ')}</span></li>`;
+  const journalHtml = journal.length ? `
+    <div class="vt-intro" style="margin-top:1rem">Journal des mises à jour — chaque valeur intégrée, datée et sourcée :</div>
+    <ul class="veille-journal">${journal.map(entree).join('')}</ul>` : '';
   el.innerHTML = `
     <div class="vt-intro">
       Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge les
@@ -3045,9 +3056,9 @@ async function _veilleTableau() {
       Relevé du ${formatDate(audit)}.
     </div>
     <div class="vt-scroll"><table class="veille-tableau">
-      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th></tr></thead>
+      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th><th>Dernière mise à jour</th></tr></thead>
       <tbody>${enRetard.map(ligne).join('')}${aJour.map(ligne).join('')}</tbody>
-    </table></div>`;
+    </table></div>${journalHtml}`;
 }
 
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────

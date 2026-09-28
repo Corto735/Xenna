@@ -93,7 +93,7 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
         // ── Nouvelle-Zélande ──
         "NZ_PAYE" => ["PAYE — Income tax", "PAYE — Einkommensteuer", "PAYE — Inkomstenbelasting", "PAYE — Imposta sul reddito", "PAYE — Impuesto sobre la renta"],
         "NZ_ACC" => ["ACC earner's levy — Accident insurance", "ACC earner's levy — Unfallversicherung", "ACC earner's levy — Ongevallenverzekering", "ACC earner's levy — Assicurazione infortuni", "ACC earner's levy — Seguro de accidentes"],
-        "NZ_KIWISAVER_EMP" => ["KiwiSaver — Pension (employer, default 3 %)", "KiwiSaver — Rente (Arbeitgeber, Standard 3 %)", "KiwiSaver — Pensioen (werkgever, standaard 3 %)", "KiwiSaver — Pensione (datore di lavoro, predefinito 3 %)", "KiwiSaver — Pensión (empleador, por defecto 3 %)"],
+        "NZ_KIWISAVER_EMP" => ["KiwiSaver — Pension (employer, default {t} %)", "KiwiSaver — Rente (Arbeitgeber, Standard {t} %)", "KiwiSaver — Pensioen (werkgever, standaard {t} %)", "KiwiSaver — Pensione (datore di lavoro, predefinito {t} %)", "KiwiSaver — Pensión (empleador, por defecto {t} %)"],
         // ── Pays-Bas ──
         "NL_ZVW" => ["Zvw — Health insurance", "Zvw — Krankenversicherung", "Zvw — Zorgverzekering", "Zvw — Assicurazione sanitaria", "Zvw — Seguro de salud"],
         "NL_AWF" => ["AWf — Unemployment (WW)", "AWf — Arbeitslosigkeit (WW)", "AWf — Werkloosheid (WW)", "AWf — Disoccupazione (WW)", "AWf — Desempleo (WW)"],

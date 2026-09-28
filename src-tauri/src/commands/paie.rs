@@ -15,7 +15,7 @@ use crate::{
     calculs::{generer_bulletin, generer_annee, paye_inverse},
     db::ContextPaie,
     models::{AbsenceInput, Bulletin, Pays, Salarie, SimulationAnnuelle, Statut},
-    veille::{veille, veille_tous, Veille, VeillePays},
+    veille::{journal, veille, veille_tous, MiseAJour, Veille, VeillePays},
 };
 
 #[tauri::command]
@@ -90,4 +90,10 @@ pub fn veille_baremes(pays: Pays) -> Veille {
 #[tauri::command]
 pub fn veille_baremes_tous() -> Vec<VeillePays> {
     veille_tous()
+}
+
+/// Journal daté des mises à jour de barèmes (page « À propos »).
+#[tauri::command]
+pub fn journal_baremes() -> Vec<MiseAJour> {
+    journal().to_vec()
 }

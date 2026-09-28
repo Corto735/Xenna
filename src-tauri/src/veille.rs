@@ -33,6 +33,83 @@ pub struct Veille {
     /// (une lacune peut ne porter que sur une partie de l'année).
     pub lacunes: &'static [&'static str],
     pub audit_du: &'static str,
+    /// Date de la dernière entrée du `JOURNAL` pour ce régime, s'il y en a une.
+    pub derniere_maj: Option<&'static str>,
+}
+
+/// Une mise à jour de barèmes, datée et sourcée : ce que le visiteur lit pour
+/// juger de la fraîcheur d'un régime. On n'y inscrit que ce qui a réellement
+/// été intégré au code ou à la base, avec la source consultée.
+#[derive(Debug, Clone, Serialize)]
+pub struct MiseAJour {
+    /// Date de l'intégration (AAAA-MM-JJ).
+    pub date: &'static str,
+    pub pays: Pays,
+    /// Ce qui a changé, valeurs et date d'effet comprises.
+    pub objet: &'static str,
+    /// Source(s) officielle(s) ou, à défaut, presse spécialisée concordante.
+    pub sources: &'static [&'static str],
+}
+
+/// Journal des mises à jour, du plus récent au plus ancien. Qui intègre des
+/// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
+pub const JOURNAL: &[MiseAJour] = &[
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Irlande,
+        objet: "PRSI Class A : 4,2 % / 11,25 % dès le 01/10/2025 et 4,35 % / 11,40 % dès le 01/10/2026 (au lieu de 4,2 % / 11,15 % toute l'année) ; taux employeur réduit sous 552 €/semaine et crédit PRSI salarié désormais appliqués",
+        sources: &[
+            "https://assets.gov.ie/static/documents/cb168977/PRSI_C20260116_Contribution_Rates_and_User_Guide_-_SW_14_-_English_Version_-_January_2026_.pdf-web.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::NouvelleZelande,
+        objet: "Exercice 2026-27 (dès le 01/04/2026) : ACC earner's levy 1,75 % plafonné à 156 641 $ ; KiwiSaver employeur 3,5 % (4 % au 01/04/2028) ; barème PAYE inchangé ; calcul désormais par exercice (avril-mars)",
+        sources: &[
+            "https://www.ird.govt.nz/kiwisaver-changes",
+            "https://www.ird.govt.nz/updates/news-folder/2026/changes-to-the-kiwisaver-contribution-rate",
+            "https://nztax.tools/tax-insights/acc-earner-levy-2026-27/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Angleterre,
+        objet: "Exercices 2025/26 et 2026/27 : NI employeur 15 % au-delà d'un Secondary Threshold de £5 000 (au lieu de 13,8 % / £9 100) ; seuils salariaux et d'impôt gelés ; calcul désormais par exercice fiscal (6 avril)",
+        sources: &[
+            "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027",
+            "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2025-to-2026",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::Italia,
+        objet: "IRPEF 2026 : 2ᵉ tranche (28 000-50 000 €) ramenée de 35 à 33 % au 01/01/2026 — L. 199/2025 (Bilancio 2026)",
+        sources: &[
+            "https://www.mef.gov.it/focus/Principali-misure-della-legge-di-bilancio-2026/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::FonctionPublique,
+        objet: "CNRACL : taux employeur 34,65 % (2025), 37,65 % (2026), 40,65 % (2027), 43,65 % (2028) — décret n° 2025-86 ; part agent inchangée (11,10 %)",
+        sources: &["https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051070354"],
+    },
+    MiseAJour {
+        date: "2026-09-28",
+        pays: Pays::France,
+        objet: "AGS : historique corrigé 2015-2026 — 0,30 % (2015), 0,25 % (2016), 0,20 % (1er sem. 2017), 0,15 % (07/2017-2023), 0,20 % (1er sem. 2024), 0,25 % depuis le 01/07/2024, maintenu en 2026",
+        sources: &[
+            "https://entreprendre.service-public.gouv.fr/actualites/A17906",
+            "https://www.legisocial.fr/actualites-sociales/1751-la-cotisation-ags-passe-025-au-1er-janvier-2016.html",
+            "https://www.legisocial.fr/actualites-sociales/2262-diminution-de-la-cotisation-ags-qui-passe-015-au-1er-juillet-2017.html",
+        ],
+    },
+];
+
+/// Le journal complet (tableau « À propos » du front).
+pub fn journal() -> &'static [MiseAJour] {
+    JOURNAL
 }
 
 /// Veille d'un régime, étiquetée de son pays (tableau récapitulatif du front).
@@ -51,29 +128,26 @@ pub fn veille_tous() -> Vec<VeillePays> {
 }
 
 const fn v(integre_jusqu_a: i32, lacunes: &'static [&'static str]) -> Veille {
-    Veille { integre_jusqu_a, lacunes, audit_du: AUDIT_DU }
+    Veille { integre_jusqu_a, lacunes, audit_du: AUDIT_DU, derniere_maj: None }
 }
 
 pub fn veille(pays: &Pays) -> Veille {
+    let mut v = declaree(pays);
+    v.derniere_maj = JOURNAL.iter().filter(|m| m.pays == *pays).map(|m| m.date).max();
+    v
+}
+
+/// Fraîcheur déclarée d'un régime, relevée à la main (voir l'en-tête).
+fn declaree(pays: &Pays) -> Veille {
     match pays {
-        // AGS : 0,15 % en base depuis 2024 ; le dossier de complétion relève 0,20 %
-        // au 01/07/2024 puis 0,25 % (CA de l'AGS du 16/12/2025).
-        Pays::France => v(2023, &[
-            "AGS : 0,20 % au 01/07/2024 puis 0,25 % (CA de l'AGS du 16/12/2025) non intégrés — la base applique 0,15 %",
-        ]),
-        // FPT_CNRACL : 30,65 % patronal en base depuis le 01/01/2019.
-        Pays::FonctionPublique => v(2024, &[
-            "CNRACL : relèvement pluriannuel du taux employeur à partir de 2025 non intégré — la base applique 30,65 % (taux 2019) ; texte à sourcer",
-        ]),
+        Pays::France => v(2026, &[]),
+        Pays::FonctionPublique => v(2026, &[]),
         // ch_is.rs : « valeurs 2025 » (ORIS 2025) ; cotisations 2026 en base.
         Pays::Suisse => v(2025, &[
             "impôt à la source : barèmes cantonaux 2026 non intégrés — barèmes 2025 appliqués",
         ]),
         Pays::Luxembourg => v(2026, &[]),
-        // it_irpef.rs : branches jusqu'à 2025.
-        Pays::Italia => v(2025, &[
-            "IRPEF 2026 : 2ᵉ tranche ramenée de 35 à 33 % non intégrée — barème 2025 appliqué",
-        ]),
+        Pays::Italia => v(2026, &[]),
         // ca_impot.rs : branche « 2024+ » (fédéral) et MPB Ontario 2024 ;
         // cotisations RPC/AE jusqu'en 2026.
         Pays::Canada => v(2024, &[
@@ -99,10 +173,7 @@ pub fn veille(pays: &Pays) -> Veille {
         Pays::Belgique => v(2025, &[
             "précompte professionnel 2026 non intégré — barème 2025 appliqué",
         ]),
-        // uk_cotisations.rs : exercice 2024/25 ; UK_NI_PAT 13,8 % depuis le 06/04/2024.
-        Pays::Angleterre => v(2024, &[
-            "exercices 2025/26 et 2026/27 non intégrés (NI employeur 15 % et seuil £5 000 depuis le 06/04/2025) — seuils et taux 2024/25 appliqués",
-        ]),
+        Pays::Angleterre => v(2026, &[]),
         // JP_KENPO / JP_KOYO depuis 2024, plafonds 2024, 基礎控除 2024.
         Pays::Japon => v(2024, &[
             "協会けんぽ, 雇用保険 et 子育て支援金 postérieurs à 2024 non intégrés — taux et plafonds 2024 appliqués",
@@ -116,10 +187,7 @@ pub fn veille(pays: &Pays) -> Veille {
         Pays::Australie => v(2025, &[
             "exercice 2026-27 (dès le 01/07/2026, 2ᵉ tranche de 16 à 15 %) non intégré — barème 2025-26 appliqué à toute l'année 2026",
         ]),
-        // nz_bulletin.rs : ACC 1,67 % pour 2026 ; NZ_KIWISAVER_EMP 3 % en base.
-        Pays::NouvelleZelande => v(2025, &[
-            "ACC 1,75 % et KiwiSaver 3,5 % (dès le 01/04/2026) non intégrés — 1,67 % et 3 % appliqués",
-        ]),
+        Pays::NouvelleZelande => v(2026, &[]),
         Pays::Pologne => v(2026, &[]),
         Pays::CoreeDuSud => v(2026, &[]),
         Pays::Andorre => v(2026, &[]),
@@ -142,10 +210,7 @@ pub fn veille(pays: &Pays) -> Veille {
         Pays::Chypre => v(2026, &[]),
         Pays::Malte => v(2026, &[]),
         Pays::Croatie => v(2026, &[]),
-        // ie_bulletin.rs : « la hausse PRSI de +0,15 % au 1ᵉʳ octobre 2026 n'est pas modélisée ».
-        Pays::Irlande => v(2025, &[
-            "PRSI : hausse de 0,15 point au 01/10/2026 non modélisée — 4,2 % appliqué toute l'année",
-        ]),
+        Pays::Irlande => v(2026, &[]),
         Pays::Roumanie => v(2026, &[]),
         Pays::Bulgarie => v(2026, &[]),
         // us_impot.rs : « 2026 reconduit sur le barème 2025 ».

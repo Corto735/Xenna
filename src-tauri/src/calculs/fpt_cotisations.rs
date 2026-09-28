@@ -36,13 +36,14 @@ pub fn fpt_cnracl(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             \n\
             Montée en charge 2012-2019 (décret n°2011-291) :\n\
             2016 : 10,29 % — 2017 : 10,56 % — 2018 : 10,83 % — 2019+ : 11,10 %\n\
-            Taux collectivité stable : 30,65 % (vs ≈ 16 % total en privé)\n\
+            Taux collectivité : 30,65 % jusqu'en 2024, puis relevé de 3 points par an \
+            (décret n°2025-86) : 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028\n\
             \n\
             Taux appliqués : agent {ts_pct} % — collectivité {tp_pct} %.")
             .replace("{ts_pct}", &ts_pct.to_string())
             .replace("{tp_pct}", &tp_pct.to_string()),
         loi_ref: Some(ctx.loi_ref(
-            "Décret n°2011-291 du 15/03/2011 — CGFP art. L712-3 et s. — \
+            "Décret n°2011-291 du 15/03/2011 — Décret n°2025-86 du 30/01/2025 — CGFP art. L712-3 et s. — \
             Loi n°83-634 du 13/07/1983 (statut général FP)"
         )),
     }

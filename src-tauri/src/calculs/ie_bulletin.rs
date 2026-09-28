@@ -7,11 +7,17 @@
 //   • Income Tax : 20 % jusqu'à 44 000 €/an, 40 % au-delà ; crédits d'impôt
 //     (personnel 2 000 € + PAYE 2 000 € = 4 000 €).
 //
-// 2026 (Budget 2026) : PRSI Class A salarié 4,2 % (lu en base) ; USC inchangé sauf la
-// bande à 2 % dont le plafond passe de 27 382 € à 28 700 € ; Income Tax et crédits
-// inchangés (tranche standard 44 000 €, crédits 4 000 €).
-// Note : la hausse PRSI de +0,15 % au 1ᵉʳ octobre 2026 n'est pas modélisée (taux annuel
-// retenu = 4,2 %, net prudent).
+// 2026 (Budget 2026) : USC inchangé sauf la bande à 2 % dont le plafond passe de
+// 27 382 € à 28 700 € ; Income Tax et crédits inchangés (tranche 44 000 €, crédits 4 000 €).
+//
+// PRSI Class A (taux en base, périodes du 1ᵉʳ octobre) — guide SW14 de janvier 2026 :
+//   jusqu'au 30/09/2025 : salarié 4,1 %  / employeur 11,15 % (8,90 % sous le seuil)
+//   01/10/2025-30/09/2026 : 4,2 %  / 11,25 % (9,00 % sous le seuil)
+//   dès le 01/10/2026      : 4,35 % / 11,40 % (9,15 % sous le seuil)
+// Le taux employeur réduit (sous-classes A0/AX/AL) vaut 2,25 points de moins que le
+// taux plein, jusqu'à 527 €/semaine en 2025 et 552 €/semaine en 2026. Le salarié ne
+// cotise pas jusqu'à 352 €/semaine (A0) ; entre 352,01 et 424 € (AX), un crédit PRSI de
+// 12 €/semaine, diminué d'un sixième de l'excédent sur 352,01 €, s'impute.
 // Simplification : assiette = brut (PRSI non déductible) ; crédits standard d'un
 // salarié célibataire. Source : Revenue (barème 2025-2026) ; Department of Social Protection.
 
@@ -68,10 +74,22 @@ pub fn generer_bulletin_ie(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     let g = brut * dec!(12);
 
-    // PRSI (taux lus en base).
-    let ts = ctx.taux_sal("IE_PRSI");
-    let tp = ctx.taux_pat("IE_PRSI");
-    let prsi_sal = (brut * ts).round_dp(2);
+    // PRSI (taux pleins lus en base), raisonné à la semaine comme le barème.
+    let hebdo = brut * dec!(12) / dec!(52);
+    let ts_plein = ctx.taux_sal("IE_PRSI");
+    let tp_plein = ctx.taux_pat("IE_PRSI");
+    let seuil_pat = if annee >= 2026 { dec!(552) } else { dec!(527) };
+    let tp = if hebdo <= seuil_pat { tp_plein - dec!(0.0225) } else { tp_plein };
+    let prsi_hebdo = if hebdo <= dec!(352) {
+        Decimal::ZERO
+    } else if hebdo <= dec!(424) {
+        let credit = (dec!(12) - (hebdo - dec!(352.01)) / dec!(6)).max(Decimal::ZERO);
+        (hebdo * ts_plein - credit).max(Decimal::ZERO)
+    } else {
+        hebdo * ts_plein
+    };
+    let prsi_sal = (prsi_hebdo * dec!(52) / dec!(12)).round_dp(2);
+    let ts = if brut > Decimal::ZERO { (prsi_sal / brut).round_dp(4) } else { Decimal::ZERO };
     let mut cotisations = vec![LigneCotisation {
         code: "IE_PRSI".into(),
         libelle: ctx.libelle("IE_PRSI", "PRSI (Class A) — Cotisation sociale"),

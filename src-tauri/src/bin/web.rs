@@ -291,6 +291,11 @@ async fn handle_veille_tous() -> impl IntoResponse {
     Json(xenna_paie_lib::veille::veille_tous())
 }
 
+/// Journal daté des mises à jour de barèmes : statique, sans base.
+async fn handle_journal() -> impl IntoResponse {
+    Json(xenna_paie_lib::veille::journal())
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -385,6 +390,7 @@ async fn main() {
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/veille_baremes", post(handle_veille))
         .route("/api/veille_baremes_tous", post(handle_veille_tous))
+        .route("/api/journal_baremes", post(handle_journal))
         .route("/api/generer_contrat_pdf", post(handle_contrat_pdf))
         .route("/api/generer_bulletin_pdf", post(handle_bulletin_pdf))
         .route("/altcha/challenge", get(altcha_challenge))

@@ -1,6 +1,7 @@
 // ── Cotisations Royaume-Uni — NI Class 1 + Income Tax PAYE ──────────────────
 //
-// Périmètre : salarié secteur privé anglais, année fiscale 2024/25.
+// Périmètre : salarié secteur privé anglais, exercices 2024/25 à 2026/27.
+// L'exercice britannique court du 6 avril au 5 avril : `annee_fiscale`.
 // Taux NI lus depuis ContextPaie (DB). Seuils et barème IT hardcodés par année.
 //
 // Sources légales :
@@ -24,13 +25,23 @@ struct UkSeuils {
     hr_max: Decimal, // Plafond mensuel Higher Rate (40 %)
 }
 
+/// Exercice fiscal (tax year) d'une date de paie : l'exercice « 2025 » est le
+/// 2025/26, du 06/04/2025 au 05/04/2026.
+fn annee_fiscale(d: chrono::NaiveDate) -> i32 {
+    if (d.month(), d.day()) >= (4, 6) { d.year() } else { d.year() - 1 }
+}
+
 fn seuils(annee: i32) -> UkSeuils {
+    // PT, UEL, PA et seuils d'impôt gelés depuis 2021/22 ; seul le Secondary
+    // Threshold bouge : £9 100 jusqu'en 2024/25, £5 000 dès 2025/26 (National
+    // Insurance Contributions (Secondary Class 1 Contributions) Act 2025),
+    // inchangé en 2026/27 (GOV.UK, « Rates and thresholds for employers 2026 to 2027 »).
+    let st_annuel = if annee >= 2025 { dec!(5000) } else { dec!(9100) };
     match annee {
-        // 2024/25 — gelés depuis 2021/22 (Finance Act 2024)
         _ => UkSeuils {
             pt:     dec!(12570) / dec!(12), // £1 047,50/mois
             uel:    dec!(50270) / dec!(12), // £4 189,17/mois
-            st:     dec!(9100)  / dec!(12), // £758,33/mois
+            st:     st_annuel   / dec!(12), // £758,33/mois (≤ 2024/25) ; £416,67 (≥ 2025/26)
             pa:     dec!(12570) / dec!(12), // £1 047,50/mois
             br_max: dec!(50270) / dec!(12), // £4 189,17/mois
             hr_max: dec!(125140)/ dec!(12), // £10 428,33/mois
@@ -44,7 +55,7 @@ fn seuils(annee: i32) -> UkSeuils {
 // Tranche au-delà UEL : 2 % (taux secondaire fixe)
 
 pub fn uk_ni_sal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let annee = ctx.date_paie.year();
+    let annee = annee_fiscale(ctx.date_paie);
     let s     = seuils(annee);
     let ts    = ctx.taux_sal("UK_NI_SAL"); // 0,08
 
@@ -97,11 +108,11 @@ pub fn uk_ni_sal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
 // ── National Insurance — part patronale ───────────────────────────────────────
 //
-// 13,8 % sur le salaire excédant le Secondary Threshold (ST).
+// 13,8 % (≤ 2024/25) puis 15 % (dès le 06/04/2025) sur le salaire excédant le Secondary Threshold (ST).
 // Pas de plafond côté employeur.
 
 pub fn uk_ni_pat(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let annee = ctx.date_paie.year();
+    let annee = annee_fiscale(ctx.date_paie);
     let s     = seuils(annee);
     let tp    = ctx.taux_pat("UK_NI_PAT"); // 0,138
 
@@ -169,7 +180,7 @@ fn income_tax_annuel(revenu_annuel: Decimal, annee: i32) -> Decimal {
 }
 
 pub fn uk_income_tax(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let annee  = ctx.date_paie.year();
+    let annee  = annee_fiscale(ctx.date_paie);
     let s      = seuils(annee);
     let revenu_annuel = brut * dec!(12);
 

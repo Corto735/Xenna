@@ -791,7 +791,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 • No funding: pay-as-you-go scheme\n\n\
                 Phase-in 2012-2019 (decree no. 2011-291):\n\
                 2016: 10.29 % — 2017: 10.56 % — 2018: 10.83 % — 2019+: 11.10 %\n\
-                Stable employer (local authority) rate: 30.65 % (vs ≈ 16 % total in the private \
+                Employer (local authority) rate: 30.65 % until 2024, then raised by 3 points a year \
+                (Decree 2025-86): 34.65 % in 2025, 37.65 % in 2026, 40.65 % in 2027, 43.65 % in 2028 (vs ≈ 16 % total in the private \
                 sector)\n\n\
                 Applied rates: employee {ts_pct} % — employer {tp_pct} %.",
             "de" => "Die CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
@@ -806,7 +807,7 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 • Keine Kapitaldeckung: Umlagesystem\n\n\
                 Stufenweiser Anstieg 2012-2019 (Dekret Nr. 2011-291):\n\
                 2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
-                Stabiler Satz der Körperschaft: 30,65 % (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
+                Satz der Körperschaft: 30,65 % bis 2024, dann jährlich um 3 Punkte angehoben (Dekret 2025-86): 34,65 % 2025, 37,65 % 2026, 40,65 % 2027, 43,65 % 2028 (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
                 Angewandte Sätze: Bediensteter {ts_pct} % — Körperschaft {tp_pct} %.",
             "nl" => "De CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) is het verplichte pensioenstelsel van de vastbenoemde ambtenaren van de \
@@ -820,7 +821,7 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 • Geen kapitalisatie: repartitiestelsel\n\n\
                 Geleidelijke stijging 2012-2019 (decreet nr. 2011-291):\n\
                 2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
-                Stabiel tarief bestuur: 30,65 % (vs ≈ 16 % totaal in de privé)\n\n\
+                Tarief bestuur: 30,65 % tot en met 2024, daarna jaarlijks met 3 punten verhoogd (decreet 2025-86): 34,65 % in 2025, 37,65 % in 2026, 40,65 % in 2027, 43,65 % in 2028 (vs ≈ 16 % totaal in de privé)\n\n\
                 Toegepaste tarieven: ambtenaar {ts_pct} % — bestuur {tp_pct} %.",
             "it" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) è il regime pensionistico obbligatorio dei funzionari territoriali di \
@@ -834,7 +835,7 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 • Nessuna capitalizzazione: sistema a ripartizione\n\n\
                 Aumento graduale 2012-2019 (decreto n. 2011-291):\n\
                 2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
-                Aliquota ente stabile: 30,65 % (vs ≈ 16 % totale nel privato)\n\n\
+                Aliquota ente: 30,65 % fino al 2024, poi aumentata di 3 punti l'anno (decreto 2025-86): 34,65 % nel 2025, 37,65 % nel 2026, 40,65 % nel 2027, 43,65 % nel 2028 (vs ≈ 16 % totale nel privato)\n\n\
                 Aliquote applicate: agente {ts_pct} % — ente {tp_pct} %.",
             "es" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) es el régimen obligatorio de jubilación de los funcionarios territoriales \
@@ -848,7 +849,7 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 • Sin capitalización: sistema de reparto\n\n\
                 Subida progresiva 2012-2019 (decreto n.º 2011-291):\n\
                 2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
-                Tipo de la entidad estable: 30,65 % (vs ≈ 16 % total en el privado)\n\n\
+                Tipo de la entidad: 30,65 % hasta 2024, luego elevado 3 puntos al año (decreto 2025-86): 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028 (vs ≈ 16 % total en el privado)\n\n\
                 Tipos aplicados: agente {ts_pct} % — entidad {tp_pct} %.",
             _ => return None,
         },
