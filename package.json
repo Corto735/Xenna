@@ -4,9 +4,10 @@
   "version": "0.1.9",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:full": "bash scripts/dev-full.sh",
-    "dev:web": "FRONT=web bash scripts/dev-full.sh",
+    "dev": "bash scripts/dev.sh",
+    "dev:vite": "vite",
+    "dev:full": "npm run tauri dev",
+    "dev:web": "npm run dev",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 GTK_MODULES= tauri"

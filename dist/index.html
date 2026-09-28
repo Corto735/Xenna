@@ -639,6 +639,12 @@
     body.hv-mode .btn-calc { border-width: 2px !important; }
     body.hv-mode .mob-row { border-bottom: 2px solid var(--border); }
 
+    /* Zoom ×2 — appliqué à tout le contenu SAUF la barre de boutons flottants :
+       zoomer la racine doublait aussi leur taille et, sur mobile, leur position,
+       qui sortait de l'écran à droite. Ils gardent ainsi leur taille d'origine et
+       restent collés au bord, pour pouvoir quitter le mode. */
+    body.zoom-mode > *:not(.a11y-float):not(script):not(style) { zoom: 2; }
+
     /* Zoom ×2 — mob-row en colonne : libellé en haut, montant(s) en bas à droite */
     body.zoom-mode .mob-row {
       flex-direction: column;
@@ -2543,6 +2549,25 @@
       transition: border-color 0.15s;
     }
     #ml-editor:focus { border-color: var(--blue); }
+    .ml-editor-wrap { position: relative; }
+    .ml-pause-badge {
+      display: none; position: absolute; top: 0.5rem; right: 0.6rem;
+      font-size: 0.6rem; letter-spacing: 0.12em; color: var(--bg);
+      background: var(--yellow); padding: 0.2rem 0.55rem; pointer-events: none;
+    }
+    .ml-editor-wrap.ml-en-pause .ml-pause-badge { display: block; }
+    .ml-editor-wrap.ml-en-pause #ml-editor { border-color: var(--yellow); opacity: 0.7; }
+    .ml-pause-opt {
+      display: flex; align-items: center; gap: 0.45rem; margin-top: 0.6rem;
+      font-size: 0.65rem; color: var(--white); cursor: pointer; flex-wrap: wrap;
+    }
+    .ml-pause-opt .ml-pause-aide { color: var(--dim-txt); font-size: 0.58rem; }
+    .ml-vitesse {
+      display: flex; align-items: center; gap: 0.5rem; flex: 1;
+      font-size: 0.65rem; color: var(--white); letter-spacing: 0.08em;
+    }
+    .ml-vitesse input { flex: 1; max-width: 14rem; accent-color: var(--blue); }
+    .ml-vitesse b { color: var(--yellow); min-width: 2.6rem; }
     .ml-stats {
       font-size: 0.6rem; color: var(--muted-txt); margin-top: 0.6rem;
       display: flex; gap: 1.5rem; flex-wrap: wrap;
@@ -3478,7 +3503,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-C3EaeLhP.js"></script>
+  <script type="module" crossorigin src="/assets/index-D1NSuA2W.js"></script>
 </head>
 <body>
 
@@ -3610,7 +3635,6 @@
   <!-- Boutons flottants droite -->
   <div class="a11y-float">
     <button class="a11y-float-btn" id="a11y-magnifier" onclick="toggleZoom()" title="Zoom ×2">⌕ ×2</button>
-    <button class="a11y-float-btn" id="a11y-hv-btn"   onclick="toggleHVMode()" title="Mode malvoyant">◉ HV</button>
     <button class="a11y-float-btn" id="a11y-bw-btn"   onclick="toggleBWMode()" title="Mode N&B">◑ N/B</button>
     <button class="a11y-float-btn" id="a11y-67-btn"   onclick="scan67()" title="Scanner les paires 67">6 7</button>
   </div>
@@ -5433,7 +5457,15 @@
 
     <div class="ml-card">
       <div class="ml-lbl">// Enregistrement</div>
-      <textarea id="ml-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+      <div class="ml-editor-wrap" id="ml-editor-wrap">
+        <textarea id="ml-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+        <div class="ml-pause-badge">⏸ EN PAUSE · espace pour reprendre</div>
+      </div>
+      <label class="ml-pause-opt">
+        <input type="checkbox" id="ml-pause-espace">
+        Pause avec espace
+        <span class="ml-pause-aide">— double espace : pause · espace : reprise (le temps de pause n'est pas rejoué)</span>
+      </label>
       <div class="ml-stats">
         <span>Frappes : <b id="ml-stat-keys">0</b></span>
         <span>Corrections : <b id="ml-stat-back">0</b></span>
@@ -5453,6 +5485,11 @@
       <div class="ml-lbl">// Replay · restitution fidèle</div>
       <div id="ml-replay-stage"><span class="ml-cursor"></span></div>
       <div class="ml-row">
+        <label class="ml-vitesse">
+          Vitesse
+          <input type="range" id="ml-vitesse" min="1" max="4" step="0.25" value="1">
+          <b id="ml-vitesse-val">×1</b>
+        </label>
         <button class="ml-btn" id="ml-btn-stop">[ Arrêter ]</button>
       </div>
     </div>

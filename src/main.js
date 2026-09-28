@@ -205,7 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (localStorage.getItem('xenna-zoom')) {
     document.body.classList.add('zoom-mode');
-    document.documentElement.style.zoom = '200%';
     document.getElementById('zoom-switch')?.classList.add('on');
     document.getElementById('a11y-magnifier')?.classList.add('active');
   }
@@ -214,9 +213,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('dyslexia-switch')?.classList.add('on');
   }
 
-  if (localStorage.getItem('xenna-hv')) {
-    document.getElementById('a11y-hv-btn')?.classList.add('active');
-  }
   if (localStorage.getItem('xenna-bw')) {
     document.body.classList.add('bw-mode');
     document.getElementById('bw-switch')?.classList.add('on');
@@ -477,14 +473,13 @@ window.toggleA11yPanel = function() {
 window.toggleHVMode = function() {
   const active = document.body.classList.toggle('hv-mode');
   document.getElementById('hv-switch')?.classList.toggle('on', active);
-  document.getElementById('a11y-hv-btn')?.classList.toggle('active', active);
   localStorage.setItem('xenna-hv', active ? '1' : '');
   if (active && document.body.classList.contains('minitel-mode')) window.toggleMinitel();
 };
 
 window.toggleZoom = function() {
+  // Le grossissement lui-même est en CSS (body.zoom-mode), boutons flottants exclus.
   const active = document.body.classList.toggle('zoom-mode');
-  document.documentElement.style.zoom = active ? '200%' : '';
   document.getElementById('zoom-switch')?.classList.toggle('on', active);
   document.getElementById('a11y-magnifier')?.classList.toggle('active', active);
   localStorage.setItem('xenna-zoom', active ? '1' : '');
@@ -8121,8 +8116,71 @@ function meliindaInit() {
   const replayWrap  = document.getElementById('ml-replay-wrap');
   const replayStage = document.getElementById('ml-replay-stage');
 
+  // ── Pause avec espace ──────────────────────────────────────────────────────
+  // Case cochée : deux espaces rapprochés mettent l'enregistrement en pause (le
+  // premier espace est retiré du texte et des frappes), un espace le reprend.
+  // Pendant la pause la saisie est bloquée, et l'horloge est décalée à la
+  // reprise : le replay enchaîne comme si la pause n'avait pas existé.
+  const chkPause   = document.getElementById('ml-pause-espace');
+  const editorWrap = document.getElementById('ml-editor-wrap');
+  let mlPaused = false, mlPauseStart = 0, mlDernierEspace = null, mlIgnorerKeyupEspace = false;
+
+  function mlPause() {
+    mlPaused = true;
+    mlPauseStart = performance.now();
+    mlIgnorerKeyupEspace = true;
+    editorWrap.classList.add('ml-en-pause');
+    mlUpdateStats();
+  }
+
+  function mlReprendre() {
+    if (!mlPaused) return;
+    mlPaused = false;
+    mlDernierEspace = null;
+    mlIgnorerKeyupEspace = true;
+    if (mlStartTime !== null) mlStartTime += performance.now() - mlPauseStart;
+    editorWrap.classList.remove('ml-en-pause');
+  }
+
+  // Retire le dernier espace frappé : ses événements et son caractère.
+  function mlRetirerDernierEspace() {
+    let i = mlEvents.length - 1;
+    while (i >= 0 && !(mlEvents[i].type === 'down' && mlEvents[i].key === ' ')) i--;
+    if (i >= 0) mlEvents = mlEvents.slice(0, i);
+    const c = editor.selectionStart;
+    if (c > 0 && editor.value[c - 1] === ' ') editor.setRangeText('', c - 1, c, 'end');
+  }
+
+  chkPause.addEventListener('change', () => {
+    if (!chkPause.checked) mlReprendre();
+    editor.focus();
+  });
+
+  // Pendant la pause, rien n'entre dans la zone (collage, glisser-déposer, IME…).
+  editor.addEventListener('beforeinput', e => { if (mlPaused) e.preventDefault(); });
+
   // ── Capture ────────────────────────────────────────────────────────────────
   editor.addEventListener('keydown', e => {
+    if (mlPaused) {
+      e.preventDefault();
+      if (e.key === ' ' && !e.repeat) mlReprendre();
+      return;
+    }
+    if (chkPause.checked && e.key === ' ' && !e.repeat) {
+      const now = performance.now();
+      const derniere = mlEvents.filter(ev => ev.type === 'down').at(-1);
+      if (mlDernierEspace !== null && now - mlDernierEspace <= ML_DOUBLE_ESPACE_MS
+          && derniere && derniere.key === ' ') {
+        e.preventDefault();
+        mlRetirerDernierEspace();
+        mlDernierEspace = null;
+        mlPause();
+        return;
+      }
+      mlDernierEspace = now;
+    } else if (e.key !== ' ') {
+      mlDernierEspace = null;
+    }
     if (mlStartTime === null) mlStartTime = performance.now();
     mlEvents.push({ key: e.key, t: performance.now() - mlStartTime, type: 'down' });
     mlUpdateStats();
@@ -8130,14 +8188,17 @@ function meliindaInit() {
   });
 
   editor.addEventListener('keyup', e => {
-    if (mlStartTime === null) return;
+    // Le relâchement de l'espace qui met en pause ou reprend n'est pas une frappe.
+    if (e.key === ' ' && mlIgnorerKeyupEspace) { mlIgnorerKeyupEspace = false; return; }
+    if (mlStartTime === null || mlPaused) return;
     mlEvents.push({ key: e.key, t: performance.now() - mlStartTime, type: 'up' });
   });
 
   function mlUpdateStats() {
     const downs = mlEvents.filter(e => e.type === 'down');
     const backs = downs.filter(e => e.key === 'Backspace').length;
-    const dur   = mlStartTime ? ((performance.now() - mlStartTime) / 1000).toFixed(1) : 0;
+    const maintenant = mlPaused ? mlPauseStart : performance.now();
+    const dur   = mlStartTime ? ((maintenant - mlStartTime) / 1000).toFixed(1) : 0;
     let pauses  = 0, prev = null;
     for (const e of downs) { if (prev !== null && (e.t - prev) > 1000) pauses++; prev = e.t; }
     document.getElementById('ml-stat-keys').textContent   = downs.length;
@@ -8165,7 +8226,8 @@ function meliindaInit() {
   // ── Nouvelle session ───────────────────────────────────────────────────────
   btnNew.addEventListener('click', () => {
     mlStopReplay();
-    mlEvents = []; mlStartTime = null;
+    mlReprendre();
+    mlEvents = []; mlStartTime = null; mlDernierEspace = null; mlIgnorerKeyupEspace = false;
     editor.value = ''; labelInp.value = '';
     btnSave.disabled = btnReplay.disabled = true;
     mlUpdateStats();
@@ -8195,6 +8257,39 @@ function meliindaInit() {
     return states;
   }
 
+  // ── Vitesse de lecture ────────────────────────────────────────────────────
+  // On lit plus vite qu'on ne tape : le replay se joue de ×1 à ×4. Le planning
+  // reste exprimé en temps d'enregistrement ; changer de vitesse en cours de
+  // lecture reprogramme la suite depuis l'instant atteint, sans repartir à zéro.
+  const vitesseInp = document.getElementById('ml-vitesse');
+  const vitesseVal = document.getElementById('ml-vitesse-val');
+  let mlVitesse = 1;
+  let mlPlanning = [];          // [{ t, base }] trié, en temps d'enregistrement
+  let mlLectureT0 = 0;          // position (temps d'enregistrement) à la dernière (re)programmation
+  let mlLectureReel0 = 0;       // horloge réelle à ce moment-là
+
+  function mlPositionLecture() {
+    return mlLectureT0 + (performance.now() - mlLectureReel0) * mlVitesse;
+  }
+
+  function mlProgrammer(depuis) {
+    mlTimers.forEach(clearTimeout); mlTimers = [];
+    mlLectureT0 = depuis;
+    mlLectureReel0 = performance.now();
+    for (const { t, base } of mlPlanning) {
+      if (t < depuis) continue;
+      mlTimers.push(setTimeout(() => mlRenderSnapshot(base, replayStage, t), (t - depuis) / mlVitesse));
+    }
+  }
+
+  vitesseInp.addEventListener('input', () => {
+    const enCours = mlTimers.length > 0;
+    const position = enCours ? mlPositionLecture() : 0;
+    mlVitesse = parseFloat(vitesseInp.value) || 1;
+    vitesseVal.textContent = '×' + String(mlVitesse).replace('.', ',');
+    if (enCours) mlProgrammer(position);
+  });
+
   function mlStartReplay(evts) {
     mlStopReplay();
     replayWrap.style.display = 'block';
@@ -8206,13 +8301,15 @@ function meliindaInit() {
     const times = new Set(states.map(s => s.t));
     const last = states[states.length - 1];
     if (last) for (const c of last.snapshot) if (c.deleted) times.add(c.deletedAt + ML_GHOST_MS);
+    mlPlanning = [];
     for (const t of [...times].sort((a, b) => a - b)) {
       // Base = état de la dernière frappe à ou avant t ; les ghosts expirés sont filtrés au rendu.
       let base = null;
       for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
       if (!base) continue;
-      mlTimers.push(setTimeout(() => mlRenderSnapshot(base, replayStage, t), t));
+      mlPlanning.push({ t, base });
     }
+    mlProgrammer(0);
   }
 
   function mlStopReplay() {
@@ -8227,6 +8324,8 @@ function meliindaInit() {
 
 // Durée d'affichage d'un caractère effacé (rouge barré) avant sa disparition.
 const ML_GHOST_MS = 3000;
+// Écart maximal entre deux espaces pour qu'ils mettent l'enregistrement en pause.
+const ML_DOUBLE_ESPACE_MS = 400;
 
 function mlRenderSnapshot(snapshot, target, now) {
   let parts = [], run = null;

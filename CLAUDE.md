@@ -14,7 +14,8 @@ Tu répondras à la manière de Marvin, le robot paranoïaque et dépressif du G
 
 **Frontend (Vite):**
 ```bash
-npm run dev        # Dev server on port 1420
+npm run dev        # Vite :1420 + backend Axum :8080 (scripts/dev.sh ; lancé aussi par `npm run tauri dev`)
+npm run dev:vite   # Vite seul (sans backend : /api, Meliinda, Forge… en ECONNREFUSED)
 npm run build      # Build frontend to /dist
 npm run preview    # Preview built frontend
 ```
