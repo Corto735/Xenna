@@ -289,9 +289,10 @@ fn declaree(pays: &Pays) -> Veille {
     match pays {
         Pays::France => v(2026, &[]),
         Pays::FonctionPublique => v(2026, &[]),
-        // ch_is.rs : « valeurs 2025 » (ORIS 2025) ; cotisations 2026 en base.
+        // ch_is.rs : table de 27 paliers « valeurs 2025 » et multiplicateurs de tarif —
+        // une approximation, pas les fichiers de tarifs de l'AFC.
         Pays::Suisse => v(2025, &[
-            "impôt à la source : barèmes cantonaux 2026 non intégrés — barèmes 2025 appliqués",
+            "impôt à la source : taux A0 approchés sur 27 paliers et autres tarifs déduits par multiplicateur, et non les barèmes officiels de l'AFC ; barèmes cantonaux 2026 non intégrés",
         ]),
         Pays::Luxembourg => v(2026, &[]),
         Pays::Italia => v(2026, &[]),
