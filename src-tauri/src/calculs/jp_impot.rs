@@ -19,17 +19,56 @@ use chrono::Datelike;
 // Réduit le revenu brut avant calcul de l'impôt.
 // Source : 所得税法 art. 28.
 
-pub fn kyuyo_shotoku_koyo(revenu_annuel: Decimal) -> Decimal {
-    if revenu_annuel <= dec!(1800000) {
-        (revenu_annuel * dec!(0.40)).max(dec!(550000))
-    } else if revenu_annuel <= dec!(3600000) {
-        revenu_annuel * dec!(0.30) + dec!(80000)
-    } else if revenu_annuel <= dec!(6600000) {
-        revenu_annuel * dec!(0.20) + dec!(440000)
-    } else if revenu_annuel <= dec!(8500000) {
-        revenu_annuel * dec!(0.10) + dec!(1100000)
+/// Déduction d'emploi. Barème de l'art. 28, avec un minimum garanti : 550 000 ¥
+/// jusqu'en 2024, 650 000 ¥ en 2025 (réforme 2025), 740 000 ¥ pour l'impôt sur le
+/// revenu 2026-2027 (690 000 ¥ + 50 000 ¥ d'exception, réforme 2026). La taxe
+/// locale suit sans l'exception (`pour_juminzei`).
+pub fn kyuyo_shotoku_koyo(revenu_annuel: Decimal, annee: i32, pour_juminzei: bool) -> Decimal {
+    let r = revenu_annuel;
+    let formule = if r <= dec!(1800000) {
+        r * dec!(0.40) - dec!(100000)
+    } else if r <= dec!(3600000) {
+        r * dec!(0.30) + dec!(80000)
+    } else if r <= dec!(6600000) {
+        r * dec!(0.20) + dec!(440000)
+    } else if r <= dec!(8500000) {
+        r * dec!(0.10) + dec!(1100000)
     } else {
         dec!(1950000)
+    };
+    let minimum = match annee {
+        i32::MIN..=2024 => dec!(550000),
+        2025            => dec!(650000),
+        _ if pour_juminzei => dec!(690000),
+        _               => dec!(740000),
+    };
+    formule.max(minimum).min(r)
+}
+
+/// 基礎控除 de l'impôt sur le revenu selon le revenu total (合計所得金額).
+/// 2025 : réforme 2025 (95 à 58 万円 selon le revenu) ; 2026-2027 : réforme 2026
+/// (62 万円 + 42 万円 jusqu'à 489 万円, + 5 万円 jusqu'à 655 万円).
+fn kiso_kojo(goukei: Decimal, annee: i32) -> Decimal {
+    let haut = if goukei > dec!(25000000) { return Decimal::ZERO }
+        else if goukei > dec!(24500000) { Some(dec!(160000)) }
+        else if goukei > dec!(24000000) { Some(dec!(320000)) }
+        else if goukei > dec!(23500000) { Some(dec!(480000)) }
+        else { None };
+    if let Some(v) = haut { return v; }
+    match annee {
+        i32::MIN..=2024 => dec!(480000),
+        2025 => {
+            if goukei <= dec!(1320000) { dec!(950000) }
+            else if goukei <= dec!(3360000) { dec!(880000) }
+            else if goukei <= dec!(4890000) { dec!(680000) }
+            else if goukei <= dec!(6550000) { dec!(630000) }
+            else { dec!(580000) }
+        }
+        _ => {
+            if goukei <= dec!(4890000) { dec!(1040000) }
+            else if goukei <= dec!(6550000) { dec!(670000) }
+            else { dec!(620000) }
+        }
     }
 }
 
@@ -56,13 +95,17 @@ fn shotoku_zei_annuel(revenu_imposable: Decimal) -> Decimal {
 
 // ── 所得税 + 復興特別所得税 (retenue mensuelle) ────────────────────────────────
 
-pub fn jp_shotokuzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let _annee  = ctx.date_paie.year();
+/// `sociaux_mensuels` : cotisations sociales salariales du mois, intégralement
+/// déductibles (社会保険料控除, 所得税法 art. 74).
+pub fn jp_shotokuzei(brut: Decimal, sociaux_mensuels: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+    let annee   = ctx.date_paie.year();
     let rev_ann = brut * dec!(12);
 
-    let deduction_emploi = kyuyo_shotoku_koyo(rev_ann);
-    let deduction_base   = dec!(480000); // 基礎控除 2024
-    let revenu_imposable = (rev_ann - deduction_emploi - deduction_base).max(Decimal::ZERO);
+    let deduction_emploi = kyuyo_shotoku_koyo(rev_ann, annee, false);
+    let sociaux          = sociaux_mensuels * dec!(12);
+    let deduction_base   = kiso_kojo(rev_ann - deduction_emploi, annee);
+    let revenu_imposable = (rev_ann - deduction_emploi - sociaux - deduction_base).max(Decimal::ZERO)
+        .floor();
 
     let shotoku     = shotoku_zei_annuel(revenu_imposable);
     let fukkoshuzei = (shotoku * dec!(0.021)).round_dp(0); // surtaxe reconstruction 2,1 %
@@ -83,15 +126,17 @@ pub fn jp_shotokuzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             "所得税 — impôt national sur le revenu (retenue mensuelle 源泉徴収).\n\n\
             Revenu brut annuel estimé : ¥{rev}\n\
             − 給与所得控除 (déduction emploi) : ¥{de}\n\
+            − 社会保険料控除 (cotisations sociales) : ¥{sh}\n\
             − 基礎控除 (déduction de base) : ¥{db}\n\
             = Revenu imposable : ¥{ri}\n\n\
             所得税 brute : ¥{sz}\n\
             + 復興特別所得税 (2,1 %) : ¥{fk}\n\
             = Total annuel : ¥{ta} / 12 = ¥{mens}/mois\n\
             Taux effectif : {teff} %\n\n\
-            Base légale : 所得税法 art. 28, 89 ; 復興特別所得税法 (L. 02/12/2011).")
+            Base légale : 所得税法 art. 28, 74, 86, 89 ; 復興特別所得税法 (L. 02/12/2011).")
             .replace("{rev}", &format!("{:.0}", rev_ann))
             .replace("{de}", &format!("{:.0}", deduction_emploi))
+            .replace("{sh}", &format!("{:.0}", sociaux))
             .replace("{db}", &format!("{:.0}", deduction_base))
             .replace("{ri}", &format!("{:.0}", revenu_imposable))
             .replace("{sz}", &format!("{:.0}", shotoku))
@@ -108,12 +153,15 @@ pub fn jp_shotokuzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // La住民税 réelle est calculée l'année suivante sur N-1. Ici : estimation simplifiée
 // sur base annualisée (8 % préfectoral + 2 % municipal = 10 % flat).
 
-pub fn jp_juminzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let _annee  = ctx.date_paie.year();
+pub fn jp_juminzei(brut: Decimal, sociaux_mensuels: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+    let annee   = ctx.date_paie.year();
     let rev_ann = brut * dec!(12);
 
-    let deduction_emploi = kyuyo_shotoku_koyo(rev_ann);
-    let revenu_imposable = (rev_ann - deduction_emploi).max(Decimal::ZERO);
+    // Déduction d'emploi, cotisations sociales et déduction de base de la taxe
+    // locale (43 万円, 地方税法 art. 34 et 314-2).
+    let deduction_emploi = kyuyo_shotoku_koyo(rev_ann, annee, true);
+    let revenu_imposable = (rev_ann - deduction_emploi - sociaux_mensuels * dec!(12) - dec!(430000))
+        .max(Decimal::ZERO);
 
     let juminzei_ann = revenu_imposable * dec!(0.10); // 10 % flat
     let mensuel      = (juminzei_ann / dec!(12)).round_dp(0);
@@ -131,7 +179,7 @@ pub fn jp_juminzei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         explication: ctx.expl("JP_JUMINZEI",
             "住民税 — taxe locale prélevée par la collectivité (estimation mensuelle).\n\n\
             Taux appliqué : 10 % flat (8 % préfectoral + 2 % municipal — 地方税法).\n\
-            Assiette : revenu imposable estimé ¥{ri} (brut − déd. emploi)\n\
+            Assiette : revenu imposable estimé ¥{ri} (brut − déd. emploi − cotisations sociales − déd. de base 430 000 ¥)\n\
             = ¥{ta}/an / 12 = ¥{mens}/mois\n\
             Taux effectif : {teff} %\n\n\
             Note : en pratique, la住民税 est calculée en juin N+1 sur les revenus N. \

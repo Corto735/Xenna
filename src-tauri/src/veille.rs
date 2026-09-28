@@ -56,6 +56,17 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Japon,
+        objet: "協会けんぽ Tokyo 2025 (9,91 % / 介護 1,59 %) et 2026 (9,85 % / 1,62 %) ; 雇用保険 2025 (0,55 % + 0,90 %) et 2026 (0,50 % + 0,85 %) ; 子ども・子育て支援金 0,23 % dès avril 2026 ; impôt : 基礎控除 et déduction d'emploi des réformes 2025 et 2026, cotisations sociales désormais déduites du revenu imposable",
+        sources: &[
+            "https://www.kyoukaikenpo.or.jp/about/business/insurance_rate/rate_prefectures/r08/index.html",
+            "https://www.mhlw.go.jp/content/001692566.pdf",
+            "https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/08taikou_gaiyou.pdf",
+            "https://www.nta.go.jp/users/gensen/2026kiso/index.htm",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Emirats,
         objet: "GPSSA 2026 relevé : régime de la loi 7/1999 (salarié 5 %, employeur 12,5 %, État 2,5 %, plafond 50 000 AED) inchangé. Non modélisé : le régime du décret-loi 57/2023 pour les Émiratis entrés depuis le 31/10/2023 (11 % / 15 %, plafond 70 000 AED)",
         sources: &[
@@ -280,10 +291,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Portugal => v(2026, &[]),
         Pays::Belgique => v(2026, &[]),
         Pays::Angleterre => v(2026, &[]),
-        // JP_KENPO / JP_KOYO depuis 2024, plafonds 2024, 基礎控除 2024.
-        Pays::Japon => v(2024, &[
-            "協会けんぽ, 雇用保険 et 子育て支援金 postérieurs à 2024 non intégrés — taux et plafonds 2024 appliqués",
-        ]),
+        Pays::Japon => v(2026, &[]),
         // CN_* et CN_BASE_* depuis le 01/01/2024.
         Pays::Chine => v(2024, &[
             "assurance maladie employeur (6 % en 2026) et bases de Pékin postérieures à 2024 non intégrées — valeurs 2024 appliquées",
