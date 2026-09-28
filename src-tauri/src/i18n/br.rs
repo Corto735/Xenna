@@ -49,16 +49,16 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         "BR_IRRF" => match lang {
-            "en" => "IRRF (income tax withheld at source) — base = gross − max(INSS, simplified discount 564.80 R$) = {base} R$; \
-                progressive monthly scale, marginal bracket {taux} %. Tax {irrf} R$. Legal basis: Lei 7.713/1988.",
-            "de" => "IRRF (an der Quelle einbehaltene Einkommensteuer) — Basis = brutto − max(INSS, Pauschalabzug 564,80 R$) = {base} R$; \
-                progressive Monatstabelle, Grenzstufe {taux} %. Steuer {irrf} R$. Rechtsgrundlage: Lei 7.713/1988.",
-            "nl" => "IRRF (aan de bron ingehouden inkomstenbelasting) — grondslag = bruto − max(INSS, forfaitaire aftrek 564,80 R$) = {base} R$; \
-                progressieve maandtabel, marginale schijf {taux} %. Belasting {irrf} R$. Wettelijke basis: Lei 7.713/1988.",
-            "it" => "IRRF (imposta sul reddito trattenuta alla fonte) — base = lordo − max(INSS, sconto forfettario 564,80 R$) = {base} R$; \
-                scala mensile progressiva, scaglione marginale {taux} %. Imposta {irrf} R$. Base giuridica: Lei 7.713/1988.",
-            "es" => "IRRF (impuesto sobre la renta retenido en la fuente) — base = bruto − max(INSS, descuento simplificado 564,80 R$) = {base} R$; \
-                tabla mensual progresiva, tramo marginal {taux} %. Impuesto {irrf} R$. Base legal: Lei 7.713/1988.",
+            "en" => "IRRF (income tax withheld at source) — base = gross − max(INSS, simplified discount {desc} R$) = {base} R$; \
+                progressive monthly scale, marginal bracket {taux} %. Tax {irrf} R$ after the Lei 15.270/2025 reduction ({red} R$). Legal basis: Lei 7.713/1988.",
+            "de" => "IRRF (an der Quelle einbehaltene Einkommensteuer) — Basis = brutto − max(INSS, Pauschalabzug {desc} R$) = {base} R$; \
+                progressive Monatstabelle, Grenzstufe {taux} %. Steuer {irrf} R$ nach der Minderung nach Lei 15.270/2025 ({red} R$). Rechtsgrundlage: Lei 7.713/1988.",
+            "nl" => "IRRF (aan de bron ingehouden inkomstenbelasting) — grondslag = bruto − max(INSS, forfaitaire aftrek {desc} R$) = {base} R$; \
+                progressieve maandtabel, marginale schijf {taux} %. Belasting {irrf} R$ na de vermindering van Lei 15.270/2025 ({red} R$). Wettelijke basis: Lei 7.713/1988.",
+            "it" => "IRRF (imposta sul reddito trattenuta alla fonte) — base = lordo − max(INSS, sconto forfettario {desc} R$) = {base} R$; \
+                scala mensile progressiva, scaglione marginale {taux} %. Imposta {irrf} R$ dopo la riduzione della Lei 15.270/2025 ({red} R$). Base giuridica: Lei 7.713/1988.",
+            "es" => "IRRF (impuesto sobre la renta retenido en la fuente) — base = bruto − max(INSS, descuento simplificado {desc} R$) = {base} R$; \
+                tabla mensual progresiva, tramo marginal {taux} %. Impuesto {irrf} R$ tras la reducción de la Lei 15.270/2025 ({red} R$). Base legal: Lei 7.713/1988.",
             _ => return None,
         },
         "BR_INSS_PAT" => match lang {

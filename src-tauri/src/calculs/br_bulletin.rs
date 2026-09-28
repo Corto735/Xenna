@@ -1,5 +1,5 @@
 // Bulletin de paie brésilien (regime CLT) : INSS + IRRF salarié, FGTS + INSS
-// patronal côté employeur. Devise BRL. Données : 2025.
+// patronal côté employeur. Devise BRL. Données : 2025 et 2026.
 //
 // Salarié : INSS progressif par tranches (7,5 / 9 / 12 / 14 %) plafonné au
 // teto ; IRRF mensuel (barème progressif, base = brut − INSS ou desconto
@@ -10,21 +10,30 @@
 // Sources : Lei 8.212/1991 (INSS) + Portaria interministerial MPS/MF 2025 ;
 // Lei 7.713/1988 + tabela IRRF (IN RFB 2025) ; Lei 8.036/1990 (FGTS).
 
-use chrono::Datelike;
+use chrono::{Datelike, NaiveDate};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Tranches INSS 2025 : (limite supérieure, taux). La dernière borne est le teto.
+/// Tranches INSS : (limite supérieure, taux). La dernière borne est le teto.
+/// 2025 : Portaria MPS/MF 6/2025 ; 2026 : Portaria Interministerial MPS/MF 13/2026.
 fn tranches_inss(annee: i32) -> [(Decimal, Decimal); 4] {
-    let _ = annee; // stable 2025 (2026 reconduit à défaut de portaria)
-    [
-        (dec!(1518.00), dec!(0.075)),
-        (dec!(2793.88), dec!(0.09)),
-        (dec!(4190.83), dec!(0.12)),
-        (dec!(8157.41), dec!(0.14)),
-    ]
+    if annee >= 2026 {
+        [
+            (dec!(1621.00), dec!(0.075)),
+            (dec!(2902.84), dec!(0.09)),
+            (dec!(4354.27), dec!(0.12)),
+            (dec!(8475.55), dec!(0.14)),
+        ]
+    } else {
+        [
+            (dec!(1518.00), dec!(0.075)),
+            (dec!(2793.88), dec!(0.09)),
+            (dec!(4190.83), dec!(0.12)),
+            (dec!(8157.41), dec!(0.14)),
+        ]
+    }
 }
 
 /// INSS salarié progressif : chaque tranche à son taux, plafonné au teto.
@@ -43,34 +52,60 @@ fn calcul_inss(brut: Decimal, annee: i32) -> Decimal {
     inss.round_dp(2)
 }
 
-/// Barème IRRF mensuel 2025 : (limite inférieure, taux, part à déduire).
-fn bareme_irrf(annee: i32) -> [(Decimal, Decimal, Decimal); 5] {
-    let _ = annee;
-    [
-        (dec!(0.00),    dec!(0.000), dec!(0.00)),
-        (dec!(2259.21), dec!(0.075), dec!(169.44)),
-        (dec!(2826.66), dec!(0.150), dec!(381.44)),
-        (dec!(3751.06), dec!(0.225), dec!(662.77)),
-        (dec!(4664.69), dec!(0.275), dec!(896.00)),
-    ]
+/// Barème IRRF mensuel : (limite inférieure, taux, part à déduire) et desconto
+/// simplificado. Janvier-avril 2025 : table de 2024 ; dès mai 2025 (Lei
+/// 15.191/2025) : exonération jusqu'à 2 428,80 R$, reconduite en 2026.
+fn bareme_irrf(d: NaiveDate) -> ([(Decimal, Decimal, Decimal); 5], Decimal) {
+    if d < NaiveDate::from_ymd_opt(2025, 5, 1).unwrap() {
+        ([
+            (dec!(0.00),    dec!(0.000), dec!(0.00)),
+            (dec!(2259.21), dec!(0.075), dec!(169.44)),
+            (dec!(2826.66), dec!(0.150), dec!(381.44)),
+            (dec!(3751.06), dec!(0.225), dec!(662.77)),
+            (dec!(4664.69), dec!(0.275), dec!(896.00)),
+        ], dec!(564.80))
+    } else {
+        ([
+            (dec!(0.00),    dec!(0.000), dec!(0.00)),
+            (dec!(2428.81), dec!(0.075), dec!(182.16)),
+            (dec!(2826.66), dec!(0.150), dec!(394.16)),
+            (dec!(3751.06), dec!(0.225), dec!(675.49)),
+            (dec!(4664.69), dec!(0.275), dec!(908.73)),
+        ], dec!(607.20))
+    }
 }
 
-/// Desconto simplificado mensuel (alternative aux déductions légales), 2025.
-const DESCONTO_SIMPLIFICADO: Decimal = dec!(564.80);
+/// Réduction mensuelle de la Lei 15.270/2025 (dès 2026), sur les revenus
+/// imposables bruts : impôt annulé jusqu'à 5 000 R$ ; entre 5 000,01 et 7 350 R$,
+/// réduction de 978,62 − 0,133145 × revenu ; rien au-delà.
+fn reducao_15270(rendimento: Decimal, irrf: Decimal, annee: i32) -> Decimal {
+    if annee < 2026 {
+        return Decimal::ZERO;
+    }
+    let r = if rendimento <= dec!(5000) {
+        irrf
+    } else if rendimento <= dec!(7350) {
+        (dec!(978.62) - dec!(0.133145) * rendimento).max(Decimal::ZERO)
+    } else {
+        Decimal::ZERO
+    };
+    r.min(irrf).round_dp(2)
+}
 
-/// IRRF mensuel : base = brut − max(INSS, desconto simplificado) ; puis barème.
-/// Retourne (irrf, base, taux marginal appliqué).
-fn calcul_irrf(brut: Decimal, inss: Decimal, annee: i32) -> (Decimal, Decimal, Decimal) {
-    let deduction = inss.max(DESCONTO_SIMPLIFICADO);
+/// IRRF mensuel : base = brut − max(INSS, desconto simplificado) ; puis barème,
+/// puis réduction de la Lei 15.270/2025. Retourne (irrf, base, taux marginal, réduction).
+fn calcul_irrf(brut: Decimal, inss: Decimal, d: NaiveDate) -> (Decimal, Decimal, Decimal, Decimal) {
+    let (bareme, desconto) = bareme_irrf(d);
+    let deduction = inss.max(desconto);
     let base = (brut - deduction).max(Decimal::ZERO);
-    let bareme = bareme_irrf(annee);
     let mut choisi = bareme[0];
     for &t in bareme.iter() {
         if base >= t.0 { choisi = t; } else { break; }
     }
     let (_li, taux, deduire) = choisi;
-    let irrf = (base * taux - deduire).max(Decimal::ZERO).round_dp(2);
-    (irrf, base.round_dp(2), taux)
+    let brut_irrf = (base * taux - deduire).max(Decimal::ZERO).round_dp(2);
+    let reduction = reducao_15270(brut, brut_irrf, d.year());
+    (brut_irrf - reduction, base.round_dp(2), taux, reduction)
 }
 
 pub fn generer_bulletin_br(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
@@ -103,11 +138,11 @@ pub fn generer_bulletin_br(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             .replace("{teto}", &format!("{:.2}", teto))
             .replace("{inss}", &format!("{:.2}", inss))
             .replace("{teff}", &format!("{:.2}", taux_eff_inss * dec!(100))),
-        loi_ref: Some(ctx.loi_ref("Lei 8.212/1991 art. 20 — tabela INSS 2025")),
+        loi_ref: Some(ctx.loi_ref(if annee >= 2026 { "Lei 8.212/1991 art. 20 — Portaria MPS/MF 13/2026" } else { "Lei 8.212/1991 art. 20 — tabela INSS 2025" })),
     });
 
     // ── IRRF (impôt sur le revenu retenu à la source) ────────
-    let (irrf, base_irrf, taux_irrf) = calcul_irrf(brut, inss, annee);
+    let (irrf, base_irrf, taux_irrf, reduction) = calcul_irrf(brut, inss, ctx.date_paie);
     let taux_eff_irrf = if brut > Decimal::ZERO { (irrf / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "BR_IRRF".into(),
@@ -118,12 +153,15 @@ pub fn generer_bulletin_br(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Impôt sur le revenu".into(),
         explication: ctx.expl("BR_IRRF",
             "IRRF (Imposto de Renda Retido na Fonte) — base = brut − max(INSS, desconto \
-            simplificado 564,80 R$) = {base} R$ ; barème mensuel progressif, tranche marginale \
-            {taux} %. Impôt {irrf} R$. Base légale : Lei 7.713/1988 ; tabela IRRF 2025.")
+            simplificado {desc} R$) = {base} R$ ; barème mensuel progressif, tranche marginale \
+            {taux} %. Impôt {irrf} R$ après la réduction de la Lei 15.270/2025 ({red} R$). \
+            Base légale : Lei 7.713/1988.")
+            .replace("{desc}", &format!("{:.2}", bareme_irrf(ctx.date_paie).1))
+            .replace("{red}", &format!("{:.2}", reduction))
             .replace("{base}", &format!("{:.2}", base_irrf))
             .replace("{taux}", &format!("{:.1}", taux_irrf * dec!(100)))
             .replace("{irrf}", &format!("{:.2}", irrf)),
-        loi_ref: Some(ctx.loi_ref("Lei 7.713/1988 — tabela IRRF 2025")),
+        loi_ref: Some(ctx.loi_ref(if annee >= 2026 { "Lei 7.713/1988 — Lei 15.270/2025" } else { "Lei 7.713/1988 — Lei 15.191/2025" })),
     });
 
     // ── Employeur : INSS patronal 20 % + FGTS 8 % ────────────

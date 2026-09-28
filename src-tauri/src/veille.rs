@@ -56,6 +56,15 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Bresil,
+        objet: "INSS 2026 (plancher 1 621 R$, plafond 8 475,55 R$) ; IRRF : table de mai 2025 (exonération jusqu'à 2 428,80 R$, desconto simplificado 607,20 R$) et réduction de la Lei 15.270/2025 dès 2026 (impôt nul jusqu'à 5 000 R$ de revenu, dégressif jusqu'à 7 350 R$)",
+        sources: &[
+            "https://www.gov.br/previdencia/pt-br/assuntos/rpps/documentos/PortariaInterministerialMPSMF13de9dejaneirode2026.pdf",
+            "https://calculabrasil.com/blog/tabelas-inss-irpf-2026",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Slovaquie,
         objet: "2026 : plafond social 16 764 €/mois ; assurance maladie salarié 5 % (hausse temporaire 2026-2027) ; nouvelles tranches d'impôt à 30 % et 35 % au-delà de 5 029,10 et 6 250,86 €/mois (3ᵉ paquet de consolidation)",
         sources: &[
@@ -291,10 +300,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Mexique => v(2025, &[
             "UMA et barèmes 2026 non intégrés — valeurs 2025 reconduites",
         ]),
-        // br_bulletin.rs : « Données : 2025 ».
-        Pays::Bresil => v(2025, &[
-            "tranches INSS et barème IRRF 2026 non intégrés (portaria 2026 absente) — valeurs 2025 reconduites",
-        ]),
+        Pays::Bresil => v(2026, &[]),
         // ae_bulletin.rs : « Données : 2025 ».
         Pays::Emirats => v(2025, &[
             "paramètres GPSSA non relevés pour 2026 — valeurs 2025 appliquées (5 % / 12,5 %, plafond 50 000 AED)",
