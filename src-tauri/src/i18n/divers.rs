@@ -567,11 +567,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "Cotización de pensión obligatoria. Trab 8 % + empr 16 % = 24 % total. 社会保险法 art. 12.",
         ],
         "CN_YILIAO" => [
-            "Health insurance. Empl 2 % + empr 8 % = 10 % total. 社会保险法 art. 23.",
-            "Krankenversicherung. AN 2 % + AG 8 % = 10 % gesamt. 社会保险法 Art. 23.",
-            "Ziektekostenverzekering. Wn 2 % + wg 8 % = 10 % totaal. 社会保险法 art. 23.",
-            "Assicurazione malattia. Dip 2 % + dat 8 % = 10 % totale. 社会保险法 art. 23.",
-            "Seguro de enfermedad. Trab 2 % + empr 8 % = 10 % total. 社会保险法 art. 23.",
+            "Health insurance. Employee 2 % (+ ¥3/month for the large-expense fund, not shown); employer 9 %, of which 1 % large-expense mutual fund (大额医疗互助资金). Maternity (0.8 %) on its own line. 社会保险法 art. 23.",
+            "Krankenversicherung. AN 2 % (+ 3 ¥/Monat für den Großschadensfonds, nicht ausgewiesen); AG 9 %, davon 1 % Großschaden-Hilfsfonds (大额医疗互助资金). Mutterschaft (0,8 %) auf eigener Zeile. 社会保险法 Art. 23.",
+            "Ziektekostenverzekering. Wn 2 % (+ 3 ¥/maand voor het fonds voor grote uitgaven, niet getoond); wg 9 %, waarvan 1 % onderlinge fonds voor grote medische kosten (大额医疗互助资金). Moederschap (0,8 %) op een eigen regel. 社会保险法 art. 23.",
+            "Assicurazione malattia. Dip 2 % (+ 3 ¥/mese per il fondo grandi spese, non indicato); dat 9 %, di cui 1 % fondo mutualistico grandi spese (大额医疗互助资金). Maternità (0,8 %) su una riga propria. 社会保险法 art. 23.",
+            "Seguro de enfermedad. Trab 2 % (+ 3 ¥/mes para el fondo de grandes gastos, no indicado); empr 9 %, de ello 1 % fondo mutual de grandes gastos (大额医疗互助资金). Maternidad (0,8 %) en línea propia. 社会保险法 art. 23.",
         ],
         "CN_SHIYE" => [
             "Unemployment insurance. Empl 0.5 % + empr 0.5 % = 1 % total. 社会保险法 art. 44.",
@@ -595,11 +595,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "100 % empleador. Tipo Pekín 0,8 %. 社会保险法 art. 53.",
         ],
         "CN_GONGJIJIN" => [
-            "Housing fund: empl 12 % + empr 12 % = 24 % total. Beijing 2024. Individual savings available for purchase/rent. 住房公积金管理条例.",
-            "Wohnungsfonds: AN 12 % + AG 12 % = 24 % gesamt. Peking 2024. Individuelles Guthaben für Kauf/Miete verfügbar. 住房公积金管理条例.",
-            "Huisvestingsfonds: wn 12 % + wg 12 % = 24 % totaal. Peking 2024. Individueel spaargeld beschikbaar voor koop/huur. 住房公积金管理条例.",
-            "Fondo casa: dip 12 % + dat 12 % = 24 % totale. Pechino 2024. Risparmio individuale disponibile per acquisto/affitto. 住房公积金管理条例.",
-            "Fondo de vivienda: trab 12 % + empr 12 % = 24 % total. Pekín 2024. Ahorro individual disponible para compra/alquiler. 住房公积金管理条例.",
+            "Housing fund: empl 12 % + empr 12 % = 24 % total (maximum rate; 5 to 12 % at the employer's choice). Individual savings available for purchase/rent. 住房公积金管理条例.",
+            "Wohnungsfonds: AN 12 % + AG 12 % = 24 % gesamt (Höchstsatz; 5 bis 12 % nach Wahl des Arbeitgebers). Individuelles Guthaben für Kauf/Miete verfügbar. 住房公积金管理条例.",
+            "Huisvestingsfonds: wn 12 % + wg 12 % = 24 % totaal (maximumtarief; 5 tot 12 % naar keuze van de werkgever). Individueel spaargeld beschikbaar voor koop/huur. 住房公积金管理条例.",
+            "Fondo casa: dip 12 % + dat 12 % = 24 % totale (aliquota massima; dal 5 al 12 % a scelta del datore). Risparmio individuale disponibile per acquisto/affitto. 住房公积金管理条例.",
+            "Fondo de vivienda: trab 12 % + empr 12 % = 24 % total (tipo máximo; del 5 al 12 % a elección del empleador). Ahorro individual disponible para compra/alquiler. 住房公积金管理条例.",
         ],
         "CN_IIT" => [
             "个人所得税 — income tax (2018 reform).\n\nMonthly gross: ¥{brut}\n− Employee social contributions: ¥{cot}\n− Personal deduction: ¥{dp}/month\n= Monthly taxable base: ¥{bm}\n× 12 = Annual base: ¥{ba}\n\nAnnual IIT (brackets 3/10/20/25/30/35/45 %): ¥{ia}\nMonthly withholding: ¥{ia} / 12 = ¥{mens}\nEffective monthly rate: {teff} %\n\nLegal basis: 个人所得税法 (Law 31/08/2018); 国税发〔2018〕164号.",

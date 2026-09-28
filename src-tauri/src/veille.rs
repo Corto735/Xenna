@@ -56,6 +56,17 @@ pub struct MiseAJour {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
+        pays: Pays::Chine,
+        objet: "Pékin : assiette sociale 7 162-35 811 ¥ (07/2025-06/2026) puis 7 270-36 348 ¥ (dès 07/2026) ; fonds logement avec son propre plancher (salaire minimum, 2 540 ¥) ; maladie employeur 9 % avec le fonds des grosses dépenses (1 %), maternité 0,8 % à part",
+        sources: &[
+            "https://www.beijing.gov.cn/zhengce/zhengcefagui/202509/t20250918_4205116.html",
+            "https://www.beijing.gov.cn/zhengce/zcjd/202608/t20260821_4831683.html",
+            "https://www.beijing.gov.cn/zhengce/zhengcefagui/202608/t20260824_4834975.html",
+            "https://m.bjnews.com.cn/detail/161050449515293.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-28",
         pays: Pays::Japon,
         objet: "協会けんぽ Tokyo 2025 (9,91 % / 介護 1,59 %) et 2026 (9,85 % / 1,62 %) ; 雇用保険 2025 (0,55 % + 0,90 %) et 2026 (0,50 % + 0,85 %) ; 子ども・子育て支援金 0,23 % dès avril 2026 ; impôt : 基礎控除 et déduction d'emploi des réformes 2025 et 2026, cotisations sociales désormais déduites du revenu imposable",
         sources: &[
@@ -292,10 +303,7 @@ fn declaree(pays: &Pays) -> Veille {
         Pays::Belgique => v(2026, &[]),
         Pays::Angleterre => v(2026, &[]),
         Pays::Japon => v(2026, &[]),
-        // CN_* et CN_BASE_* depuis le 01/01/2024.
-        Pays::Chine => v(2024, &[
-            "assurance maladie employeur (6 % en 2026) et bases de Pékin postérieures à 2024 non intégrées — valeurs 2024 appliquées",
-        ]),
+        Pays::Chine => v(2026, &[]),
         Pays::PaysBas => v(2026, &[]),
         Pays::Australie => v(2026, &[]),
         Pays::NouvelleZelande => v(2026, &[]),
