@@ -451,8 +451,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 on top of the general scheme. It funds reimbursement at 90% (vs. 70% in the \
                 general scheme), with no co-payment for hospital stays. This scheme stems from \
                 Bismarckian law in force since 1871, retained when Alsace-Lorraine returned to \
-                France in 1919 (Act of 1 June 1924). Rate 1.50% until 30/06/2018, then 1.30% \
-                from 01/07/2018 (LFSS 2018).",
+                France in 1919 (Act of 1 June 1924). Rate set each year by the local scheme's board: \
+                1.50% from 01/01/2012 to 31/03/2022, 1.30% since 01/04/2022 (unchanged in 2026).",
             "de" => "Das Lokalregime Elsass-Mosel (Lokalrecht) bietet den Beschäftigten der \
                 Departements Bas-Rhin (67), Haut-Rhin (68) und Moselle (57) eine obligatorische \
                 ergänzende Krankenversicherung. Dieser nur vom Arbeitnehmer getragene Beitrag wird \
@@ -460,7 +460,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 (gegenüber 70 % im allgemeinen System), ohne Selbstbeteiligung bei Krankenhausaufenthalten. \
                 Dieses Regime geht auf das seit 1871 geltende bismarcksche Recht zurück, beibehalten bei \
                 der Rückkehr Elsass-Lothringens zu Frankreich 1919 (Gesetz vom 1. Juni 1924). \
-                Satz 1,50 % bis 30.06.2018, dann 1,30 % ab 01.07.2018 (LFSS 2018).",
+                Satz jährlich vom Verwaltungsrat des Lokalregimes festgelegt: \
+                1,50 % vom 01.01.2012 bis 31.03.2022, 1,30 % seit 01.04.2022 (2026 unverändert).",
             "nl" => "Het lokale stelsel van de Elzas-Moezel (lokaal recht) biedt een verplichte \
                 aanvullende ziekteverzekering aan werknemers van de departementen Bas-Rhin (67), \
                 Haut-Rhin (68) en Moezel (57). Deze uitsluitend door de werknemer gedragen bijdrage \
@@ -468,23 +469,26 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 (tegenover 70% in het algemene stelsel), zonder remgeld voor ziekenhuisopnames. \
                 Dit stelsel stamt uit het sinds 1871 geldende bismarckiaanse recht, behouden bij de \
                 terugkeer van Elzas-Lotharingen naar Frankrijk in 1919 (wet van 1 juni 1924). \
-                Tarief 1,50% tot 30/06/2018, daarna 1,30% vanaf 01/07/2018 (LFSS 2018).",
+                Tarief jaarlijks vastgesteld door de raad van bestuur van het lokale stelsel: \
+                1,50% van 01/01/2012 tot 31/03/2022, 1,30% sinds 01/04/2022 (ongewijzigd in 2026).",
             "it" => "Il regime locale dell'Alsazia-Mosella (diritto locale) offre una copertura \
                 malattia integrativa obbligatoria ai dipendenti dei dipartimenti del Bas-Rhin (67), \
                 Haut-Rhin (68) e Mosella (57). Questo contributo, esclusivamente a carico del dipendente, \
                 è prelevato in aggiunta al regime generale. Finanzia un rimborso al 90% (contro il 70% \
                 del regime generale), senza ticket per i ricoveri. Questo regime deriva dal diritto \
                 bismarckiano vigente dal 1871, mantenuto al ritorno dell'Alsazia-Lorena alla Francia \
-                nel 1919 (legge del 1° giugno 1924). Aliquota 1,50% fino al 30/06/2018, poi 1,30% \
-                dal 01/07/2018 (LFSS 2018).",
+                nel 1919 (legge del 1° giugno 1924). Aliquota fissata ogni anno dal consiglio \
+                di amministrazione del regime locale: 1,50% dal 01/01/2012 al 31/03/2022, 1,30% \
+                dal 01/04/2022 (invariata nel 2026).",
             "es" => "El régimen local de Alsacia-Mosela (derecho local) ofrece una cobertura \
                 de enfermedad complementaria obligatoria a los trabajadores de los departamentos del \
                 Bajo Rin (67), Alto Rin (68) y Mosela (57). Esta cotización, únicamente a cargo del \
                 trabajador, se recauda además del régimen general. Financia un reembolso del 90% \
                 (frente al 70% del régimen general), sin copago para las hospitalizaciones. Este régimen \
                 procede del derecho bismarckiano vigente desde 1871, mantenido al volver Alsacia-Lorena \
-                a Francia en 1919 (ley del 1 de junio de 1924). Tipo 1,50% hasta el 30/06/2018, luego \
-                1,30% desde el 01/07/2018 (LFSS 2018).",
+                a Francia en 1919 (ley del 1 de junio de 1924). Tipo fijado cada año por el consejo \
+                de administración del régimen local: 1,50% del 01/01/2012 al 31/03/2022, 1,30% \
+                desde el 01/04/2022 (sin cambios en 2026).",
             _ => return None,
         },
         // ── Réduction Fillon — gabarits dynamiques ────────────────────────────

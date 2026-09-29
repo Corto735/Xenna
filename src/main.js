@@ -2956,7 +2956,8 @@ function renderAll(b) {
 // les dernières valeurs connues. Le back déclare pays par pays jusqu'où ses
 // barèmes vont (veille.rs, relevé daté) ; ce bandeau le dit sous l'en-tête du
 // résultat. Table statique : une requête par pays et par session suffit.
-const _veilleCache = new Map();   // pays → Promise<{ integre_jusqu_a, lacunes, audit_du }>
+const _veilleCache = new Map();   // pays → Promise<{ integre_jusqu_a, lacunes, audit_du, derniere_maj }>
+let _journalCache = null;         // Promise<MiseAJour[]> — journal de la veille, tous régimes
 
 async function _afficherVeille(b) {
   const pays = b.salarie?.pays;
@@ -2966,19 +2967,40 @@ async function _afficherVeille(b) {
     _veilleCache.set(pays, api('veille_baremes', { pays })
       .catch(e => { _veilleCache.delete(pays); throw e; }));
   }
-  let v;
-  try { v = await _veilleCache.get(pays); }
+  // Le journal (même source que la page « À propos ») donne l'objet de la
+  // dernière modification ; son échec ne prive que de l'objet, pas de la date.
+  if (!_journalCache) {
+    _journalCache = api('journal_baremes', {})
+      .catch(e => { _journalCache = null; console.warn('[journal_baremes] indisponible :', e); return []; });
+  }
+  let v, journal;
+  try { [v, journal] = await Promise.all([_veilleCache.get(pays), _journalCache]); }
   catch (e) { console.warn('[veille_baremes] indisponible :', e); return; }
   if (lastBulletin && lastBulletin !== b) return; // un calcul plus récent a pris la main
 
   const annee = parseInt(getDatePaie().slice(0, 4), 10);
-  const releve = `relevé du ${formatDate(v.audit_du)}`;
+  // Dernière modification journalisée par la veille réglementaire (JOURNAL de
+  // veille.rs, trié du plus récent au plus ancien). Un régime jamais journalisé
+  // le dit, plutôt que de se voir prêter une date qu'il n'a pas.
+  const derniere = journal.find(m => m.pays === pays && m.date === v.derniere_maj);
+  const releve = v.derniere_maj
+    ? `dernière modification le ${formatDate(v.derniere_maj)}` +
+      (derniere ? ` : <span class="vb-objet" title="${esc(derniere.objet)}">${esc(derniere.objet)}</span>` : '')
+    : 'aucune modification journalisée par la veille';
+  // Spécificité cochée (Alsace-Moselle) : sa propre date, journalisée à part.
+  const specifs = b.salarie?.alsace_moselle ? [['alsace_moselle', VEILLE_SPECIFICITES.alsace_moselle]] : [];
+  const releveSpecifs = specifs.map(([cle, lib]) => {
+    const m = journal.find(e => e.pays === pays && e.specificite === cle);
+    return m
+      ? ` · ${lib} : modifié le ${formatDate(m.date)} : <span class="vb-objet" title="${esc(m.objet)}">${esc(m.objet)}</span>`
+      : ` · ${lib} : aucune modification journalisée`;
+  }).join('');
   const aJour = annee <= v.integre_jusqu_a;
   const html = aJour
-    ? `✓ Barèmes ${annee} intégrés <span class="vb-releve">· ${releve}</span>`
+    ? `✓ Barèmes ${annee} intégrés <span class="vb-releve">· ${releve}${releveSpecifs}</span>`
     : `<div class="vb-titre">⚠ Barèmes ${annee} incomplets pour ce régime</div>
        <ul>${v.lacunes.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
-       <div class="vb-releve">Barèmes intégrés jusqu'en ${v.integre_jusqu_a} · ${releve}</div>`;
+       <div class="vb-releve">Barèmes intégrés jusqu'en ${v.integre_jusqu_a} · ${releve}${releveSpecifs}</div>`;
   document.querySelectorAll('.veille-baremes').forEach(el => {
     el.classList.toggle('is-lacune', !aJour);
     el.innerHTML = html;
@@ -3006,6 +3028,8 @@ const VEILLE_NOMS = {
   etats_unis: '🇺🇸 États-Unis', mexique: '🇲🇽 Mexique', bresil: '🇧🇷 Brésil',
   emirats: '🇦🇪 Émirats arabes unis', inde: '🇮🇳 Inde',
 };
+// Spécificités journalisées à part (enum `Specificite` de veille.rs).
+const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle' };
 let _veilleTousCharge = false;
 
 async function _veilleTableau() {
@@ -3038,7 +3062,7 @@ async function _veilleTableau() {
   // Journal : ce qui a été intégré, quand, et d'après quelle source.
   const domaine = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
   const entree = m => `<li><span class="vj-date">${formatDate(m.date)}</span>
-      <span class="vj-pays">${nom(m)}</span> — ${esc(m.objet)}
+      <span class="vj-pays">${nom(m)}${m.specificite ? ' · ' + esc(VEILLE_SPECIFICITES[m.specificite] || m.specificite) : ''}</span> — ${esc(m.objet)}
       <span class="vj-src">${m.sources.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(domaine(u))}</a>`).join(' · ')}</span></li>`;
   const journalHtml = journal.length ? `
     <div class="vt-intro" style="margin-top:1rem">Journal des mises à jour — chaque valeur intégrée, datée et sourcée :</div>
@@ -5431,7 +5455,10 @@ window.gaabRenderBox = function(type) {
   const host = document.getElementById('gaab-box-plot');
   if (!host) return;
 
-  const vals = GAAB_EMPLOYES.map(e => _gaabSalVal(e.bh, type)).sort((a, b) => a - b);
+  // Chaque point garde le sexe du salarié, pour colorer H/F dans le nuage
+  const pts  = GAAB_EMPLOYES.map(e => ({ v: _gaabSalVal(e.bh, type), sexe: e.sexe }))
+                            .sort((a, b) => a.v - b.v);
+  const vals = pts.map(p => p.v);
   const n    = vals.length;
   const min  = vals[0], max = vals[n - 1];
   const q1   = _gaabQuantile(vals, 0.25);
@@ -5462,11 +5489,20 @@ window.gaabRenderBox = function(type) {
   const unit = (type === 'bh' || type === 'nh') ? ' €/h' : ' €';
 
   // Points individuels (jitter déterministe, donc stable d'un rendu à l'autre)
-  const dots = vals.map((v, i) => {
+  const dots = pts.map(({ v, sexe }, i) => {
     const j     = (((i * 37 + 11) % 23) / 23 - 0.5) * 30;
     const isOut = v < loFence || v > hiFence;
-    return `<circle cx="${sx(v)}" cy="${(cy + j).toFixed(1)}" r="3.2" class="${isOut ? 'gb-out' : 'gb-dot'}"/>`;
+    const sx_   = sexe === 'F' ? 'gb-f' : 'gb-h';
+    return `<circle cx="${sx(v)}" cy="${(cy + j).toFixed(1)}" r="3.6" class="gb-dot ${sx_}${isOut ? ' gb-out' : ''}"><title>${sexe === 'F' ? 'Femme' : 'Homme'} — ${fmt(v)}${unit}</title></circle>`;
   }).join('');
+
+  // Médianes par sexe : deux traits courts au-dessus de la boîte
+  const parSexe = s => pts.filter(p => p.sexe === s).map(p => p.v);
+  const vH = parSexe('H'), vF = parSexe('F');
+  const medH = vH.length ? _gaabQuantile(vH, 0.5) : null;
+  const medF = vF.length ? _gaabQuantile(vF, 0.5) : null;
+  const medSx = (m, c) => m == null ? ''
+    : `<line x1="${sx(m)}" y1="${bTop - 22}" x2="${sx(m)}" y2="${bTop - 4}" class="gb-medsx ${c}"/>`;
 
   const lbl = (v, txt) =>
     `<text x="${sx(v)}" y="138" text-anchor="middle" class="gb-tick">${txt}</text>
@@ -5481,6 +5517,8 @@ window.gaabRenderBox = function(type) {
     <rect x="${sx(q1)}" y="${bTop}" width="${(sx(q3) - sx(q1)).toFixed(1)}" height="${bBot - bTop}" class="gb-box"/>
     <line x1="${sx(med)}"  y1="${bTop}"     x2="${sx(med)}"  y2="${bBot}"     class="gb-med"/>
     <line x1="${sx(mean)}" y1="${bTop - 6}" x2="${sx(mean)}" y2="${bBot + 6}" class="gb-mean"/>
+    ${medSx(medH, 'gb-h')}
+    ${medSx(medF, 'gb-f')}
     ${dots}
     ${lbl(wLo, 'min')}
     ${lbl(q1,  'Q1')}
@@ -5501,6 +5539,9 @@ window.gaabRenderBox = function(type) {
       <span class="gb-l-mean">┄ moyenne <b class="gb-num">${fmt(mean)}${unit}</b></span>
       <span>écart interquartile <b class="gb-num">${fmt(iqr)}${unit}</b></span>
       <span>ratio Q3/Q1 <b>${ratio}</b></span>
+      ${medH != null ? `<span class="gb-l-h"><span class="gb-sw">●</span> hommes (${vH.length}) — méd. <b>${fmt(medH)}${unit}</b></span>` : ''}
+      ${medF != null ? `<span class="gb-l-f"><span class="gb-sw">●</span> femmes (${vF.length}) — méd. <b>${fmt(medF)}${unit}</b></span>` : ''}
+      ${medH != null && medF != null ? `<span class="gb-l-gap">écart médian F/H <b>${((medF / medH - 1) * 100).toFixed(1).replace('.', ',')} %</b></span>` : ''}
       ${outliers.length ? `<span class="gb-l-out">${outliers.length} atypique${outliers.length > 1 ? 's' : ''}</span>` : ''}`;
   }
 };

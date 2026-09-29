@@ -45,18 +45,41 @@ pub struct MiseAJour {
     /// Date de l'intégration (AAAA-MM-JJ).
     pub date: &'static str,
     pub pays: Pays,
+    /// Spécificité territoriale visée, si l'entrée ne porte que sur elle (le
+    /// bandeau du bulletin ne l'affiche alors que si elle est cochée, et la date
+    /// de dernière mise à jour du régime ne la compte pas).
+    pub specificite: Option<Specificite>,
     /// Ce qui a changé, valeurs et date d'effet comprises.
     pub objet: &'static str,
     /// Source(s) officielle(s) ou, à défaut, presse spécialisée concordante.
     pub sources: &'static [&'static str],
 }
 
+/// Spécificités territoriales journalisées à part de leur régime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Specificite {
+    AlsaceMoselle,
+}
+
 /// Journal des mises à jour, du plus récent au plus ancien. Qui intègre des
 /// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
+        date: "2026-09-29",
+        pays: Pays::France,
+        specificite: Some(Specificite::AlsaceMoselle),
+        objet: "Régime local, maladie complémentaire : date de la baisse corrigée — 1,50 % du 01/01/2012 au 31/03/2022, 1,30 % depuis le 01/04/2022 (et non le 01/07/2018), maintenu en 2026 par le conseil d'administration du 19/12/2025",
+        sources: &[
+            "https://regime-local.fr/cotisation/",
+            "https://www.revue-fiduciaire.com/actualite/article/alsace-moselle-la-cotisation-d-assurance-maladie-du-regime-local-abaissee-a-1-30-en-avril-2022",
+            "https://www.revue-fiduciaire.com/actualite/article/le-regime-local-d-assurance-maladie-d-alsace-moselle-maintient-son-taux-de-cotisation-a-1-30-pour-2026",
+        ],
+    },
+    MiseAJour {
         date: "2026-09-28",
         pays: Pays::Chine,
+        specificite: None,
         objet: "Pékin : assiette sociale 7 162-35 811 ¥ (07/2025-06/2026) puis 7 270-36 348 ¥ (dès 07/2026) ; fonds logement avec son propre plancher (salaire minimum, 2 540 ¥) ; maladie employeur 9 % avec le fonds des grosses dépenses (1 %), maternité 0,8 % à part",
         sources: &[
             "https://www.beijing.gov.cn/zhengce/zhengcefagui/202509/t20250918_4205116.html",
@@ -68,6 +91,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Japon,
+        specificite: None,
         objet: "協会けんぽ Tokyo 2025 (9,91 % / 介護 1,59 %) et 2026 (9,85 % / 1,62 %) ; 雇用保険 2025 (0,55 % + 0,90 %) et 2026 (0,50 % + 0,85 %) ; 子ども・子育て支援金 0,23 % dès avril 2026 ; impôt : 基礎控除 et déduction d'emploi des réformes 2025 et 2026, cotisations sociales désormais déduites du revenu imposable",
         sources: &[
             "https://www.kyoukaikenpo.or.jp/about/business/insurance_rate/rate_prefectures/r08/index.html",
@@ -79,6 +103,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Emirats,
+        specificite: None,
         objet: "GPSSA 2026 relevé : régime de la loi 7/1999 (salarié 5 %, employeur 12,5 %, État 2,5 %, plafond 50 000 AED) inchangé. Non modélisé : le régime du décret-loi 57/2023 pour les Émiratis entrés depuis le 31/10/2023 (11 % / 15 %, plafond 70 000 AED)",
         sources: &[
             "https://www.zoho.com/en-ae/payroll/academy/compliance/gpssa-and-adpf-pension.html",
@@ -88,6 +113,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Mexique,
+        specificite: None,
         objet: "UMA au 1er février (113,14 $/j en 2025, 117,31 $/j en 2026) ; tarif ISR mensuel 2026 (Anexo 8 RMF 2026) ; subsidio al empleo 13,8 % de l'UMA en 2025 (≤ 10 171 $) et 15,02 % en 2026 (≤ 11 492,66 $) — le calcul appliquait les valeurs de 2024",
         sources: &[
             "https://kpmg.com/mx/es/tendencias/2026/01/flash-inegi-valor-de-la-uma-para-2026.html",
@@ -99,6 +125,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Bresil,
+        specificite: None,
         objet: "INSS 2026 (plancher 1 621 R$, plafond 8 475,55 R$) ; IRRF : table de mai 2025 (exonération jusqu'à 2 428,80 R$, desconto simplificado 607,20 R$) et réduction de la Lei 15.270/2025 dès 2026 (impôt nul jusqu'à 5 000 R$ de revenu, dégressif jusqu'à 7 350 R$)",
         sources: &[
             "https://www.gov.br/previdencia/pt-br/assuntos/rpps/documentos/PortariaInterministerialMPSMF13de9dejaneirode2026.pdf",
@@ -108,6 +135,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Slovaquie,
+        specificite: None,
         objet: "2026 : plafond social 16 764 €/mois ; assurance maladie salarié 5 % (hausse temporaire 2026-2027) ; nouvelles tranches d'impôt à 30 % et 35 % au-delà de 5 029,10 et 6 250,86 €/mois (3ᵉ paquet de consolidation)",
         sources: &[
             "https://www.socpoist.sk/news/nove-vymeriavacie-zaklady-pre-platenie-poistneho-od-1-januara-2026",
@@ -118,6 +146,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Belgique,
+        specificite: None,
         objet: "Revenus 2026 : tranches 16 720 / 29 510 / 51 070 €, quotité exemptée 11 180 €, forfait de frais professionnels plafonné à 6 070 € ; tranches 2025 corrigées (16 320 / 28 800 / 49 840 €)",
         sources: &[
             "https://news.bloombergtax.com/daily-tax-report-international/belgium-mof-announces-automatic-indexation-for-2026-individual-income",
@@ -128,6 +157,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Portugal,
+        specificite: None,
         objet: "Barème IRS 2026 (OE 2026, Lei 73-A/2025) et barème 2025 rétroactivement abaissé (Lei 55-A/2025) ; dedução específica 8,54 × IAS (4 587,09 € en 2026) ; salaire minimum 920 €",
         sources: &[
             "https://www.santander.pt/salto/escaloes-irs",
@@ -138,6 +168,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Espagne,
+        specificite: None,
         objet: "2026 : base maximale 5 101,20 €, base minimale des groupes 4-7 1 424,40 € (le calcul prenait le SMI au lieu de la base minimale, corrigé depuis 2015), MEI 0,90 % (taux 2023-2025 corrigés) ; cotisation de solidarité au-delà de la base maximale ajoutée pour 2025 et 2026",
         sources: &[
             "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-7296",
@@ -147,6 +178,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Allemagne,
+        specificite: None,
         objet: "Lohnsteuer : tarif exact du §32a EStG pour 2023-2026 (Grundfreibetrag 2024 : 11 784 € ; 2026 : 12 348 € au lieu d'une estimation à 12 648 €) ; revenu imposable diminué des forfaits et de la Vorsorgepauschale (règles 2026) au lieu d'un double abattement ; splitting en classe III ; seuil du Soli par année (20 350 € en 2026)",
         sources: &[
             "https://www.gesetze-im-internet.de/estg/__32a.html",
@@ -157,6 +189,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Quebec,
+        specificite: None,
         objet: "Table d'imposition du Québec 2025 (53 255 / 106 495 / 129 590 $, MPB 18 571 $) et 2026 (54 345 / 108 680 / 132 245 $, MPB 18 952 $) ; impôt fédéral 2025-2026 ; abattement du Québec de 16,5 % sur l'impôt fédéral, jusqu'ici omis",
         sources: &[
             "https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/finances/publications-adm/parametres/AUTFR_RegimeImpot2026.pdf",
@@ -166,6 +199,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Canada,
+        specificite: None,
         objet: "Impôt fédéral 2025 (1ʳᵉ tranche à 14,5 %, MPB 16 129 $) et 2026 (14 %, seuils 58 523 / 117 045 / 181 440 / 258 482 $, MPB 16 452 $) ; barèmes 2025 et 2026 des douze provinces et territoires hors Québec (dont la nouvelle tranche albertaine à 8 %) ; Ontario : surtaxe (2025+) et contribution-santé désormais comptées",
         sources: &[
             "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
@@ -175,6 +209,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::EtatsUnis,
+        specificite: None,
         objet: "2026 : barème fédéral et déduction standard (16 100 $) de la Rev. Proc. 2025-32 ; plafond Social Security 184 500 $ ; California SDI 1,3 % ; New York : cinq premiers taux baissés de 0,1 point",
         sources: &[
             "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill",
@@ -186,6 +221,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Inde,
+        specificite: None,
         objet: "Exercice 2026-27 (dès le 01/04/2026) : barèmes, déduction standard (75 000 ₹) et rebate (revenu ≤ 12 lakh) inchangés par le Budget 2026-27 ; l'Income-tax Act 2025 remplace la loi de 1961",
         sources: &[
             "https://www.businesstoday.in/personal-finance/tax/story/tax-slabs-fy-2026-27-what-budget-2026-changed-for-individual-taxpayers-and-which-regime-works-best-514044-2026-02-01",
@@ -195,6 +231,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Australie,
+        specificite: None,
         objet: "Exercice 2026-27 (dès le 01/07/2026) : 2ᵉ taux d'impôt ramené de 16 à 15 % ; maximum contribution base annuelle 270 830 $ ; calcul désormais par exercice (juillet-juin)",
         sources: &[
             "https://www.ato.gov.au/about-ato/new-legislation/in-detail/individuals/personal-income-tax-new-tax-cuts-for-every-australian-taxpayer",
@@ -204,6 +241,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Irlande,
+        specificite: None,
         objet: "PRSI Class A : 4,2 % / 11,25 % dès le 01/10/2025 et 4,35 % / 11,40 % dès le 01/10/2026 (au lieu de 4,2 % / 11,15 % toute l'année) ; taux employeur réduit sous 552 €/semaine et crédit PRSI salarié désormais appliqués",
         sources: &[
             "https://assets.gov.ie/static/documents/cb168977/PRSI_C20260116_Contribution_Rates_and_User_Guide_-_SW_14_-_English_Version_-_January_2026_.pdf-web.pdf",
@@ -212,6 +250,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::NouvelleZelande,
+        specificite: None,
         objet: "Exercice 2026-27 (dès le 01/04/2026) : ACC earner's levy 1,75 % plafonné à 156 641 $ ; KiwiSaver employeur 3,5 % (4 % au 01/04/2028) ; barème PAYE inchangé ; calcul désormais par exercice (avril-mars)",
         sources: &[
             "https://www.ird.govt.nz/kiwisaver-changes",
@@ -222,6 +261,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Angleterre,
+        specificite: None,
         objet: "Exercices 2025/26 et 2026/27 : NI employeur 15 % au-delà d'un Secondary Threshold de £5 000 (au lieu de 13,8 % / £9 100) ; seuils salariaux et d'impôt gelés ; calcul désormais par exercice fiscal (6 avril)",
         sources: &[
             "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027",
@@ -231,6 +271,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::Italia,
+        specificite: None,
         objet: "IRPEF 2026 : 2ᵉ tranche (28 000-50 000 €) ramenée de 35 à 33 % au 01/01/2026 — L. 199/2025 (Bilancio 2026)",
         sources: &[
             "https://www.mef.gov.it/focus/Principali-misure-della-legge-di-bilancio-2026/",
@@ -239,12 +280,14 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::FonctionPublique,
+        specificite: None,
         objet: "CNRACL : taux employeur 34,65 % (2025), 37,65 % (2026), 40,65 % (2027), 43,65 % (2028) — décret n° 2025-86 ; part agent inchangée (11,10 %)",
         sources: &["https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051070354"],
     },
     MiseAJour {
         date: "2026-09-28",
         pays: Pays::France,
+        specificite: None,
         objet: "AGS : historique corrigé 2015-2026 — 0,30 % (2015), 0,25 % (2016), 0,20 % (1er sem. 2017), 0,15 % (07/2017-2023), 0,20 % (1er sem. 2024), 0,25 % depuis le 01/07/2024, maintenu en 2026",
         sources: &[
             "https://entreprendre.service-public.gouv.fr/actualites/A17906",
@@ -280,7 +323,11 @@ const fn v(integre_jusqu_a: i32, lacunes: &'static [&'static str]) -> Veille {
 
 pub fn veille(pays: &Pays) -> Veille {
     let mut v = declaree(pays);
-    v.derniere_maj = JOURNAL.iter().filter(|m| m.pays == *pays).map(|m| m.date).max();
+    // Les entrées propres à une spécificité (Alsace-Moselle) ne datent pas le
+    // régime entier : le front les lit dans le journal quand elle est cochée.
+    v.derniere_maj = JOURNAL.iter()
+        .filter(|m| m.pays == *pays && m.specificite.is_none())
+        .map(|m| m.date).max();
     v
 }
 

@@ -299,6 +299,24 @@ async fn golden_france_fillon() {
     nettoyer(&path);
 }
 
+/// Régime local d'Alsace-Moselle : 1,50 % jusqu'au 31/03/2022, 1,30 % depuis le
+/// 01/04/2022 (la migration 0008 datait à tort la baisse du 01/07/2018).
+#[tokio::test]
+async fn golden_alsace_moselle_taux_par_date() {
+    let (pool, path) = base_test().await;
+    for (jour, attendu) in [("2020-06-15", "0.0150"), ("2022-03-15", "0.0150"),
+                            ("2022-04-15", "0.0130"), ("2026-03-15", "0.0130")] {
+        let ctx = ContextPaie::charger(&pool, date(jour)).await.unwrap();
+        let mut s = salarie_base(Pays::France, "3000.00");
+        s.alsace_moselle = true;
+        let b = generer_bulletin(s, &ctx, None);
+        let am = b.cotisations.iter().find(|c| c.code == "ALSACE_MOSELLE_MALADIE")
+            .unwrap_or_else(|| panic!("ligne Alsace-Moselle attendue au {jour}"));
+        assert_eq!(am.taux_sal, attendu.parse::<Decimal>().unwrap(), "taux Alsace-Moselle au {jour}");
+    }
+    nettoyer(&path);
+}
+
 /// Le SMIC de référence Fillon est gelé au 1er janvier : après la revalorisation
 /// du SMIC au 1er juin 2026 (1 867,02 €), la réduction générale reste calculée sur
 /// le SMIC du 1er janvier (1 823,03 €). Le seuil d'extinction doit donc rester

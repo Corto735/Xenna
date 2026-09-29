@@ -98,6 +98,7 @@
       --yellow: #fbbf24;
       --or:     #f5c842;   /* pastille de Xenna, cœur du soutien */
       --purple: #c084fc;
+      --pink:   #f472b6;
       --gray:   #7a9ab8;
       --white:  #e8f4ff;
       /* ── Rampe « encre » : la couleur du TEXTE, séparée de la structure ──
@@ -447,7 +448,7 @@
       --text:   #000000; --muted:  #333333; --dim:    #555555;
       --border: #000000; --blue:   #000000; --red:    #000000;
       --sal:    #000000; --float-edge: #000000;
-      --orange: #000000; --green:  #000000; --purple: #000000;
+      --orange: #000000; --green:  #000000; --purple: #000000; --pink: #000000;
       --gray:   #000000; --yellow: #000000; --white:  #000000;
       --electric-blue: #000000; --or: #000000;
       --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
@@ -620,6 +621,7 @@
       --orange: #ffb347;
       --green:  #66ff66;
       --purple: #cc99ff;
+      --pink:   #ff8ad8;
       --gray:   #dddddd;
       --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
       --titre-flash: var(--blue);
@@ -715,6 +717,7 @@
       --yellow: var(--mnt-bright);
       --or:     var(--mnt-bright);
       --purple: var(--mnt-mid);
+      --pink:   var(--mnt-bright);
       --gray:   var(--mnt-mid);
       --white:  var(--mnt-bright);
       --dim-txt: var(--dim); --muted-txt: var(--muted); --gray-txt: var(--gray);
@@ -1871,6 +1874,11 @@
       letter-spacing: 0.04em;
     }
     .veille-baremes .vb-releve { opacity: 0.75; }
+    /* Objet de la dernière modification : une ligne, texte complet au survol */
+    .veille-baremes .vb-objet {
+      display: inline-block; max-width: min(46ch, 60vw); vertical-align: bottom;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .veille-baremes.is-lacune { color: var(--yellow); padding-block: 0.4rem; }
     .veille-baremes.is-lacune .vb-titre { font-weight: bold; letter-spacing: 0.07em; }
     .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
@@ -2503,14 +2511,16 @@
     .mc-btn:hover,
     .mc-btn:focus-visible { background: var(--blue); color: var(--bg3); }
 
-    /* Bannière de soutien, dans « À propos » seulement : la frise de l'équipe,
-       cliquable vers Tipeee. */
+    /* Bannière de soutien, dans « À propos » seulement : le blason ● / □
+       (le même que la vue Mécénat), cliquable vers Tipeee. */
     .ap-soutien {
       display: block; width: 100%; margin: 0.9rem 0 1.6rem; padding: 0;
       background: none; border: 1px solid var(--border); cursor: pointer;
       font-family: inherit; color: var(--muted-txt); text-align: center;
     }
-    .ap-soutien img { display: block; width: 100%; height: auto; }
+    .ap-soutien .ap-soutien-blason { margin-bottom: 0; padding: 1.6rem 0 1.2rem; }
+    .ap-soutien:hover .mc-glyphe,
+    .ap-soutien:focus-visible .mc-glyphe { color: var(--or); }
     .ap-soutien-legende { display: block; padding: 0.45rem 0.6rem; font-size: 0.66rem; letter-spacing: 0.08em; }
     .ap-soutien:hover,
     .ap-soutien:focus-visible { border-color: var(--or); color: var(--text); }
@@ -2991,8 +3001,17 @@
     .gb-med   { stroke: var(--yellow); stroke-width: 2.2; }
     .gb-mean  { stroke: var(--green);  stroke-width: 1.4; stroke-dasharray: 3 3; }
     .gb-whisk { stroke: var(--muted);  stroke-width: 1.4; }
-    .gb-dot   { fill: var(--purple); opacity: 0.6; }
-    .gb-out   { fill: var(--red);    opacity: 0.95; }
+    /* Points par sexe : la couleur porte la lecture H/F ; les atypiques gardent
+       leur couleur de sexe et prennent un anneau rouge. En noir & blanc et en
+       Minitel, les deux couleurs se confondent : les femmes passent en creux. */
+    .gb-dot   { opacity: 0.8; }
+    .gb-h     { fill: var(--blue); }
+    .gb-f     { fill: var(--pink); }
+    .gb-out   { opacity: 1; stroke: var(--red); stroke-width: 1.6; }
+    body.bw-mode .gb-f, body.minitel-mode .gb-f { fill: none; stroke: var(--pink); stroke-width: 1.4; }
+    .gb-medsx { stroke-width: 1.6; stroke-dasharray: 2 2; }
+    .gb-medsx.gb-h { stroke: var(--blue); }
+    .gb-medsx.gb-f { stroke: var(--pink); }
     .gb-tick  { fill: var(--dim-txt);  font-size: 0.8125rem; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
     .gb-val   { fill: var(--text); font-size: 0.8125rem; font-family: var(--font-mono, monospace); }
     .gaab-box-legend {
@@ -3004,6 +3023,9 @@
     .gb-l-med  b { color: var(--yellow); }
     .gb-l-mean b { color: var(--green); }
     .gb-l-out  { color: var(--red); }
+    .gb-l-h b, .gb-l-h .gb-sw { color: var(--blue); }
+    .gb-l-f b, .gb-l-f .gb-sw { color: var(--pink); }
+    .gb-l-gap b { color: var(--text); }
 
     /* Taux de RQTH */
     .gaab-rqth-section { margin-top: 2.8rem; }
@@ -3503,7 +3525,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-D1NSuA2W.js"></script>
+  <script type="module" crossorigin src="/assets/index-XP3GRhnI.js"></script>
 </head>
 <body>
 
@@ -4845,8 +4867,11 @@
       une pratique courante dans l'écosystème open source appelée <em style="color:var(--blue);font-style:normal">double licence</em> ou <em style="color:var(--blue);font-style:normal">open core</em>.
     </div>
     <button class="ap-soutien" type="button" onclick="openExternal('https://fr.tipeee.com/xenna-paye')">
-      <img src="/tipeee-banner.svg" width="1200" height="400" loading="lazy"
-           alt="Frise de l'équipe Xenna : quatre silhouettes, dont une guerrière épée levée et Poséidon">
+      <span class="mc-blason ap-soutien-blason" aria-hidden="true">
+        <span class="pastille-or"></span>
+        <span class="mc-glyphe mc-glyphe--barre">/</span>
+        <span class="mc-glyphe mc-glyphe--carre">□</span>
+      </span>
       <span class="ap-soutien-legende">♥ &nbsp;Soutenir Xenna sur Tipeee — fr.tipeee.com/xenna-paye</span>
     </button>
 

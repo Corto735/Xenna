@@ -442,8 +442,9 @@ pub fn maladie_alsace_moselle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
             général) des frais de santé, sans ticket modérateur pour les hospitalisations. \
             Ce régime est issu du droit bismarckien applicable depuis 1871, maintenu lors du \
             retour de l'Alsace-Lorraine à la France en 1919 (loi du 1er juin 1924). \
-            Taux 1,50 % jusqu'au 30/06/2018, puis 1,30 % à compter du 01/07/2018 (LFSS 2018)."),
-        loi_ref: Some(ctx.loi_ref("Loi locale du 1/06/1924 — CSS art. L325-1 et s. — Loi 2018-1203 du 22/12/2018")),
+            Taux fixé chaque année par le conseil d'administration du régime local : 1,50 % \
+            du 01/01/2012 au 31/03/2022, 1,30 % depuis le 01/04/2022 (maintenu en 2026)."),
+        loi_ref: Some(ctx.loi_ref("Loi locale du 1/06/1924 — CSS art. L325-1 et s.")),
     })
 }
 
