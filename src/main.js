@@ -1173,8 +1173,39 @@ function _hiBuildStates(evts) {
   return states;
 }
 
+// Vitesse de lecture, de ×1 à ×4, partagée par les curseurs d'À propos et du
+// Carnet de bord. Le planning reste en temps d'enregistrement ; changer de
+// vitesse en cours de lecture reprogramme la suite depuis l'instant atteint.
+let _hiVitesse = 1;
+let _hiPlanning = [];         // [{ t, base }] trié, en temps d'enregistrement
+let _hiCible = null;          // scène du replay en cours
+let _hiLectureT0 = 0, _hiLectureReel0 = 0;
+
+function _hiProgrammer(depuis) {
+  _hiStopReplay();
+  _hiLectureT0 = depuis;
+  _hiLectureReel0 = performance.now();
+  const cible = _hiCible;
+  for (const { t, base } of _hiPlanning) {
+    if (t < depuis) continue;
+    _hiTimers.push(setTimeout(() => mlRenderSnapshot(base, cible, t), (t - depuis) / _hiVitesse));
+  }
+}
+
+function _hiSetVitesse(v) {
+  const enCours = _hiTimers.length > 0;
+  const position = enCours ? _hiLectureT0 + (performance.now() - _hiLectureReel0) * _hiVitesse : 0;
+  _hiVitesse = parseFloat(v) || 1;
+  const txt = '×' + String(_hiVitesse).replace('.', ',');
+  document.querySelectorAll('.hi-vitesse input').forEach(inp => { inp.value = _hiVitesse; });
+  document.querySelectorAll('.hi-vitesse b').forEach(b => { b.textContent = txt; });
+  if (enCours) _hiProgrammer(position);
+}
+
 function _hiReplay(events, stage) {
   _hiStopReplay();
+  _hiPlanning = [];
+  _hiCible = stage;
   stage.style.display = 'block';
   stage.innerHTML = '<span class="ml-cursor"></span>';
   const states = _hiBuildStates(events);
@@ -1189,8 +1220,9 @@ function _hiReplay(events, stage) {
     let base = null;
     for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
     if (!base) continue;
-    _hiTimers.push(setTimeout(() => mlRenderSnapshot(base, stage, t), t));
+    _hiPlanning.push({ t, base });
   }
+  _hiProgrammer(0);
 }
 
 // Les posts « human input » de la page À propos (destination 'apropos').
@@ -1214,7 +1246,13 @@ async function _hiLoadInto(boxId, destination) {
       box.innerHTML = '<div class="hi-empty">Aucun message pour le moment.</div>';
       return;
     }
-    box.innerHTML = posts.map((p, i) => `
+    const vitesse = '×' + String(_hiVitesse).replace('.', ',');
+    box.innerHTML = `
+      <label class="hi-vitesse">
+        Vitesse du replay
+        <input type="range" min="1" max="4" step="0.25" value="${_hiVitesse}">
+        <b>${vitesse}</b>
+      </label>` + posts.map((p, i) => `
       <div class="hi-post">
         <div class="hi-post-date">${new Date(p.created_at).toLocaleDateString('fr-FR', { year:'numeric', month:'long', day:'numeric' })}</div>
         <div class="hi-post-actions">
@@ -1224,6 +1262,7 @@ async function _hiLoadInto(boxId, destination) {
         <div class="hi-post-text" id="${boxId}-text-${i}" style="display:none">${esc(p.contenu)}</div>
         <div class="hi-stage" id="${boxId}-stage-${i}"></div>
       </div>`).join('');
+    box.querySelector('.hi-vitesse input').addEventListener('input', e => _hiSetVitesse(e.target.value));
     // « human input » : rejoue les frappes en temps réel (avec effacements barrés).
     box.querySelectorAll('.hi-replay-btn').forEach(btn => {
       btn.addEventListener('click', () => {

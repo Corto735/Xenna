@@ -91,6 +91,25 @@
     outline: none; resize: vertical; line-height: 1.7;
   }
   #hi-editor:focus { border-color: var(--blue); }
+  .hi-editor-wrap { position: relative; }
+  .hi-pause-badge {
+    display: none; position: absolute; top: 0.5rem; right: 0.6rem;
+    font-size: 0.6rem; letter-spacing: 0.12em; color: var(--bg);
+    background: var(--yellow); padding: 0.2rem 0.55rem; pointer-events: none;
+  }
+  .hi-editor-wrap.hi-en-pause .hi-pause-badge { display: block; }
+  .hi-editor-wrap.hi-en-pause #hi-editor { border-color: var(--yellow); opacity: 0.7; }
+  label.hi-pause-opt {
+    display: flex; align-items: center; gap: 0.45rem; margin: 0.5rem 0 0;
+    font-size: 0.65rem; color: var(--white); cursor: pointer; flex-wrap: wrap;
+  }
+  .hi-pause-opt .hi-pause-aide { color: var(--muted); font-size: 0.58rem; }
+  label.hi-vitesse {
+    display: flex; align-items: center; gap: 0.5rem; margin: 0;
+    font-size: 0.65rem; color: var(--white); letter-spacing: 0.08em;
+  }
+  .hi-vitesse input { width: 12rem; max-width: 50vw; accent-color: var(--blue); }
+  .hi-vitesse b { color: var(--yellow); min-width: 2.6rem; }
   .hi-row { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
   .hi-stats { font-size: 0.62rem; color: var(--muted); margin-top: 0.4rem; }
   .hi-stats b { color: var(--yellow); }
@@ -260,7 +279,15 @@
         <p class="subtitle" style="margin-bottom:1rem">
           Tapez un paragraphe (la frappe est enregistrée), choisissez la destination, puis publiez.
         </p>
-        <textarea id="hi-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+        <div class="hi-editor-wrap" id="hi-editor-wrap">
+          <textarea id="hi-editor" placeholder="Commencez à taper… chaque frappe est enregistrée avec son timing exact."></textarea>
+          <div class="hi-pause-badge">⏸ EN PAUSE · espace pour reprendre</div>
+        </div>
+        <label class="hi-pause-opt">
+          <input type="checkbox" id="hi-pause-espace">
+          Pause avec espace
+          <span class="hi-pause-aide">— double espace : pause · espace : reprise (le temps de pause n'est pas rejoué)</span>
+        </label>
         <div class="hi-stats">
           Frappes : <b id="hi-stat-keys">0</b> · Corrections : <b id="hi-stat-back">0</b> · Durée : <b id="hi-stat-dur">0s</b>
         </div>
@@ -273,6 +300,13 @@
           <button class="btn btn-sm" onclick="hiPreview()" style="background:var(--bg3);color:var(--text);border:1px solid var(--dim)">▶ Aperçu</button>
           <button class="btn btn-sm btn-green" onclick="hiPublish()">✓ Valider + Publier</button>
           <button class="btn btn-sm" onclick="hiClear()" style="background:var(--bg3);color:var(--text);border:1px solid var(--dim)">Effacer</button>
+        </div>
+        <div class="hi-row">
+          <label class="hi-vitesse">
+            Vitesse du replay
+            <input type="range" id="hi-vitesse" min="1" max="4" step="0.25" value="1">
+            <b id="hi-vitesse-val">×1</b>
+          </label>
         </div>
         <div id="hi-replay"></div>
         <div id="hi-status"></div>
@@ -445,20 +479,88 @@ let hiStart  = null;
 let hiTimers = [];
 const hiEditor = document.getElementById('hi-editor');
 
+// ── Pause avec espace ────────────────────────────────────────────────────────
+// Même comportement que Meliinda (src/main.js) : case cochée, deux espaces
+// rapprochés mettent l'enregistrement en pause (le premier espace est retiré du
+// texte et des frappes), un espace le reprend. Pendant la pause la saisie est
+// bloquée, et l'horloge est décalée à la reprise : le replay enchaîne comme si
+// la pause n'avait pas existé.
+const HI_DOUBLE_ESPACE_MS = 400;
+const hiChkPause   = document.getElementById('hi-pause-espace');
+const hiEditorWrap = document.getElementById('hi-editor-wrap');
+let hiPaused = false, hiPauseStart = 0, hiDernierEspace = null, hiIgnorerKeyupEspace = false;
+
+function hiPause() {
+  hiPaused = true;
+  hiPauseStart = performance.now();
+  hiIgnorerKeyupEspace = true;
+  hiEditorWrap.classList.add('hi-en-pause');
+  hiUpdateStats();
+}
+
+function hiReprendre() {
+  if (!hiPaused) return;
+  hiPaused = false;
+  hiDernierEspace = null;
+  hiIgnorerKeyupEspace = true;
+  if (hiStart !== null) hiStart += performance.now() - hiPauseStart;
+  hiEditorWrap.classList.remove('hi-en-pause');
+}
+
+// Retire le dernier espace frappé : ses événements et son caractère.
+function hiRetirerDernierEspace() {
+  let i = hiEvents.length - 1;
+  while (i >= 0 && !(hiEvents[i].type === 'down' && hiEvents[i].key === ' ')) i--;
+  if (i >= 0) hiEvents = hiEvents.slice(0, i);
+  const c = hiEditor.selectionStart;
+  if (c > 0 && hiEditor.value[c - 1] === ' ') hiEditor.setRangeText('', c - 1, c, 'end');
+}
+
+hiChkPause.addEventListener('change', () => {
+  if (!hiChkPause.checked) hiReprendre();
+  hiEditor.focus();
+});
+
+// Pendant la pause, rien n'entre dans la zone (collage, glisser-déposer, IME…).
+hiEditor.addEventListener('beforeinput', e => { if (hiPaused) e.preventDefault(); });
+
 hiEditor.addEventListener('keydown', e => {
+  if (hiPaused) {
+    e.preventDefault();
+    if (e.key === ' ' && !e.repeat) hiReprendre();
+    return;
+  }
+  if (hiChkPause.checked && e.key === ' ' && !e.repeat) {
+    const now = performance.now();
+    const derniere = hiEvents.filter(ev => ev.type === 'down').at(-1);
+    if (hiDernierEspace !== null && now - hiDernierEspace <= HI_DOUBLE_ESPACE_MS
+        && derniere && derniere.key === ' ') {
+      e.preventDefault();
+      hiRetirerDernierEspace();
+      hiDernierEspace = null;
+      hiPause();
+      return;
+    }
+    hiDernierEspace = now;
+  } else if (e.key !== ' ') {
+    hiDernierEspace = null;
+  }
   if (hiStart === null) hiStart = performance.now();
   hiEvents.push({ key: e.key, t: performance.now() - hiStart, type: 'down' });
   hiUpdateStats();
 });
 hiEditor.addEventListener('keyup', e => {
-  if (hiStart === null) return;
+  // Le relâchement de l'espace qui met en pause ou reprend n'est pas une frappe.
+  if (e.key === ' ' && hiIgnorerKeyupEspace) { hiIgnorerKeyupEspace = false; return; }
+  if (hiStart === null || hiPaused) return;
   hiEvents.push({ key: e.key, t: performance.now() - hiStart, type: 'up' });
 });
 
 function hiUpdateStats() {
   const downs = hiEvents.filter(e => e.type === 'down');
   const backs = downs.filter(e => e.key === 'Backspace').length;
-  const dur   = hiStart ? ((performance.now() - hiStart) / 1000).toFixed(1) : 0;
+  const maintenant = hiPaused ? hiPauseStart : performance.now();
+  const dur   = hiStart ? ((maintenant - hiStart) / 1000).toFixed(1) : 0;
   document.getElementById('hi-stat-keys').textContent = downs.length;
   document.getElementById('hi-stat-back').textContent = backs;
   document.getElementById('hi-stat-dur').textContent  = dur + 's';
@@ -503,8 +605,45 @@ function hiRenderSnapshot(snapshot, target, now) {
   }).join('') + '<span class="cursor"></span>';
 }
 
+// ── Vitesse de lecture ──────────────────────────────────────────────────────
+// Le replay (aperçu comme posts publiés) se joue de ×1 à ×4. Le planning reste
+// exprimé en temps d'enregistrement ; changer de vitesse en cours de lecture
+// reprogramme la suite depuis l'instant atteint, sans repartir à zéro.
+const hiVitesseInp = document.getElementById('hi-vitesse');
+const hiVitesseVal = document.getElementById('hi-vitesse-val');
+let hiVitesse = 1;
+let hiPlanning = [];          // [{ t, base }] trié, en temps d'enregistrement
+let hiCible = null;           // scène du replay en cours
+let hiLectureT0 = 0;          // position (temps d'enregistrement) à la dernière (re)programmation
+let hiLectureReel0 = 0;       // horloge réelle à ce moment-là
+
+function hiPositionLecture() {
+  return hiLectureT0 + (performance.now() - hiLectureReel0) * hiVitesse;
+}
+
+function hiProgrammer(depuis) {
+  hiTimers.forEach(clearTimeout); hiTimers = [];
+  hiLectureT0 = depuis;
+  hiLectureReel0 = performance.now();
+  const cible = hiCible;
+  for (const { t, base } of hiPlanning) {
+    if (t < depuis) continue;
+    hiTimers.push(setTimeout(() => hiRenderSnapshot(base, cible, t), (t - depuis) / hiVitesse));
+  }
+}
+
+hiVitesseInp.addEventListener('input', () => {
+  const enCours = hiTimers.length > 0;
+  const position = enCours ? hiPositionLecture() : 0;
+  hiVitesse = parseFloat(hiVitesseInp.value) || 1;
+  hiVitesseVal.textContent = '×' + String(hiVitesse).replace('.', ',');
+  if (enCours) hiProgrammer(position);
+});
+
 function hiStartReplay(evts, target) {
   hiTimers.forEach(clearTimeout); hiTimers = [];
+  hiPlanning = [];
+  hiCible = target;
   target.style.display = 'block';
   target.innerHTML = '<span class="cursor"></span>';
   const states = hiBuildStates(evts);
@@ -519,8 +658,9 @@ function hiStartReplay(evts, target) {
     let base = null;
     for (const s of states) { if (s.t <= t) base = s.snapshot; else break; }
     if (!base) continue;
-    hiTimers.push(setTimeout(() => hiRenderSnapshot(base, target, t), t));
+    hiPlanning.push({ t, base });
   }
+  hiProgrammer(0);
 }
 
 function hiPreview() {
@@ -531,7 +671,8 @@ function hiPreview() {
 
 function hiClear() {
   hiTimers.forEach(clearTimeout); hiTimers = [];
-  hiEvents = []; hiStart = null;
+  hiReprendre();
+  hiEvents = []; hiStart = null; hiDernierEspace = null; hiIgnorerKeyupEspace = false;
   hiEditor.value = '';
   document.getElementById('hi-replay').style.display = 'none';
   hiUpdateStats();
