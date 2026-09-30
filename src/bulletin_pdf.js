@@ -422,7 +422,8 @@ export function composerBulletinPdf(b, opt = {}) {
   }
   // Frais professionnels (indemnités de repas IDCC 0016) : versés en net, hors
   // brut et hors net social ; déjà inclus dans le net à payer avant impôt.
-  for (const f of (b.salarie?.pays === 'france' ? (b.frais_professionnels || []) : [])) {
+  const frais = b.salarie?.pays === 'france' ? (b.frais_professionnels || []) : [];
+  for (const f of frais) {
     totaux.push({
       libelle: `${f.libelle} — ${_n(f.nombre).toLocaleString('fr-FR')} × ${
         f.montant_unitaire == null ? 'barème non intégré' : _eur(f.montant_unitaire) + ' €'}`,
@@ -462,7 +463,8 @@ export function composerBulletinPdf(b, opt = {}) {
     libelle: "Montant total versé par l'employeur",
     valeur: _eur(b.cout_total_employeur),
     note: 'Rémunération brute augmentée des cotisations et contributions patronales, '
-        + 'diminuée des exonérations et allègements.',
+        + 'diminuée des exonérations et allègements'
+        + (frais.length ? ', plus les frais professionnels versés en net.' : '.'),
   });
 
   // ── Cumuls ────────────────────────────────────────────────────────────────

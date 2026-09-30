@@ -1717,14 +1717,17 @@ function buildTotalFormulaContent(which, b) {
 
   if (which === 'super_brut') {
     const opPat = totalPat < 0 ? '−' : '+';
+    const frais = _fraisTotal(b);
     return `
-      <div class="fm-generic">Coût total employeur  =  Salaire brut  +  Charges patronales (nettes des allègements)</div>
-      ${fmDecomp([{ label: 'Coût employeur', sym: 'Salaire brut  +  Charges patronales', num: `${fmt(brut)}  ${opPat}  ${fmt(Math.abs(totalPat))}`, grp: `${fmt(coutTotal)}` }])}
+      <div class="fm-generic">Coût total employeur  =  Salaire brut  +  Charges patronales (nettes des allègements)${frais > 0 ? '  +  Indemnités de repas' : ''}</div>
+      ${fmDecomp([{ label: 'Coût employeur', sym: `Salaire brut  +  Charges patronales${frais > 0 ? '  +  Frais' : ''}`, num: `${fmt(brut)}  ${opPat}  ${fmt(Math.abs(totalPat))}${frais > 0 ? `  +  ${fmt(frais)}` : ''}`, grp: `${fmt(coutTotal)}` }])}
       <div class="fm-base-note">Le « super brut » est le coût réel du salarié pour l'employeur : le brut versé
-      plus l'ensemble des cotisations patronales, déduction faite des allègements (Fillon, aides…).</div>
+      plus l'ensemble des cotisations patronales, déduction faite des allègements (Fillon, aides…)${frais > 0 ? `,
+      plus les indemnités de repas versées en net : hors brut et hors cotisations, elles restent une dépense de l'employeur` : ''}.</div>
       <table class="fm-calc">
         <tr><td>Salaire brut</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut)}</td></tr>
         <tr><td>Charges patronales (nettes des allègements)</td><td class="fm-op">${opPat}</td><td class="fm-val c-pat">${fmt(Math.abs(totalPat))}</td></tr>
+        ${frais > 0 ? `<tr><td>Indemnités de repas (frais professionnels versés en net)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(frais)}</td></tr>` : ''}
         <tr class="fm-result fm-sep"><td>Coût total employeur</td><td class="fm-op">=</td><td class="fm-val c-eblue">${fmt(coutTotal)}</td></tr>
       </table>`;
   }
@@ -1861,6 +1864,13 @@ function _anRowsMobile(b) {
         <span class="mob-lbl">${esc(l.libelle)} (retenue)</span>
         <span class="mob-val c-red" style="cursor:pointer" onclick="showFormula('AN_${i}')">− ${fmt(l.montant)}${buildFormulaStar('AN_' + i)}</span>
       </div>`).join('');
+}
+
+// Total des frais professionnels versés en net (indemnités IDCC 0016) : hors
+// brut, mais dans le coût employeur (super brut).
+function _fraisTotal(b) {
+  return b?.salarie?.pays === 'france'
+    ? (b.frais_professionnels || []).reduce((s, l) => s + (parseFloat(l.montant) || 0), 0) : 0;
 }
 
 function _fraisSectionDesktop(b) {
@@ -2515,7 +2525,7 @@ function renderDesktop(b) {
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ SUPER BRUT</div>
-        <div class="sb-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(parseFloat(b.brut) + totalPat)}${buildFormulaStar('TOT_SUPER_BRUT')}</div>
+        <div class="sb-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(parseFloat(b.brut) + totalPat + _fraisTotal(b))}${buildFormulaStar('TOT_SUPER_BRUT')}</div>
       </div>
     </div>`;
 
@@ -2888,7 +2898,7 @@ function renderMobile(b) {
   const ijssNet   = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
   if (ijssNet > 0) _fmStore['ABS_IJSS_REINT'] = { type: 'absence', which: 'reintegration', a: b.absence };
   const netPayer  = parseFloat(b.net_a_payer) - pas.total;
-  const superBrut = parseFloat(b.brut) + totalPat;
+  const superBrut = parseFloat(b.brut) + totalPat + _fraisTotal(b);
 
   // IS suisse — extrait pour l'afficher en accordéon dédié (comme PAS pour la France)
   const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;

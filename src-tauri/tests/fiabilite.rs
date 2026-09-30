@@ -446,7 +446,7 @@ async fn golden_esat_minimum_2026() {
 // ─────────────────────── Frais IDCC 0016 ─────────────────────────────────────
 
 /// Indemnités de repas IDCC 0016 : versées en net, sans toucher au brut, aux
-/// cotisations ni au net imposable ; ignorées hors convention 0016 ; montant 0
+/// cotisations ni au net imposable, mais comptées dans le coût employeur ; ignorées hors convention 0016 ; montant 0
 /// (et non inventé) avant le premier barème intégré (01/12/2022).
 #[tokio::test]
 async fn golden_frais_idcc16() {
@@ -469,7 +469,7 @@ async fn golden_frais_idcc16() {
     assert_eq!(b.net_a_payer, sans.net_a_payer + attendu);
     assert_eq!(b.brut, sans.brut);
     assert_eq!(b.net_imposable, sans.net_imposable);
-    assert_eq!(b.cout_total_employeur, sans.cout_total_employeur, "le coût employeur n'inclut que la paie");
+    assert_eq!(b.cout_total_employeur, sans.cout_total_employeur + attendu, "les indemnités s'ajoutent au super brut");
 
     // Autre convention (ou aucune) : saisie ignorée.
     let mut autre = s.clone();

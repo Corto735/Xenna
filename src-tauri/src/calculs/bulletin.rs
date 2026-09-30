@@ -248,7 +248,9 @@ fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&
         brut,
         net_imposable,
         net_a_payer,
-        cout_total_employeur: (brut + total_pat).round_dp(2),
+        // Les indemnités de repas versées en net sont une dépense de l'employeur :
+        // elles entrent dans le coût total (super brut), pas dans le brut.
+        cout_total_employeur: (brut + total_pat + frais_net).round_dp(2),
         devise: "EUR".into(),
         absence: absence_res,
         heures_sup,
