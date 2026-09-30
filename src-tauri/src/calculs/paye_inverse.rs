@@ -42,7 +42,7 @@ const CATEGORIES_IMPOT: &[&str] = &[
 ];
 
 /// Net avant impôt d'un bulletin : brut − cotisations sociales salariales
-/// (lignes d'impôt exclues).
+/// (lignes d'impôt exclues) − avantages en nature.
 pub fn net_avant_impot(b: &Bulletin) -> Decimal {
     let cotis_sociales_sal: Decimal = b
         .cotisations
@@ -50,7 +50,9 @@ pub fn net_avant_impot(b: &Bulletin) -> Decimal {
         .filter(|c| !CATEGORIES_IMPOT.contains(&c.categorie.as_str()))
         .map(|c| c.montant_sal)
         .sum();
-    (b.brut - cotis_sociales_sal).round_dp(2)
+    // Avantages en nature : compris dans le brut, jamais payés en espèces.
+    let avantages: Decimal = b.avantages_nature.iter().map(|a| a.montant).sum();
+    (b.brut - cotis_sociales_sal - avantages).round_dp(2)
 }
 
 /// Bulletin pour un brut sondé : `salaire_base` est remis à None pour que tout

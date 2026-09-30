@@ -71,6 +71,9 @@ pub async fn generer_annee(
             etp,
             entreprise_adaptee: false,
             esat: false,
+            convention_idcc: None,
+            indemnites_repas: None,
+            avantages_nature: Vec::new(),
             tranche_age_ea: None,
             // La projection annuelle modélise le salaire de base seul (comme les
             // primes et absences, non reportées) → pas d'heures supp/compl ici.

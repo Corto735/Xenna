@@ -241,6 +241,19 @@ pub struct Salarie {
     /// uniquement ; incompatible avec l'entreprise adaptée.
     #[serde(default)]
     pub esat: bool,
+    /// Convention collective appliquée (code IDCC sur 4 chiffres, ex. "0016").
+    /// None = aucune (régime légal). France privé uniquement.
+    #[serde(default)]
+    pub convention_idcc: Option<String>,
+    /// Indemnités de repas IDCC 0016 du mois (nombre de chaque), versées en net
+    /// en bas de bulletin. Ignorées si la convention appliquée n'est pas 0016.
+    #[serde(default)]
+    pub indemnites_repas: Option<IndemnitesRepasCcn>,
+    /// Avantages en nature du mois (repas, logement, véhicule, outils NTIC,
+    /// autres). Ajoutés au brut soumis à cotisations, puis retenus sur le net :
+    /// ils ne sont pas payés en espèces. France privé uniquement.
+    #[serde(default)]
+    pub avantages_nature: Vec<AvantageNatureInput>,
     /// Tranche d'âge pour l'aide au poste EA : "m50" | "50_55" | "56p". Défaut "m50".
     #[serde(default)]
     pub tranche_age_ea: Option<String>,
@@ -433,6 +446,81 @@ pub struct CongesPayesResult {
     pub libelle: String,
 }
 
+/// Un avantage en nature saisi. Champs utiles selon `nature` :
+///   repas     : nombre (repas du mois), cantine, participation ;
+///   logement  : methode "forfait" (nombre = pièces principales) ou "reel"
+///               (montant = valeur locative + accessoires du mois), participation ;
+///   vehicule  : mode "achat" | "location", cout (achat TTC ou coût global
+///               annuel TTC de location), plus_de_5_ans, carburant, electrique,
+///               eco_score, mise_a_disposition (AAAA-MM-JJ), participation ;
+///   ntic      : cout (achat TTC ou abonnement annuel TTC), participation ;
+///   autre     : montant (valeur réelle du mois), libelle, participation.
+/// `participation` = somme versée par le salarié pour le mois.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AvantageNatureInput {
+    pub nature: String,
+    #[serde(default)] pub nombre: f64,
+    #[serde(default)] pub montant: f64,
+    #[serde(default)] pub cout: f64,
+    #[serde(default)] pub participation: f64,
+    #[serde(default)] pub cantine: bool,
+    #[serde(default)] pub methode: Option<String>,
+    #[serde(default)] pub mode: Option<String>,
+    #[serde(default)] pub plus_de_5_ans: bool,
+    #[serde(default)] pub carburant: bool,
+    #[serde(default)] pub electrique: bool,
+    #[serde(default)] pub eco_score: bool,
+    #[serde(default)] pub mise_a_disposition: Option<String>,
+    #[serde(default)] pub libelle: Option<String>,
+}
+
+/// Avantage en nature valorisé pour le mois : ajouté au brut, retenu sur le net.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LigneAvantage {
+    pub code:        String,
+    pub libelle:     String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub montant:     Decimal,
+    /// Calcul en une ligne (« 12 repas × 5,50 € − 0,00 € = 66,00 € »).
+    pub calcul:      String,
+    pub explication: String,
+    pub loi_ref:     Option<String>,
+}
+
+/// Nombre d'indemnités de repas IDCC 0016 saisies pour le mois.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct IndemnitesRepasCcn {
+    /// Repas unique, zone de camionnage autour de Paris (protocole art. 4).
+    #[serde(default)]
+    pub repas_unique: f64,
+    /// Repas unique de nuit, service d'au moins 4 h entre 22 h et 7 h (art. 12).
+    #[serde(default)]
+    pub repas_unique_nuit: f64,
+    /// Indemnité spéciale, amplitude sans coupure d'au moins 1 h (art. 7).
+    #[serde(default)]
+    pub speciale: f64,
+    /// Casse-croûte, prise de service avant 5 h en déplacement (art. 5).
+    #[serde(default)]
+    pub casse_croute: f64,
+}
+
+/// Remboursement de frais professionnels versé en net, en bas de bulletin :
+/// hors brut, hors cotisations, hors net imposable.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LigneFrais {
+    pub code:        String,
+    pub libelle:     String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub nombre:      Decimal,
+    /// None si aucun barème n'est intégré pour la date de paie.
+    #[serde(with = "rust_decimal::serde::str_option")]
+    pub montant_unitaire: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub montant:     Decimal,
+    pub explication: String,
+    pub loi_ref:     Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LigneCotisation {
     pub code:        String,
@@ -509,6 +597,14 @@ pub struct Bulletin {
     /// est saisi. Absent du JSON sinon. France uniquement.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conges: Option<CongesPayesResult>,
+    /// Frais professionnels remboursés en net (indemnités de repas IDCC 0016),
+    /// déjà inclus dans `net_a_payer`. Vide sinon. France uniquement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub frais_professionnels: Vec<LigneFrais>,
+    /// Avantages en nature valorisés : inclus dans `brut`, retenus sur
+    /// `net_a_payer`. Vide sinon. France uniquement.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub avantages_nature: Vec<LigneAvantage>,
 }
 
 /// Résultat du calcul des heures supplémentaires/complémentaires (gains majorés

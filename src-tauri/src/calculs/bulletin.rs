@@ -142,6 +142,12 @@ fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&
         (None, Some(c)) => (base_ref - c.retenue + c.indemnite).max(Decimal::ZERO) + gain_hs_total,
         _ => base_ref + gain_hs_total,
     };
+    // Avantages en nature : valorisés sur la rémunération en espèces du mois
+    // (tranche du barème logement), puis ajoutés à l'assiette — ils sont soumis
+    // comme un salaire — et retenus sur le net plus bas.
+    let avantages_nature = super::avantages_nature::valoriser(&salarie, assiette_ref, ctx);
+    let an_total = super::avantages_nature::total(&avantages_nature);
+    let assiette_ref = assiette_ref + an_total;
     let ijss_brut = absence_res.as_ref().map(|r| r.ijss_brut).unwrap_or(Decimal::ZERO);
     let ijss_net = absence_res.as_ref().map(|r| r.ijss_net).unwrap_or(Decimal::ZERO);
 
@@ -219,7 +225,12 @@ fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&
     let ijss_imposable = absence_res.as_ref().map(|r| r.ijss_imposable).unwrap_or(Decimal::ZERO);
 
     let mut net_imposable = (brut - total_sal + csg_non_ded_et_crds + ijss_imposable).round_dp(2);
-    let net_a_payer   = (brut - total_sal + ijss_net).round_dp(2);
+    // Frais professionnels conventionnels (IDCC 0016) : versés en net, hors
+    // brut, hors cotisations, hors net imposable.
+    let frais_professionnels = super::frais_ccn::lignes_frais(&salarie, ctx);
+    let frais_net = super::frais_ccn::total(&frais_professionnels);
+    // Avantages en nature : dans le brut et le net imposable, mais pas payés.
+    let net_a_payer   = (brut - total_sal + ijss_net + frais_net - an_total).round_dp(2);
 
     // Exonération d'impôt sur le revenu des HS/HC : retranchée du net imposable
     // (base PAS), plafonnée à l'enveloppe annuelle (mois isolé = plafond plein).
@@ -242,6 +253,8 @@ fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&
         absence: absence_res,
         heures_sup,
         conges: conges_res,
+        frais_professionnels,
+        avantages_nature,
         salarie,
     }
 }

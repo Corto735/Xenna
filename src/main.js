@@ -857,10 +857,10 @@ window.toggleViewMode = function () {
 };
 
 // ── Le Chakrram — grilles conventionnelles ───────────────────────────────────
-// Page de consultation, refondue autour de deux choses seulement : les
+// Page de consultation, refondue autour de trois choses seulement : les
 // grilles de minima de l'IDCC 16, branche par branche et catégorie par
-// catégorie, et le maintien de salaire conventionnel en cas d'absence
-// maladie. Rien d'autre.
+// catégorie, le maintien de salaire conventionnel en cas d'absence
+// maladie, et les indemnités de déplacement des ouvriers. Rien d'autre.
 //
 // Chaque tableau est recopié du texte conventionnel — accord, avenant
 // ou annexe — et porte sa source, sa date d'effet et la date à laquelle
@@ -937,9 +937,10 @@ function _ccnRenderShell() {
     </div>
 
     <div class="ccn-warn">
-      Deux choses ici, et rien d'autre : les grilles de salaires minimaux
-      conventionnels, recopiées du texte au centime, et le maintien de salaire
-      en cas d'absence maladie. Chaque tableau porte le texte dont il sort, sa
+      Trois choses ici, et rien d'autre : les grilles de salaires minimaux
+      conventionnels, recopiées du texte au centime, le maintien de salaire
+      en cas d'absence maladie, et les frais de déplacement (barèmes
+      forfaitaires des ouvriers, règles des autres catégories). Chaque tableau porte le texte dont il sort, sa
       date d'effet et la date à laquelle il a été lu. Un minimum conventionnel
       inférieur au SMIC est inapplicable : c'est le SMIC qui s'impose,
       coefficient par coefficient et mois par mois.
@@ -1003,7 +1004,45 @@ function _ccnRenderContenu() {
   const maintien = _ccnData.maintien.find(m => m.categorie === _ccnCategorie) || null;
   const libCat   = (CCN_CATEGORIES.find(c => c[0] === _ccnCategorie) || [, _ccnCategorie])[1];
 
-  box.innerHTML = _ccnBlocGrille(grille, branche, libCat) + _ccnBlocMaintien(maintien);
+  const indemn   = (_ccnData.indemnites || []).find(i => i.categorie === _ccnCategorie
+    && i.branches.split(',').includes(_ccnBranche)) || null;
+
+  box.innerHTML = _ccnBlocGrille(grille, branche, libCat) + _ccnBlocMaintien(maintien)
+    + _ccnBlocIndemnites(indemn, branche, libCat);
+}
+
+// Bloc 3 — les frais de déplacement. Ils dépendent de la catégorie ET de
+// la branche : les ouvriers ont un barème forfaitaire (marchandises d'un
+// côté, voyageurs et sanitaire de l'autre) ; employés, TAM et cadres n'en
+// ont pas, le bloc dit alors ce que prévoit (ou non) leur annexe.
+function _ccnBlocIndemnites(x, branche, libCat) {
+  const titre = `<div class="ccn-sec-lbl">Frais et indemnités de déplacement</div>`;
+
+  if (!x) {
+    return titre + `<div class="ccn-vide">
+        Rien de publié ici pour « ${esc(libCat)} »
+        ${branche ? 'dans la branche « ' + esc(branche.libelle) + ' »' : ''} :
+        le texte correspondant n'a pas été relu.
+      </div>`;
+  }
+
+  const meta = [];
+  meta.push(['Texte', esc(x.article)]);
+  meta.push(['Source', esc(x.source)]);
+  meta.push(['Source consultée le', _ccnDate(x.consulteLe)]);
+  const url = /^https?:\/\//i.test(x.sourceUrl || '') ? x.sourceUrl : null;
+  if (url) meta.push(['Texte intégral',
+    `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`]);
+
+  return titre + `
+    <div class="ccn-bloc">
+      <div class="ccn-bloc-titre">${esc(x.intitule)}</div>
+      <div class="ccn-corps">${esc(x.corps)}</div>
+      ${_ccnTableaux(x.tableaux)}
+      <dl class="ccn-meta">
+        ${meta.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
+      </dl>
+    </div>`;
 }
 
 // Bloc 1 — la grille de minima.
@@ -1609,7 +1648,9 @@ function buildTotalFormulaContent(which, b) {
   const exoHs      = b.heures_sup ? n(b.heures_sup.exo_fiscale) : 0;
   const gainHs     = b.heures_sup ? n(b.heures_sup.gain_total) : 0;
   const netImposable  = n(b.net_imposable);
-  const netAvantImpot = n(b.net_a_payer);      // brut − cot. sal + IJSS nettes
+  const netAvantImpot = n(b.net_a_payer);      // brut − cot. sal + IJSS nettes + frais
+  const fraisNet      = (b.frais_professionnels || []).reduce((s, l) => s + n(l.montant), 0);
+  const anNet         = (b.avantages_nature || []).reduce((s, l) => s + n(l.montant), 0);
   const netPayer      = netAvantImpot - pas.total;
 
   // Ligne détaillée d'une cotisation : « libellé (base × taux) − montant ». On
@@ -1660,13 +1701,15 @@ function buildTotalFormulaContent(which, b) {
       `<tr><td>Cotisations salariales</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(totalSal)}</td></tr>`,
     ];
     if (ijssNet > 0) rows.push(`<tr><td>IJSS nettes réintégrées (subrogation)</td><td class="fm-op">+</td><td class="fm-val c-alleg">${fmt(ijssNet)}</td></tr>`);
+    if (anNet > 0) rows.push(`<tr><td>Avantages en nature (fournis en nature)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(anNet)}</td></tr>`);
+    if (fraisNet > 0) rows.push(`<tr><td>Frais professionnels versés en net</td><td class="fm-op">+</td><td class="fm-val c-alleg">${fmt(fraisNet)}</td></tr>`);
     rows.push(`<tr><td>Net à payer avant impôt</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(netAvantImpot)}</td></tr>`);
     if (pasApplies) rows.push(`<tr><td>Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(pas.total)}</td></tr>`);
     rows.push(`<tr class="fm-result fm-sep"><td>Net à payer</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(netPayer)}</td></tr>`);
     return `
-      <div class="fm-generic">Net à payer  =  Brut  −  Cotisations salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${pasApplies ? '  −  PAS' : ''}</div>
-      ${fmDecomp([{ label: 'Net à payer', sym: `Brut  −  Cot. salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${pasApplies ? '  −  PAS' : ''}`,
-        num: `${fmt(brut)}  −  ${fmt(totalSal)}${ijssNet > 0 ? `  +  ${fmt(ijssNet)}` : ''}${pasApplies ? `  −  ${fmt(pas.total)}` : ''}`,
+      <div class="fm-generic">Net à payer  =  Brut  −  Cotisations salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${anNet > 0 ? '  −  Avantages en nature' : ''}${fraisNet > 0 ? '  +  Frais' : ''}${pasApplies ? '  −  PAS' : ''}</div>
+      ${fmDecomp([{ label: 'Net à payer', sym: `Brut  −  Cot. salariales${ijssNet > 0 ? '  +  IJSS nettes' : ''}${anNet > 0 ? '  −  AN' : ''}${fraisNet > 0 ? '  +  Frais' : ''}${pasApplies ? '  −  PAS' : ''}`,
+        num: `${fmt(brut)}  −  ${fmt(totalSal)}${ijssNet > 0 ? `  +  ${fmt(ijssNet)}` : ''}${anNet > 0 ? `  −  ${fmt(anNet)}` : ''}${fraisNet > 0 ? `  +  ${fmt(fraisNet)}` : ''}${pasApplies ? `  −  ${fmt(pas.total)}` : ''}`,
         grp: `${fmt(netPayer)}` }])}
       <div class="fm-base-note">Ce que perçoit réellement le salarié : le brut moins les cotisations salariales${ijssNet > 0 ? ', plus les IJSS nettes versées par subrogation' : ''}${pasApplies ? ', moins l\'impôt prélevé à la source' : ''}.</div>
       <table class="fm-calc">${rows.join('')}</table>`;
@@ -1786,6 +1829,55 @@ function _absenceRow(label, cls, sign, amount, fmkey) {
       <td class="r ${cls}" style="cursor:pointer" onclick="showFormula('${fmkey}')">${sign} ${fmt(amount)}${buildFormulaStar(fmkey)}</td>
       <td colspan="2"></td>
     </tr>`;
+}
+
+// Frais professionnels versés en net (indemnités de repas IDCC 0016) : une
+// ligne par indemnité, « nombre × montant unitaire », formule = explication back.
+function _fraisLignes(b) {
+  const lignes = b?.salarie?.pays === 'france' ? (b.frais_professionnels || []) : [];
+  lignes.forEach(l => { _fmStore['FRAIS_' + l.code] = { type: 'frais', l }; });
+  return lignes;
+}
+const _fraisLibelle = l => `${esc(l.libelle)} <span class="c-dim">(${parseFloat(l.nombre).toLocaleString('fr-FR')} × ${
+  l.montant_unitaire == null ? 'barème non intégré' : fmt(l.montant_unitaire)})</span>`;
+
+// Avantages en nature retenus sur le net (ils sont déjà dans le brut).
+function _anRetenue(b) {
+  const lignes = b?.salarie?.pays === 'france' ? (b.avantages_nature || []) : [];
+  lignes.forEach((l, i) => { _fmStore['AN_' + i] = { type: 'avantage', l }; });
+  return lignes;
+}
+function _anSectionDesktop(b) {
+  const lignes = _anRetenue(b);
+  if (!lignes.length) return '';
+  return `
+    <div class="tbl-section-head">── AVANTAGES EN NATURE — RETENUE SUR LE NET ─────────────────────────────</div>
+    <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
+      ${_absenceEmbedTable(lignes.map((l, i) => _absenceRow(`${esc(l.libelle)} <span class="c-dim">(fourni en nature)</span>`, 'c-red', '−', l.montant, 'AN_' + i)).join(''))}
+    </div>`;
+}
+function _anRowsMobile(b) {
+  return _anRetenue(b).map((l, i) => `<div class="mob-row">
+        <span class="mob-lbl">${esc(l.libelle)} (retenue)</span>
+        <span class="mob-val c-red" style="cursor:pointer" onclick="showFormula('AN_${i}')">− ${fmt(l.montant)}${buildFormulaStar('AN_' + i)}</span>
+      </div>`).join('');
+}
+
+function _fraisSectionDesktop(b) {
+  const lignes = _fraisLignes(b);
+  if (!lignes.length) return '';
+  return `
+    <div class="tbl-section-head">── FRAIS PROFESSIONNELS — VERSÉS EN NET ────────────────────────────────</div>
+    <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
+      ${_absenceEmbedTable(lignes.map(l => _absenceRow(_fraisLibelle(l), 'c-green', '+', l.montant, 'FRAIS_' + l.code)).join(''))}
+    </div>`;
+}
+
+function _fraisRowsMobile(b) {
+  return _fraisLignes(b).map(l => `<div class="mob-row">
+        <span class="mob-lbl">${_fraisLibelle(l)}</span>
+        <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('FRAIS_${l.code}')">+ ${fmt(l.montant)}${buildFormulaStar('FRAIS_' + l.code)}</span>
+      </div>`).join('');
 }
 
 function _absenceEmbedTable(rows) {
@@ -2199,6 +2291,43 @@ window.showFormula = function(key) {
     return;
   }
 
+  if (entry.type === 'avantage') {
+    const l = entry.l;
+    document.getElementById('fm-title').textContent = l.libelle;
+    document.getElementById('fm-badge').textContent = '── Avantage en nature — soumis, puis retenu ──';
+    fmBody.className = 'fm-type-sal';
+    fmBody.innerHTML = `
+      <div class="fm-generic">${esc(l.calcul)}</div>
+      <table class="fm-calc">
+        <tr><td>Ajouté au brut (cotisations, CSG, impôt)</td><td class="fm-op">+</td><td class="fm-val c-base">${fmt(l.montant)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Retenu sur le net (fourni en nature)</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(l.montant)}</td></tr>
+      </table>
+      <div class="fm-base-note">${esc(l.explication)}</div>
+      ${l.loi_ref ? `<div class="fm-base-note">§ ${esc(l.loi_ref)}</div>` : ''}`;
+    document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+    return;
+  }
+
+  if (entry.type === 'frais') {
+    const l = entry.l;
+    document.getElementById('fm-title').textContent = l.libelle;
+    document.getElementById('fm-badge').textContent = '── Frais professionnels — versés en net ──────';
+    fmBody.className = 'fm-type-alleg';
+    fmBody.innerHTML = `
+      <div class="fm-generic">Indemnité  =  nombre  ×  montant conventionnel</div>
+      <table class="fm-calc">
+        <tr><td>Nombre</td><td class="fm-op">=</td><td class="fm-val c-base">${parseFloat(l.nombre).toLocaleString('fr-FR')}</td></tr>
+        <tr><td>Montant unitaire</td><td class="fm-op">×</td><td class="fm-val c-base">${l.montant_unitaire == null ? '—' : fmt(l.montant_unitaire)}</td></tr>
+        <tr class="fm-result fm-sep"><td>${esc(l.libelle)}</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(l.montant)}</td></tr>
+      </table>
+      <div class="fm-base-note">${esc(l.explication)}</div>
+      ${l.loi_ref ? `<div class="fm-base-note">§ ${esc(l.loi_ref)}</div>` : ''}`;
+    document.getElementById('fm-modal').classList.add('open');
+    document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
+    return;
+  }
+
   if (entry.type === 'conges') {
     const meta = {
       retenue:   ['Retenue congés payés',      '── Retenue sur salaire ──────────────────────', 'fm-type-sal'],
@@ -2308,6 +2437,9 @@ function renderDesktop(b) {
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       ${_absenceEmbedTable(_absenceRow('IJSS nettes (subrogation) — reversées au salarié', 'c-green', '+', ijssNet, 'ABS_IJSS_REINT'))}
     </div>` : '';
+
+  // Frais professionnels (IDCC 0016) — versés en net, bas de bulletin.
+  const fraisSection = _anSectionDesktop(b) + _fraisSectionDesktop(b);
 
   // IS suisse — extrait pour l'afficher séparément dans la barre récap
   const isChCot  = b.salarie?.pays === 'suisse' ? cots.find(c => c.code === 'CH_IS') : null;
@@ -2527,7 +2659,7 @@ function renderDesktop(b) {
 
   el.innerHTML = simBanner + summaryBar
     + `<div id="rem-result-d">${buildRemSection()}</div>`
-    + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${tableAlleg}</div>`
+    + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${fraisSection}${tableAlleg}</div>`
     + buildDsnSection(b, 'd', pas);
 }
 
@@ -2913,6 +3045,10 @@ function renderMobile(b) {
         <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('ABS_IJSS_REINT')">+ ${fmt(ijssNet)}${buildFormulaStar('ABS_IJSS_REINT')}</span>
       </div>` : ''}
 
+      <!-- Avantages en nature retenus, frais professionnels (IDCC 0016) versés en net -->
+      ${_anRowsMobile(b)}
+      ${_fraisRowsMobile(b)}
+
       <!-- Net à payer -->
       <div class="mob-row final-row">
         <span class="mob-lbl">NET À PAYER</span>
@@ -3030,6 +3166,7 @@ async function _afficherVeille(b) {
   const specifs = [
     ...(b.salarie?.alsace_moselle ? [['alsace_moselle', VEILLE_SPECIFICITES.alsace_moselle]] : []),
     ...(b.salarie?.esat ? [['esat', VEILLE_SPECIFICITES.esat]] : []),
+    ...(b.salarie?.convention_idcc === '0016' ? [['idcc0016', VEILLE_SPECIFICITES.idcc0016]] : []),
   ];
   const releveSpecifs = specifs.map(([cle, lib]) => {
     const m = journal.find(e => e.pays === pays && e.specificite === cle);
@@ -3071,7 +3208,7 @@ const VEILLE_NOMS = {
   emirats: '🇦🇪 Émirats arabes unis', inde: '🇮🇳 Inde',
 };
 // Spécificités journalisées à part (enum `Specificite` de veille.rs).
-const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle', esat: 'ESAT' };
+const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle', esat: 'ESAT', idcc0016: 'IDCC 0016' };
 let _veilleTousCharge = false;
 
 async function _veilleTableau() {
@@ -3269,6 +3406,11 @@ async function calculate(source) {
         tranche_age_ea: (isEA && !paysEtranger && !isFPT) ? eaTranche : null,
         // ESAT : France privé uniquement, exclusif de l'entreprise adaptée.
         esat: isESAT && !isEA && !paysEtranger && !isFPT,
+        // Convention collective (France privé) et indemnités de repas IDCC 0016.
+        convention_idcc: (!paysEtranger && !isFPT && document.getElementById('d-ccn')?.value) || null,
+        indemnites_repas: (!paysEtranger && !isFPT) ? getIndemnitesRepas() : null,
+        // Avantages en nature (France privé) : ajoutés au brut, retenus sur le net.
+        avantages_nature: (!paysEtranger && !isFPT) ? getAvantagesNature() : [],
         // Heures supplémentaires/complémentaires : France privé uniquement. Le brut
         // de base (salaire_base) sert à dériver le taux horaire côté backend.
         salaire_base: _remBase.toString(),
@@ -3343,7 +3485,7 @@ async function calculate(source) {
 
 // Paramètres repris tels quels du formulaire bureau, dans l'ordre de relecture :
 // une case à cocher précède les listes qu'elle dévoile (IS → canton, Kirchensteuer → Land).
-const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'be-region',
+const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'ccn', 'be-region',
   'ca-province', 'us-state', 'emirati-national', 'inde-regime', 'steuerklasse',
   'kinderlos', 'kirchenmitglied', 'land', 'assujetti-is', 'canton', 'tarif-is',
   'effectif', 'anciennete'];
@@ -3351,7 +3493,7 @@ const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'be
 const LIEN_BASE_BUREAU = 'https://www.payetonbulletin.fr/';
 // Types d'éléments de rémunération admis à la relecture (le reste est ignoré).
 // Fonction et non constante : HEURE_TYPES est déclaré plus bas dans le module.
-const _lienRemTypeValide = t => t === 'prime' || t === 'coupure_50' || _estHeure(t);
+const _lienRemTypeValide = t => t === 'prime' || t === 'coupure_50' || _estHeure(t) || _estFrais(t);
 
 // Valeur par défaut d'un champ, lue dans le HTML : seul ce qui s'en écarte part
 // dans le lien, pour qu'il reste court et lisible.
@@ -3690,6 +3832,8 @@ window.onTogglePays = function(pays, checked) {
     const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
     if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
   });
+  // Indemnités IDCC 0016 : France privé seulement.
+  if (!isFrancePrive) _remLines = _remLines.filter(l => !_estFrais(l.type) && !_estAN(l.type));
   // ESAT : même périmètre ; en sortir rend le brut saisi avant.
   if (!isFrancePrive && document.getElementById('d-esat')?.checked) window.onToggleESAT('d', false);
   ['d-date', 'm-date'].forEach(id => {
@@ -3901,6 +4045,17 @@ window.onToggleESAT = async function(prefix, checked) {
   _triggerRecalculate();
 };
 
+// Convention collective : l'IDCC 0016 débloque ses indemnités de repas dans le
+// « + » et devient le régime de maintien proposé pour une absence. En sortir
+// retire les indemnités saisies.
+window.onChangeCCN = function() {
+  const idcc16 = _idcc16Active();
+  if (!idcc16) _remLines = _remLines.filter(l => !_estFrais(l.type));
+  if (_absence) _absence.conventionIDCC = idcc16 ? '0016' : 'general';
+  _reRenderRemInPlace();
+  _triggerRecalculate();
+};
+
 window.toggleDeKircheDetail = function(prefix, checked) {
   const detail = document.getElementById(`${prefix}-de-kirche-detail`);
   if (detail) detail.style.display = checked ? '' : 'none';
@@ -4040,6 +4195,42 @@ const HEURE_TYPES = {
   hc25: { label: 'Heures compl. 25 %', maj: 1.25, champ: 'heures_comp_25', pendant: 'hs50' },
 };
 const _estHeure = type => Object.hasOwn(HEURE_TYPES, type);
+
+// Indemnités de repas de l'IDCC 0016, saisies en NOMBRE. Ce sont des frais
+// professionnels : hors brut, versés en net en bas de bulletin (le backend
+// porte les montants unitaires datés). `champ` = clé de indemnites_repas.
+const FRAIS_TYPES = {
+  idcc16_repas_unique:      { label: 'Indemnité repas unique',          champ: 'repas_unique',      code: 'IDCC16_REPAS_UNIQUE' },
+  idcc16_repas_unique_nuit: { label: 'Indemnité repas unique de nuit',  champ: 'repas_unique_nuit', code: 'IDCC16_REPAS_UNIQUE_NUIT' },
+  idcc16_speciale:          { label: 'Indemnité repas spéciale',        champ: 'speciale',          code: 'IDCC16_INDEMNITE_SPECIALE' },
+  idcc16_casse_croute:      { label: 'Indemnité casse-croûte',          champ: 'casse_croute',      code: 'IDCC16_CASSE_CROUTE' },
+};
+const _estFrais = type => Object.hasOwn(FRAIS_TYPES, type);
+
+// Avantages en nature (arrêté du 25/02/2025) : ajoutés au brut soumis, puis
+// retenus sur le net. Le champ montant change de sens selon la nature ;
+// `opt` porte le reste de la saisie (participation, cantine, véhicule…).
+// Le backend évalue (barèmes datés), le front ne fait que saisir et afficher.
+const AN_TYPES = {
+  an_repas:    { label: 'Avantage en nature — repas',     nature: 'repas',    unite: 'repas', ph: 'nombre de repas', step: 1 },
+  an_logement: { label: 'Avantage en nature — logement',  nature: 'logement', unite: 'pièces', ph: 'pièces principales', step: 1 },
+  an_vehicule: { label: 'Avantage en nature — véhicule',  nature: 'vehicule', unite: '€ TTC', ph: 'coût d\'achat TTC', step: 100 },
+  an_ntic:     { label: 'Avantage en nature — outils numériques', nature: 'ntic', unite: '€ TTC', ph: 'coût TTC', step: 10 },
+  an_autre:    { label: 'Avantage en nature — autre',     nature: 'autre',    unite: '€', ph: 'valeur du mois', step: 5 },
+};
+const _estAN = type => Object.hasOwn(AN_TYPES, type);
+
+// France privé : ni fonction publique ni pays étranger.
+function _francePriveActif() {
+  return !!document.getElementById('d-france')?.checked && !document.getElementById('d-fpt')?.checked;
+}
+
+// IDCC 0016 appliquée : sélecteur « Convention collective » ET régime France privé.
+function _idcc16Active() {
+  return document.getElementById('d-ccn')?.value === '0016'
+    && !!document.getElementById('d-france')?.checked
+    && !document.getElementById('d-fpt')?.checked;
+}
 const _estTempsPlein = etp => Math.abs(parseFloat(etp) - 100) < 0.01;
 const HEURES_TEMPS_PLEIN = 151.67;
 
@@ -4050,7 +4241,12 @@ function getRemOptions(etp) {
   ];
   // Heures supp (temps plein) / complémentaires (temps partiel) : saisie EN HEURES.
   const heures = _estTempsPlein(etp) ? ['hs25', 'hs50'] : ['hc10', 'hc25'];
-  return [ ...heures.map(v => ({ value: v, label: HEURE_TYPES[v].label })), ...common ];
+  // Indemnités de repas : bulletin français calculé avec l'IDCC 0016 seulement.
+  const frais = (_idcc16Active() && (!lastBulletin || lastBulletin.salarie?.pays === 'france'))
+    ? Object.entries(FRAIS_TYPES).map(([v, t]) => ({ value: v, label: t.label })) : [];
+  const avantages = (_francePriveActif() && (!lastBulletin || lastBulletin.salarie?.pays === 'france'))
+    ? Object.entries(AN_TYPES).map(([v, t]) => ({ value: v, label: t.label })) : [];
+  return [ ...heures.map(v => ({ value: v, label: HEURE_TYPES[v].label })), ...common, ...avantages, ...frais ];
 }
 
 // Taux horaire dérivé du salaire de base : base / (151,67 × ETP/100), arrondi à
@@ -4074,7 +4270,7 @@ function getRemTotal() {
   // (primes, coupures). Les heures supp/compl partent en heures via getRemHeures()
   // et leur majoration est ajoutée au brut côté backend.
   return _remBase + _remLines
-    .filter(l => !_estHeure(l.type))
+    .filter(l => !_estHeure(l.type) && !_estFrais(l.type) && !_estAN(l.type))
     .reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
 }
 
@@ -4086,6 +4282,48 @@ function getRemHeures() {
     if (_estHeure(l.type)) h[HEURE_TYPES[l.type].champ] += parseFloat(l.amount) || 0;
   });
   return h;
+}
+
+// Indemnités de repas IDCC 0016 saisies, en nombre : { repas_unique, … }, ou
+// null hors IDCC 0016 / sans saisie.
+function getIndemnitesRepas() {
+  if (!_idcc16Active()) return null;
+  const n = Object.fromEntries(Object.values(FRAIS_TYPES).map(t => [t.champ, 0]));
+  let total = 0;
+  _remLines.forEach(l => {
+    if (!_estFrais(l.type)) return;
+    const v = parseFloat(l.amount) || 0;
+    n[FRAIS_TYPES[l.type].champ] += v;
+    total += v;
+  });
+  return total > 0 ? n : null;
+}
+
+// Avantages en nature saisis, au format du backend (AvantageNatureInput).
+function getAvantagesNature() {
+  if (!_francePriveActif()) return [];
+  return _remLines.filter(l => _estAN(l.type)).map(l => {
+    const o = l.opt || {};
+    const t = AN_TYPES[l.type];
+    const v = parseFloat(l.amount) || 0;
+    const reel = t.nature === 'logement' && o.methode === 'reel';
+    return {
+      nature: t.nature,
+      nombre: (t.nature === 'repas' || (t.nature === 'logement' && !reel)) ? v : 0,
+      montant: (t.nature === 'autre' || reel) ? v : 0,
+      cout: (t.nature === 'vehicule' || t.nature === 'ntic') ? v : 0,
+      participation: parseFloat(o.participation) || 0,
+      cantine: !!o.cantine,
+      methode: t.nature === 'logement' ? (o.methode || 'forfait') : null,
+      mode: t.nature === 'vehicule' ? (o.mode || 'achat') : null,
+      plus_de_5_ans: !!o.plus5,
+      carburant: !!o.carburant,
+      electrique: !!o.electrique,
+      eco_score: !!o.eco,
+      mise_a_disposition: t.nature === 'vehicule' ? (o.mad || null) : null,
+      libelle: t.nature === 'autre' ? (o.libelle || null) : null,
+    };
+  });
 }
 
 // Total brut affiché (base + euros + majoration estimée des heures), pour le live.
@@ -4131,6 +4369,24 @@ function _remLineHtml(l, opts, etp) {
     `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
   ).join('');
   const isHour = _estHeure(l.type);
+  if (_estAN(l.type)) return _remAnLineHtml(l, selOpts);
+  if (_estFrais(l.type)) {
+    // Montant unitaire daté : celui du dernier bulletin calculé (backend).
+    const lf = (lastBulletin?.frais_professionnels || []).find(f => f.code === FRAIS_TYPES[l.type].code);
+    const nb = parseFloat(l.amount) || 0;
+    const detail = !lf ? ''
+      : lf.montant_unitaire == null ? 'aucun barème intégré à cette date (montants depuis le 01/12/2022)'
+      : `<b>${nb.toLocaleString('fr-FR')}</b> × <b>${fmt(lf.montant_unitaire)}</b> = <b>${fmt(lf.montant)}</b> <span class="rem-h-base">(versé en net, hors brut)</span>`;
+    return `
+      <div class="rem-line">
+        <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="nombre" min="0" step="1" inputmode="numeric"
+               oninput="onRemAmountChange('${l.id}',this.value)" />
+        <span class="rem-h-unit">×</span>
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
+      </div>${detail ? `
+      <div class="rem-h-detail" data-rl="${l.id}">${detail}</div>` : ''}`;
+  }
   return `
       <div class="rem-line">
         <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
@@ -4270,9 +4526,76 @@ window.removeRemLineResult = function(id) {
   }
 };
 
+// Ligne d'avantage en nature : saisie principale + options propres à la
+// nature (participation, cantine, méthode, véhicule…) + calcul du backend.
+function _remAnLineHtml(l, selOpts) {
+  const t = AN_TYPES[l.type];
+  const o = l.opt || {};
+  const id = l.id;
+  const chk = (k, lbl) => `<label class="rem-an-chk"><input type="checkbox" ${o[k] ? 'checked' : ''}
+      onchange="onRemAnOpt('${id}','${k}',this.checked)"> ${lbl}</label>`;
+  const num = (k, lbl, step = 1) => `<label class="rem-an-fld">${lbl}
+      <input type="number" min="0" step="${step}" value="${o[k] ?? ''}" placeholder="0.00"
+      oninput="onRemAnOpt('${id}','${k}',this.value)"></label>`;
+  const sel = (k, choix, def) => `<select class="rem-an-sel" onchange="onRemAnOpt('${id}','${k}',this.value,true)">${
+      choix.map(([v, lbl]) => `<option value="${v}"${(o[k] || def) === v ? ' selected' : ''}>${lbl}</option>`).join('')}</select>`;
+  const participation = num('participation', 'Participation du salarié (€/mois)', 0.5);
+  let opts = '', ph = t.ph, unite = t.unite;
+  if (t.nature === 'repas') {
+    opts = chk('cantine', 'Cantine / restaurant d\'entreprise') + participation;
+  } else if (t.nature === 'logement') {
+    const reel = o.methode === 'reel';
+    if (reel) { ph = 'valeur locative + charges du mois'; unite = '€'; }
+    opts = sel('methode', [['forfait', 'Forfait (barème)'], ['reel', 'Valeur réelle']], 'forfait') + participation;
+  } else if (t.nature === 'vehicule') {
+    const loc = o.mode === 'location';
+    if (loc) ph = 'coût global annuel TTC';
+    opts = sel('mode', [['achat', 'Acheté'], ['location', 'Loué']], 'achat')
+      + (loc ? '' : chk('plus5', 'Plus de 5 ans'))
+      + chk('carburant', 'Carburant pris en charge')
+      + chk('electrique', '100 % électrique')
+      + (o.electrique ? chk('eco', 'Éco-score (bonus écologique)') : '')
+      + `<label class="rem-an-fld">Mis à disposition le
+          <input type="date" value="${o.mad || ''}" onchange="onRemAnOpt('${id}','mad',this.value,true)"></label>`
+      + participation;
+  } else if (t.nature === 'ntic') {
+    ph = 'achat ou abonnement annuel TTC';
+    opts = participation;
+  } else {
+    opts = `<label class="rem-an-fld">Nature
+        <input type="text" maxlength="60" value="${esc(o.libelle || '')}" placeholder="ex. place de parking"
+        oninput="onRemAnOpt('${id}','libelle',this.value)"></label>` + participation;
+  }
+  // Montant évalué par le backend : les lignes d'avantage gardent leur ordre.
+  const rang = _remLines.filter(x => _estAN(x.type)).indexOf(l);
+  const la = (lastBulletin?.avantages_nature || [])[rang];
+  const detail = la ? `${esc(la.calcul)} <span class="rem-h-base">(ajouté au brut, retenu sur le net)</span>` : '';
+  return `
+      <div class="rem-line">
+        <select class="rem-type-sel" onchange="onRemTypeChange('${id}',this.value)">${selOpts}</select>
+        <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${ph}" min="0" step="${t.step}" inputmode="decimal"
+               oninput="onRemAmountChange('${id}',this.value)" />
+        <span class="rem-h-unit">${unite}</span>
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${id}')">×</button>
+      </div>
+      <div class="rem-an-opts">${opts}</div>${detail ? `
+      <div class="rem-h-detail" data-rl="${id}">${detail}</div>` : ''}`;
+}
+
+// Option d'un avantage en nature. `rerendre` pour ce qui change la forme de la
+// saisie (méthode, achat/location, électrique…) ; sinon on ne touche pas au
+// DOM pour garder le focus.
+window.onRemAnOpt = function(id, k, v, rerendre) {
+  const l = _remLines.find(x => x.id === id);
+  if (!l) return;
+  l.opt = { ...(l.opt || {}), [k]: v };
+  if (rerendre || typeof v === 'boolean') _reRenderRemInPlace();
+  _triggerRecalculate();
+};
+
 window.onRemTypeChange = function(id, val) {
   const l = _remLines.find(l => l.id === id);
-  if (l) l.type = val;
+  if (l) { if (_estAN(l.type) !== _estAN(val) || l.type !== val) l.opt = {}; l.type = val; }
   // Le passage euros ↔ heures change la nature de la ligne (placeholder, indice) :
   // on re-rend en place puis on relance le calcul.
   _reRenderRemInPlace();
@@ -4747,7 +5070,7 @@ function _buildAbsencePanel(isMob) {
 window.toggleAbsencePanel = function(p) {
   if (!_absence) {
     _absence = { active: false, type: 'maladie', dateDebut: '', dateFin: '',
-      methode: 'moyens', joursType: 'ouvres', conventionIDCC: 'general' };
+      methode: 'moyens', joursType: 'ouvres', conventionIDCC: _idcc16Active() ? '0016' : 'general' };
     _reRenderRemInPlace(); // insère le panneau dans le DOM
     return;
   }
@@ -4783,6 +5106,16 @@ window.onAbsenceJoursType = function(p, val) {
 window.onAbsenceConvention = function(p, val) {
   if (!_absence) return;
   _absence.conventionIDCC = val;
+  // Une seule convention par bulletin : le régime de maintien choisi ici règle
+  // aussi le sélecteur « Convention collective » du menu (et donc les
+  // indemnités IDCC 0016 du « + »), en France privé.
+  if (_francePriveActif()) {
+    ['d-ccn', 'm-ccn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = val === '0016' ? '0016' : '';
+    });
+    window.onChangeCCN();
+  }
   _refreshAbsencePanel(p);
 };
 

@@ -188,6 +188,24 @@ pub struct Maintien {
     pub ordre:       i64,
 }
 
+/// Indemnités de déplacement d'une catégorie, pour les branches listées.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Indemnites {
+    pub id:          i64,
+    pub categorie:   String,
+    /// Codes de branche couverts, séparés par des virgules.
+    pub branches:    String,
+    pub intitule:    String,
+    pub article:     String,
+    pub corps:       String,
+    pub tableaux:    String,
+    pub source:      String,
+    pub source_url:  Option<String>,
+    pub consulte_le: String,
+    pub ordre:       i64,
+}
+
 /// Tout ce que la page de consultation charge en un aller-retour :
 /// l'identité de la convention, les branches, les grilles et les
 /// régimes de maintien. Quelques dizaines de kilo-octets — la
@@ -199,6 +217,7 @@ pub struct DossierGrilles {
     pub branches:   Vec<Branche>,
     pub grilles:    Vec<Grille>,
     pub maintien:   Vec<Maintien>,
+    pub indemnites: Vec<Indemnites>,
 }
 
 /// Réponse complète pour une convention : tout ce qu'il faut au

@@ -18,8 +18,10 @@
 // cotisations de sécurité sociale (L243-5), mais pas de l'assurance chômage ni
 // de l'AGS (pas de contrat de travail ; DSN : « salaire brut chômage » à 0).
 // Faute d'affiliation à l'assurance chômage, pas de réduction générale.
-// L'État compense à l'ESAT la totalité des charges patronales afférentes à la
-// part « aide au poste » (L243-6, R243-9).
+// L'État compense à l'ESAT la totalité des cotisations patronales obligatoires
+// afférentes à la part « aide au poste » (L243-6, R243-9, arrêté du 28/12/2006),
+// retraite complémentaire Agirc-Arrco comprise : les travailleurs d'ESAT y sont
+// affiliés.
 //
 // Sur le bulletin : la rémunération garantie est le brut ; l'aide au poste et la
 // compensation des charges sont des lignes patronales négatives (recettes de
@@ -40,6 +42,13 @@ fn bareme(date: NaiveDate) -> (Decimal, Decimal, Decimal) {
         (dec!(0.507), dec!(0.557), dec!(1.107))
     }
 }
+
+/// Cotisations patronales obligatoires compensées par l'État sur l'aide au poste
+/// (R243-9 : CSS L242-1 et L921-1).
+const CODES_COMPENSES: &[&str] = &[
+    "SS_MALADIE", "SS_VIEILLESSE_PLAF", "SS_VIEILLESSE_DEPLAF", "FAMILLE", "AT_MP",
+    "AGIRC_ARRCO_T1", "AGIRC_ARRCO_CEG_T1", "AGIRC_ARRCO_T2",
+];
 
 /// Part ESAT au-delà de laquelle l'aide au poste décroît (20 % du SMIC).
 const SEUIL_PART_ESAT: Decimal = dec!(0.20);
@@ -83,9 +92,9 @@ fn pct(x: Decimal) -> String {
     format!("{} %", (x * dec!(100)).round_dp(2).normalize()).replace('.', ",")
 }
 
-/// Lignes ESAT : aide au poste (État) et compensation des charges patronales
+/// Lignes ESAT : aide au poste (État) et compensation des cotisations patronales
 /// afférentes à cette part. `lignes` = cotisations déjà calculées sur
-/// l'assiette (sert au total des charges patronales).
+/// l'assiette (on y lit les taux patronaux compensés).
 pub fn lignes_esat(
     remuneration: Decimal,
     etp_pct: f64,
@@ -125,37 +134,39 @@ pub fn lignes_esat(
         loi_ref: Some(ctx.loi_ref("CASF art. L243-4, R243-5 et R243-6 — Décret n°2018-194 du 21/03/2018")),
     };
 
-    // Compensation : charges patronales (hors aides et réductions) × part de
-    // l'aide au poste dans la rémunération garantie. L'administration la calcule
-    // sur une assiette forfaitaire fixée par arrêté : le prorata en est une
-    // approximation.
-    let charges_pat: Decimal = lignes.iter()
-        .map(|l| l.montant_pat)
-        .filter(|m| *m > Decimal::ZERO)
+    // Compensation (L243-6, R243-9, arrêté du 28/12/2006) : la totalité des
+    // cotisations patronales OBLIGATOIRES dues sur la part « aide au poste » —
+    // assurances sociales, AT, allocations familiales (CSS L242-1) et retraite
+    // complémentaire (CSS L921-1). Hors périmètre, donc à la charge de l'ESAT :
+    // FNAL, versement mobilité, médecine du travail, taxe sur les salaires
+    // (circulaire DGAS/3B/2008-259, notice du bordereau).
+    let taux_pat: Decimal = lignes.iter()
+        .filter(|l| CODES_COMPENSES.contains(&l.code.as_str()))
+        .map(|l| l.taux_pat)
         .sum();
-    let part_aide = (aide / remuneration).min(Decimal::ONE);
-    let compensation = (charges_pat * part_aide).round_dp(2);
+    let compensation = (aide * taux_pat).round_dp(2);
 
     let compensation_ligne = LigneCotisation {
         code:        "ESAT_COMPENSATION".into(),
         libelle:     ctx.libelle("ESAT_COMPENSATION", "Compensation par l'État des charges sur l'aide au poste"),
-        base:        charges_pat.round_dp(2),
+        base:        aide,
         taux_sal:    Decimal::ZERO,
         montant_sal: Decimal::ZERO,
-        taux_pat:    Decimal::ZERO,
+        taux_pat:    -taux_pat,
         montant_pat: -compensation,
         categorie:   "Aide à l'emploi".into(),
         explication: ctx.expl("ESAT_COMPENSATION",
-            "L'État compense à l'ESAT la totalité des cotisations patronales afférentes à la \
-            part de la rémunération garantie égale à l'aide au poste. Ici : {charges} € de \
-            charges patronales × {ratio} (part de l'aide au poste dans la rémunération) = \
-            {comp} €. L'administration la calcule sur une assiette forfaitaire fixée par \
-            arrêté : ce prorata en est une approximation. Pas de cotisation chômage ni AGS, \
-            ni de réduction générale : le travailleur d'ESAT n'a pas de contrat de travail.")
-            .replace("{charges}", &charges_pat.round_dp(2).to_string())
-            .replace("{ratio}", &pct(part_aide))
+            "L'État rembourse à l'ESAT la totalité des cotisations patronales obligatoires dues \
+            sur la part de la rémunération garantie égale à l'aide au poste : assurance maladie, \
+            vieillesse, allocations familiales, accidents du travail et retraite complémentaire. \
+            Ici : {aide} € d'aide au poste × {taux} de taux patronaux = {comp} €. Le FNAL, le \
+            versement mobilité et la médecine du travail restent à la charge de l'ESAT. Pas de \
+            cotisation chômage ni AGS, ni de réduction générale : le travailleur d'ESAT n'a pas \
+            de contrat de travail.")
+            .replace("{aide}", &aide.to_string())
+            .replace("{taux}", &pct(taux_pat))
             .replace("{comp}", &compensation.to_string()),
-        loi_ref: Some(ctx.loi_ref("CASF art. L243-6 et R243-9")),
+        loi_ref: Some(ctx.loi_ref("CASF art. L243-6 et R243-9 — Arrêté du 28/12/2006")),
     };
 
     vec![aide_ligne, compensation_ligne]

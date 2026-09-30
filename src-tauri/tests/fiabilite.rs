@@ -86,6 +86,9 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         etp: 100.0,
         entreprise_adaptee: false,
         esat: false,
+        convention_idcc: None,
+        indemnites_repas: None,
+        avantages_nature: Vec::new(),
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,
@@ -425,8 +428,9 @@ async fn golden_esat_minimum_2026() {
     assert!(code("CHOMAGE").is_none(), "pas d'assurance chômage en ESAT");
     assert!(code("REDUCTION_FILLON").is_none(), "pas de réduction générale en ESAT");
     assert_eq!(code("ESAT_AIDE_POSTE").unwrap().montant_pat, "-924.28".parse::<Decimal>().unwrap());
-    let comp = code("ESAT_COMPENSATION").unwrap().montant_pat;
-    assert!(comp < Decimal::ZERO);
+    // Compensation = aide au poste × taux patronaux obligatoires (maladie,
+    // vieillesse, famille, AT, Agirc-Arrco) : 924,28 × 35,39 % = 327,10.
+    assert_eq!(code("ESAT_COMPENSATION").unwrap().montant_pat, "-327.10".parse::<Decimal>().unwrap());
 
     // Les aides ne touchent pas le net : même net que sans elles, chômage à part.
     let sal_hors_aides: Decimal = b.cotisations.iter().map(|l| l.montant_sal).sum();
@@ -436,6 +440,154 @@ async fn golden_esat_minimum_2026() {
     assert!(b.cout_total_employeur < b.brut, "coût ESAT {} ≥ rémunération {}", b.cout_total_employeur, b.brut);
     assert!(b.cout_total_employeur > Decimal::ZERO);
 
+    nettoyer(&path);
+}
+
+// ─────────────────────── Frais IDCC 0016 ─────────────────────────────────────
+
+/// Indemnités de repas IDCC 0016 : versées en net, sans toucher au brut, aux
+/// cotisations ni au net imposable ; ignorées hors convention 0016 ; montant 0
+/// (et non inventé) avant le premier barème intégré (01/12/2022).
+#[tokio::test]
+async fn golden_frais_idcc16() {
+    use xenna_paie_lib::models::IndemnitesRepasCcn;
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+
+    let sans = generer_bulletin(salarie_base(Pays::France, "2500.00"), &ctx, None);
+    let mut s = salarie_base(Pays::France, "2500.00");
+    s.convention_idcc = Some("0016".into());
+    s.indemnites_repas = Some(IndemnitesRepasCcn {
+        repas_unique: 2.0, repas_unique_nuit: 1.0, speciale: 4.0, casse_croute: 3.0,
+    });
+    let b = generer_bulletin(s.clone(), &ctx, None);
+    // 2 × 10,07 + 1 × 9,81 + 4 × 4,42 + 3 × 8,87 = 74,24
+    let attendu: Decimal = "74.24".parse().unwrap();
+    let total: Decimal = b.frais_professionnels.iter().map(|l| l.montant).sum();
+    assert_eq!(total, attendu);
+    assert_eq!(b.frais_professionnels.len(), 4);
+    assert_eq!(b.net_a_payer, sans.net_a_payer + attendu);
+    assert_eq!(b.brut, sans.brut);
+    assert_eq!(b.net_imposable, sans.net_imposable);
+    assert_eq!(b.cout_total_employeur, sans.cout_total_employeur, "le coût employeur n'inclut que la paie");
+
+    // Autre convention (ou aucune) : saisie ignorée.
+    let mut autre = s.clone();
+    autre.convention_idcc = None;
+    assert!(generer_bulletin(autre, &ctx, None).frais_professionnels.is_empty());
+
+    // Barème 2025 (av. n° 79, dès le 01/03/2025) : repas unique 9,97.
+    let ctx25 = ContextPaie::charger(&pool, date("2025-06-15")).await.unwrap();
+    let b25 = generer_bulletin(s.clone(), &ctx25, None);
+    assert_eq!(b25.frais_professionnels[0].montant_unitaire, Some("9.97".parse().unwrap()));
+
+    // Avant le 01/12/2022 : pas de barème, montant 0, net inchangé.
+    let ctx22 = ContextPaie::charger(&pool, date("2022-06-15")).await.unwrap();
+    let b22 = generer_bulletin(s.clone(), &ctx22, None);
+    assert!(b22.frais_professionnels.iter().all(|l| l.montant_unitaire.is_none() && l.montant.is_zero()));
+    let sans22 = generer_bulletin(salarie_base(Pays::France, "2500.00"), &ctx22, None);
+    assert_eq!(b22.net_a_payer, sans22.net_a_payer);
+
+    nettoyer(&path);
+}
+
+// ───────────────────────── Avantages en nature ───────────────────────────────
+
+fn an(nature: &str) -> xenna_paie_lib::models::AvantageNatureInput {
+    xenna_paie_lib::models::AvantageNatureInput { nature: nature.into(), ..Default::default() }
+}
+
+fn montant_an(b: &Bulletin, code: &str) -> Decimal {
+    b.avantages_nature.iter().find(|l| l.code == code).unwrap().montant
+}
+
+/// Barèmes 2026 (arrêté du 25/02/2025, revalorisation au 1er janvier) : repas
+/// 5,50 €, logement par tranche du PSS, véhicule en % du coût, NTIC 10 %.
+#[tokio::test]
+async fn golden_avantages_nature_2026() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+    let d = |s: &str| s.parse::<Decimal>().unwrap();
+    let bulletin = |liste: Vec<_>| {
+        let mut s = salarie_base(Pays::France, "2500.00");
+        s.avantages_nature = liste;
+        generer_bulletin(s, &ctx, None)
+    };
+
+    // Repas : 20 × 5,50 = 110 ; participation déduite ; cantine à 50 % → négligé.
+    let mut r = an("repas"); r.nombre = 20.0;
+    assert_eq!(montant_an(&bulletin(vec![r.clone()]), "AN_REPAS"), d("110.00"));
+    r.participation = 20.0;
+    assert_eq!(montant_an(&bulletin(vec![r.clone()]), "AN_REPAS"), d("90.00"));
+    r.cantine = true; r.participation = 55.0;
+    assert_eq!(montant_an(&bulletin(vec![r.clone()]), "AN_REPAS"), d("0"));
+    r.participation = 54.0; // sous la moitié du forfait : forfait − participation
+    assert_eq!(montant_an(&bulletin(vec![r]), "AN_REPAS"), d("56.00"));
+
+    // Logement : 2 500 € / PSS 4 005 € = 0,62 → tranche 3 ; 1 pièce 106,20,
+    // 3 pièces 3 × 79,70.
+    let mut l = an("logement"); l.nombre = 1.0;
+    assert_eq!(montant_an(&bulletin(vec![l.clone()]), "AN_LOGEMENT"), d("106.20"));
+    l.nombre = 3.0;
+    assert_eq!(montant_an(&bulletin(vec![l]), "AN_LOGEMENT"), d("239.10"));
+
+    // Véhicule acheté 30 000 €, mis à disposition en 2025, sans carburant :
+    // 15 % → 4 500 €/an → 375 €/mois.
+    let mut v = an("vehicule");
+    v.mode = Some("achat".into()); v.cout = 30000.0; v.mise_a_disposition = Some("2025-06-01".into());
+    assert_eq!(montant_an(&bulletin(vec![v.clone()]), "AN_VEHICULE"), d("375.00"));
+    // Électrique avec éco-score : abattement 70 % (3 150 € ≤ 4 641,60) → 1 350 €/an.
+    v.electrique = true; v.eco_score = true;
+    assert_eq!(montant_an(&bulletin(vec![v.clone()]), "AN_VEHICULE"), d("112.50"));
+    // Électrique mis à disposition en 2023 : 9 % puis abattement 50 % (1 350 ≤ 2 026,30).
+    v.eco_score = false; v.mise_a_disposition = Some("2023-06-01".into());
+    assert_eq!(montant_an(&bulletin(vec![v.clone()]), "AN_VEHICULE"), d("112.50"));
+    // Thermique d'avant février 2025, carburant compris : 12 % → 300 €/mois.
+    v.electrique = false; v.carburant = true;
+    assert_eq!(montant_an(&bulletin(vec![v]), "AN_VEHICULE"), d("300.00"));
+    // Location 12 000 €/an depuis 2025, carburant compris : 67 % → 670 €/mois.
+    let mut loc = an("vehicule");
+    loc.mode = Some("location".into()); loc.cout = 12000.0; loc.carburant = true;
+    loc.mise_a_disposition = Some("2025-03-01".into());
+    assert_eq!(montant_an(&bulletin(vec![loc]), "AN_VEHICULE"), d("670.00"));
+
+    // NTIC : 1 200 € × 10 % ÷ 12 = 10 €.
+    let mut t = an("ntic"); t.cout = 1200.0;
+    assert_eq!(montant_an(&bulletin(vec![t]), "AN_NTIC"), d("10.00"));
+
+    // Effet sur le bulletin : l'avantage entre dans le brut et le net imposable,
+    // pas dans le net payé.
+    let sans = bulletin(vec![]);
+    let mut a = an("autre"); a.montant = 200.0;
+    let avec = bulletin(vec![a]);
+    assert_eq!(avec.brut, sans.brut + d("200"));
+    assert!(avec.net_imposable > sans.net_imposable);
+    let cot_sal: Decimal = avec.cotisations.iter().map(|c| c.montant_sal).sum();
+    assert_eq!(avec.net_a_payer, (avec.brut - cot_sal - d("200")).round_dp(2));
+    assert!(avec.net_a_payer < sans.net_a_payer, "les cotisations sur l'avantage réduisent le net payé");
+
+    // Avant 2025 : pas de barème, montant 0 (et non inventé).
+    let ctx24 = ContextPaie::charger(&pool, date("2024-06-15")).await.unwrap();
+    let mut s24 = salarie_base(Pays::France, "2500.00");
+    let mut r24 = an("repas"); r24.nombre = 10.0;
+    s24.avantages_nature = vec![r24];
+    assert!(generer_bulletin(s24, &ctx24, None).avantages_nature[0].montant.is_zero());
+
+    nettoyer(&path);
+}
+
+/// Paye inversée : le net cible est un net payé en espèces, avantages exclus.
+#[tokio::test]
+async fn paye_inverse_avec_avantage_nature() {
+    use xenna_paie_lib::calculs::paye_inverse::resoudre_brut_pour_net;
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+    let mut s = salarie_base(Pays::France, "2500.00");
+    let mut l = an("logement"); l.nombre = 2.0;
+    s.avantages_nature = vec![l];
+    let b = resoudre_brut_pour_net("2000".parse().unwrap(), &s, &ctx, None);
+    assert!((b.net_a_payer - "2000".parse::<Decimal>().unwrap()).abs() <= "0.01".parse().unwrap(),
+        "net payé {} ≠ 2000", b.net_a_payer);
     nettoyer(&path);
 }
 

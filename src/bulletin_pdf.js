@@ -259,7 +259,9 @@ export function composerBulletinPdf(b, opt = {}) {
   });
 
   for (const l of (opt.remLignes || [])) {
-    if (/^h[sc]\d+$/.test(l.type)) continue; // heures supp/compl : détaillées plus bas
+    // Seuls les éléments en euros vont ici : heures supp/compl détaillées plus
+    // bas, avantages en nature depuis le bulletin, frais versés en net en pied.
+    if (l.type !== 'prime' && l.type !== 'coupure_50') continue;
     const m = _n(l.amount);
     if (!m) continue;
     rem.push({
@@ -314,6 +316,12 @@ export function composerBulletinPdf(b, opt = {}) {
         + (cp.methode_indemnite === 'dixieme' ? 'règle du dixième' : 'maintien de salaire') + ')',
       a_payer: _eur(cp.indemnite),
     });
+  }
+
+  // Avantages en nature : ajoutés au brut ici, retenus sur le net en pied.
+  const avantages = b.salarie?.pays === 'france' ? (b.avantages_nature || []) : [];
+  for (const a of avantages) {
+    rem.push({ libelle: a.libelle, a_payer: _eur(a.montant) });
   }
 
   rem.push({ libelle: fpt ? 'RÉMUNÉRATION BRUTE' : 'SALAIRE BRUT',
@@ -399,6 +407,28 @@ export function composerBulletinPdf(b, opt = {}) {
       valeur: _eur(ijssNet),
       note: 'Versées par la caisse à l’employeur, qui les reverse au salarié. '
           + 'La CSG et la CRDS y ont déjà été précomptées.',
+    });
+  }
+  // Avantages en nature : soumis comme un salaire, mais fournis en nature —
+  // retenus sur le net, déjà déduits du net à payer avant impôt.
+  const totalAvantages = avantages.reduce((s, a) => s + _n(a.montant), 0);
+  if (totalAvantages > 0) {
+    totaux.push({
+      libelle: 'Avantages en nature (retenue)',
+      valeur: '− ' + _eur(totalAvantages),
+      note: 'Compris dans le brut soumis aux cotisations et dans le net imposable, '
+          + 'mais fournis en nature : ils ne sont pas versés en espèces.',
+    });
+  }
+  // Frais professionnels (indemnités de repas IDCC 0016) : versés en net, hors
+  // brut et hors net social ; déjà inclus dans le net à payer avant impôt.
+  for (const f of (b.salarie?.pays === 'france' ? (b.frais_professionnels || []) : [])) {
+    totaux.push({
+      libelle: `${f.libelle} — ${_n(f.nombre).toLocaleString('fr-FR')} × ${
+        f.montant_unitaire == null ? 'barème non intégré' : _eur(f.montant_unitaire) + ' €'}`,
+      valeur: _eur(f.montant),
+      note: 'Remboursement de frais professionnels : non soumis à cotisations ni à '
+          + 'l’impôt sur le revenu, versé en net.',
     });
   }
   totaux.push({

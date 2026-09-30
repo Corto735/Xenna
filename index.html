@@ -1370,6 +1370,18 @@
     .rem-h-unit { font-size: 0.65rem; color: var(--muted-txt); }
     /* Détail d'une ligne d'heures : heures × taux horaire majoré = montant,
        sous la ligne de saisie (trop long pour tenir à côté en mobile). */
+    /* Avantages en nature : options sous la ligne (participation, cantine,
+       véhicule…), sur une ligne qui passe à la ligne sur mobile. */
+    .rem-an-opts {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.9rem;
+      padding: 0.15rem 0 0.35rem 0.4rem; font-size: 0.66rem; color: var(--muted-txt);
+    }
+    .rem-an-chk, .rem-an-fld { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+    .rem-an-fld input { width: 7rem; font-size: 0.68rem; padding: 0.1rem 0.3rem;
+      background: var(--bg3); color: var(--fg); border: 1px solid var(--border); font-family: inherit; }
+    .rem-an-fld input[type=text] { width: 11rem; }
+    .rem-an-sel { font-size: 0.68rem; padding: 0.1rem 0.3rem; background: var(--bg3);
+      color: var(--fg); border: 1px solid var(--border); font-family: inherit; }
     .rem-h-detail {
       font-size: 0.62rem; color: var(--text); margin: -0.05rem 0 0.3rem 1.875rem;
       padding-left: 0.4rem; border-left: 2px solid var(--border);
@@ -3746,6 +3758,13 @@
               <input type="checkbox" id="d-esat" onchange="syncParam('esat', this.checked); onToggleESAT('d', this.checked)" />
               <span class="flag-emoji">♿</span> ESAT
             </label>
+            <label class="param-item" title="Convention collective appliquée au bulletin (France privé)">
+              Convention collective
+              <select id="d-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <option value="">Aucune (régime légal)</option>
+                <option value="0016">IDCC 0016 — Transports routiers</option>
+              </select>
+            </label>
           </div>
           <label class="param-item">
             <input type="checkbox" id="d-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
@@ -4222,6 +4241,13 @@
               <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
                 <input type="checkbox" id="m-esat" onchange="syncParam('esat', this.checked); onToggleESAT('m', this.checked)" />
                 <span class="flag-emoji">♿</span> ESAT
+              </label>
+              <label class="param-item" title="Convention collective appliquée au bulletin (France privé)">
+                Convention collective
+                <select id="m-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <option value="">Aucune (régime légal)</option>
+                  <option value="0016">IDCC 0016 — Transports routiers</option>
+                </select>
               </label>
             </div>
             <label class="param-item">

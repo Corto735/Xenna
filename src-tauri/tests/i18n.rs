@@ -67,6 +67,9 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         etp: 100.0,
         entreprise_adaptee: false,
         esat: false,
+        convention_idcc: None,
+        indemnites_repas: None,
+        avantages_nature: Vec::new(),
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,
@@ -221,9 +224,23 @@ async fn couverture_variantes_france() {
     // Travailleur d'ESAT : aide au poste et compensation des charges.
     let mut esat = salarie_base(Pays::France, "1015.43");
     esat.esat = true;
+    // IDCC 0016 : indemnités de repas versées en net.
+    let mut routier = salarie_base(Pays::France, "2500.00");
+    routier.convention_idcc = Some("0016".into());
+    routier.indemnites_repas = Some(xenna_paie_lib::models::IndemnitesRepasCcn {
+        repas_unique: 1.0, repas_unique_nuit: 1.0, speciale: 1.0, casse_croute: 1.0,
+    });
 
     let mut manques: Vec<String> = Vec::new();
-    for (nom, salarie) in [("cadre", cadre), ("ESAT", esat)] {
+    // Avantages en nature : les cinq natures.
+    let mut avantages = salarie_base(Pays::France, "2500.00");
+    avantages.avantages_nature = ["repas", "logement", "vehicule", "ntic", "autre"].iter().map(|n| {
+        xenna_paie_lib::models::AvantageNatureInput {
+            nature: n.to_string(), nombre: 2.0, montant: 50.0, cout: 1000.0, ..Default::default()
+        }
+    }).collect();
+
+    for (nom, salarie) in [("cadre", cadre), ("ESAT", esat), ("IDCC 0016", routier), ("avantages", avantages)] {
         let bulletin_fr = generer_bulletin(salarie.clone(), &ctx_fr, None);
         for lang in LANGUES {
             let mut ctx = ContextPaie::charger(&pool, d).await.unwrap();
@@ -240,6 +257,21 @@ async fn couverture_variantes_france() {
                 }
                 if placeholder_restant(&ligne.explication) {
                     manques.push(format!("France {nom}/{lang} placeholder dans explication {code}"));
+                }
+            }
+            for (ligne, ligne_fr) in bulletin.avantages_nature.iter().zip(&bulletin_fr.avantages_nature) {
+                let code = ligne.code.as_str();
+                if ligne.libelle == ligne_fr.libelle || ligne.explication == ligne_fr.explication {
+                    manques.push(format!("France {nom}/{lang} avantage en nature non traduit : {code}"));
+                }
+            }
+            for (ligne, ligne_fr) in bulletin.frais_professionnels.iter().zip(&bulletin_fr.frais_professionnels) {
+                let code = ligne.code.as_str();
+                if ligne.libelle == ligne_fr.libelle {
+                    manques.push(format!("France {nom}/{lang} libellé de frais non traduit : {code}"));
+                }
+                if ligne.explication == ligne_fr.explication || placeholder_restant(&ligne.explication) {
+                    manques.push(format!("France {nom}/{lang} explication de frais non traduite : {code}"));
                 }
             }
         }

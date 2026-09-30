@@ -140,6 +140,78 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Compensación estatal de las cargas sobre la ayuda al puesto",
             _ => return None,
         },
+        "IDCC16_REPAS_UNIQUE" => match lang {
+            "en" => "Single meal allowance",
+            "de" => "Einzelmahlzeitzulage",
+            "nl" => "Vergoeding enkele maaltijd",
+            "it" => "Indennità di pasto unico",
+            "es" => "Dieta de comida única",
+            _ => return None,
+        },
+        "IDCC16_REPAS_UNIQUE_NUIT" => match lang {
+            "en" => "Single night meal allowance",
+            "de" => "Einzelmahlzeitzulage Nacht",
+            "nl" => "Vergoeding enkele nachtmaaltijd",
+            "it" => "Indennità di pasto unico notturno",
+            "es" => "Dieta de comida única nocturna",
+            _ => return None,
+        },
+        "IDCC16_INDEMNITE_SPECIALE" => match lang {
+            "en" => "Special allowance (meal)",
+            "de" => "Sonderzulage (Mahlzeit)",
+            "nl" => "Bijzondere vergoeding (maaltijd)",
+            "it" => "Indennità speciale (pasto)",
+            "es" => "Dieta especial (comida)",
+            _ => return None,
+        },
+        "IDCC16_CASSE_CROUTE" => match lang {
+            "en" => "Snack allowance",
+            "de" => "Imbisszulage",
+            "nl" => "Vergoeding tussendoortje",
+            "it" => "Indennità di spuntino",
+            "es" => "Dieta de tentempié",
+            _ => return None,
+        },
+        "AN_REPAS" => match lang {
+            "en" => "Benefit in kind — meals",
+            "de" => "Sachbezug — Mahlzeiten",
+            "nl" => "Voordeel in natura — maaltijden",
+            "it" => "Fringe benefit — pasti",
+            "es" => "Retribución en especie — comidas",
+            _ => return None,
+        },
+        "AN_LOGEMENT" => match lang {
+            "en" => "Benefit in kind — housing",
+            "de" => "Sachbezug — Wohnung",
+            "nl" => "Voordeel in natura — huisvesting",
+            "it" => "Fringe benefit — alloggio",
+            "es" => "Retribución en especie — vivienda",
+            _ => return None,
+        },
+        "AN_VEHICULE" => match lang {
+            "en" => "Benefit in kind — vehicle",
+            "de" => "Sachbezug — Fahrzeug",
+            "nl" => "Voordeel in natura — voertuig",
+            "it" => "Fringe benefit — veicolo",
+            "es" => "Retribución en especie — vehículo",
+            _ => return None,
+        },
+        "AN_NTIC" => match lang {
+            "en" => "Benefit in kind — digital tools",
+            "de" => "Sachbezug — digitale Geräte",
+            "nl" => "Voordeel in natura — digitale middelen",
+            "it" => "Fringe benefit — strumenti digitali",
+            "es" => "Retribución en especie — herramientas digitales",
+            _ => return None,
+        },
+        "AN_AUTRE" => match lang {
+            "en" => "Benefit in kind — other",
+            "de" => "Sachbezug — sonstige",
+            "nl" => "Voordeel in natura — overige",
+            "it" => "Fringe benefit — altro",
+            "es" => "Retribución en especie — otra",
+            _ => return None,
+        },
         "AIDE_POSTE_EA" => match lang {
             "en" => "Employment support grant — adapted enterprise (State/ASP)",
             "de" => "Beschäftigungszuschuss — angepasstes Unternehmen (Staat/ASP)",
@@ -752,35 +824,181 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         "ESAT_COMPENSATION" => match lang {
-            "en" => "The State compensates the ESAT for all employer contributions on the share of \
-                the guaranteed pay equal to the job support grant. Here: {charges} € of employer \
-                charges × {ratio} (grant share of the pay) = {comp} €. The administration computes it \
-                on a flat-rate base set by order: this pro rata is an approximation. No unemployment \
-                or AGS contribution and no general reduction: an ESAT worker has no employment contract.",
-            "de" => "Der Staat erstattet dem ESAT alle Arbeitgeberbeiträge auf den Teil der \
-                garantierten Vergütung, der der Arbeitsplatzhilfe entspricht. Hier: {charges} € \
-                Arbeitgeberabgaben × {ratio} (Anteil der Hilfe an der Vergütung) = {comp} €. Die \
-                Verwaltung rechnet mit einer pauschalen Bemessungsgrundlage per Erlass: dieser \
-                Anteil ist eine Näherung. Kein Beitrag zur Arbeitslosenversicherung oder AGS und \
-                keine allgemeine Senkung: ein ESAT-Beschäftigter hat keinen Arbeitsvertrag.",
-            "nl" => "De Staat compenseert het ESAT voor alle werkgeversbijdragen op het deel van de \
-                gegarandeerde vergoeding dat gelijk is aan de werkpleksteun. Hier: {charges} € \
-                werkgeverslasten × {ratio} (aandeel van de steun in de vergoeding) = {comp} €. De \
-                overheid rekent met een forfaitaire grondslag bij besluit: dit pro rata is een \
-                benadering. Geen werkloosheids- of AGS-bijdrage en geen algemene vermindering: een \
-                ESAT-werker heeft geen arbeidscontract.",
-            "it" => "Lo Stato compensa all'ESAT tutti i contributi datoriali sulla quota della \
-                retribuzione garantita pari all'aiuto al posto. Qui: {charges} € di oneri datoriali \
-                × {ratio} (quota dell'aiuto nella retribuzione) = {comp} €. L'amministrazione la \
-                calcola su una base forfettaria fissata per decreto: questo pro rata è \
-                un'approssimazione. Nessun contributo di disoccupazione o AGS e nessuna riduzione \
-                generale: il lavoratore di un ESAT non ha un contratto di lavoro.",
-            "es" => "El Estado compensa al ESAT todas las cotizaciones patronales sobre la parte de \
-                la remuneración garantizada igual a la ayuda al puesto. Aquí: {charges} € de cargas \
-                patronales × {ratio} (parte de la ayuda en la remuneración) = {comp} €. La \
-                administración la calcula sobre una base a tanto alzado fijada por orden: este \
-                prorrateo es una aproximación. Sin cotización por desempleo ni AGS y sin reducción \
-                general: el trabajador de un ESAT no tiene contrato de trabajo.",
+            "en" => "The State reimburses the ESAT for all compulsory employer contributions due on \
+                the share of the guaranteed pay equal to the job support grant: health, old-age, \
+                family allowances, work accidents and supplementary pension. Here: {aide} € of grant \
+                × {taux} of employer rates = {comp} €. FNAL, the mobility levy and occupational \
+                health remain borne by the ESAT. No unemployment or AGS contribution and no general \
+                reduction: an ESAT worker has no employment contract.",
+            "de" => "Der Staat erstattet dem ESAT alle Pflichtbeiträge des Arbeitgebers auf den Teil \
+                der garantierten Vergütung, der der Arbeitsplatzhilfe entspricht: Kranken-, Renten-, \
+                Familien-, Unfall- und Zusatzrentenversicherung. Hier: {aide} € Hilfe × {taux} \
+                Arbeitgebersätze = {comp} €. FNAL, Mobilitätsabgabe und Arbeitsmedizin trägt das \
+                ESAT selbst. Kein Beitrag zur Arbeitslosenversicherung oder AGS und keine allgemeine \
+                Senkung: ein ESAT-Beschäftigter hat keinen Arbeitsvertrag.",
+            "nl" => "De Staat vergoedt het ESAT alle verplichte werkgeversbijdragen op het deel van \
+                de gegarandeerde vergoeding dat gelijk is aan de werkpleksteun: ziekte, ouderdom, \
+                gezinsbijslag, arbeidsongevallen en aanvullend pensioen. Hier: {aide} € steun × \
+                {taux} werkgeverstarieven = {comp} €. FNAL, mobiliteitsheffing en arbeidsgeneeskunde \
+                blijven ten laste van het ESAT. Geen werkloosheids- of AGS-bijdrage en geen algemene \
+                vermindering: een ESAT-werker heeft geen arbeidscontract.",
+            "it" => "Lo Stato rimborsa all'ESAT tutti i contributi datoriali obbligatori dovuti sulla \
+                quota della retribuzione garantita pari all'aiuto al posto: malattia, vecchiaia, \
+                assegni familiari, infortuni sul lavoro e previdenza complementare. Qui: {aide} € di \
+                aiuto × {taux} di aliquote datoriali = {comp} €. FNAL, contributo mobilità e medicina \
+                del lavoro restano a carico dell'ESAT. Nessun contributo di disoccupazione o AGS e \
+                nessuna riduzione generale: il lavoratore di un ESAT non ha un contratto di lavoro.",
+            "es" => "El Estado reembolsa al ESAT todas las cotizaciones patronales obligatorias \
+                debidas sobre la parte de la remuneración garantizada igual a la ayuda al puesto: \
+                enfermedad, vejez, prestaciones familiares, accidentes de trabajo y pensión \
+                complementaria. Aquí: {aide} € de ayuda × {taux} de tipos patronales = {comp} €. El \
+                FNAL, la contribución de movilidad y la medicina del trabajo quedan a cargo del ESAT. \
+                Sin cotización por desempleo ni AGS y sin reducción general: el trabajador de un ESAT \
+                no tiene contrato de trabajo.",
+            _ => return None,
+        },
+        "IDCC16_FRAIS" => match lang {
+            "en" => "Flat-rate allowance of the road transport collective agreement (IDCC 0016), \
+                due for: {condition} ({article} of the protocol of 30/04/1974). {n} × {u} € = \
+                {montant} €. It is a reimbursement of business expenses, not a wage: excluded from \
+                contributions and CSG within the flat-rate limits of the order of 20/12/2002, exempt \
+                from income tax (CGI art. 81, 1°). It is paid net, after the net pay of the salary, \
+                without affecting taxable net pay.",
+            "de" => "Pauschale Zulage des Tarifvertrags Straßentransport (IDCC 0016), geschuldet für: \
+                {condition} ({article} des Protokolls vom 30.04.1974). {n} × {u} € = {montant} €. \
+                Es ist eine Erstattung beruflicher Kosten, kein Lohn: beitrags- und CSG-frei im \
+                Rahmen der Pauschalen des Erlasses vom 20.12.2002, einkommensteuerfrei (CGI Art. 81, \
+                1°). Sie wird netto nach dem Nettolohn gezahlt, ohne das steuerpflichtige Netto zu \
+                berühren.",
+            "nl" => "Forfaitaire vergoeding uit de cao wegvervoer (IDCC 0016), verschuldigd voor: \
+                {condition} ({article} van het protocol van 30/04/1974). {n} × {u} € = {montant} €. \
+                Het is een terugbetaling van beroepskosten, geen loon: vrij van bijdragen en CSG \
+                binnen de forfaits van het besluit van 20/12/2002, vrij van inkomstenbelasting (CGI \
+                art. 81, 1°). Ze wordt netto betaald, na het nettoloon, zonder het belastbare netto \
+                te raken.",
+            "it" => "Indennità forfettaria del contratto collettivo dei trasporti su strada (IDCC 0016), \
+                dovuta per: {condition} ({article} del protocollo del 30/04/1974). {n} × {u} € = \
+                {montant} €. È un rimborso di spese professionali, non una retribuzione: esente da \
+                contributi e CSG entro i forfait del decreto del 20/12/2002, esente da imposta sul \
+                reddito (CGI art. 81, 1°). È versata al netto, dopo il netto in busta, senza toccare \
+                il netto imponibile.",
+            "es" => "Dieta a tanto alzado del convenio colectivo del transporte por carretera (IDCC \
+                0016), debida por: {condition} ({article} del protocolo del 30/04/1974). {n} × {u} € = \
+                {montant} €. Es un reembolso de gastos profesionales, no un salario: exento de \
+                cotizaciones y CSG dentro de los límites de la orden del 20/12/2002, exento del \
+                impuesto sobre la renta (CGI art. 81, 1°). Se abona en neto, tras el neto del \
+                salario, sin afectar al neto imponible.",
+            _ => return None,
+        },
+        "IDCC16_FRAIS_SANS_BAREME" => match lang {
+            "en" => "Flat-rate allowance of the road transport collective agreement (IDCC 0016), \
+                due for: {condition} ({article} of the protocol of 30/04/1974). No scale is \
+                integrated for this date: the simulator covers the amounts in force since \
+                01/12/2022. Amount left at 0 rather than invented.",
+            "de" => "Pauschale Zulage des Tarifvertrags Straßentransport (IDCC 0016), geschuldet für: \
+                {condition} ({article} des Protokolls vom 30.04.1974). Für dieses Datum ist kein \
+                Tarif hinterlegt: der Simulator deckt die seit dem 01.12.2022 geltenden Beträge ab. \
+                Betrag bei 0 belassen statt erfunden.",
+            "nl" => "Forfaitaire vergoeding uit de cao wegvervoer (IDCC 0016), verschuldigd voor: \
+                {condition} ({article} van het protocol van 30/04/1974). Voor deze datum is geen \
+                barema opgenomen: de simulator dekt de bedragen sinds 01/12/2022. Bedrag op 0 \
+                gelaten in plaats van verzonnen.",
+            "it" => "Indennità forfettaria del contratto collettivo dei trasporti su strada (IDCC 0016), \
+                dovuta per: {condition} ({article} del protocollo del 30/04/1974). Nessuna tabella \
+                integrata per questa data: il simulatore copre gli importi in vigore dal 01/12/2022. \
+                Importo lasciato a 0 anziché inventato.",
+            "es" => "Dieta a tanto alzado del convenio colectivo del transporte por carretera (IDCC \
+                0016), debida por: {condition} ({article} del protocolo del 30/04/1974). No hay \
+                baremo integrado para esta fecha: el simulador cubre los importes vigentes desde el \
+                01/12/2022. Importe dejado en 0 en lugar de inventado.",
+            _ => return None,
+        },
+        "IDCC16_REPAS_UNIQUE_COND" => match lang {
+            "en" => "travel within the trucking zone around Paris",
+            "de" => "Fahrten in der Rollfuhrzone um Paris",
+            "nl" => "verplaatsingen in de vrachtzone rond Parijs",
+            "it" => "spostamenti nella zona di trasporto intorno a Parigi",
+            "es" => "desplazamientos en la zona de acarreo alrededor de París",
+            _ => return None,
+        },
+        "IDCC16_REPAS_UNIQUE_NUIT_COND" => match lang {
+            "en" => "a shift with at least 4 hours of actual work between 10 pm and 7 am",
+            "de" => "ein Dienst mit mindestens 4 Stunden effektiver Arbeit zwischen 22 und 7 Uhr",
+            "nl" => "een dienst met minstens 4 uur effectief werk tussen 22 en 7 uur",
+            "it" => "un servizio con almeno 4 ore di lavoro effettivo tra le 22 e le 7",
+            "es" => "un servicio con al menos 4 horas de trabajo efectivo entre las 22 h y las 7 h",
+            _ => return None,
+        },
+        "IDCC16_INDEMNITE_SPECIALE_COND" => match lang {
+            "en" => "a working span fully covering 11 am-2:30 pm or 6:30-10 pm without a break of at least 1 hour",
+            "de" => "eine Arbeitsspanne, die 11-14:30 Uhr oder 18:30-22 Uhr ganz abdeckt, ohne Pause von mindestens 1 Stunde",
+            "nl" => "een amplitude die 11-14.30 uur of 18.30-22 uur volledig dekt zonder pauze van minstens 1 uur",
+            "it" => "un'ampiezza che copre interamente 11-14.30 o 18.30-22 senza pausa di almeno 1 ora",
+            "es" => "una amplitud que cubre por completo 11 h-14.30 h o 18.30 h-22 h sin pausa de al menos 1 hora",
+            _ => return None,
+        },
+        "IDCC16_CASSE_CROUTE_COND" => match lang {
+            "en" => "starting the shift before 5 am because of travel",
+            "de" => "Dienstbeginn vor 5 Uhr wegen einer Fahrt",
+            "nl" => "aanvang van de dienst vóór 5 uur wegens een verplaatsing",
+            "it" => "inizio del servizio prima delle 5 a causa di uno spostamento",
+            "es" => "inicio del servicio antes de las 5 h por un desplazamiento",
+            _ => return None,
+        },
+        "AN_REPAS" => match lang {
+            "en" => "Meals provided by the employer, valued at the flat rate per meal of the order of 25/02/2025 (one day = two meals), less the employee's contribution. In a staff canteen or company restaurant, the benefit is disregarded if the employee pays at least half the flat rate.",
+            "de" => "Vom Arbeitgeber gestellte Mahlzeiten, bewertet mit dem Pauschalbetrag je Mahlzeit des Erlasses vom 25.02.2025 (ein Tag = zwei Mahlzeiten), abzüglich der Zuzahlung des Beschäftigten. In einer Kantine oder einem Betriebsrestaurant bleibt der Vorteil außer Ansatz, wenn der Beschäftigte mindestens die Hälfte der Pauschale zahlt.",
+            "nl" => "Maaltijden verstrekt door de werkgever, gewaardeerd tegen het forfait per maaltijd van het besluit van 25/02/2025 (een dag = twee maaltijden), min de bijdrage van de werknemer. In een bedrijfskantine of bedrijfsrestaurant wordt het voordeel verwaarloosd als de werknemer minstens de helft van het forfait betaalt.",
+            "it" => "Pasti forniti dal datore di lavoro, valutati al forfait per pasto del decreto del 25/02/2025 (una giornata = due pasti), dedotta la partecipazione del dipendente. In mensa o ristorante aziendale il beneficio è trascurato se il dipendente paga almeno la metà del forfait.",
+            "es" => "Comidas facilitadas por el empleador, valoradas al tanto alzado por comida de la orden del 25/02/2025 (un día = dos comidas), menos la aportación del trabajador. En comedor o restaurante de empresa, la retribución se desprecia si el trabajador paga al menos la mitad del tanto alzado.",
+            _ => return None,
+        },
+        "AN_LOGEMENT" => match lang {
+            "en" => "Housing provided by the employer. Monthly flat rate according to gross pay excluding benefits (8 brackets expressed as a fraction of the social security ceiling) and the number of main rooms, water, gas, electricity, heating and garage included; beyond one room, the amount applies per room. Otherwise, rental value and actual ancillary costs. Employee contribution deducted.",
+            "de" => "Vom Arbeitgeber gestellte Wohnung. Monatliche Pauschale nach dem Bruttolohn ohne Sachbezüge (8 Stufen als Bruchteil der Beitragsbemessungsgrenze) und der Zahl der Haupträume, Wasser, Gas, Strom, Heizung und Garage inbegriffen; ab zwei Räumen gilt der Betrag je Raum. Andernfalls Mietwert und tatsächliche Nebenkosten. Zuzahlung des Beschäftigten abgezogen.",
+            "nl" => "Huisvesting verstrekt door de werkgever. Maandelijks forfait volgens het brutoloon zonder voordelen (8 schijven uitgedrukt als fractie van het socialezekerheidsplafond) en het aantal hoofdvertrekken, water, gas, elektriciteit, verwarming en garage inbegrepen; boven één vertrek geldt het bedrag per vertrek. Anders huurwaarde en werkelijke bijkomende kosten. Bijdrage van de werknemer afgetrokken.",
+            "it" => "Alloggio fornito dal datore di lavoro. Forfait mensile secondo la retribuzione lorda esclusi i benefit (8 fasce espresse come frazione del massimale di previdenza sociale) e il numero di vani principali, acqua, gas, elettricità, riscaldamento e garage compresi; oltre un vano l'importo vale per vano. In alternativa, valore locativo e accessori reali. Partecipazione del dipendente dedotta.",
+            "es" => "Vivienda facilitada por el empleador. Tanto alzado mensual según la remuneración bruta sin retribuciones en especie (8 tramos expresados como fracción del tope de la seguridad social) y el número de habitaciones principales, agua, gas, electricidad, calefacción y garaje incluidos; a partir de dos habitaciones el importe se aplica por habitación. Si no, valor de alquiler y gastos accesorios reales. Aportación del trabajador deducida.",
+            _ => return None,
+        },
+        "AN_VEHICULE" => match lang {
+            "en" => "Vehicle used privately. Annual flat rate, taken monthly: purchased vehicle, 15 % of the purchase cost incl. VAT (10 % over 5 years), 20 % (15 %) fuel included; leased vehicle, 50 % of the total annual cost, 67 % fuel included. Vehicles provided before 01/02/2025: 9 % (6 %), 12 % (9 %); lease 30 %, 40 %. Fully electric vehicle: capped 70 % allowance if provided between 01/02/2025 and 31/12/2027 and meeting the eco-score, capped 50 % if provided between 01/01/2020 and 31/01/2025; charging electricity is not counted. Employee contribution deducted.",
+            "de" => "Privat genutztes Fahrzeug. Jahrespauschale, monatlich angesetzt: gekauftes Fahrzeug 15 % der Anschaffungskosten inkl. MwSt. (10 % über 5 Jahre), 20 % (15 %) mit Kraftstoff; geleastes Fahrzeug 50 % der jährlichen Gesamtkosten, 67 % mit Kraftstoff. Vor dem 01.02.2025 überlassene Fahrzeuge: 9 % (6 %), 12 % (9 %); Leasing 30 %, 40 %. Reines Elektrofahrzeug: gedeckelter Abschlag von 70 % bei Überlassung zwischen 01.02.2025 und 31.12.2027 und erfülltem Öko-Score, gedeckelte 50 % bei Überlassung zwischen 01.01.2020 und 31.01.2025; Ladestrom wird nicht angesetzt. Zuzahlung des Beschäftigten abgezogen.",
+            "nl" => "Voertuig voor privégebruik. Jaarlijks forfait, per maand genomen: gekocht voertuig 15 % van de aankoopprijs incl. btw (10 % boven 5 jaar), 20 % (15 %) met brandstof; geleasd voertuig 50 % van de totale jaarkosten, 67 % met brandstof. Voertuigen ter beschikking gesteld vóór 01/02/2025: 9 % (6 %), 12 % (9 %); lease 30 %, 40 %. Volledig elektrisch voertuig: begrensde aftrek van 70 % bij terbeschikkingstelling tussen 01/02/2025 en 31/12/2027 met eco-score, begrensde 50 % tussen 01/01/2020 en 31/01/2025; laadstroom telt niet mee. Bijdrage van de werknemer afgetrokken.",
+            "it" => "Veicolo usato a titolo privato. Forfait annuo, preso per dodicesimi: veicolo acquistato 15 % del costo d'acquisto IVA inclusa (10 % oltre 5 anni), 20 % (15 %) carburante compreso; veicolo a noleggio 50 % del costo globale annuo, 67 % carburante compreso. Veicoli messi a disposizione prima del 01/02/2025: 9 % (6 %), 12 % (9 %); noleggio 30 %, 40 %. Veicolo 100 % elettrico: abbattimento del 70 % con massimale se messo a disposizione tra il 01/02/2025 e il 31/12/2027 con eco-score, 50 % con massimale tra il 01/01/2020 e il 31/01/2025; l'elettricità di ricarica non è conteggiata. Partecipazione del dipendente dedotta.",
+            "es" => "Vehículo de uso privado. Tanto alzado anual, por dozavas partes: vehículo comprado, 15 % del coste de compra IVA incluido (10 % con más de 5 años), 20 % (15 %) con carburante; vehículo alquilado, 50 % del coste global anual, 67 % con carburante. Vehículos puestos a disposición antes del 01/02/2025: 9 % (6 %), 12 % (9 %); alquiler 30 %, 40 %. Vehículo 100 % eléctrico: reducción del 70 % con tope si se puso a disposición entre el 01/02/2025 y el 31/12/2027 y cumple la ecopuntuación, 50 % con tope entre el 01/01/2020 y el 31/01/2025; la electricidad de recarga no se computa. Aportación del trabajador deducida.",
+            _ => return None,
+        },
+        "AN_NTIC" => match lang {
+            "en" => "Digital tools (computer, phone, subscription) used privately: 10 % of the purchase cost incl. VAT or of the annual subscription incl. VAT, taken monthly. Employee contribution deducted. Strictly professional use is not a benefit.",
+            "de" => "Digitale Geräte (Computer, Telefon, Abonnement) zur privaten Nutzung: 10 % der Anschaffungskosten oder des Jahresabonnements inkl. MwSt., monatlich angesetzt. Zuzahlung des Beschäftigten abgezogen. Rein berufliche Nutzung ist kein Vorteil.",
+            "nl" => "Digitale middelen (computer, telefoon, abonnement) voor privégebruik: 10 % van de aankoopprijs of het jaarabonnement incl. btw, per maand genomen. Bijdrage van de werknemer afgetrokken. Strikt beroepsmatig gebruik is geen voordeel.",
+            "it" => "Strumenti digitali (computer, telefono, abbonamento) usati a titolo privato: 10 % del costo d'acquisto o dell'abbonamento annuo IVA inclusa, per dodicesimi. Partecipazione del dipendente dedotta. Un uso strettamente professionale non è un beneficio.",
+            "es" => "Herramientas digitales (ordenador, teléfono, suscripción) de uso privado: 10 % del coste de compra o de la suscripción anual IVA incluido, por dozavas partes. Aportación del trabajador deducida. Un uso estrictamente profesional no es retribución.",
+            _ => return None,
+        },
+        "AN_AUTRE" => match lang {
+            "en" => "Goods or services provided free or at a reduced price, outside the flat-rate scales: valued at their actual value, less the employee's contribution.",
+            "de" => "Unentgeltlich oder verbilligt überlassene Waren oder Dienstleistungen außerhalb der Pauschalen: mit ihrem tatsächlichen Wert bewertet, abzüglich der Zuzahlung des Beschäftigten.",
+            "nl" => "Goederen of diensten gratis of tegen verlaagde prijs verstrekt, buiten de forfaits: gewaardeerd tegen hun werkelijke waarde, min de bijdrage van de werknemer.",
+            "it" => "Beni o servizi forniti gratuitamente o a prezzo ridotto, fuori dai forfait: valutati al loro valore reale, dedotta la partecipazione del dipendente.",
+            "es" => "Bienes o servicios facilitados gratis o a precio reducido, fuera de los baremos: valorados por su valor real, menos la aportación del trabajador.",
+            _ => return None,
+        },
+        "AN_SANS_BAREME" => match lang {
+            "en" => "No scale is integrated for this date: the simulator covers the flat rates in force since 2025. Amount left at 0 rather than invented.",
+            "de" => "Für dieses Datum ist kein Tarif hinterlegt: der Simulator deckt die seit 2025 geltenden Pauschalen ab. Betrag bei 0 belassen statt erfunden.",
+            "nl" => "Voor deze datum is geen barema opgenomen: de simulator dekt de forfaits sinds 2025. Bedrag op 0 gelaten in plaats van verzonnen.",
+            "it" => "Nessuna tabella integrata per questa data: il simulatore copre i forfait in vigore dal 2025. Importo lasciato a 0 anziché inventato.",
+            "es" => "No hay baremo integrado para esta fecha: el simulador cubre los tantos alzados vigentes desde 2025. Importe dejado en 0 en lugar de inventado.",
+            _ => return None,
+        },
+        "AN_REPAS_NEGLIGE" => match lang {
+            "en" => "Here, the contribution reaches half the flat rate: the benefit is disregarded.",
+            "de" => "Hier erreicht die Zuzahlung die Hälfte der Pauschale: der Vorteil bleibt außer Ansatz.",
+            "nl" => "Hier bereikt de bijdrage de helft van het forfait: het voordeel wordt verwaarloosd.",
+            "it" => "Qui la partecipazione raggiunge la metà del forfait: il beneficio è trascurato.",
+            "es" => "Aquí la aportación alcanza la mitad del tanto alzado: la retribución se desprecia.",
             _ => return None,
         },
         "AIDE_POSTE_EA" => match lang {

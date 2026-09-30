@@ -61,6 +61,8 @@ pub struct MiseAJour {
 pub enum Specificite {
     AlsaceMoselle,
     Esat,
+    /// Convention collective des transports routiers (IDCC 0016).
+    Idcc0016,
 }
 
 /// Journal des mises à jour, du plus récent au plus ancien. Qui intègre des
@@ -69,12 +71,40 @@ pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-09-30",
         pays: Pays::France,
+        specificite: None,
+        objet: "Avantages en nature (arrêté du 25/02/2025) : repas 5,50 € (5,45 € en 2025) ; logement, barème 2025 et 2026 en 8 tranches du PSS, 1 pièce ou par pièce ; véhicule 15 %/10 %, 20 %/15 % carburant compris, location 50 %/67 % (9 %/6 %, 12 %/9 %, 30 %/40 % pour une mise à disposition avant le 01/02/2025), abattement électrique 70 % plafonné à 4 641,60 € (4 582 € en 2025) ou 50 % plafonné à 2 026,30 € (2 000,30 €) ; NTIC 10 % ; avant 2025, forfaits non intégrés",
+        sources: &[
+            "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051254024",
+            "https://www.legisocial.fr/reperes-sociaux/avantage-en-nature-logement-2026.html",
+            "https://www.legisocial.fr/reperes-sociaux/avantage-en-nature-repas-2026.html",
+            "https://www.legisocial.fr/reperes-sociaux/avantage-en-nature-vehicule-2026.html",
+            "https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/avantages-en-nature.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-30",
+        pays: Pays::France,
+        specificite: Some(Specificite::Idcc0016),
+        objet: "Indemnités de repas des ouvriers (protocole du 30/04/1974), versées en net : repas unique 10,07 €, repas unique de nuit 9,81 €, indemnité spéciale 4,42 €, casse-croûte 8,87 € au 01/01/2026 (av. n° 81) ; historique depuis le 01/12/2022 (av. n° 75, 77, 79) ; avant, aucun barème intégré",
+        sources: &[
+            "https://www.legifrance.gouv.fr/conv_coll/id/KALITEXT000005678899/?idConteneur=KALICONT000005635624",
+            "https://www.legifrance.gouv.fr/conv_coll/article/KALIARTI000053715766",
+            "https://www.juristique.org/conventionnel/indemnites-ouvriers-transport-routier-2026",
+            "https://unostra.fr/2025/02/21/revalorisation-des-indemnites-de-frais-de-deplacement-15-a-compter-du-1er-mars-2025/",
+            "https://www.soluciaspj.fr/2023/12/22/remuneration-et-frais-de-deplacement-transport-routier-de-marchandises/",
+            "https://www.juristique.org/conventionnel/indemnites-ouvriers-transport-routier-2023",
+        ],
+    },
+    MiseAJour {
+        date: "2026-09-30",
+        pays: Pays::France,
         specificite: Some(Specificite::Esat),
-        objet: "Travailleur d'ESAT : rémunération garantie de 55,7 % à 110,7 % du SMIC (55 % à 110 % avant 2018), aide au poste de l'État au plus 50,7 % (50 % avant 2018), dégressive au-delà d'une part ESAT de 20 % ; ni chômage, ni AGS, ni réduction générale ; compensation par l'État des charges patronales sur l'aide au poste (prorata, l'assiette forfaitaire de l'arrêté n'étant pas modélisée)",
+        objet: "Travailleur d'ESAT : rémunération garantie de 55,7 % à 110,7 % du SMIC (55 % à 110 % avant 2018), aide au poste de l'État au plus 50,7 % (50 % avant 2018), dégressive au-delà d'une part ESAT de 20 % ; ni chômage, ni AGS, ni réduction générale ; compensation par l'État de toutes les cotisations patronales obligatoires dues sur l'aide au poste, Agirc-Arrco comprise (arrêté du 28/12/2006 ; FNAL, versement mobilité et médecine du travail non compensés)",
         sources: &[
             "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006074069/LEGISCTA000006190154/",
             "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000006157600",
             "https://net-entreprises.custhelp.com/app/answers/detail/a_id/1884",
+            "https://sante.gouv.fr/fichiers/bo/2008/08-09/ste_20080009_0100_0174.pdf",
             "https://www.directions.fr/Veille-juridique/dernieres-infos/ressources-humaines/2018/3/Nouvelle-formule-de-calcul-de-la-remuneration-garantie-2051086W/",
         ],
     },

@@ -16,7 +16,8 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 
 use super::models::{
-    Activite, Branche, Convention, ConventionResume, DossierCcn, DossierGrilles, Grille, Maintien,
+    Activite, Branche, Convention, ConventionResume, DossierCcn, DossierGrilles, Grille, Indemnites,
+    Maintien,
     Reglementation, ReglementationAdmin, ReglementationInput, Theme,
 };
 use crate::admin::auth::AdminAuth;
@@ -207,11 +208,23 @@ pub async fn charger_grilles(
     .fetch_all(pool)
     .await?;
 
+    let indemnites = sqlx::query_as::<_, Indemnites>(
+        "SELECT id, categorie, branches, intitule, article, corps, tableaux,
+                source, source_url, consulte_le, ordre
+           FROM ccn_indemnites
+          WHERE idcc = ?
+          ORDER BY ordre, id",
+    )
+    .bind(idcc)
+    .fetch_all(pool)
+    .await?;
+
     Ok(Some(DossierGrilles {
         convention,
         branches,
         grilles,
         maintien,
+        indemnites,
     }))
 }
 

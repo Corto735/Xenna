@@ -284,7 +284,7 @@ async fn le_seed_ne_se_pretend_pas_verifie() {
 async fn grilles_tableaux_bien_formes() {
     let (pool, path) = base_test().await;
 
-    for table in ["ccn_grilles", "ccn_maintien"] {
+    for table in ["ccn_grilles", "ccn_maintien", "ccn_indemnites"] {
         let json_casse = compter(
             &pool,
             &format!("SELECT COUNT(*) FROM {table} WHERE json_valid(tableaux) = 0"),
@@ -350,6 +350,32 @@ async fn grilles_toujours_datees_et_sourcees() {
     )
     .await;
     assert_eq!(maintien_muet, 0, "régime de maintien sans source, sans article ou sans date");
+
+    let indemnites_muettes = compter(
+        &pool,
+        "SELECT COUNT(*) FROM ccn_indemnites
+          WHERE trim(source) = '' OR trim(article) = ''
+             OR consulte_le NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+             OR (source_url IS NOT NULL AND source_url NOT LIKE 'https://%')",
+    )
+    .await;
+    assert_eq!(indemnites_muettes, 0, "indemnités sans source, sans texte, sans date ou lien douteux");
+
+    // Chaque branche citée doit exister : sinon le bloc ne s'affiche jamais.
+    let branches_inconnues = compter(
+        &pool,
+        "WITH RECURSIVE decoupe(idcc, reste, code) AS (
+             SELECT idcc, branches || ',', '' FROM ccn_indemnites
+             UNION ALL
+             SELECT idcc, substr(reste, instr(reste, ',') + 1), substr(reste, 1, instr(reste, ',') - 1)
+               FROM decoupe WHERE reste <> ''
+         )
+         SELECT COUNT(*) FROM decoupe d
+          WHERE d.code <> ''
+            AND NOT EXISTS (SELECT 1 FROM ccn_branches b WHERE b.idcc = d.idcc AND b.code = d.code)",
+    )
+    .await;
+    assert_eq!(branches_inconnues, 0, "indemnités rattachées à une branche inexistante");
 
     // Un lien qui n'est pas http(s) ne sera pas rendu par le front :
     // autant le refuser ici plutôt que de le voir disparaître à l'écran.
