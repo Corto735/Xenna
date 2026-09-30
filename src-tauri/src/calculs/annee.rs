@@ -70,6 +70,7 @@ pub async fn generer_annee(
             region_be: None,
             etp,
             entreprise_adaptee: false,
+            esat: false,
             tranche_age_ea: None,
             // La projection annuelle modélise le salaire de base seul (comme les
             // primes et absences, non reportées) → pas d'heures supp/compl ici.

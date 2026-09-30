@@ -57,6 +57,7 @@ fn salarie(base: &str, etp: f64) -> Salarie {
         region_be: None,
         etp,
         entreprise_adaptee: false,
+        esat: false,
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,

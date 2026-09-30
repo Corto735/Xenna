@@ -66,6 +66,7 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         region_be: Some("bruxelles".into()),
         etp: 100.0,
         entreprise_adaptee: false,
+        esat: false,
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,
@@ -207,7 +208,7 @@ async fn couverture_toutes_langues_tous_pays() {
 }
 
 /// Variantes France non couvertes par le balayage standard : cadre
-/// (AGIRC-ARRCO T2, prévoyance cadre) et Alsace-Moselle.
+/// (AGIRC-ARRCO T2, prévoyance cadre), Alsace-Moselle et ESAT.
 #[tokio::test]
 async fn couverture_variantes_france() {
     let (pool, path) = base_test().await;
@@ -217,21 +218,29 @@ async fn couverture_variantes_france() {
     let mut cadre = salarie_base(Pays::France, "6000.00");
     cadre.statut = Statut::Cadre;
     cadre.alsace_moselle = true;
-    let bulletin_fr = generer_bulletin(cadre.clone(), &ctx_fr, None);
+    // Travailleur d'ESAT : aide au poste et compensation des charges.
+    let mut esat = salarie_base(Pays::France, "1015.43");
+    esat.esat = true;
 
     let mut manques: Vec<String> = Vec::new();
-    for lang in LANGUES {
-        let mut ctx = ContextPaie::charger(&pool, d).await.unwrap();
-        ctx.lang = lang.to_string();
-        let bulletin = generer_bulletin(cadre.clone(), &ctx, None);
+    for (nom, salarie) in [("cadre", cadre), ("ESAT", esat)] {
+        let bulletin_fr = generer_bulletin(salarie.clone(), &ctx_fr, None);
+        for lang in LANGUES {
+            let mut ctx = ContextPaie::charger(&pool, d).await.unwrap();
+            ctx.lang = lang.to_string();
+            let bulletin = generer_bulletin(salarie.clone(), &ctx, None);
 
-        for (ligne, ligne_fr) in bulletin.cotisations.iter().zip(&bulletin_fr.cotisations) {
-            let code = ligne.code.as_str();
-            if ligne.libelle == ligne_fr.libelle && !libelle_identique_ok(code, lang) {
-                manques.push(format!("France cadre/{lang} libellé non traduit : {code}"));
-            }
-            if ligne.explication == ligne_fr.explication && !explication_identique_ok(code, lang) {
-                manques.push(format!("France cadre/{lang} explication non traduite : {code}"));
+            for (ligne, ligne_fr) in bulletin.cotisations.iter().zip(&bulletin_fr.cotisations) {
+                let code = ligne.code.as_str();
+                if ligne.libelle == ligne_fr.libelle && !libelle_identique_ok(code, lang) {
+                    manques.push(format!("France {nom}/{lang} libellé non traduit : {code}"));
+                }
+                if ligne.explication == ligne_fr.explication && !explication_identique_ok(code, lang) {
+                    manques.push(format!("France {nom}/{lang} explication non traduite : {code}"));
+                }
+                if placeholder_restant(&ligne.explication) {
+                    manques.push(format!("France {nom}/{lang} placeholder dans explication {code}"));
+                }
             }
         }
     }

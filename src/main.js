@@ -2238,7 +2238,7 @@ window.showFormula = function(key) {
   const isSal = type === 'sal';
   const badge = c.code === 'REDUCTION_FILLON'
     ? '── Allègement patronal ──────────────────────'
-    : c.code === 'AIDE_POSTE_EA'
+    : (c.code === 'AIDE_POSTE_EA' || c.code === 'ESAT_AIDE_POSTE' || c.code === 'ESAT_COMPENSATION')
       ? '── Aide de l\'État (ASP) — coût employeur ────'
       : c.code === 'REDUC_SAL_HS'
         ? '── Exonération salariale — heures supp. ─────'
@@ -3026,8 +3026,11 @@ async function _afficherVeille(b) {
     ? `dernière modification le ${formatDate(v.derniere_maj)}` +
       (derniere ? ` : <span class="vb-objet" title="${esc(derniere.objet)}">${esc(derniere.objet)}</span>` : '')
     : 'aucune modification journalisée par la veille';
-  // Spécificité cochée (Alsace-Moselle) : sa propre date, journalisée à part.
-  const specifs = b.salarie?.alsace_moselle ? [['alsace_moselle', VEILLE_SPECIFICITES.alsace_moselle]] : [];
+  // Spécificité cochée (Alsace-Moselle, ESAT) : sa propre date, journalisée à part.
+  const specifs = [
+    ...(b.salarie?.alsace_moselle ? [['alsace_moselle', VEILLE_SPECIFICITES.alsace_moselle]] : []),
+    ...(b.salarie?.esat ? [['esat', VEILLE_SPECIFICITES.esat]] : []),
+  ];
   const releveSpecifs = specifs.map(([cle, lib]) => {
     const m = journal.find(e => e.pays === pays && e.specificite === cle);
     return m
@@ -3068,7 +3071,7 @@ const VEILLE_NOMS = {
   emirats: '🇦🇪 Émirats arabes unis', inde: '🇮🇳 Inde',
 };
 // Spécificités journalisées à part (enum `Specificite` de veille.rs).
-const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle' };
+const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle', esat: 'ESAT' };
 let _veilleTousCharge = false;
 
 async function _veilleTableau() {
@@ -3144,6 +3147,7 @@ async function calculate(source) {
   const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
   const isEA           = document.getElementById(isM ? "m-ea"          : "d-ea")?.checked ?? false;
   const eaTranche      = document.getElementById(isM ? "m-ea-tranche"  : "d-ea-tranche")?.value || "m50";
+  const isESAT         = document.getElementById(isM ? "m-esat"        : "d-esat")?.checked ?? false;
   const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
   const isEspagne      = document.getElementById(isM ? "m-espagne"     : "d-espagne")?.checked ?? false;
   const isPortugal     = document.getElementById(isM ? "m-portugal"    : "d-portugal")?.checked ?? false;
@@ -3263,6 +3267,8 @@ async function calculate(source) {
         // Entreprise adaptée : France privé uniquement (jamais FPT ni étranger).
         entreprise_adaptee: isEA && !paysEtranger && !isFPT,
         tranche_age_ea: (isEA && !paysEtranger && !isFPT) ? eaTranche : null,
+        // ESAT : France privé uniquement, exclusif de l'entreprise adaptée.
+        esat: isESAT && !isEA && !paysEtranger && !isFPT,
         // Heures supplémentaires/complémentaires : France privé uniquement. Le brut
         // de base (salaire_base) sert à dériver le taux horaire côté backend.
         salaire_base: _remBase.toString(),
@@ -3337,7 +3343,7 @@ async function calculate(source) {
 
 // Paramètres repris tels quels du formulaire bureau, dans l'ordre de relecture :
 // une case à cocher précède les listes qu'elle dévoile (IS → canton, Kirchensteuer → Land).
-const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'be-region',
+const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'be-region',
   'ca-province', 'us-state', 'emirati-national', 'inde-regime', 'steuerklasse',
   'kinderlos', 'kirchenmitglied', 'land', 'assujetti-is', 'canton', 'tarif-is',
   'effectif', 'anciennete'];
@@ -3468,12 +3474,15 @@ function _restaurerDepuisLien() {
 
   // Un champ absent du lien reprend sa valeur par défaut : collé dans un onglet
   // déjà ouvert, le lien ne doit rien hériter de la simulation précédente.
+  // Le brut du lien fait foi : la case ESAT rejouée ne le remplace pas.
+  _esatRestauration = true;
   LIEN_CHAMPS.forEach(cle => {
     const el = document.getElementById(`d-${cle}`);
     if (!el) return;
     const defaut = _lienDefaut(el);
     _lienPoser(el, q.has(cle) ? q.get(cle) : (el.type === 'checkbox' ? (defaut ? '1' : '') : defaut));
   });
+  _esatRestauration = false;
 
   const etp = parseFloat(q.get('etp'));
   document.getElementById('d-etp').value = Number.isFinite(etp) && etp > 0 && etp <= 200 ? etp : 100;
@@ -3681,6 +3690,8 @@ window.onTogglePays = function(pays, checked) {
     const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
     if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
   });
+  // ESAT : même périmètre ; en sortir rend le brut saisi avant.
+  if (!isFrancePrive && document.getElementById('d-esat')?.checked) window.onToggleESAT('d', false);
   ['d-date', 'm-date'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -3814,6 +3825,8 @@ window.onToggleEA = function(prefix, checked) {
       if (fr) fr.checked = true;
     });
     window.onTogglePays('france', true);
+    // EA et ESAT s'excluent : un travailleur d'ESAT n'est pas salarié d'une EA.
+    if (document.getElementById('d-esat')?.checked) window.onToggleESAT('d', false);
     // onTogglePays ne touche pas EA en France privé : on garde la case cochée.
     ['d', 'm'].forEach(p => {
       const ea = document.getElementById(`${p}-ea`);
@@ -3826,6 +3839,66 @@ window.onToggleEA = function(prefix, checked) {
     const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
     if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
   });
+};
+
+// ESAT (établissement ou service d'accompagnement par le travail) : régime France
+// privé, exclusif de l'entreprise adaptée. Cocher remplace le brut saisi par la
+// rémunération garantie minimale (55,7 % du SMIC × ETP, calculée par le back à
+// la date de paie) ; décocher remet ce qui était écrit avant.
+let _esatBrutAvant = null;      // { d, m } : brut saisi avant de cocher ESAT
+let _esatRestauration = false;  // relecture d'un lien : son brut fait foi
+
+window.onToggleESAT = async function(prefix, checked) {
+  ['d', 'm'].forEach(p => {
+    const el = document.getElementById(`${p}-esat`);
+    if (el) el.checked = checked;
+  });
+  if (checked) {
+    ['d', 'm'].forEach(p => {
+      const fpt = document.getElementById(`${p}-fpt`);
+      if (fpt) fpt.checked = false;
+      const fr = document.getElementById(`${p}-france`);
+      if (fr) fr.checked = true;
+      const ea = document.getElementById(`${p}-ea`);
+      if (ea) ea.checked = false;
+    });
+    window.onTogglePays('france', true);
+    ['d', 'm'].forEach(p => {
+      const el = document.getElementById(`${p}-esat`);
+      if (el) el.checked = true;
+    });
+    window.onToggleEA(prefix, false);
+    if (_esatRestauration) return;
+
+    // La rémunération garantie est un brut : on quitte la saisie du net.
+    if (_modeSaisie === 'net') window.toggleBrutNet();
+    if (_esatBrutAvant === null) {
+      _esatBrutAvant = {
+        d: document.getElementById('d-brut')?.value ?? '',
+        m: document.getElementById('m-brut')?.value ?? '',
+      };
+    }
+    try {
+      const datePaie = document.getElementById(`${prefix}-date`)?.value || TODAY;
+      const etp = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+      const min = await api('esat_minimum', { datePaie, etp });
+      // Décoché pendant l'appel : ne rien écraser.
+      if (!document.getElementById('d-esat')?.checked) return;
+      ['d-brut', 'm-brut'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.value = min;
+      });
+    } catch (e) {
+      console.error('[esat_minimum]', e);
+    }
+  } else if (_esatBrutAvant !== null) {
+    ['d', 'm'].forEach(p => {
+      const e = document.getElementById(`${p}-brut`);
+      if (e) e.value = _esatBrutAvant[p];
+    });
+    _esatBrutAvant = null;
+  }
+  _triggerRecalculate();
 };
 
 window.toggleDeKircheDetail = function(prefix, checked) {
@@ -5009,7 +5082,7 @@ function herculeInit() {
 
   // ── Info bulletin ─────────────────────────────────────────────────────────
   const info = document.getElementById('herc-bulletin-info');
-  if (info) info.innerHTML = `Bulletin de <strong>${b.salarie.prenom} ${b.salarie.nom}</strong> · Brut ${fmtE(brut)} · ${b.salarie.alsace_moselle ? 'Alsace-Moselle · ' : ''}${b.salarie.entreprise_adaptee ? '♿ Entreprise adaptée · ' : ''}${b.salarie.statut === 'cadre' ? 'Cadre' : 'Non-cadre'}`;
+  if (info) info.innerHTML = `Bulletin de <strong>${b.salarie.prenom} ${b.salarie.nom}</strong> · Brut ${fmtE(brut)} · ${b.salarie.alsace_moselle ? 'Alsace-Moselle · ' : ''}${b.salarie.entreprise_adaptee ? '♿ Entreprise adaptée · ' : ''}${b.salarie.esat ? '♿ ESAT · ' : ''}${b.salarie.statut === 'cadre' ? 'Cadre' : 'Non-cadre'}`;
 
   // ── Écriture 1 : Constatation de la rémunération ──────────────────────────
   const totalRetenues = ss431_sal + csg4378_sal + cho4379_sal + rcc437_sal + pas;

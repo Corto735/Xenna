@@ -12,7 +12,7 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use crate::{
     AppState,
-    calculs::{generer_bulletin, generer_annee, paye_inverse},
+    calculs::{esat, generer_bulletin, generer_annee, paye_inverse},
     db::ContextPaie,
     models::{AbsenceInput, Bulletin, Pays, Salarie, SimulationAnnuelle, Statut},
     veille::{journal, veille, veille_tous, MiseAJour, Veille, VeillePays},
@@ -56,6 +56,23 @@ pub async fn calculer_bulletin(
         }
         None => Ok(generer_bulletin(salarie, &ctx, absence.as_ref())),
     }
+}
+
+/// Rémunération garantie minimale d'un travailleur d'ESAT à la date de paie
+/// (55,7 % du SMIC × ETP) : le front la place dans le champ brut quand la case
+/// ESAT est cochée.
+#[tauri::command]
+pub async fn esat_minimum(
+    state: tauri::State<'_, AppState>,
+    date_paie: String,
+    etp: Option<f64>,
+) -> Result<String, String> {
+    let date = NaiveDate::parse_from_str(&date_paie, "%Y-%m-%d")
+        .map_err(|_| format!("Date invalide : '{date_paie}' (format attendu : YYYY-MM-DD)"))?;
+    let ctx = ContextPaie::charger(&state.db, date)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(esat::remuneration_minimale(ctx.smic_mensuel, etp.unwrap_or(100.0), date).to_string())
 }
 
 #[tauri::command]

@@ -3742,6 +3742,10 @@
                 </select>
               </label>
             </div>
+            <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
+              <input type="checkbox" id="d-esat" onchange="syncParam('esat', this.checked); onToggleESAT('d', this.checked)" />
+              <span class="flag-emoji">♿</span> ESAT
+            </label>
           </div>
           <label class="param-item">
             <input type="checkbox" id="d-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
@@ -4215,6 +4219,10 @@
                   </select>
                 </label>
               </div>
+              <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
+                <input type="checkbox" id="m-esat" onchange="syncParam('esat', this.checked); onToggleESAT('m', this.checked)" />
+                <span class="flag-emoji">♿</span> ESAT
+              </label>
             </div>
             <label class="param-item">
               <input type="checkbox" id="m-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />

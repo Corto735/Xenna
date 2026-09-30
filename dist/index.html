@@ -3531,7 +3531,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-BnV7q1Z1.js"></script>
+  <script type="module" crossorigin src="/assets/index-B6unoD60.js"></script>
 </head>
 <body>
 
@@ -3743,6 +3743,10 @@
                 </select>
               </label>
             </div>
+            <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
+              <input type="checkbox" id="d-esat" onchange="syncParam('esat', this.checked); onToggleESAT('d', this.checked)" />
+              <span class="flag-emoji">♿</span> ESAT
+            </label>
           </div>
           <label class="param-item">
             <input type="checkbox" id="d-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />
@@ -4216,6 +4220,10 @@
                   </select>
                 </label>
               </div>
+              <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
+                <input type="checkbox" id="m-esat" onchange="syncParam('esat', this.checked); onToggleESAT('m', this.checked)" />
+                <span class="flag-emoji">♿</span> ESAT
+              </label>
             </div>
             <label class="param-item">
               <input type="checkbox" id="m-allemagne" onchange="syncParam('allemagne', this.checked); onTogglePays('allemagne', this.checked)" />

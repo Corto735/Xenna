@@ -85,6 +85,7 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         region_be: Some("bruxelles".into()),
         etp: 100.0,
         entreprise_adaptee: false,
+        esat: false,
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,
@@ -381,6 +382,59 @@ async fn golden_france_monotonicite() {
         cout_prec = b.cout_total_employeur;
         brut += 250;
     }
+
+    nettoyer(&path);
+}
+
+// ─────────────────────────────── ESAT ───────────────────────────────────────
+
+/// Travailleur d'ESAT au minimum 2026 : rémunération garantie = 55,7 % du SMIC
+/// (1 823,03 €) = 1 015,43 €, dont aide au poste 50,7 % (924,28 €) et part ESAT
+/// 5 % (91,15 €). Ni chômage ni réduction générale ; les aides de l'État
+/// réduisent le coût de l'ESAT sans toucher au net.
+#[tokio::test]
+async fn golden_esat_minimum_2026() {
+    use xenna_paie_lib::calculs::esat::{decomposer, remuneration_minimale};
+    let (pool, path) = base_test().await;
+    let d = date("2026-03-15");
+    let ctx = ContextPaie::charger(&pool, d).await.unwrap();
+
+    let min = remuneration_minimale(ctx.smic_mensuel, 100.0, d);
+    assert_eq!(min, "1015.43".parse::<Decimal>().unwrap());
+    let (part, aide) = decomposer(min, ctx.smic_mensuel, 100.0, d);
+    assert_eq!(aide, "924.28".parse::<Decimal>().unwrap());
+    assert_eq!(part, "91.15".parse::<Decimal>().unwrap());
+
+    // Mi-temps : tout est proratisé.
+    assert_eq!(remuneration_minimale(ctx.smic_mensuel, 50.0, d), "507.71".parse::<Decimal>().unwrap());
+    // Au maximum (110,7 %), part ESAT = 100 % et aide = 10,7 % du SMIC.
+    let max = ("1.107".parse::<Decimal>().unwrap() * ctx.smic_mensuel).round_dp(2);
+    let (_, aide_max) = decomposer(max, ctx.smic_mensuel, 100.0, d);
+    let attendu = ("0.107".parse::<Decimal>().unwrap() * ctx.smic_mensuel).round_dp(2);
+    // Au centime près : la rémunération saisie est déjà arrondie, et la formule
+    // double l'écart (part ESAT = 2 × (r − 60,7 %)).
+    assert!((aide_max - attendu).abs() <= "0.01".parse::<Decimal>().unwrap(), "{aide_max} ≠ {attendu}");
+    // Avant 2018 : 55 % et 50 %.
+    assert_eq!(remuneration_minimale("1000".parse().unwrap(), 100.0, date("2017-06-15")),
+               "550".parse::<Decimal>().unwrap());
+
+    let mut s = salarie_base(Pays::France, "1015.43");
+    s.esat = true;
+    let b = generer_bulletin(s.clone(), &ctx, None);
+    let code = |c: &str| b.cotisations.iter().find(|l| l.code == c);
+    assert!(code("CHOMAGE").is_none(), "pas d'assurance chômage en ESAT");
+    assert!(code("REDUCTION_FILLON").is_none(), "pas de réduction générale en ESAT");
+    assert_eq!(code("ESAT_AIDE_POSTE").unwrap().montant_pat, "-924.28".parse::<Decimal>().unwrap());
+    let comp = code("ESAT_COMPENSATION").unwrap().montant_pat;
+    assert!(comp < Decimal::ZERO);
+
+    // Les aides ne touchent pas le net : même net que sans elles, chômage à part.
+    let sal_hors_aides: Decimal = b.cotisations.iter().map(|l| l.montant_sal).sum();
+    assert_eq!(b.net_a_payer, (b.brut - sal_hors_aides).round_dp(2));
+    // Coût ESAT = part ESAT + charges patronales non compensées : bien sous la
+    // rémunération versée.
+    assert!(b.cout_total_employeur < b.brut, "coût ESAT {} ≥ rémunération {}", b.cout_total_employeur, b.brut);
+    assert!(b.cout_total_employeur > Decimal::ZERO);
 
     nettoyer(&path);
 }

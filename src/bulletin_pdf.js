@@ -94,6 +94,8 @@ const POSTE_ALLEGEMENTS = [
   { lbl: 'Déduction forfaitaire patronale (heures supplémentaires)', codes: ['DFP_HS'] },
   { lbl: 'Réduction salariale (heures supplémentaires et complémentaires)', codes: ['REDUC_SAL_HS'] },
   { lbl: "Aide au poste (entreprise adaptée)", codes: ['AIDE_POSTE_EA'] },
+  { lbl: "Aide au poste (ESAT, État)", codes: ['ESAT_AIDE_POSTE'] },
+  { lbl: "Compensation par l'État des charges sur l'aide au poste (ESAT)", codes: ['ESAT_COMPENSATION'] },
 ];
 
 const LACUNE_AUTRES =

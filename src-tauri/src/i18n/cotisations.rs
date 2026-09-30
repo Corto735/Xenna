@@ -124,6 +124,22 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Reducción general de las cotizaciones patronales",
             _ => return None,
         },
+        "ESAT_AIDE_POSTE" => match lang {
+            "en" => "Job support grant — ESAT (State)",
+            "de" => "Arbeitsplatzhilfe — ESAT (Staat)",
+            "nl" => "Werkpleksteun — ESAT (Staat)",
+            "it" => "Aiuto al posto — ESAT (Stato)",
+            "es" => "Ayuda al puesto — ESAT (Estado)",
+            _ => return None,
+        },
+        "ESAT_COMPENSATION" => match lang {
+            "en" => "State compensation of charges on the job support grant",
+            "de" => "Staatlicher Ausgleich der Abgaben auf die Arbeitsplatzhilfe",
+            "nl" => "Staatscompensatie van de lasten op de werkpleksteun",
+            "it" => "Compensazione statale degli oneri sull'aiuto al posto",
+            "es" => "Compensación estatal de las cargas sobre la ayuda al puesto",
+            _ => return None,
+        },
         "AIDE_POSTE_EA" => match lang {
             "en" => "Employment support grant — adapted enterprise (State/ASP)",
             "de" => "Beschäftigungszuschuss — angepasstes Unternehmen (Staat/ASP)",
@@ -695,6 +711,76 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "nl" => "\n⚠ Deeltijds {etp} % — geprorateerd plafond: {pmss} € (verlaagd plafond, CSS art. L242-1)",
             "it" => "\n⚠ Tempo parziale {etp} % — massimale proporzionato: {pmss} € (massimale ridotto, CSS art. L242-1)",
             "es" => "\n⚠ Tiempo parcial {etp} % — tope prorrateado: {pmss} € (tope reducido, CSS art. L242-1)",
+            _ => return None,
+        },
+        "ESAT_AIDE_POSTE" => match lang {
+            "en" => "An ESAT worker receives a guaranteed pay of between {min} and {max} of the \
+                minimum wage ({smic} € for this working time). It consists of a share funded by the \
+                ESAT, at least 5 % of the minimum wage (here {part} €), and a job support grant funded \
+                by the State, at most {amax} of the minimum wage (here {aide} €), which falls by 0.5 \
+                point per point of ESAT share above 20 % of the minimum wage. The grant is paid to \
+                the ESAT and must appear on the payslip: it does not change the worker's net pay, it \
+                reduces the cost borne by the ESAT.",
+            "de" => "Ein Beschäftigter eines ESAT erhält eine garantierte Vergütung zwischen {min} \
+                und {max} des Mindestlohns ({smic} € für diese Arbeitszeit). Sie besteht aus einem \
+                vom ESAT finanzierten Anteil, mindestens 5 % des Mindestlohns (hier {part} €), und \
+                einer staatlichen Arbeitsplatzhilfe von höchstens {amax} des Mindestlohns (hier \
+                {aide} €), die je Prozentpunkt ESAT-Anteil über 20 % um 0,5 Punkte sinkt. Die Hilfe \
+                wird an das ESAT gezahlt und muss auf der Abrechnung stehen: Sie ändert nicht den \
+                Nettolohn, sie senkt die Kosten des ESAT.",
+            "nl" => "Een werker in een ESAT ontvangt een gegarandeerde vergoeding tussen {min} en \
+                {max} van het minimumloon ({smic} € voor deze arbeidsduur). Die bestaat uit een door \
+                het ESAT gefinancierd deel, minstens 5 % van het minimumloon (hier {part} €), en een \
+                werkpleksteun van de Staat, hoogstens {amax} van het minimumloon (hier {aide} €), die \
+                per punt ESAT-deel boven 20 % met 0,5 punt daalt. De steun wordt aan het ESAT betaald \
+                en moet op de loonstrook staan: hij verandert het nettoloon niet, hij verlaagt de \
+                kosten van het ESAT.",
+            "it" => "Il lavoratore di un ESAT percepisce una retribuzione garantita tra {min} e {max} \
+                del salario minimo ({smic} € per questo orario). Si compone di una quota a carico \
+                dell'ESAT, almeno il 5 % del salario minimo (qui {part} €), e di un aiuto al posto \
+                finanziato dallo Stato, al massimo {amax} del salario minimo (qui {aide} €), che cala \
+                di 0,5 punti per ogni punto di quota ESAT oltre il 20 %. L'aiuto è versato all'ESAT e \
+                deve figurare in busta paga: non cambia il netto del lavoratore, riduce il costo \
+                sostenuto dall'ESAT.",
+            "es" => "El trabajador de un ESAT percibe una remuneración garantizada de entre {min} y \
+                {max} del salario mínimo ({smic} € para esta jornada). Se compone de una parte \
+                financiada por el ESAT, al menos el 5 % del salario mínimo (aquí {part} €), y de una \
+                ayuda al puesto financiada por el Estado, como máximo {amax} del salario mínimo (aquí \
+                {aide} €), que baja 0,5 puntos por cada punto de parte ESAT por encima del 20 %. La \
+                ayuda se abona al ESAT y debe figurar en la nómina: no cambia el neto del trabajador, \
+                reduce el coste que soporta el ESAT.",
+            _ => return None,
+        },
+        "ESAT_COMPENSATION" => match lang {
+            "en" => "The State compensates the ESAT for all employer contributions on the share of \
+                the guaranteed pay equal to the job support grant. Here: {charges} € of employer \
+                charges × {ratio} (grant share of the pay) = {comp} €. The administration computes it \
+                on a flat-rate base set by order: this pro rata is an approximation. No unemployment \
+                or AGS contribution and no general reduction: an ESAT worker has no employment contract.",
+            "de" => "Der Staat erstattet dem ESAT alle Arbeitgeberbeiträge auf den Teil der \
+                garantierten Vergütung, der der Arbeitsplatzhilfe entspricht. Hier: {charges} € \
+                Arbeitgeberabgaben × {ratio} (Anteil der Hilfe an der Vergütung) = {comp} €. Die \
+                Verwaltung rechnet mit einer pauschalen Bemessungsgrundlage per Erlass: dieser \
+                Anteil ist eine Näherung. Kein Beitrag zur Arbeitslosenversicherung oder AGS und \
+                keine allgemeine Senkung: ein ESAT-Beschäftigter hat keinen Arbeitsvertrag.",
+            "nl" => "De Staat compenseert het ESAT voor alle werkgeversbijdragen op het deel van de \
+                gegarandeerde vergoeding dat gelijk is aan de werkpleksteun. Hier: {charges} € \
+                werkgeverslasten × {ratio} (aandeel van de steun in de vergoeding) = {comp} €. De \
+                overheid rekent met een forfaitaire grondslag bij besluit: dit pro rata is een \
+                benadering. Geen werkloosheids- of AGS-bijdrage en geen algemene vermindering: een \
+                ESAT-werker heeft geen arbeidscontract.",
+            "it" => "Lo Stato compensa all'ESAT tutti i contributi datoriali sulla quota della \
+                retribuzione garantita pari all'aiuto al posto. Qui: {charges} € di oneri datoriali \
+                × {ratio} (quota dell'aiuto nella retribuzione) = {comp} €. L'amministrazione la \
+                calcola su una base forfettaria fissata per decreto: questo pro rata è \
+                un'approssimazione. Nessun contributo di disoccupazione o AGS e nessuna riduzione \
+                generale: il lavoratore di un ESAT non ha un contratto di lavoro.",
+            "es" => "El Estado compensa al ESAT todas las cotizaciones patronales sobre la parte de \
+                la remuneración garantizada igual a la ayuda al puesto. Aquí: {charges} € de cargas \
+                patronales × {ratio} (parte de la ayuda en la remuneración) = {comp} €. La \
+                administración la calcula sobre una base a tanto alzado fijada por orden: este \
+                prorrateo es una aproximación. Sin cotización por desempleo ni AGS y sin reducción \
+                general: el trabajador de un ESAT no tiene contrato de trabajo.",
             _ => return None,
         },
         "AIDE_POSTE_EA" => match lang {

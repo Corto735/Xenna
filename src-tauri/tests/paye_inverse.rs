@@ -58,6 +58,7 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         region_be: Some("bruxelles".into()),
         etp: 100.0,
         entreprise_adaptee: false,
+        esat: false,
         tranche_age_ea: None,
         heures_supp_25: 0.0,
         heures_supp_50: 0.0,

@@ -60,11 +60,24 @@ pub struct MiseAJour {
 #[serde(rename_all = "snake_case")]
 pub enum Specificite {
     AlsaceMoselle,
+    Esat,
 }
 
 /// Journal des mises à jour, du plus récent au plus ancien. Qui intègre des
 /// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
 pub const JOURNAL: &[MiseAJour] = &[
+    MiseAJour {
+        date: "2026-09-30",
+        pays: Pays::France,
+        specificite: Some(Specificite::Esat),
+        objet: "Travailleur d'ESAT : rémunération garantie de 55,7 % à 110,7 % du SMIC (55 % à 110 % avant 2018), aide au poste de l'État au plus 50,7 % (50 % avant 2018), dégressive au-delà d'une part ESAT de 20 % ; ni chômage, ni AGS, ni réduction générale ; compensation par l'État des charges patronales sur l'aide au poste (prorata, l'assiette forfaitaire de l'arrêté n'étant pas modélisée)",
+        sources: &[
+            "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006074069/LEGISCTA000006190154/",
+            "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000006157600",
+            "https://net-entreprises.custhelp.com/app/answers/detail/a_id/1884",
+            "https://www.directions.fr/Veille-juridique/dernieres-infos/ressources-humaines/2018/3/Nouvelle-formule-de-calcul-de-la-remuneration-garantie-2051086W/",
+        ],
+    },
     MiseAJour {
         date: "2026-09-29",
         pays: Pays::France,

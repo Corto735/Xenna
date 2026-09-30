@@ -235,6 +235,12 @@ pub struct Salarie {
     /// France privé uniquement ; cumulable avec Alsace-Moselle, incompatible FPT.
     #[serde(default)]
     pub entreprise_adaptee: bool,
+    /// Vrai si le travailleur handicapé est accueilli en ESAT : rémunération
+    /// garantie (CASF art. R243-5), aide au poste et compensation des charges
+    /// par l'État, ni chômage ni AGS ni réduction générale. France privé
+    /// uniquement ; incompatible avec l'entreprise adaptée.
+    #[serde(default)]
+    pub esat: bool,
     /// Tranche d'âge pour l'aide au poste EA : "m50" | "50_55" | "56p". Défaut "m50".
     #[serde(default)]
     pub tranche_age_ea: Option<String>,

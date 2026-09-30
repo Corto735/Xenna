@@ -164,7 +164,9 @@ fn quota_pour(chemin: &str) -> Option<(u32, Duration)> {
         return Some((30, Duration::from_secs(60)));
     }
     // Calculs : bon marché à l'unité, mais c'est le gros du trafic anonyme.
-    if chemin.starts_with("/api/calculer_bulletin") || chemin.starts_with("/api/simuler_annee") {
+    if chemin.starts_with("/api/calculer_bulletin") || chemin.starts_with("/api/simuler_annee")
+        || chemin == "/api/esat_minimum"
+    {
         return Some((120, Duration::from_secs(60)));
     }
     None
@@ -296,6 +298,30 @@ async fn handle_journal() -> impl IntoResponse {
     Json(xenna_paie_lib::veille::journal())
 }
 
+#[derive(Deserialize)]
+struct EsatMinReq {
+    #[serde(rename = "datePaie")]
+    date_paie: String,
+    #[serde(default)]
+    etp: Option<f64>,
+}
+
+/// Rémunération garantie minimale d'un travailleur d'ESAT (55,7 % du SMIC × ETP).
+async fn handle_esat_minimum(
+    State(pool): State<Db>,
+    Json(req): Json<EsatMinReq>,
+) -> Result<impl IntoResponse, ApiError> {
+    let date = NaiveDate::parse_from_str(&req.date_paie, "%Y-%m-%d")
+        .map_err(|_| ApiError(format!("Date invalide : '{}'", req.date_paie)))?;
+    let ctx = ContextPaie::charger(&pool, date).await.map_err(|e| {
+        tracing::error!("ContextPaie::charger error: {:?}", e);
+        ApiError("Erreur interne du serveur".into())
+    })?;
+    Ok(Json(xenna_paie_lib::calculs::esat::remuneration_minimale(
+        ctx.smic_mensuel, req.etp.unwrap_or(100.0), date,
+    ).to_string()))
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -387,6 +413,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
+        .route("/api/esat_minimum", post(handle_esat_minimum))
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/veille_baremes", post(handle_veille))
         .route("/api/veille_baremes_tous", post(handle_veille_tous))

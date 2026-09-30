@@ -264,7 +264,10 @@ fn lignes_france(
     cotisations.push(ss_vieillesse_deplafonnee(assiette, ctx));
     cotisations.push(famille(assiette, ctx));
     cotisations.push(accident_travail(assiette, ctx));
-    cotisations.push(chomage(assiette, salarie.etp, ctx));
+    // ESAT : pas de contrat de travail, donc ni assurance chômage ni AGS.
+    if !salarie.esat {
+        cotisations.push(chomage(assiette, salarie.etp, ctx));
+    }
     cotisations.extend(csg_contributions(assiette, ctx));
     cotisations.extend(retraite_complementaire(assiette, &salarie.statut, salarie.etp, ctx));
 
@@ -285,13 +288,24 @@ fn lignes_france(
             ((base_ref - r.retenue + r.maintien) / base_ref).clamp(Decimal::ZERO, Decimal::ONE),
         _ => Decimal::ONE,
     };
-    if let Some(fillon) = reduction_fillon(assiette, salarie.etp, absence_ratio, ctx) {
-        cotisations.push(fillon);
+    // ESAT : hors du champ de la réduction générale (employeur non soumis à
+    // l'assurance chômage pour ces travailleurs, CSS art. L241-13).
+    if !salarie.esat {
+        if let Some(fillon) = reduction_fillon(assiette, salarie.etp, absence_ratio, ctx) {
+            cotisations.push(fillon);
+        }
+    }
+
+    // ESAT : aide au poste et compensation des charges par l'État, calculées
+    // sur les cotisations patronales ci-dessus.
+    if salarie.esat {
+        let lignes = super::esat::lignes_esat(assiette, salarie.etp, &cotisations, ctx);
+        cotisations.extend(lignes);
     }
 
     // Entreprise adaptée : aide au poste (État/ASP) au titre d'un salarié RQTH.
     // Aide versée à l'employeur → ligne patronale négative, n'affecte pas le net.
-    if salarie.entreprise_adaptee {
+    if salarie.entreprise_adaptee && !salarie.esat {
         let absent_fraction = match absence_res {
             Some(r) if base_ref > Decimal::ZERO => (r.retenue / base_ref).min(Decimal::ONE),
             _ => Decimal::ZERO,

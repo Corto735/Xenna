@@ -4,6 +4,7 @@ pub mod bulletin;
 pub mod conges_payes;
 pub mod cotisations;
 pub mod ea;
+pub mod esat;
 pub mod heures_sup;
 pub mod ch_cotisations;
 pub mod ch_bulletin;
