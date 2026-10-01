@@ -1645,6 +1645,20 @@
       align-self: flex-start;
     }
 
+    /* Articles et textes cités → Légifrance (src/liens_loi.js). Discrets : la
+       couleur du texte qui les porte (donc juste en N&B, Minitel, haute
+       visibilité), un pointillé ; trait plein et bleu au survol. Rien à
+       l'impression : un soulignement n'a pas de sens sur papier. */
+    a.loi-lien {
+      color: inherit;
+      text-decoration: underline dotted;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    a.loi-lien:hover,
+    a.loi-lien:focus-visible { color: var(--blue); text-decoration-style: solid; }
+    @media print { a.loi-lien { text-decoration: none; } }
+
     /* badges catégorie */
     .cat { font-size: 0.62rem; font-weight: bold; margin-right: 0.35rem; }
     .cat-ss    { color: #60a5fa; }

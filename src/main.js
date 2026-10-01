@@ -1,6 +1,7 @@
 import { trStatic, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
 import { renderDsnPanel } from './dsn.js';
 import { composerBulletinPdf, modeleApplicable, nomFichierBulletin } from './bulletin_pdf.js';
+import { demarrerLiens, delierDans, suspendreLiens } from './liens_loi.js';
 import pkg from '../package.json';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
@@ -115,6 +116,9 @@ window.togglePaysExtra = function() {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Articles et textes cités → Légifrance (liens_loi.js). Tout contenu
+  // affiché ensuite est lié à son insertion.
+  demarrerLiens();
   ["d-date", "m-date"].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.value = DATE_TODAY; el.min = DATE_MIN; el.max = DATE_MAX; }
@@ -454,6 +458,23 @@ window.translateApp = async function(lang) {
   btn.textContent = '🌐 LANGUE';
   btn.classList.remove('loading');
 };
+
+// Les liens vers Légifrance découpent les nœuds de texte : le dictionnaire
+// statique (trStatic) ne reconnaîtrait plus ses phrases. On les retire avant
+// de traduire, puis on les repose sur le texte traduit — les citations, elles,
+// ne sont jamais traduites.
+{
+  const traduire = window.translateApp;
+  window.translateApp = async function(lang) {
+    suspendreLiens(true);
+    delierDans(document.body);
+    try {
+      await traduire(lang);
+    } finally {
+      suspendreLiens(false);
+    }
+  };
+}
 
 // Ferme le panel traduction au clic extérieur
 document.addEventListener('click', e => {
