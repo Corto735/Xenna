@@ -115,6 +115,7 @@ export const STATIC_DICT = {
   'ANNÉE':                  ['YEAR', 'JAHR', 'JAAR', 'ANNO', 'AÑO'],
   'PAYS/RÉGION':            ['COUNTRY/REGION', 'LAND/REGION', 'LAND/REGIO', 'PAESE/REGIONE', 'PAÍS/REGIÓN'],
   'PARAMÈTRES':             ['PARAMETERS', 'PARAMETER', 'PARAMETERS', 'PARAMETRI', 'PARÁMETROS'],
+  'Convention':             ['Agreement', 'Tarifvertrag', 'Cao', 'Contratto', 'Convenio'],
   'Ancienneté':             ['Seniority', 'Betriebszugehörigkeit', 'Anciënniteit', 'Anzianità', 'Antigüedad'],
   'Heures / semaine':       ['Hours / week', 'Stunden / Woche', 'Uren / week', 'Ore / settimana', 'Horas / semana'],
   'Heures / mois':          ['Hours / month', 'Stunden / Monat', 'Uren / maand', 'Ore / mese', 'Horas / mes'],

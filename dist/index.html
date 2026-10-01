@@ -660,6 +660,31 @@
     body.zoom-mode .mob-row .mob-val {
       font-size: 0.85rem;
     }
+
+    /* Zoom ×2 sur mobile — le contenu colle aux bords de l'écran. Chaque marge
+       étant doublée par le zoom, les 0,75 à 0,9 rem habituels mangeaient près
+       d'un quart de la largeur ; on ne garde qu'un filet (0,25 rem, soit 8 px
+       une fois zoomé) pour que le texte ne touche pas le bord. Marges
+       horizontales seulement : l'espacement vertical reste lisible. */
+    body.zoom-mode .view-mobile .mob-wrap {
+      max-width: none;
+      margin: 0.25rem 0;
+      padding: 0 0.25rem 1rem;
+    }
+    body.zoom-mode .view-mobile .mob-form-head,
+    body.zoom-mode .view-mobile .mob-form-body,
+    body.zoom-mode .view-mobile .mob-head,
+    body.zoom-mode .view-mobile .mob-row,
+    body.zoom-mode .view-mobile .mob-expand,
+    body.zoom-mode .view-mobile .params-panel {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+    body.zoom-mode .view-mobile .mob-grid { gap: 0.35rem; }
+    body.zoom-mode.is-mobile .ascii-header { padding-left: 0.5rem; padding-right: 0.5rem; }
+    @media (max-width: 680px) {
+      body.zoom-mode .ascii-header { padding-left: 0.5rem; padding-right: 0.5rem; }
+    }
     body.hv-mode .field input,
     body.hv-mode .field select { padding: 0.5rem 0.6rem; }
 
@@ -3543,7 +3568,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-B7lKyIPp.js"></script>
+  <script type="module" crossorigin src="/assets/index-aAueiSbi.js"></script>
 </head>
 <body>
 
@@ -3758,13 +3783,6 @@
             <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
               <input type="checkbox" id="d-esat" onchange="syncParam('esat', this.checked); onToggleESAT('d', this.checked)" />
               <span class="flag-emoji">♿</span> ESAT
-            </label>
-            <label class="param-item" title="Convention collective appliquée au bulletin (France privé)">
-              Convention collective
-              <select id="d-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
-                <option value="">Aucune (régime légal)</option>
-                <option value="0016">IDCC 0016 — Transports routiers</option>
-              </select>
             </label>
           </div>
           <label class="param-item">
@@ -4130,6 +4148,13 @@
               <option value="250p">≥ 250</option>
             </select>
           </div>
+          <div class="duree-row" id="d-ccn-row" title="Convention collective appliquée au bulletin (France privé) : grilles, maintien de salaire, indemnités propres">
+            <label>Convention</label>
+            <select id="d-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
+              <option value="">Aucune (régime légal)</option>
+              <option value="0016">IDCC 0016 — Transports routiers</option>
+            </select>
+          </div>
           <div class="duree-row">
             <label title="Ancienneté dans l'entreprise — conditionne le maintien de salaire : < 1 an aucun ; droit général (mensualisation) 90 % puis 66,66 %, durée croissant avec l'ancienneté (+10 j / 5 ans dès la 6e année) ; convention IDCC 0016 (≥ 3 ans) 100 % puis 75 %">Ancienneté</label>
             <input type="number" id="d-anciennete" value="1" min="0" max="100" step="1" onchange="syncParam('anciennete', this.value); _triggerRecalculate()" />
@@ -4242,13 +4267,6 @@
               <label class="param-item" title="Établissement ou service d'accompagnement par le travail : le brut devient la rémunération garantie minimale (55,7 % du SMIC)">
                 <input type="checkbox" id="m-esat" onchange="syncParam('esat', this.checked); onToggleESAT('m', this.checked)" />
                 <span class="flag-emoji">♿</span> ESAT
-              </label>
-              <label class="param-item" title="Convention collective appliquée au bulletin (France privé)">
-                Convention collective
-                <select id="m-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
-                  <option value="">Aucune (régime légal)</option>
-                  <option value="0016">IDCC 0016 — Transports routiers</option>
-                </select>
               </label>
             </div>
             <label class="param-item">
@@ -4612,6 +4630,13 @@
                 <option value="moins20">&lt; 20 salariés</option>
                 <option value="20_249">20 à 249</option>
                 <option value="250p">≥ 250</option>
+              </select>
+            </div>
+            <div class="duree-row" id="m-ccn-row" title="Convention collective appliquée au bulletin (France privé) : grilles, maintien de salaire, indemnités propres">
+              <label>Convention</label>
+              <select id="m-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
+                <option value="">Aucune (régime légal)</option>
+                <option value="0016">IDCC 0016 — Transports routiers</option>
               </select>
             </div>
             <div class="duree-row">

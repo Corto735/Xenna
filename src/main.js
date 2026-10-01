@@ -3842,6 +3842,11 @@ window.onTogglePays = function(pays, checked) {
     const wrap = document.getElementById(`${p}-ea-tranche-wrap`);
     if (wrap) wrap.style.display = (ea && ea.checked) ? '' : 'none';
   });
+  // Convention collective (menu Paramètres) : France privé seulement.
+  ['d', 'm'].forEach(p => {
+    const row = document.getElementById(`${p}-ccn-row`);
+    if (row) row.style.display = isFrancePrive ? '' : 'none';
+  });
   // Indemnités IDCC 0016 : France privé seulement.
   if (!isFrancePrive) _remLines = _remLines.filter(l => !_estFrais(l.type) && !_estAN(l.type));
   // ESAT : même périmètre ; en sortir rend le brut saisi avant.
