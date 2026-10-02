@@ -1845,7 +1845,7 @@ function buildTotalFormulaContent(which, b) {
 // Lignes d'absence rendues dans la grille du tableau des cotisations (desktop) :
 // libellé sur les 3 premières colonnes, montant dans la 4e (PART SALARIÉ),
 // colonnes patronales vides → alignement natif sur la colonne salariale.
-const _ABS_COLGROUP = `<colgroup><col><col style="width:13%"><col style="width:9%"><col style="width:13%"><col style="width:9%"><col style="width:13%"></colgroup>`;
+const _ABS_COLGROUP = `<colgroup><col><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"></colgroup>`;
 
 function _absenceRow(label, cls, sign, amount, fmkey) {
   return `<tr>
@@ -2446,6 +2446,20 @@ window.toggleExpl = function (i) {
 // ═════════════════════════════════════════════════════════════════════════════
 // RENDU VUE BUREAU
 // ═════════════════════════════════════════════════════════════════════════════
+// Intitulés officiels des conventions collectives proposées dans Paramètres
+// (le menu n'affiche que le numéro IDCC, l'intitulé va en tête du bulletin).
+const CCN_INTITULES = {
+  '0016': 'Convention collective nationale des transports routiers et activités auxiliaires du transport',
+};
+
+// Bandeau « convention collective appliquée » en tête de bulletin, vide hors
+// convention (régime légal, FPT, étranger : le backend ne reçoit alors rien).
+function _ccnBanner(b, cls) {
+  const idcc = b.salarie?.convention_idcc;
+  if (!idcc) return '';
+  return `<div class="${cls}"><span class="ccn-lbl">CONVENTION COLLECTIVE APPLIQUÉE :</span> <span class="ccn-idcc">IDCC ${esc(idcc)}</span> <span class="ccn-titre">${esc(CCN_INTITULES[idcc] || '')}</span></div>`;
+}
+
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
@@ -2602,11 +2616,11 @@ function renderDesktop(b) {
   const thead = `
     <colgroup>
       <col>
-      <col style="width:13%">
-      <col style="width:9%">
-      <col style="width:13%">
-      <col style="width:9%">
-      <col style="width:13%">
+      <col style="width:12%">
+      <col style="width:12%">
+      <col style="width:12%">
+      <col style="width:12%">
+      <col style="width:12%">
     </colgroup>
     <thead>
       <tr>
@@ -2638,6 +2652,7 @@ function renderDesktop(b) {
     SIMULATION AU <span class="sp-accent">${formatDate(getDatePaie())}</span>
     &nbsp;·&nbsp; PMSS en vigueur calculé depuis la base de données sans le moindre état d'âme
   </div>
+  ${_ccnBanner(b, 'sim-ccn')}
   <div class="veille-baremes" hidden></div>`;
 
   // Section allègements/exonérations — montants négatifs affichés en économie.
@@ -3003,6 +3018,7 @@ function renderMobile(b) {
           <div class="mob-head-date">simulation au ${formatDate(getDatePaie())}</div>
         </div>
       </div>
+      ${_ccnBanner(b, 'mob-ccn')}
       <div class="veille-baremes" hidden></div>
 
       <!-- Rémunération -->
@@ -3867,6 +3883,20 @@ window.onTogglePays = function(pays, checked) {
   ['d', 'm'].forEach(p => {
     const row = document.getElementById(`${p}-ccn-row`);
     if (row) row.style.display = isFrancePrive ? '' : 'none';
+  });
+  // Case APPLIQUER (menu Paramètres) : paie française seulement (privé ou FPT).
+  // Grisée et décochée sur un autre pays, sinon un changement d'ETP y
+  // recalculerait le brut.
+  ['d', 'm'].forEach(p => {
+    const chk = document.getElementById(`${p}-apply-brut-chk`);
+    if (!chk) return;
+    chk.disabled = !isFranceEco;
+    if (!isFranceEco) chk.checked = false;
+    const lbl = chk.closest('.chk-apply-brut');
+    if (lbl) {
+      lbl.classList.toggle('disabled', !isFranceEco);
+      lbl.title = isFranceEco ? '' : 'Réservé à la paie française';
+    }
   });
   // Indemnités IDCC 0016 : France privé seulement.
   if (!isFrancePrive) _remLines = _remLines.filter(l => !_estFrais(l.type) && !_estAN(l.type));

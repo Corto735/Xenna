@@ -1132,7 +1132,8 @@
     html.init-mobile .view-bar     { display: none !important; }
 
     /* ── Panneau résultat bureau ── */
-    .result-panel { flex: 1; overflow: auto; }
+    /* Marge droite : la dernière colonne ne colle pas au bord de l'écran. */
+    .result-panel { flex: 1; overflow: auto; padding-right: 1.25rem; }
     .empty-ascii {
       padding: 2rem 2.5rem;
       color: var(--dim-txt);
@@ -1915,6 +1916,17 @@
       letter-spacing: 0.07em;
     }
     .sim-period .sp-accent { color: var(--blue); font-weight: bold; }
+    /* Convention collective appliquée — en tête du bulletin (bureau et mobile) */
+    .sim-ccn, .mob-ccn {
+      padding: 0.3rem 0.9rem;
+      font-size: 0.68rem;
+      color: var(--gray-txt);
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      line-height: 1.4;
+    }
+    .sim-ccn .ccn-lbl, .mob-ccn .ccn-lbl { color: var(--muted-txt); letter-spacing: 0.07em; font-size: 0.62rem; }
+    .sim-ccn .ccn-idcc, .mob-ccn .ccn-idcc { color: var(--blue); font-weight: bold; }
 
     /* Fraîcheur des barèmes du pays (veille.rs) — sous l'en-tête du résultat */
     .veille-baremes {
@@ -2173,6 +2185,8 @@
       font-size: 0.65rem; font-family: inherit;
       color: #00e676; font-weight: 700; letter-spacing: 0.1em;
     }
+    .chk-apply-brut.disabled { opacity: 0.35; cursor: not-allowed; }
+    .chk-apply-brut.disabled input[type="checkbox"] { cursor: not-allowed; }
     .etp-sel {
       font-size: 0.72rem;
       padding: 0.15rem 0.3rem;
@@ -3582,7 +3596,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-Ce12IzgR.js"></script>
+  <script type="module" crossorigin src="/assets/index-DQnzTzPJ.js"></script>
 </head>
 <body>
 
@@ -4166,7 +4180,7 @@
             <label>Convention</label>
             <select id="d-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
               <option value="">Aucune (régime légal)</option>
-              <option value="0016">IDCC 0016 — Transports routiers</option>
+              <option value="0016">IDCC 0016</option>
             </select>
           </div>
           <div class="duree-row">
@@ -4650,7 +4664,7 @@
               <label>Convention</label>
               <select id="m-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
                 <option value="">Aucune (régime légal)</option>
-                <option value="0016">IDCC 0016 — Transports routiers</option>
+                <option value="0016">IDCC 0016</option>
               </select>
             </div>
             <div class="duree-row">

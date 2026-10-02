@@ -410,6 +410,8 @@ export const COUNTRY_DICT = {
   'Fonction publique': ['Civil service', 'Öffentlicher Dienst', 'Overheid', 'Pubblico impiego', 'Función pública'],
   'Entreprise adaptée (AAP)': ['Adapted enterprise (AAP)', 'Inklusionsbetrieb (AAP)', 'Aangepast bedrijf (AAP)', 'Impresa adattata (AAP)', 'Empresa adaptada (AAP)'],
   'Convention collective': ['Collective agreement', 'Tarifvertrag', 'Cao', 'Contratto collettivo', 'Convenio colectivo'],
+  'CONVENTION COLLECTIVE APPLIQUÉE :': ['APPLICABLE COLLECTIVE AGREEMENT:', 'ANGEWANDTER TARIFVERTRAG:', 'TOEGEPASTE CAO:', 'CONTRATTO COLLETTIVO APPLICATO:', 'CONVENIO COLECTIVO APLICADO:'],
+  'Convention collective nationale des transports routiers et activités auxiliaires du transport': ['French national collective agreement for road transport and ancillary transport activities', 'Französischer Branchentarifvertrag für Straßentransport und Hilfstätigkeiten des Verkehrs', 'Franse nationale cao voor het wegvervoer en de hulpactiviteiten van het vervoer', 'Contratto collettivo nazionale francese dei trasporti su strada e delle attività ausiliarie dei trasporti', 'Convenio colectivo nacional francés de transporte por carretera y actividades auxiliares del transporte'],
   'Aucune (régime légal)': ['None (statutory rules)', 'Keiner (gesetzliche Regelung)', 'Geen (wettelijke regeling)', 'Nessuno (regime legale)', 'Ninguno (régimen legal)'],
   'IDCC 0016 — Transports routiers': ['IDCC 0016 — Road transport', 'IDCC 0016 — Straßentransport', 'IDCC 0016 — Wegvervoer', 'IDCC 0016 — Trasporti su strada', 'IDCC 0016 — Transporte por carretera'],
   'Alsace-Moselle': ['Alsace-Moselle', 'Elsass-Mosel', 'Alsace-Moselle', 'Alsazia-Mosella', 'Alsacia-Mosela'],
