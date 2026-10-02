@@ -66,6 +66,9 @@ window.openExternal = async function(url) {
 
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
+// Paramètres figés au dernier CALCULER — voir « Paramètres appliqués ».
+const PARAMS_DEFAUT = { etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1 };
+let _params = { ...PARAMS_DEFAUT };
 let _etpPrev = 100; // ETP de référence pour le recalcul brut proportionnel
 
 function _fmLastDay(year, month) {           // month 1-indexed
@@ -3207,7 +3210,7 @@ async function _afficherVeille(b) {
   const derniere = journal.find(m => m.pays === pays && m.date === v.derniere_maj);
   const releve = v.derniere_maj
     ? `dernière modification le ${formatDate(v.derniere_maj)}` +
-      (derniere ? ` : <span class="vb-objet" title="${esc(derniere.objet)}">${esc(derniere.objet)}</span>` : '')
+      (derniere ? ` : ${_vbObjet(derniere.objet)}` : '')
     : 'aucune modification journalisée par la veille';
   // Spécificité cochée (Alsace-Moselle, ESAT) : sa propre date, journalisée à part.
   const specifs = [
@@ -3218,7 +3221,7 @@ async function _afficherVeille(b) {
   const releveSpecifs = specifs.map(([cle, lib]) => {
     const m = journal.find(e => e.pays === pays && e.specificite === cle);
     return m
-      ? ` · ${lib} : modifié le ${formatDate(m.date)} : <span class="vb-objet" title="${esc(m.objet)}">${esc(m.objet)}</span>`
+      ? ` · ${lib} : modifié le ${formatDate(m.date)} : ${_vbObjet(m.objet)}`
       : ` · ${lib} : aucune modification journalisée`;
   }).join('');
   const aJour = annee <= v.integre_jusqu_a;
@@ -3231,8 +3234,26 @@ async function _afficherVeille(b) {
     el.classList.toggle('is-lacune', !aJour);
     el.innerHTML = html;
     el.hidden = false;
+    // Triangle inutile quand l'objet tient sur la ligne. Un bandeau masqué (vue
+    // bureau ↔ mobile) ne se mesure pas : il garde le bouton, par prudence.
+    el.querySelectorAll('.vb-objet').forEach(o => {
+      if (o.clientWidth > 0 && o.scrollWidth <= o.clientWidth) o.nextElementSibling?.remove();
+    });
   });
 }
+
+// Objet d'une modification : une ligne tronquée, suivie d'un triangle qui
+// déplie l'intitulé complet (▶ tronqué, pivote en ▼ déplié) et le replie.
+function _vbObjet(objet) {
+  return `<span class="vb-objet" title="${esc(objet)}">${esc(objet)}</span>` +
+    `<button type="button" class="vb-plus" onclick="vbDeplier(this)" aria-expanded="false" title="Afficher tout l'intitulé"><span class="vb-tri">▶</span></button>`;
+}
+window.vbDeplier = function(btn) {
+  const ouvert = btn.previousElementSibling?.classList.toggle('vb-ouvert') ?? false;
+  btn.classList.toggle('open', ouvert);
+  btn.setAttribute('aria-expanded', String(ouvert));
+  btn.title = ouvert ? "Replier l'intitulé" : "Afficher tout l'intitulé";
+};
 
 // Même relevé, tous régimes à la fois : tableau de la page « À propos ».
 // Les clés sont celles de l'enum `Pays` (snake_case) ; un régime sans nom ici
@@ -3319,7 +3340,9 @@ function showInputError(msg) {
 // CALCUL
 // ═════════════════════════════════════════════════════════════════════════════
 async function calculate(source) {
+  _params = _paramsSaisis();
   _appliquerCCN();
+  _basculerHeures();
   const isM = source === "mobile";
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
@@ -3385,10 +3408,10 @@ async function calculate(source) {
   const assujettiIS    = document.getElementById(isM ? "m-assujetti-is" : "d-assujetti-is")?.checked ?? false;
   const canton         = document.getElementById(isM ? "m-canton"       : "d-canton")?.value || null;
   const tarifIs        = document.getElementById(isM ? "m-tarif-is"     : "d-tarif-is")?.value || null;
-  const effectif       = document.getElementById(isM ? "m-effectif"     : "d-effectif")?.value || "moins20";
+  // Paramètres figés en tête de calculate (défauts si APPLIQUER décochée).
+  const effectif       = _params.effectif;
   // Ancienneté (années entières 0-100) — conditionne le maintien de salaire maladie.
-  const ancienneteRaw  = parseInt(document.getElementById(isM ? "m-anciennete" : "d-anciennete")?.value ?? "1", 10);
-  const anciennete     = isNaN(ancienneteRaw) ? 1 : Math.min(100, Math.max(0, ancienneteRaw));
+  const anciennete     = _params.anciennete;
   const remHeures      = getRemHeures();
 
   // ── Validation côté JS ────────────────────────────────────────────────────
@@ -3446,7 +3469,7 @@ async function calculate(source) {
     _lastCalcReq = {
       salarie: {
         nom, prenom, salaire_brut: totalBrut.toString(), statut,
-        etp: parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100,
+        etp: _params.etp,
         alsace_moselle: alsaceMoselle,
         pays: paysEtranger ?? (isFPT ? "fonction_publique" : "france"),
         // Entreprise adaptée : France privé uniquement (jamais FPT ni étranger).
@@ -3455,7 +3478,7 @@ async function calculate(source) {
         // ESAT : France privé uniquement, exclusif de l'entreprise adaptée.
         esat: isESAT && !isEA && !paysEtranger && !isFPT,
         // Convention collective (France privé) et indemnités de repas IDCC 0016.
-        convention_idcc: (!paysEtranger && !isFPT && document.getElementById('d-ccn')?.value) || null,
+        convention_idcc: (!paysEtranger && !isFPT && _params.ccn) || null,
         indemnites_repas: (!paysEtranger && !isFPT) ? getIndemnitesRepas() : null,
         // Avantages en nature (France privé) : ajoutés au brut, retenus sur le net.
         avantages_nature: (!paysEtranger && !isFPT) ? getAvantagesNature() : [],
@@ -3587,6 +3610,7 @@ function _construireFragment() {
   });
   const etp = document.getElementById('d-etp')?.value;
   if (etp && parseFloat(etp) !== 100) p.push(['etp', etp]);
+  if (document.getElementById('d-apply-brut-chk')?.checked) p.push(['ap', '1']);
   const rem = _remLines.filter(l => parseFloat(l.amount) > 0).map(l => `${l.type}:${l.amount}`);
   if (rem.length) p.push(['rem', rem.join(',')]);
   if (_absence?.active) {
@@ -3674,9 +3698,20 @@ function _restaurerDepuisLien() {
   });
   _esatRestauration = false;
 
+  // APPLIQUER décochée le temps de poser l'ETP : le brut du lien fait foi, il
+  // ne doit pas être reproratisé. Un lien antérieur au drapeau `ap` appliquait
+  // toujours ses paramètres : on coche si l'un d'eux y figure.
+  const ap = q.has('ap') ? q.get('ap') === '1'
+    : ['etp', 'effectif', 'anciennete', 'ccn'].some(k => q.has(k));
+  ['d', 'm'].forEach(p => { const c = document.getElementById(`${p}-apply-brut-chk`); if (c) c.checked = false; });
   const etp = parseFloat(q.get('etp'));
   document.getElementById('d-etp').value = Number.isFinite(etp) && etp > 0 && etp <= 200 ? etp : 100;
   window.onDureeChange('d', 'etp');
+  ['d', 'm'].forEach(p => {
+    const c = document.getElementById(`${p}-apply-brut-chk`);
+    if (c && !c.disabled) c.checked = ap;
+  });
+  _etpPrev = parseFloat(document.getElementById('d-etp').value) || 100;
 
   _remLines = (q.get('rem') || '').split(',').map((s, i) => {
     const [type, montant] = s.split(':');
@@ -4093,7 +4128,7 @@ window.onToggleESAT = async function(prefix, checked) {
     }
     try {
       const datePaie = document.getElementById(`${prefix}-date`)?.value || TODAY;
-      const etp = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+      const etp = _paramsSaisis().etp;
       const min = await api('esat_minimum', { datePaie, etp });
       // Décoché pendant l'appel : ne rien écraser.
       if (!document.getElementById('d-esat')?.checked) return;
@@ -4224,20 +4259,19 @@ window.onDureeChange = function(prefix, field) {
     _etpPrev = etp;
   }
 
-  // Les heures supp (temps plein) et complémentaires (temps partiel) sont
-  // mutuellement exclusives : on bascule le type des lignes selon l'ETP (tranche
-  // basse ↔ tranche basse, haute ↔ haute), puis on rafraîchit la rémunération
-  // (options + indices) et on relance le calcul.
-  const isFullTime = !isNaN(etp) && _estTempsPlein(etp);
-  let switched = false;
+  // Rien d'autre : l'ETP saisi ne compte qu'au prochain CALCULER (_params).
+};
+
+// Les heures supp (temps plein) et complémentaires (temps partiel) sont
+// mutuellement exclusives : au calcul, on bascule le type des lignes selon
+// l'ETP appliqué (tranche basse ↔ tranche basse, haute ↔ haute).
+function _basculerHeures() {
+  const isFullTime = _estTempsPlein(_params.etp);
   _remLines.forEach(l => {
     if (!_estHeure(l.type) || l.type.startsWith(isFullTime ? 'hs' : 'hc')) return;
     l.type = HEURE_TYPES[l.type].pendant;
-    switched = true;
   });
-  _reRenderRemInPlace();
-  if (switched || _remLines.some(l => _estHeure(l.type))) _triggerRecalculate();
-};
+}
 
 window.onApplyBrutChk = function(prefix) {
   const other = prefix === 'd' ? 'm' : 'd';
@@ -4296,9 +4330,30 @@ function _francePriveActif() {
   return !!document.getElementById('d-france')?.checked && !document.getElementById('d-fpt')?.checked;
 }
 
-// IDCC 0016 appliquée : sélecteur « Convention collective » ET régime France privé.
+// ── Paramètres appliqués ─────────────────────────────────────────────────────
+// Le menu Paramètres (ETP/heures, effectif, convention, ancienneté) ne pèse sur
+// le bulletin qu'à deux conditions : la case APPLIQUER est cochée ET on clique
+// sur CALCULER. Case décochée, le calcul retient les valeurs par défaut quelles
+// que soient les saisies. Modifier un paramètre ne déclenche rien : calculate()
+// fige _params (déclaré en tête de module) à chaque clic, et tout ce qui dépend d'un paramètre
+// (bulletin, aperçus de la rémunération, panneau absence) lit cet état figé.
+// Ce que le prochain clic sur CALCULER appliquera.
+function _paramsSaisis() {
+  if (!document.getElementById('d-apply-brut-chk')?.checked) return { ...PARAMS_DEFAUT };
+  const val = id => document.getElementById(`d-${id}`)?.value;
+  const anc = parseInt(val('anciennete') ?? '1', 10);
+  return {
+    etp:        parseFloat(val('etp')) || 100,
+    hMois:      parseFloat(val('h-mois')) || 151.67,
+    effectif:   val('effectif') || 'moins20',
+    ccn:        val('ccn') || '',
+    anciennete: isNaN(anc) ? 1 : Math.min(100, Math.max(0, anc)),
+  };
+}
+
+// IDCC 0016 appliquée : convention figée au dernier calcul ET régime France privé.
 function _idcc16Active() {
-  return document.getElementById('d-ccn')?.value === '0016'
+  return _params.ccn === '0016'
     && !!document.getElementById('d-france')?.checked
     && !document.getElementById('d-fpt')?.checked;
 }
@@ -4399,7 +4454,7 @@ function getAvantagesNature() {
 
 // Total brut affiché (base + euros + majoration estimée des heures), pour le live.
 function getRemDisplayTotal(etp) {
-  const e = parseFloat(etp ?? document.getElementById('d-etp')?.value ?? '100') || 100;
+  const e = parseFloat(etp ?? _params.etp) || 100;
   const extra = _remLines.reduce((s, l) =>
     _estHeure(l.type) ? s + _gainHeures(l.type, l.amount, e) : s, 0);
   return getRemTotal() + extra;
@@ -4414,7 +4469,7 @@ function getAbsencePayload() {
     date_fin:        _absence.dateFin || '',
     methode:         _absence.methode || 'moyens',
     jours_type:      _absence.joursType || 'ouvres',
-    heures_mois:     parseFloat(document.getElementById('d-h-mois')?.value) || 151.67,
+    heures_mois:     _params.hMois,
     // Une seule saisie de la convention : le menu Paramètres.
     convention_idcc: _idcc16Active() ? '0016' : 'general',
   };
@@ -4471,7 +4526,7 @@ function _remLineHtml(l, opts, etp) {
 }
 
 function buildRemSection() {
-  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+  const etp  = _params.etp;
   const opts = getRemOptions(etp);
   const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
@@ -4532,7 +4587,7 @@ function buildRemSection() {
 }
 
 function buildRemSectionMobile() {
-  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+  const etp  = _params.etp;
   const opts = getRemOptions(etp);
   const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
@@ -4583,7 +4638,7 @@ function buildRemSectionMobile() {
 }
 
 window.addRemLineResult = function() {
-  const etp  = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+  const etp  = _params.etp;
   const opts = getRemOptions(etp);
   _remLines.push({ id: `rl-${Date.now()}`, type: opts[0].value, amount: 0 });
   _reRenderRemInPlace();
@@ -4679,7 +4734,7 @@ window.onRemAmountChange = function(id, val) {
   if (l) l.amount = parseFloat(val) || 0;
   // Mise à jour immédiate du détail et du total sans re-render (évite de tuer le focus input)
   if (l && _estHeure(l.type)) {
-    const etp = parseFloat(document.getElementById('d-etp')?.value ?? '100') || 100;
+    const etp = _params.etp;
     document.querySelectorAll(`.rem-h-detail[data-rl="${id}"]`)
       .forEach(el => { el.innerHTML = _remHeureDetail(l, etp); });
   }
@@ -4969,7 +5024,7 @@ function _buildAbsenceViz(absInfo, absState) {
 
 function _calcRetenue(brut, abs) {
   if (!abs || !abs.dateDebut || !abs.dateFin) return 0;
-  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  const heuresMois = _params.hMois;
   let nbJours, diviseur;
   switch (abs.methode) {
     case 'calendaire':
@@ -5037,7 +5092,7 @@ function _absenceStats(abs) {
   const cal  = _countJoursCalendaires(abs.dateDebut, abs.dateFin);
   const ouv  = _countJoursOuvrables(abs.dateDebut, abs.dateFin);
   const ouvr = _countJoursOuvres(abs.dateDebut, abs.dateFin);
-  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  const heuresMois = _params.hMois;
   const salaireH   = _remBase > 0 ? (_remBase / heuresMois) : 0;
   const diviseurJ  = abs.methode === 'calendaire' ? _joursCalMois(abs.dateDebut)
                    : abs.methode === 'moyens'     ? (abs.joursType === 'ouvrables' ? 26 : 21.67)
@@ -5066,7 +5121,7 @@ function _buildAbsencePanel(isMob) {
   const jType   = abs.joursType || 'ouvres';
   if (!abs.joursType) { if (_absence) _absence.joursType = jType; }
 
-  const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
+  const heuresMois = _params.hMois;
   const retenue    = _absence ? _calcRetenue(_remBase, { ..._absence, joursType: jType }) : 0;
   const stats      = _absence?.dateDebut && _absence?.dateFin
     ? _absenceStats({ ..._absence, methode, joursType: jType }) : null;
