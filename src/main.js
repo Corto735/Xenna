@@ -3227,14 +3227,16 @@ async function _afficherVeille(b) {
   if (lastBulletin && lastBulletin !== b) return; // un calcul plus récent a pris la main
 
   const annee = parseInt(getDatePaie().slice(0, 4), 10);
-  // Dernière modification journalisée par la veille réglementaire (JOURNAL de
-  // veille.rs, trié du plus récent au plus ancien). Un régime jamais journalisé
-  // le dit, plutôt que de se voir prêter une date qu'il n'a pas.
-  const derniere = journal.find(m => m.pays === pays && m.date === v.derniere_maj);
+  // Dernière ÉVOLUTION DE TAUX journalisée par la veille réglementaire
+  // (JOURNAL de veille.rs, trié du plus récent au plus ancien, entrées
+  // `taux: true`) : l'ajout d'un dispositif ou un relevé « inchangé » n'en est
+  // pas une. Un régime sans évolution journalisée le dit, plutôt que de se voir
+  // prêter une date qu'il n'a pas.
+  const derniere = journal.find(m => m.pays === pays && !m.specificite && m.taux && m.date === v.derniere_maj);
   const releve = v.derniere_maj
-    ? `dernière modification le ${formatDate(v.derniere_maj)}` +
+    ? `dernière évolution des taux le ${formatDate(v.derniere_maj)}` +
       (derniere ? ` : ${_vbObjet(derniere.objet)}` : '')
-    : 'aucune modification journalisée par la veille';
+    : 'aucune évolution de taux journalisée par la veille';
   // Spécificité cochée (Alsace-Moselle, ESAT) : sa propre date, journalisée à part.
   const specifs = [
     ...(b.salarie?.alsace_moselle ? [['alsace_moselle', VEILLE_SPECIFICITES.alsace_moselle]] : []),
@@ -3242,10 +3244,10 @@ async function _afficherVeille(b) {
     ...(b.salarie?.convention_idcc === '0016' ? [['idcc0016', VEILLE_SPECIFICITES.idcc0016]] : []),
   ];
   const releveSpecifs = specifs.map(([cle, lib]) => {
-    const m = journal.find(e => e.pays === pays && e.specificite === cle);
+    const m = journal.find(e => e.pays === pays && e.specificite === cle && e.taux);
     return m
-      ? ` · ${lib} : modifié le ${formatDate(m.date)} : ${_vbObjet(m.objet)}`
-      : ` · ${lib} : aucune modification journalisée`;
+      ? ` · ${lib} : taux modifiés le ${formatDate(m.date)} : ${_vbObjet(m.objet)}`
+      : ` · ${lib} : aucune évolution de taux journalisée`;
   }).join('');
   const aJour = annee <= v.integre_jusqu_a;
   const html = aJour
@@ -3345,7 +3347,7 @@ async function _veilleTableau() {
       Relevé du ${formatDate(audit)}.
     </div>
     <div class="vt-scroll"><table class="veille-tableau">
-      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th><th>Dernière mise à jour</th></tr></thead>
+      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th><th>Dernière évolution des taux</th></tr></thead>
       <tbody>${enRetard.map(ligne).join('')}${aJour.map(ligne).join('')}</tbody>
     </table></div>${journalHtml}`;
 }

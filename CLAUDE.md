@@ -156,8 +156,13 @@ commande `veille_baremes { pays }` (Tauri) / `POST /api/veille_baremes` (web).
 Règle : **qui intègre des barèmes met la veille à jour dans le même commit** —
 relever `integre_jusqu_a`, retirer les lacunes comblées, ajouter une entrée datée et
 sourcée en tête de `JOURNAL` (ce que le visiteur lit dans « À propos », avec la date
-de dernière mise à jour de chaque régime, via `journal_baremes`), et redater
-`AUDIT_DU` si tout le tableau a été revu. Rien n'y est déduit automatiquement : une date de
+de dernière évolution des taux de chaque régime, via `journal_baremes`), et redater
+`AUDIT_DU` si tout le tableau a été revu. Chaque entrée porte `taux` : `true` si
+elle fait évoluer un taux, un plafond ou un barème déjà modélisé (nouvelle année,
+hausse, baisse, correction d'une valeur fausse), `false` pour l'ajout d'un dispositif
+ou un relevé « inchangé ». Seules les entrées `taux: true` datent la « dernière
+évolution des taux » du bandeau sous le bulletin ; le journal d'« À propos » garde
+tout. Rien n'y est déduit automatiquement : une date de
 dernière modification en base ne prouve pas qu'un taux stable a été revérifié.
 Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
 `fiabilite.rs` exige qu'un pays en retard sur l'année du relevé déclare ses lacunes.
