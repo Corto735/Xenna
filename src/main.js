@@ -3319,6 +3319,7 @@ function showInputError(msg) {
 // CALCUL
 // ═════════════════════════════════════════════════════════════════════════════
 async function calculate(source) {
+  _appliquerCCN();
   const isM = source === "mobile";
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
   const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
@@ -3590,7 +3591,7 @@ function _construireFragment() {
   if (rem.length) p.push(['rem', rem.join(',')]);
   if (_absence?.active) {
     const a = _absence;
-    p.push(['abs', [a.type, a.dateDebut, a.dateFin, a.methode, a.joursType, a.conventionIDCC].join(',')]);
+    p.push(['abs', [a.type, a.dateDebut, a.dateFin, a.methode, a.joursType].join(',')]);
   }
   return p.map(([k, v]) => `${k}=${_lienEnc(v)}`).join('&');
 }
@@ -3685,9 +3686,11 @@ function _restaurerDepuisLien() {
   }).filter(Boolean);
 
   const abs = (q.get('abs') || '').split(',');
-  if (abs.length === 6 && abs.every(v => /^[\w-]+$/.test(v))) {
-    const [type, dateDebut, dateFin, methode, joursType, conventionIDCC] = abs;
-    _absence = { active: true, type, dateDebut, dateFin, methode, joursType, conventionIDCC };
+  // 6e champ (ancien régime de maintien propre à l'absence) toléré et ignoré :
+  // la convention vient désormais du seul menu Paramètres (champ `ccn`).
+  if ((abs.length === 5 || abs.length === 6) && abs.every(v => /^[\w-]+$/.test(v))) {
+    const [type, dateDebut, dateFin, methode, joursType] = abs;
+    _absence = { active: true, type, dateDebut, dateFin, methode, joursType };
   } else {
     _absence = null;
   }
@@ -4112,15 +4115,17 @@ window.onToggleESAT = async function(prefix, checked) {
 };
 
 // Convention collective : l'IDCC 0016 débloque ses indemnités de repas dans le
-// « + » et devient le régime de maintien proposé pour une absence. En sortir
-// retire les indemnités saisies.
-window.onChangeCCN = function() {
+// « + » et règle le maintien de salaire d'une absence (getAbsencePayload). En
+// sortir retire les indemnités saisies. Rien ne bouge au changement du menu :
+// la bascule n'est prise en compte qu'au clic sur CALCULER (appel en tête de
+// calculate), et seulement si l'état a changé depuis le dernier calcul.
+let _idcc16Applique = false;
+function _appliquerCCN() {
   const idcc16 = _idcc16Active();
+  if (idcc16 === _idcc16Applique) return;
+  _idcc16Applique = idcc16;
   if (!idcc16) _remLines = _remLines.filter(l => !_estFrais(l.type));
-  if (_absence) _absence.conventionIDCC = idcc16 ? '0016' : 'general';
-  _reRenderRemInPlace();
-  _triggerRecalculate();
-};
+}
 
 window.toggleDeKircheDetail = function(prefix, checked) {
   const detail = document.getElementById(`${prefix}-de-kirche-detail`);
@@ -4410,7 +4415,8 @@ function getAbsencePayload() {
     methode:         _absence.methode || 'moyens',
     jours_type:      _absence.joursType || 'ouvres',
     heures_mois:     parseFloat(document.getElementById('d-h-mois')?.value) || 151.67,
-    convention_idcc: _absence.conventionIDCC || 'general',
+    // Une seule saisie de la convention : le menu Paramètres.
+    convention_idcc: _idcc16Active() ? '0016' : 'general',
   };
 }
 
@@ -5058,9 +5064,7 @@ function _buildAbsencePanel(isMob) {
   const type    = abs.type    || 'maladie';
   const methode = abs.methode || 'moyens';
   const jType   = abs.joursType || 'ouvres';
-  const conv    = abs.conventionIDCC || 'general';
   if (!abs.joursType) { if (_absence) _absence.joursType = jType; }
-  if (!abs.conventionIDCC && _absence) _absence.conventionIDCC = conv;
 
   const heuresMois = parseFloat(document.getElementById('d-h-mois')?.value) || 151.67;
   const retenue    = _absence ? _calcRetenue(_remBase, { ..._absence, joursType: jType }) : 0;
@@ -5107,14 +5111,6 @@ function _buildAbsencePanel(isMob) {
           <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" min="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
         </label>
       </div>
-      ${(type === 'maladie' || type === 'pro') ? `
-      <div class="absence-conv-row">
-        <span>Régime de maintien :</span>
-        <select id="abs-conv-${p}" onchange="onAbsenceConvention('${p}', this.value)">
-          <option value="general" ${conv==='general'?'selected':''}>Droit du travail (général)</option>
-          <option value="0016" ${conv==='0016'?'selected':''}>IDCC 0016 — Transport routier</option>
-        </select>
-      </div>` : ''}
       <div class="absence-methode-row">
         ${[
           ['calendaire', `Jours calendaires (÷ ${abs.dateDebut ? _joursCalMois(abs.dateDebut) : 'jours du mois'})`],
@@ -5136,7 +5132,7 @@ function _buildAbsencePanel(isMob) {
 window.toggleAbsencePanel = function(p) {
   if (!_absence) {
     _absence = { active: false, type: 'maladie', dateDebut: '', dateFin: '',
-      methode: 'moyens', joursType: 'ouvres', conventionIDCC: _idcc16Active() ? '0016' : 'general' };
+      methode: 'moyens', joursType: 'ouvres' };
     _reRenderRemInPlace(); // insère le panneau dans le DOM
     return;
   }
@@ -5166,22 +5162,6 @@ window.onAbsenceChange = function(p) {
 window.onAbsenceJoursType = function(p, val) {
   if (!_absence) return;
   _absence.joursType = val;
-  _refreshAbsencePanel(p);
-};
-
-window.onAbsenceConvention = function(p, val) {
-  if (!_absence) return;
-  _absence.conventionIDCC = val;
-  // Une seule convention par bulletin : le régime de maintien choisi ici règle
-  // aussi le sélecteur « Convention collective » du menu (et donc les
-  // indemnités IDCC 0016 du « + »), en France privé.
-  if (_francePriveActif()) {
-    ['d-ccn', 'm-ccn'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = val === '0016' ? '0016' : '';
-    });
-    window.onChangeCCN();
-  }
   _refreshAbsencePanel(p);
 };
 

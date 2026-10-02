@@ -87,9 +87,6 @@ export const STATIC_DICT = {
   'Arrêt à cheval sur plusieurs mois': ['Sick leave spanning several months', 'Krankschreibung über mehrere Monate', 'Ziekteverlof over meerdere maanden', 'Assenza a cavallo di più mesi', 'Baja a caballo entre varios meses'],
   'Jours retenus sur ce bulletin': ['Days retained on this payslip', 'Auf dieser Abrechnung berücksichtigte Tage', 'Op deze loonbrief opgenomen dagen', 'Giorni conteggiati su questa busta', 'Días considerados en esta nómina'],
   'Le reste de l\'arrêt figure sur les autres bulletins de paie.': ['The rest of the leave appears on the other payslips.', 'Der Rest der Krankschreibung erscheint auf den anderen Abrechnungen.', 'De rest van het verlof staat op de andere loonbrieven.', 'Il resto dell\'assenza figura sulle altre buste paga.', 'El resto de la baja figura en las otras nóminas.'],
-  'Régime de maintien :':      ['Salary-maintenance regime:', 'Regelung der Lohnfortzahlung:', 'Regeling loondoorbetaling:', 'Regime di mantenimento:', 'Régimen de mantenimiento:'],
-  'Droit du travail (général)': ['Labour law (general)', 'Arbeitsrecht (allgemein)', 'Arbeidsrecht (algemeen)', 'Diritto del lavoro (generale)', 'Derecho laboral (general)'],
-  'IDCC 0016 — Transport routier': ['IDCC 0016 — Road transport', 'IDCC 0016 — Straßentransport', 'IDCC 0016 — Wegvervoer', 'IDCC 0016 — Trasporto su strada', 'IDCC 0016 — Transporte por carretera'],
 
   // Panneaux f(x) des lignes d'absence
   'Salaire mensuel':          ['Monthly salary', 'Monatsgehalt', 'Maandloon', 'Retribuzione mensile', 'Salario mensual'],
@@ -412,8 +409,7 @@ export const COUNTRY_DICT = {
   'Convention collective': ['Collective agreement', 'Tarifvertrag', 'Cao', 'Contratto collettivo', 'Convenio colectivo'],
   'CONVENTION COLLECTIVE APPLIQUÉE :': ['APPLICABLE COLLECTIVE AGREEMENT:', 'ANGEWANDTER TARIFVERTRAG:', 'TOEGEPASTE CAO:', 'CONTRATTO COLLETTIVO APPLICATO:', 'CONVENIO COLECTIVO APLICADO:'],
   'Convention collective nationale des transports routiers et activités auxiliaires du transport': ['French national collective agreement for road transport and ancillary transport activities', 'Französischer Branchentarifvertrag für Straßentransport und Hilfstätigkeiten des Verkehrs', 'Franse nationale cao voor het wegvervoer en de hulpactiviteiten van het vervoer', 'Contratto collettivo nazionale francese dei trasporti su strada e delle attività ausiliarie dei trasporti', 'Convenio colectivo nacional francés de transporte por carretera y actividades auxiliares del transporte'],
-  'Aucune (régime légal)': ['None (statutory rules)', 'Keiner (gesetzliche Regelung)', 'Geen (wettelijke regeling)', 'Nessuno (regime legale)', 'Ninguno (régimen legal)'],
-  'IDCC 0016 — Transports routiers': ['IDCC 0016 — Road transport', 'IDCC 0016 — Straßentransport', 'IDCC 0016 — Wegvervoer', 'IDCC 0016 — Trasporti su strada', 'IDCC 0016 — Transporte por carretera'],
+  '∅ Régime général':      ['∅ General rules', '∅ Allgemeine Regelung', '∅ Algemene regeling', '∅ Regime generale', '∅ Régimen general'],
   'Alsace-Moselle': ['Alsace-Moselle', 'Elsass-Mosel', 'Alsace-Moselle', 'Alsazia-Mosella', 'Alsacia-Mosela'],
   'Allemagne': ['Germany', 'Deutschland', 'Duitsland', 'Germania', 'Alemania'],
   'Andorre': ['Andorra', 'Andorra', 'Andorra', 'Andorra', 'Andorra'],

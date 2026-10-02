@@ -1567,17 +1567,9 @@
     body.bw-mode .frise-start { color: #000; }
     /* Haute visibilité : contour net sur chaque case pour la définition. */
     body.hv-mode .frise-sq:not(.frise-sq--empty) { outline: 1px solid var(--text); }
-    .absence-conv-row {
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.65rem;
-    }
-    .absence-conv-row select {
-      background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
-      padding: 0.12rem 0.3rem; font-size: 0.65rem;
-    }
     /* Le menu déroulant natif s'ouvre sur fond clair et ses options héritent de
        l'encre claire du thème : illisible. On leur impose fond et encre du thème. */
-    .rem-type-sel option,
-    .absence-conv-row select option { background: var(--bg2); color: var(--text); }
+    .rem-type-sel option { background: var(--bg2); color: var(--text); }
     .ascii-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .ascii-tbl thead th {
       background: var(--bg3);
@@ -3596,7 +3588,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DQnzTzPJ.js"></script>
+  <script type="module" crossorigin src="/assets/index-D-23lgzI.js"></script>
 </head>
 <body>
 
@@ -4178,8 +4170,8 @@
           </div>
           <div class="duree-row" id="d-ccn-row" title="Convention collective appliquée au bulletin (France privé) : grilles, maintien de salaire, indemnités propres">
             <label>Convention</label>
-            <select id="d-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
-              <option value="">Aucune (régime légal)</option>
+            <select id="d-ccn" onchange="syncParam('ccn', this.value)" class="etp-sel" style="flex:1">
+              <option value="">∅ Régime général</option>
               <option value="0016">IDCC 0016</option>
             </select>
           </div>
@@ -4662,8 +4654,8 @@
             </div>
             <div class="duree-row" id="m-ccn-row" title="Convention collective appliquée au bulletin (France privé) : grilles, maintien de salaire, indemnités propres">
               <label>Convention</label>
-              <select id="m-ccn" onchange="syncParam('ccn', this.value); onChangeCCN()" class="etp-sel" style="flex:1">
-                <option value="">Aucune (régime légal)</option>
+              <select id="m-ccn" onchange="syncParam('ccn', this.value)" class="etp-sel" style="flex:1">
+                <option value="">∅ Régime général</option>
                 <option value="0016">IDCC 0016</option>
               </select>
             </div>
