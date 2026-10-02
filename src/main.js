@@ -2463,6 +2463,15 @@ function _ccnBanner(b, cls) {
   return `<div class="${cls}"><span class="ccn-lbl">CONVENTION COLLECTIVE APPLIQUÉE :</span> <span class="ccn-idcc">IDCC ${esc(idcc)}</span> <span class="ccn-titre">${esc(CCN_INTITULES[idcc] || '')}</span></div>`;
 }
 
+// Bulletin français (privé ou FPT) : CSG déductible, CSG non déductible et
+// CRDS en fin de cotisations, comme sur un bulletin réel. Ordre relatif
+// conservé de part et d'autre.
+function _csgEnFin(b, lignes) {
+  if (!['france', 'fonction_publique'].includes(b.salarie?.pays)) return lignes;
+  const csg = c => c.categorie === 'CSG/CRDS';
+  return [...lignes.filter(c => !csg(c)), ...lignes.filter(csg)];
+}
+
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
@@ -2568,8 +2577,8 @@ function renderDesktop(b) {
     </div>`;
 
   // ── Table cotisations salariales ──
-  const cotAll      = cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) &&
-    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
+  const cotAll      = _csgEnFin(b, cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) &&
+    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0)));
   const cotAlleg    = cots.filter(c => ["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie));
   const totalPatBrut = cotAll.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   // Total salarial des seules cotisations affichées dans ce tableau (la réduction
@@ -2960,9 +2969,9 @@ function renderMobile(b) {
   const totalSalSansIS = totalSal - isChAmt - itIrpefAmtMob - itBonusAmtMob;
 
   // CH_IS, IT_IRPEF, IT_BONUS_CUNEO retirés de la liste — affichés séparément
-  const cotAllMob    = cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) && c.code !== 'CH_IS'
+  const cotAllMob    = _csgEnFin(b, cots.filter(c => !["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie) && c.code !== 'CH_IS'
     && c.code !== 'IT_IRPEF' && c.code !== 'IT_BONUS_CUNEO' &&
-    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0));
+    (parseFloat(c.montant_sal) > 0 || c.taux_sal !== "0" || parseFloat(c.montant_pat) > 0)));
   const cotAllegMob  = cots.filter(c => ["Allègement", "Aide à l'emploi", "Heures supplémentaires"].includes(c.categorie));
   const totalPatBrutMob = cotAllMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
   // Total salarial des seules lignes affichées (la réduction HS est en allègements).
