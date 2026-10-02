@@ -25,6 +25,7 @@ tauri            = { version = "2", features = [], optional = true }
 tauri-plugin-shell = { version = "2", optional = true }
 
 meliinda       = { path = "../meliinda" }
+amphipoolis    = { path = "../amphipoolis" }
 
 axum           = { version = "0.8", features = ["macros"] }
 tokio          = { version = "1",   features = ["full"] }

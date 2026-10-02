@@ -3,6 +3,7 @@ import { renderDsnPanel } from './dsn.js';
 import { composerBulletinPdf, modeleApplicable, nomFichierBulletin } from './bulletin_pdf.js';
 import { demarrerLiens, delierDans, suspendreLiens } from './liens_loi.js';
 import pkg from '../package.json';
+import { amphInit, amphQuitter } from './amphipoolis.js';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
@@ -199,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
         !body.classList.contains("is-hercule")    &&
         !body.classList.contains("is-quizz")      &&
         !body.classList.contains("is-ecart")      &&
+        !body.classList.contains("is-amphipoolis") &&
         !body.classList.contains("is-mecenat"))
       setView(e.matches ? "mobile" : "desktop");
   };
@@ -847,7 +849,7 @@ function esc(str) {
 
 // ── Vue active ───────────────────────────────────────────────────────────────
 window.setView = function (v) {
-  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'contrat', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda'].forEach(name =>
+  ['mobile', 'desktop', 'annuel', 'apropos', 'carnet', 'ccn', 'contact', 'contrat', 'gaabrielle', 'hercule', 'quizz', 'mecenat', 'meliinda', 'amphipoolis'].forEach(name =>
     document.body.classList.toggle('is-' + name, v === name)
   );
   // La bascule ne reflète que le couple bureau/mobile : dans la vue annuelle
@@ -871,6 +873,9 @@ window.setView = function (v) {
   if (v === 'carnet')     _carnetLoad();
   if (v === 'ccn')        ccnInit();
   if (v === 'meliinda')   meliindaInit();
+  // Amphipoolis relit le serveur toutes les quelques secondes : seulement
+  // tant que la vue est affichée.
+  if (v === 'amphipoolis') amphInit(); else amphQuitter();
 };
 
 // Bascule bureau ⇄ mobile — s'appuie sur l'état porté par le toggle lui-même,
@@ -1522,7 +1527,7 @@ window.togglePasDetail = function(expandId) {
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
   const arrow = document.getElementById(expandId + '-arrow');
-  if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+  if (arrow) arrow.classList.toggle('open', !isOpen);
 };
 
 // Décompose un calcul dans l'encadré noir en 3 temps successifs, pour lever
@@ -3056,7 +3061,7 @@ function renderMobile(b) {
 
       <!-- Impôt à la source suisse — accordéon dédié -->
       ${isChCot ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('is-detail-mob')">
-        <span class="mob-lbl">Impôt à la source (${(isChTaux * 100).toFixed(1)} %) <span id="is-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-lbl">Impôt à la source (${(isChTaux * 100).toFixed(1)} %) <span id="is-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(isChAmt)}</span>
       </div>
       <div id="is-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
@@ -3077,7 +3082,7 @@ function renderMobile(b) {
 
       <!-- PAS (France / FPT) -->
       ${!skipPas ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
-        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(pas.total)}</span>
       </div>
       <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.4rem 0.6rem 0.2rem">
@@ -3086,7 +3091,7 @@ function renderMobile(b) {
 
       <!-- IRPEF italienne -->
       ${itIrpefCotMob ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('irpef-detail-mob')">
-        <span class="mob-lbl">IRPEF (${(itIrpefTauxMob * 100).toFixed(1)} % eff.) <span id="irpef-detail-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-lbl">IRPEF (${(itIrpefTauxMob * 100).toFixed(1)} % eff.) <span id="irpef-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(itIrpefAmtMob)}</span>
       </div>
       <div id="irpef-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
@@ -3096,7 +3101,7 @@ function renderMobile(b) {
 
       <!-- Bonus cuneo fiscale -->
       ${itBonusCotMob ? `<div class="mob-row" style="cursor:pointer" onclick="togglePasDetail('bonus-cuneo-mob')">
-        <span class="mob-lbl">Bonus cuneo fiscale <span id="bonus-cuneo-mob-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-lbl">Bonus cuneo fiscale <span id="bonus-cuneo-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-green">+ ${fmt(Math.abs(itBonusAmtMob))}</span>
       </div>
       <div id="bonus-cuneo-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">

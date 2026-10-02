@@ -309,3 +309,41 @@ Contenu des clauses volontairement loufoque (futur proche dystopique) : cette
 itération sert à éprouver la mise en page, pas à produire un contrat opposable.
 Le fond des valeurs tirées au sort emprunte à la fantasy européenne, dans le
 registre de l'effectif de Gaabrielle.
+
+## Module « Amphipoolis » — discussion sous pseudonyme, modérée (prototype)
+
+Crate à part `amphipoolis/` (même montage que `meliinda/` : `path = "../amphipoolis"`
+dans `src-tauri/Cargo.toml`, copiée à `/amphipoolis` par le Dockerfile), branchée
+dans `src-tauri/src/bin/web.rs` ; front dans `src/amphipoolis.js`, vue
+`.view-amphipoolis` de `index.html`, entrée « Amphipoolis prototype » du burger.
+Web uniquement. Tables `amph_*` créées au démarrage dans la base partagée.
+
+Règles portées par le serveur — le front ne fait que les montrer :
+
+1. **Pseudonymat strict.** Pseudonyme + phrase secrète (Argon2id), aucun e-mail,
+   aucune IP en base ; jetons de session stockés hachés (SHA-256). Unicité du nom
+   insensible à la casse. La création exige la preuve de travail ALTCHA, vérifiée
+   par une fonction que `web.rs` passe à la crate (`Captcha`) : le secret reste côté Xenna.
+2. **Tout texte est modéré.** Sujet (titre + premier message) et message naissent
+   `attente` ; un seul modérateur publie ou refuse (motif parmi une liste fermée,
+   visible du seul auteur). `UPDATE … WHERE statut = 'attente'` : le premier qui
+   tranche l'emporte, le second reçoit 409.
+3. **Rôle fixé à la création** (participant ou modérateur), un pseudonyme de
+   chaque rôle par IP et par 24 h. Le plafond vit en mémoire (empreinte de
+   l'IP + rôle), jamais en base : `web.rs` pose l'IP dans les extensions
+   (`IpClient`) pour la seule route `/creer`. Un modérateur ne tranche jamais
+   ses propres textes (contrôle dans la requête SQL, pas seulement côté front).
+4. **Pseudonyme refusé** : `etat = 'a_renommer'`, nom ajouté à `amph_noms_reserves`
+   (plus personne ne peut le prendre), masqué partout (« pseudonyme retiré ») ; son
+   titulaire ne peut plus écrire ni modérer avant d'en choisir un autre. Les textes
+   suivent : ils sont rattachés à l'id du pseudonyme, pas au nom.
+5. **Durée de vie** (`expire_le`, horodatages à format fixe `…Z` car comparés
+   comme chaînes) : publié, un texte vit 7 jours ; chaque +1 d'un autre pseudonyme
+   (un par texte, `amph_plus1`) ajoute 7 jours, plafonné à 30 jours après la
+   publication. Refusé ou jamais modéré : 7 jours. Un sujet expiré reste tant
+   qu'une réponse vit. `db::purger` tourne au démarrage puis toutes les 10 min
+   (+1 et journal orphelins compris) ; les pseudonymes et noms réservés restent.
+
+Quotas (`web.rs`) : création/entrée bornées comme les autres connexions ; seuls
+les POST de sujets/messages sont bornés (les GET servent le rafraîchissement
+toutes les 5 s).

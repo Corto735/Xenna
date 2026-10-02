@@ -22,7 +22,7 @@ use xenna_paie_lib::{
     admin::admin_router,
     contrat::{pdf as contrat_pdf, ContratPdf, ReponsePdf},
     paie_pdf::{pdf as bulletin_pdf, BulletinPdf},
-    altcha::{generate_challenge, AltchaChallenge},
+    altcha::{generate_challenge, verify_solution, AltchaChallenge},
     calculs::{generer_annee, generer_bulletin},
     ccn::ccn_router,
     db::{init_db, ContextPaie},
@@ -32,6 +32,7 @@ use xenna_paie_lib::{
     models::{AbsenceInput, Salarie, Statut},
 };
 use meliinda::meliinda_router;
+use amphipoolis::{amphipoolis_router, Captcha, IpClient};
 
 type Db = Arc<SqlitePool>;
 
@@ -151,12 +152,16 @@ fn quota_pour(chemin: &str) -> Option<(u32, Duration)> {
     // Authentification et inscription : coûteuses (Argon2id) et sensibles.
     let auth = chemin.ends_with("/login")
         || chemin == "/forge/profil"
-        || chemin == "/la_forge/login";
+        || chemin == "/la_forge/login"
+        || chemin == "/api/amphipoolis/creer"
+        || chemin == "/api/amphipoolis/entrer";
     if auth {
         return Some((15, Duration::from_secs(15 * 60)));
     }
     // Écritures publiques sans authentification : bornées plus large.
     if chemin == "/api/meliinda/record"
+        || chemin == "/api/amphipoolis/renommer"
+        || chemin == "/api/amphipoolis/plus1"
         || chemin == "/quizz/score"
         || chemin == "/quizz/suggestion"
         || chemin.starts_with("/quizz/vote/")
@@ -187,8 +192,25 @@ fn ip_client(req: &Request) -> Option<String> {
         .map(|ci| ci.0.ip().to_string())
 }
 
-async fn limite_par_ip(req: Request, next: Next) -> Response {
-    if let Some((max, fenetre)) = quota_pour(req.uri().path()) {
+async fn limite_par_ip(mut req: Request, next: Next) -> Response {
+    // Amphipoolis plafonne les créations de pseudonymes par adresse : il lit
+    // l'IP dans les extensions, sans connaître le proxy.
+    if req.uri().path() == "/api/amphipoolis/creer" {
+        if let Some(ip) = ip_client(&req) {
+            req.extensions_mut().insert(IpClient(ip));
+        }
+    }
+    // Amphipoolis : les mêmes chemins servent la lecture (relue toutes les
+    // quelques secondes par le front) et l'écriture. Seul le dépôt (POST d'un
+    // sujet ou d'un message) est borné.
+    let chemin = req.uri().path();
+    let depot_amph = req.method() == Method::POST && chemin.starts_with("/api/amphipoolis/sujets");
+    let quota = if depot_amph {
+        Some((30, Duration::from_secs(60)))
+    } else {
+        quota_pour(chemin)
+    };
+    if let Some((max, fenetre)) = quota {
         if let Some(ip) = ip_client(&req) {
             let cle = format!("ip:{ip}:{}", req.uri().path());
             if !xenna_paie_lib::ratelimit::quota_autorise(&cle, max, fenetre) {
@@ -411,6 +433,16 @@ async fn main() {
         .await
         .expect("Impossible d'initialiser Meliinda");
 
+    // Amphipoolis : la preuve de travail ALTCHA se vérifie ici (secret et
+    // anti-rejeu côté Xenna), même secret que /altcha/challenge.
+    let captcha = Captcha(Arc::new(|payload: &str| {
+        let secret = std::env::var("ALTCHA_SECRET").unwrap_or_else(|_| "dev_altcha_secret".into());
+        verify_solution(payload, &secret)
+    }));
+    let amphipoolis = amphipoolis_router(pool.clone(), captcha)
+        .await
+        .expect("Impossible d'initialiser Amphipoolis");
+
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/esat_minimum", post(handle_esat_minimum))
@@ -427,6 +459,7 @@ async fn main() {
         .merge(admin_router())
         .merge(membre_router())
         .merge(meliinda)
+        .merge(amphipoolis)
         .fallback_service(ServeDir::new(&dist))
         .layer(middleware::from_fn(security_headers))
         .layer(cors)

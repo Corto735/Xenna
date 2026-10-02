@@ -1644,8 +1644,18 @@
     }
 
     /* expand indicator */
+    /* Triangle des lignes dépliables : ▶ fermé, pivote d'un quart de tour vers
+       le bas à l'ouverture (léger rebond), et revient à la fermeture. */
+    .expand-icon, .rot-arrow {
+      display: inline-block;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+    }
     .expand-icon { color: var(--dim-txt); font-size: 0.7rem; margin-right: 0.35rem; }
-    .data-row.open .expand-icon { color: var(--blue); }
+    .data-row.open .expand-icon { color: var(--blue); transform: rotate(90deg); }
+    .rot-arrow.open { transform: rotate(90deg); }
+    @media (prefers-reduced-motion: reduce) {
+      .expand-icon, .rot-arrow { transition: none; }
+    }
 
     /* explication */
     .expl-row td { padding: 0; }
@@ -2643,6 +2653,128 @@
     .ap-soutien:hover,
     .ap-soutien:focus-visible { border-color: var(--or); color: var(--text); }
 
+    /* ── Amphipoolis (prototype) — discussion sous pseudonyme, modérée ── */
+    body.is-amphipoolis .view-desktop,
+    body.is-amphipoolis .view-mobile,
+    body.is-amphipoolis .view-annuel { display: none !important; }
+    body.is-amphipoolis .view-bar    { display: none !important; }
+    body.is-amphipoolis .view-amphipoolis { display: flex; }
+
+    .view-amphipoolis {
+      display: none; flex-direction: column; align-items: center;
+      padding: 2rem 1rem 4rem; width: 100%;
+    }
+    .am-col { width: 100%; max-width: 48rem; }
+    .am-header { margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .am-header h2 { font-size: 1.1rem; color: var(--white); letter-spacing: 0.12em; }
+    .am-header h2 small { font-size: 0.55rem; color: var(--muted-txt); letter-spacing: 0.15em; margin-left: 0.5rem; }
+    .am-header p { font-size: 0.6rem; color: var(--dim-txt); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 0.3rem; }
+    .am-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 1.1rem 1.25rem; margin-bottom: 1rem;
+    }
+    .am-lbl { font-size: 0.55rem; color: var(--dim-txt); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.7rem; }
+    .am-regles { font-size: 0.7rem; line-height: 1.6; color: var(--muted-txt); }
+    .am-regles li { margin-left: 1.1rem; }
+    .am-regles b { color: var(--text); }
+    .am-avert { color: var(--yellow); }
+    .am-onglets { display: flex; gap: 0; margin-bottom: 0.9rem; border-bottom: 1px solid var(--border); }
+    .am-onglet {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--muted-txt); font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
+      padding: 0.45rem 0.9rem; cursor: pointer; text-transform: uppercase;
+    }
+    .am-onglet.actif { color: var(--blue); border-bottom-color: var(--blue); }
+    .am-onglet .am-compte {
+      display: inline-block; min-width: 1.2rem; margin-left: 0.35rem; padding: 0 0.3rem;
+      background: var(--orange); color: var(--bg); border-radius: 0.6rem; font-size: 0.6rem; text-align: center;
+    }
+    .am-onglet .am-compte[hidden] { display: none; }
+    .am-champ { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.7rem; }
+    .am-champ label { font-size: 0.6rem; color: var(--muted-txt); letter-spacing: 0.1em; text-transform: uppercase; }
+    .am-champ input, .am-champ textarea, .am-saisie, .am-motif {
+      background: var(--bg3); border: 1px solid var(--border); color: var(--white);
+      font-family: inherit; font-size: 0.8rem; padding: 0.45rem 0.6rem; outline: none;
+    }
+    .am-champ input:focus, .am-champ textarea:focus, .am-saisie:focus { border-color: var(--blue); }
+    .am-champ textarea, textarea.am-saisie { resize: vertical; min-height: 5rem; line-height: 1.5; }
+    .am-aide { font-size: 0.6rem; color: var(--dim-txt); }
+    .am-compteur { font-size: 0.6rem; color: var(--dim-txt); text-align: right; }
+    .am-compteur.trop { color: var(--red); }
+    .am-ligne { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+    .am-ligne-fin { justify-content: flex-end; }
+    .am-btn {
+      background: none; border: 1px solid var(--blue); color: var(--blue);
+      font-family: inherit; font-size: 0.68rem; letter-spacing: 0.1em;
+      padding: 0.45rem 1rem; cursor: pointer; transition: all 0.15s;
+    }
+    .am-btn:hover:not(:disabled) { background: var(--blue); color: var(--bg); }
+    .am-btn:disabled { opacity: 0.35; cursor: default; }
+    .am-btn.ok { border-color: var(--green); color: var(--green); }
+    .am-btn.ok:hover:not(:disabled) { background: var(--green); color: var(--bg); }
+    .am-btn.ko { border-color: var(--red); color: var(--red); }
+    .am-btn.ko:hover:not(:disabled) { background: var(--red); color: var(--bg); }
+    .am-btn.discret { border-color: var(--border); color: var(--muted-txt); }
+    .am-lien { background: none; border: none; color: var(--blue); font-family: inherit; font-size: 0.68rem; cursor: pointer; padding: 0; }
+    .am-lien:hover { text-decoration: underline; }
+    .am-statut { font-size: 0.65rem; min-height: 1.1em; margin-top: 0.4rem; color: var(--muted-txt); }
+    .am-statut.err { color: var(--red); }
+    .am-statut.ok  { color: var(--green); }
+    .am-barre {
+      display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+      font-size: 0.7rem; color: var(--muted-txt); margin-bottom: 1rem;
+    }
+    .am-barre .am-qui b { color: var(--white); }
+    .am-barre .am-espace { flex: 1; }
+    /* Bascule participant / modérateur */
+    .am-mode { display: inline-flex; border: 1px solid var(--border); }
+    .am-mode button {
+      background: none; border: none; font-family: inherit; font-size: 0.62rem; letter-spacing: 0.08em;
+      color: var(--muted-txt); padding: 0.3rem 0.65rem; cursor: pointer;
+    }
+    .am-mode button.actif { background: var(--blue); color: var(--bg); }
+    .am-sujet {
+      display: block; width: 100%; text-align: left; background: none; border: none;
+      border-bottom: 1px solid var(--border); padding: 0.65rem 0.2rem; cursor: pointer;
+      font-family: inherit; color: var(--text);
+    }
+    .am-sujet:hover { background: var(--bg3); }
+    .am-sujet-titre { font-size: 0.85rem; color: var(--white); }
+    .am-meta { font-size: 0.6rem; color: var(--dim-txt); margin-top: 0.2rem; letter-spacing: 0.04em; }
+    .am-meta b { color: var(--muted-txt); font-weight: normal; }
+    .am-badge {
+      display: inline-block; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.08rem 0.4rem; margin-left: 0.4rem; border: 1px solid currentColor; vertical-align: middle;
+    }
+    .am-badge.attente { color: var(--yellow); }
+    .am-badge.refuse  { color: var(--red); }
+    .am-badge.objet   { color: var(--purple); }
+    .am-msg { padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+    .am-msg:last-child { border-bottom: none; }
+    .am-msg-texte { font-size: 0.8rem; line-height: 1.55; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 0.3rem; }
+    .am-msg.attente .am-msg-texte { opacity: 0.6; }
+    .am-msg.refuse  .am-msg-texte { opacity: 0.5; text-decoration: line-through; text-decoration-color: var(--red); }
+    .am-motif-txt { font-size: 0.62rem; color: var(--red); margin-top: 0.25rem; }
+    .am-auteur { color: var(--blue); }
+    .am-auteur.retire { color: var(--dim-txt); font-style: italic; }
+    .am-vide { font-size: 0.7rem; color: var(--dim-txt); padding: 0.6rem 0; }
+    .am-mod-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.6rem; }
+    .am-badge.role { color: var(--green); }
+    .am-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
+    .am-actions:empty { display: none; }
+    .am-plus1 {
+      background: none; border: 1px solid var(--border); color: var(--muted-txt);
+      font-family: inherit; font-size: 0.62rem; letter-spacing: 0.05em;
+      padding: 0.15rem 0.5rem; cursor: pointer; transition: all 0.15s;
+    }
+    .am-plus1 b { color: var(--text); font-weight: bold; }
+    .am-plus1:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+    .am-plus1.donne { border-color: var(--green); color: var(--green); }
+    .am-plus1:disabled { cursor: default; }
+    .am-plus1:disabled:not(.donne) { opacity: 0.5; }
+    .am-vie { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.04em; }
+    .am-motif { font-size: 0.65rem; padding: 0.35rem 0.4rem; }
+
     /* ── Meliinda ── */
     body.is-meliinda .view-desktop,
     body.is-meliinda .view-mobile,
@@ -3378,7 +3510,8 @@
     body.is-ccn        .page-exit,
     body.is-mecenat    .page-exit,
     body.is-contrat    .page-exit,
-    body.is-annuel     .page-exit { display: flex; }
+    body.is-annuel     .page-exit,
+    body.is-amphipoolis .page-exit { display: flex; }
 
     @media (max-width: 680px) {
       body.is-apropos    .page-exit,
@@ -3392,7 +3525,8 @@
       body.is-ccn        .page-exit,
       body.is-mecenat    .page-exit,
       body.is-contrat    .page-exit,
-      body.is-annuel     .page-exit {
+      body.is-annuel     .page-exit,
+      body.is-amphipoolis .page-exit {
         position: fixed;
         bottom: 1.5rem;
         right: 1.5rem;
@@ -3651,7 +3785,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-D_D5Z-0l.js"></script>
+  <script type="module" crossorigin src="/assets/index-BvuzsqQw.js"></script>
 </head>
 <body>
 
@@ -3687,6 +3821,10 @@
         <button class="burger-item" onclick="setView('meliinda'); closeBurger()">
           <span class="burger-item-icon">✎</span>
           Meliinda <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">prototype</span>
+        </button>
+        <button class="burger-item" onclick="setView('amphipoolis'); closeBurger()">
+          <span class="burger-item-icon">♟</span>
+          Amphipoolis <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">prototype</span>
         </button>
         <button class="burger-item" onclick="setView('apropos'); closeBurger()">
           <span class="burger-item-icon">?</span>
@@ -5680,6 +5818,17 @@
       <div id="ml-seq-list"><span style="font-size:0.65rem;color:var(--dim-txt)">Chargement…</span></div>
     </div>
   </div><!-- /view-meliinda -->
+
+  <!-- ══ Amphipoolis (prototype) — rendu par src/amphipoolis.js ══ -->
+  <div class="view-amphipoolis">
+    <div class="am-col">
+      <div class="am-header">
+        <h2>Amphipoolis <small>PROTOTYPE</small></h2>
+        <p>la taverne sous pseudonyme · chaque message est lu avant d'être publié</p>
+      </div>
+      <div id="am-racine"></div>
+    </div>
+  </div><!-- /view-amphipoolis -->
 
   <!-- ── Modal formule mathématique ── -->
   <div id="fm-modal" onclick="if(event.target===this)closeFmModal()">

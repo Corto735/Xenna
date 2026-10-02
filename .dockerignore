@@ -12,3 +12,5 @@ src-tauri/gen
 *.p12
 secrets.*
 credentials.*
+meliinda/target
+amphipoolis/target

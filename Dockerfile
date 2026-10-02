@@ -27,6 +27,8 @@ COPY src-tauri/capabilities ./capabilities
 COPY src-tauri/assets ./assets
 # Meliinda : copiée à /meliinda pour respecter le path "../meliinda" du Cargo.toml
 COPY meliinda /meliinda
+# Amphipoolis : même principe (path "../amphipoolis")
+COPY amphipoolis /amphipoolis
 
 RUN cargo build --release --bin web --no-default-features
 

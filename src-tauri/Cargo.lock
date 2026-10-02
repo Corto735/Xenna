@@ -125,6 +125,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "amphipoolis"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "axum",
+ "chrono",
+ "hex",
+ "rand 0.8.6",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6884,6 +6900,7 @@ name = "xenna-paie"
 version = "0.1.9"
 dependencies = [
  "aes-gcm",
+ "amphipoolis",
  "anyhow",
  "argon2",
  "axum",
