@@ -303,6 +303,18 @@ async fn trop_en_attente(pool: &SqlitePool, auteur: i64) -> Res<()> {
     Ok(())
 }
 
+/// Barrière anti-robots de tout dépôt : la preuve de travail ALTCHA (chaque
+/// texte coûte un calcul au navigateur, ce qui rend l'envoi en masse cher) et
+/// un champ piège `site`, invisible pour un humain, que les robots
+/// remplisseurs de formulaires renseignent. Même réponse dans les deux cas.
+fn exiger_humain(captcha: &Captcha, altcha: Option<&str>, piege: Option<&str>) -> Res<()> {
+    let piege_rempli = piege.is_some_and(|p| !p.trim().is_empty());
+    if piege_rempli || !altcha.is_some_and(|p| (captcha.0)(p)) {
+        return Err(AmphError::Requete("Vérification anti-robot échouée : réessayez.".into()));
+    }
+    Ok(())
+}
+
 fn exiger_texte(texte: &str) -> Res<String> {
     let t = texte_propre(texte, true);
     let n = t.chars().count();
@@ -325,6 +337,8 @@ pub struct CreerReq {
     /// Rôle, fixé une fois pour toutes à la création.
     #[serde(default)]
     moderateur: bool,
+    /// Champ piège (doit rester vide).
+    site:       Option<String>,
 }
 
 /// POST /api/amphipoolis/creer — nouveau pseudonyme (preuve de travail exigée).
@@ -343,9 +357,7 @@ pub async fn creer(
             if req.moderateur { "modérateur" } else { "participant" }
         )));
     }
-    if !req.altcha.as_deref().is_some_and(|p| (captcha.0)(p)) {
-        return Err(AmphError::Requete("Vérification anti-robot échouée : réessayez.".into()));
-    }
+    exiger_humain(&captcha, req.altcha.as_deref(), req.site.as_deref())?;
     let nom = pseudo_valide(&req.pseudo).ok_or_else(|| {
         AmphError::Requete(format!(
             "Pseudonyme : {PSEUDO_MIN} à {PSEUDO_MAX} caractères, lettres, chiffres, espace, - _ . '"
@@ -538,19 +550,23 @@ pub async fn liste_sujets(State(pool): State<Db>, headers: HeaderMap) -> Res<imp
 
 #[derive(Deserialize)]
 pub struct SujetReq {
-    titre: String,
-    texte: String,
+    titre:  String,
+    texte:  String,
+    altcha: Option<String>,
+    site:   Option<String>,
 }
 
 /// POST /api/amphipoolis/sujets — ouvre un sujet (titre + message d'ouverture),
 /// en attente de modération.
 pub async fn creer_sujet(
     State(pool): State<Db>,
+    Extension(captcha): Extension<Captcha>,
     headers: HeaderMap,
     Json(req): Json<SujetReq>,
 ) -> Res<impl IntoResponse> {
     let m = session(&pool, &headers).await?;
     m.exiger_actif()?;
+    exiger_humain(&captcha, req.altcha.as_deref(), req.site.as_deref())?;
     let titre = texte_propre(&req.titre, false);
     let n = titre.chars().count();
     if !(TITRE_MIN..=TITRE_MAX).contains(&n) {
@@ -655,18 +671,22 @@ pub async fn fil(
 
 #[derive(Deserialize)]
 pub struct MessageReq {
-    texte: String,
+    texte:  String,
+    altcha: Option<String>,
+    site:   Option<String>,
 }
 
 /// POST /api/amphipoolis/sujets/{id}/messages — répond dans un sujet publié.
 pub async fn ecrire(
     State(pool): State<Db>,
+    Extension(captcha): Extension<Captcha>,
     headers: HeaderMap,
     Path(id): Path<i64>,
     Json(req): Json<MessageReq>,
 ) -> Res<impl IntoResponse> {
     let m = session(&pool, &headers).await?;
     m.exiger_actif()?;
+    exiger_humain(&captcha, req.altcha.as_deref(), req.site.as_deref())?;
     let texte = exiger_texte(&req.texte)?;
     let publie: Option<(i64,)> =
         sqlx::query_as("SELECT id FROM amph_sujets WHERE id = ? AND statut = 'publie'")

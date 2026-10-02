@@ -322,8 +322,11 @@ Règles portées par le serveur — le front ne fait que les montrer :
 
 1. **Pseudonymat strict.** Pseudonyme + phrase secrète (Argon2id), aucun e-mail,
    aucune IP en base ; jetons de session stockés hachés (SHA-256). Unicité du nom
-   insensible à la casse. La création exige la preuve de travail ALTCHA, vérifiée
-   par une fonction que `web.rs` passe à la crate (`Captcha`) : le secret reste côté Xenna.
+   insensible à la casse. Tout dépôt (pseudonyme, sujet, message) exige une
+   preuve de travail ALTCHA neuve (anti-rejeu) et un champ piège `site` vide
+   (`exiger_humain`). La preuve est vérifiée par une fonction que `web.rs` passe
+   à la crate (`Captcha`) : le secret reste côté Xenna. Le front la calcule
+   d'avance dès qu'une saisie commence (`preparerPreuve`), l'envoi reste instantané.
 2. **Tout texte est modéré.** Sujet (titre + premier message) et message naissent
    `attente` ; un seul modérateur publie ou refuse (motif parmi une liste fermée,
    visible du seul auteur). `UPDATE … WHERE statut = 'attente'` : le premier qui
@@ -345,5 +348,8 @@ Règles portées par le serveur — le front ne fait que les montrer :
    (+1 et journal orphelins compris) ; les pseudonymes et noms réservés restent.
 
 Quotas (`web.rs`) : création/entrée bornées comme les autres connexions ; seuls
-les POST de sujets/messages sont bornés (les GET servent le rafraîchissement
-toutes les 5 s).
+les POST de sujets/messages sont bornés (les GET servent le rafraîchissement :
+2 s dans un fil, 5 s ailleurs). Un modérateur connecté est veillé toutes les
+15 s même hors de la vue et onglet caché (`amphVeille`, lancé au chargement du
+site) : file d'attente dans le titre de l'onglet, « (3) Xenna Paye », et deux
+notes brèves à l'arrivée de nouveaux textes (désactivables, « son : oui/non »).

@@ -2773,6 +2773,8 @@
     .am-plus1:disabled { cursor: default; }
     .am-plus1:disabled:not(.donne) { opacity: 0.5; }
     .am-vie { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.04em; }
+    /* Champ piège anti-robots : hors écran, jamais visible ni atteignable au clavier. */
+    .am-piege { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     .am-motif { font-size: 0.65rem; padding: 0.35rem 0.4rem; }
 
     /* ── Meliinda ── */

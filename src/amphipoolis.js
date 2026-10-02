@@ -18,7 +18,14 @@
 
 const API = '/api/amphipoolis';
 const CLE_JETON = 'amph.jeton';
+// Rafraîchissement : rapide dans un fil (la conversation), plus lent ailleurs.
+const RAFRAICHIR_FIL_MS = 2000;
 const RAFRAICHIR_MS = 5000;
+// Veille des modérateurs : tourne même hors de la vue et onglet en arrière-plan,
+// pour signaler la file d'attente (titre de l'onglet, son).
+const VEILLE_MS = 15000;
+const CLE_SON = 'amph.son';
+const TITRE_BASE = document.title;
 const TEXTE_MAX = 2000;
 const TITRE_MAX = 120;
 
@@ -41,6 +48,8 @@ const etat = {
   roleCreation: false,    // rôle choisi à la création (true = modérateur)
   motifs:   {},      // choix de motif en cours, par « objet:id » (survit au rafraîchissement)
   minuteur: null,
+  veille:   null,
+  actif:    false,   // vue Amphipoolis affichée
   ecouteur: false,
 };
 
@@ -50,6 +59,44 @@ function esc(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function sonActif() {
+  try { return localStorage.getItem(CLE_SON) !== 'non'; } catch { return true; }
+}
+function ecrireSon(oui) {
+  try { localStorage.setItem(CLE_SON, oui ? 'oui' : 'non'); } catch { /* navigation privée */ }
+}
+
+// Deux notes brèves et douces. Le navigateur n'autorise le son qu'après une
+// interaction avec la page : avant, l'appel échoue en silence.
+let _audio = null;
+function bip() {
+  if (!sonActif()) return;
+  try {
+    _audio = _audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (_audio.state === 'suspended') _audio.resume();
+    const t0 = _audio.currentTime;
+    [[660, 0], [880, 0.14]].forEach(([f, d]) => {
+      const o = _audio.createOscillator(), g = _audio.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.08, t0 + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.18);
+      o.connect(g).connect(_audio.destination);
+      o.start(t0 + d); o.stop(t0 + d + 0.2);
+    });
+  } catch { /* pas d'audio : le titre suffit */ }
+}
+
+// File d'attente des modérateurs : compteur de l'onglet, titre de la page,
+// et un son quand de nouveaux textes arrivent.
+function signaler(n) {
+  const avant = etat.aModerer;
+  etat.aModerer = n;
+  majCompteur();
+  document.title = etat.moi?.moderateur && n > 0 ? `(${n}) ${TITRE_BASE}` : TITRE_BASE;
+  if (etat.moi?.moderateur && n > avant) bip();
 }
 
 function lireJeton() {
@@ -152,6 +199,31 @@ async function resoudreAltcha() {
   throw new ErreurApi('Vérification anti-robot impossible.', 0);
 }
 
+// Chaque dépôt (pseudonyme, sujet, message) exige une preuve neuve. On la
+// calcule d'avance, dès qu'une saisie commence : à l'envoi, elle est prête.
+// Le serveur la refuse au-delà de 10 minutes ; on jette la nôtre à 8.
+const PREUVE_VALIDITE_MS = 8 * 60 * 1000;
+let _preuve = null; // { promesse, le }
+function preparerPreuve() {
+  if (_preuve && Date.now() - _preuve.le > PREUVE_VALIDITE_MS) _preuve = null;
+  if (!_preuve) {
+    const p = { le: Date.now(), promesse: null };
+    p.promesse = resoudreAltcha().catch(e => { if (_preuve === p) _preuve = null; throw e; });
+    _preuve = p;
+  }
+  return _preuve.promesse;
+}
+async function prendrePreuve() {
+  const preuve = await preparerPreuve();
+  _preuve = null; // à usage unique (anti-rejeu côté serveur)
+  return preuve;
+}
+
+// Champ piège : hors écran, ignoré des lecteurs d'écran et du clavier. Un
+// humain le laisse vide ; un robot remplisseur de formulaires le renseigne.
+const PIEGE = `<div class="am-piege" aria-hidden="true"><label>Site web <input name="site" tabindex="-1" autocomplete="off"></label></div>`;
+const piege = form => form?.querySelector('[name="site"]')?.value ?? '';
+
 // ── Écrans ───────────────────────────────────────────────────────────────────
 
 const REGLES = `
@@ -176,7 +248,7 @@ function ecranEntree() {
         <button class="am-onglet ${creer ? '' : 'actif'}" data-a="onglet-entree" data-v="entrer">Entrer</button>
         <button class="am-onglet ${creer ? 'actif' : ''}" data-a="onglet-entree" data-v="creer">Créer un pseudonyme</button>
       </div>
-      <form id="am-form-entree" autocomplete="off">
+      <form id="am-form-entree" autocomplete="off">${creer ? PIEGE : ''}
         <div class="am-champ">
           <label for="am-pseudo">Pseudonyme</label>
           <input id="am-pseudo" maxlength="30" required autocomplete="username">
@@ -244,6 +316,7 @@ function barre() {
       <span class="am-qui">Vous êtes <b class="trad-skip">${esc(m.nom)}</b></span>
       <span class="am-badge ${m.moderateur ? 'objet' : 'role'}" style="margin-left:0">${m.moderateur ? 'modérateur' : 'participant'}</span>
       <span class="am-espace"></span>
+      ${m.moderateur ? `<button class="am-lien" data-a="son" title="Son à l'arrivée de textes à modérer">son : ${sonActif() ? 'oui' : 'non'}</button>` : ''}
       <button class="am-lien" data-a="sortir">sortir</button>
     </div>
     <div class="am-onglets">
@@ -267,7 +340,7 @@ function ecranNouveau() {
   return `
     <div class="am-card">
       <div class="am-lbl">// Ouvrir un sujet</div>
-      <form id="am-form-sujet" autocomplete="off">
+      <form id="am-form-sujet" autocomplete="off">${PIEGE}
         <div class="am-champ">
           <label for="am-titre">Titre</label>
           <input id="am-titre" maxlength="${TITRE_MAX}" required>
@@ -295,7 +368,7 @@ function ecranFil() {
     </div>
     <div class="am-card" id="am-repondre" hidden>
       <div class="am-lbl">// Répondre</div>
-      <form id="am-form-message" autocomplete="off">
+      <form id="am-form-message" autocomplete="off">${PIEGE}
         <textarea id="am-texte-message" class="am-saisie" maxlength="${TEXTE_MAX}" required style="width:100%"></textarea>
         <div class="am-compteur" data-compteur="am-texte-message">0 / ${TEXTE_MAX}</div>
         <div class="am-ligne am-ligne-fin">
@@ -334,6 +407,7 @@ function rendre() {
   }[etat.vue]();
   r.innerHTML = barre() + corps + REGLES;
   rafraichir();
+  planifier(); // le rythme suit la vue (2 s dans un fil)
 }
 
 // ── Données ──────────────────────────────────────────────────────────────────
@@ -441,10 +515,9 @@ async function rafraichir() {
       const r = await api('GET', '/moi');
       const avant = etat.moi;
       etat.moi = r.moi;
-      etat.aModerer = r.a_moderer;
       // Pseudonyme refusé entre-temps : on bascule sur l'écran de renommage.
-      if (r.moi.a_renommer !== avant.a_renommer) return rendre();
-      majCompteur();
+      if (r.moi.a_renommer !== avant.a_renommer) { signaler(r.a_moderer); return rendre(); }
+      signaler(r.a_moderer);
     }
   } catch (e) {
     if (e.code === 404 && etat.vue === 'fil') { etat.vue = 'sujets'; rendre(); }
@@ -477,9 +550,9 @@ async function soumettreEntree(ev) {
     let r;
     if (creer) {
       statut('am-statut-entree', 'Vérification anti-robot…');
-      const altcha = await resoudreAltcha();
+      const altcha = await prendrePreuve();
       statut('am-statut-entree', 'Création du pseudonyme…');
-      r = await api('POST', '/creer', { pseudo, phrase, altcha, moderateur: etat.roleCreation });
+      r = await api('POST', '/creer', { pseudo, phrase, altcha, moderateur: etat.roleCreation, site: piege(ev.target) });
     } else {
       statut('am-statut-entree', 'Vérification…');
       r = await api('POST', '/entrer', { pseudo, phrase });
@@ -489,6 +562,7 @@ async function soumettreEntree(ev) {
     etat.vue = 'sujets';
     ecrireJeton(r.jeton);
     rendre();
+    demarrerVeille();
   } catch (e) {
     statut('am-statut-entree', e.message, 'err');
     btn.disabled = false;
@@ -508,26 +582,37 @@ async function soumettreRenommer(ev) {
 
 async function soumettreSujet(ev) {
   ev.preventDefault();
+  const btn = ev.target.querySelector('button[type=submit]');
+  btn.disabled = true;
   try {
-    await api('POST', '/sujets', { titre: $('am-titre').value, texte: $('am-texte-sujet').value });
+    statut('am-statut-sujet', 'Vérification anti-robot…');
+    const altcha = await prendrePreuve();
+    await api('POST', '/sujets', { titre: $('am-titre').value, texte: $('am-texte-sujet').value, altcha, site: piege(ev.target) });
     etat.vue = 'sujets';
     rendre();
   } catch (e) {
     statut('am-statut-sujet', e.message, 'err');
+    btn.disabled = false;
   }
 }
 
 async function soumettreMessage(ev) {
   ev.preventDefault();
   const zone = $('am-texte-message');
+  const btn = ev.target.querySelector('button[type=submit]');
+  btn.disabled = true;
   try {
-    await api('POST', `/sujets/${etat.sujetId}/messages`, { texte: zone.value });
+    statut('am-statut-message', 'Vérification anti-robot…');
+    const altcha = await prendrePreuve();
+    await api('POST', `/sujets/${etat.sujetId}/messages`, { texte: zone.value, altcha, site: piege(ev.target) });
+    btn.disabled = false;
     zone.value = '';
     majCompteurs();
     statut('am-statut-message', 'Déposé : visible des autres après validation par un modérateur.', 'ok');
     await chargerFil();
   } catch (e) {
     statut('am-statut-message', e.message, 'err');
+    btn.disabled = false;
   }
 }
 
@@ -554,8 +639,7 @@ async function moderer(carte, action) {
     if (action === 'refuser') corps.motif = etat.motifs[cle];
     await api('POST', '/moderation/decision', corps);
     delete etat.motifs[cle];
-    etat.aModerer = Math.max(0, etat.aModerer - 1);
-    majCompteur();
+    signaler(Math.max(0, etat.aModerer - 1));
     carte.remove();
     if (!$('am-file')?.children.length) await chargerFile();
   } catch (e) {
@@ -594,6 +678,7 @@ async function sortir() {
   try { await api('POST', '/sortir'); } catch { /* session déjà morte : rien à fermer */ }
   etat.jeton = null; etat.moi = null; etat.vue = 'sujets';
   ecrireJeton(null);
+  arreterVeille();
   rendre();
 }
 
@@ -613,6 +698,7 @@ function brancherEcouteurs() {
     else if (a === 'role')     { etat.roleCreation = b.dataset.v === '1'; rendreEntreeEnGardant(); }
     else if (a === 'plus1')    { donnerPlus1(b); }
     else if (a === 'sortir')   { sortir(); }
+    else if (a === 'son')      { ecrireSon(!sonActif()); b.textContent = `son : ${sonActif() ? 'oui' : 'non'}`; if (sonActif()) bip(); }
     else if (['publier', 'refuser', 'refuser-pseudo'].includes(a)) {
       const carte = b.closest('[data-objet]');
       if (carte) moderer(carte, a);
@@ -629,6 +715,14 @@ function brancherEcouteurs() {
 
   r.addEventListener('input', majCompteurs);
 
+  // Une saisie commence dans un formulaire de dépôt : on prépare la preuve.
+  r.addEventListener('focusin', ev => {
+    const f = ev.target.closest('form');
+    if (!f || f.id === 'am-form-renommer') return;
+    if (f.id === 'am-form-entree' && etat.ongletEntree !== 'creer') return;
+    preparerPreuve().catch(() => { /* réessayé à l'envoi */ });
+  });
+
   r.addEventListener('submit', ev => {
     const id = ev.target.id;
     if (id === 'am-form-entree')   soumettreEntree(ev);
@@ -640,8 +734,58 @@ function brancherEcouteurs() {
 
 // ── Cycle de vie de la vue ───────────────────────────────────────────────────
 
+// Boucle de rafraîchissement de la vue : 2 s dans un fil, 5 s ailleurs, en
+// pause quand l'onglet est caché (la veille des modérateurs prend le relais).
+function planifier() {
+  clearTimeout(etat.minuteur);
+  if (!etat.actif) return;
+  etat.minuteur = setTimeout(async () => {
+    if (document.visibilityState === 'visible') await rafraichir();
+    planifier();
+  }, etat.vue === 'fil' ? RAFRAICHIR_FIL_MS : RAFRAICHIR_MS);
+}
+
+async function veiller() {
+  if (!etat.jeton) return arreterVeille();
+  // Vue affichée et onglet visible : rafraichir() s'en charge déjà.
+  if (etat.actif && document.visibilityState === 'visible') return;
+  try {
+    const r = await api('GET', '/moi');
+    etat.moi = r.moi;
+    if (!r.moi.moderateur) return arreterVeille();
+    signaler(r.a_moderer);
+  } catch { /* 401 : api() a déjà tout remis à zéro */ }
+}
+
+function demarrerVeille() {
+  if (!etat.jeton || !etat.moi?.moderateur || etat.veille) return;
+  etat.veille = setInterval(veiller, VEILLE_MS);
+  signaler(etat.aModerer);
+}
+
+function arreterVeille() {
+  clearInterval(etat.veille);
+  etat.veille = null;
+  document.title = TITRE_BASE;
+}
+
+/// Au chargement du site : un modérateur déjà connecté est prévenu de la file
+/// d'attente même s'il n'ouvre pas Amphipoolis.
+export async function amphVeille() {
+  etat.jeton = etat.jeton || lireJeton();
+  if (!etat.jeton) return;
+  try {
+    const r = await api('GET', '/moi');
+    etat.moi = r.moi;
+    etat.aModerer = 0;
+    demarrerVeille();
+    signaler(r.a_moderer);
+  } catch { /* session expirée : rien à surveiller */ }
+}
+
 export async function amphInit() {
   brancherEcouteurs();
+  etat.actif = true;
   etat.jeton = etat.jeton || lireJeton();
   if (etat.jeton && !etat.moi) {
     try {
@@ -653,13 +797,12 @@ export async function amphInit() {
     }
   }
   rendre();
-  clearInterval(etat.minuteur);
-  etat.minuteur = setInterval(() => {
-    if (document.visibilityState === 'visible') rafraichir();
-  }, RAFRAICHIR_MS);
+  demarrerVeille();
+  planifier();
 }
 
 export function amphQuitter() {
-  clearInterval(etat.minuteur);
+  etat.actif = false;
+  clearTimeout(etat.minuteur);
   etat.minuteur = null;
 }

@@ -3,7 +3,7 @@ import { renderDsnPanel } from './dsn.js';
 import { composerBulletinPdf, modeleApplicable, nomFichierBulletin } from './bulletin_pdf.js';
 import { demarrerLiens, delierDans, suspendreLiens } from './liens_loi.js';
 import pkg from '../package.json';
-import { amphInit, amphQuitter } from './amphipoolis.js';
+import { amphInit, amphQuitter, amphVeille } from './amphipoolis.js';
 
 // ── Couche API : Tauri invoke en desktop, HTTP POST en web ───────────────────
 //
@@ -120,6 +120,9 @@ window.togglePaysExtra = function() {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Amphipoolis : un modérateur déjà connecté voit sa file d'attente dans le
+  // titre de l'onglet, où qu'il soit sur le site.
+  amphVeille();
   // Articles et textes cités → Légifrance (liens_loi.js). Tout contenu
   // affiché ensuite est lié à son insertion.
   demarrerLiens();
