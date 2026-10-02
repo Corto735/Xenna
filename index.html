@@ -1627,7 +1627,7 @@
        à TOUTES les cellules chiffrées : chaque montant finit au même aplomb,
        avec ou sans f(x). Les en-têtes gardent leur marge (sinon « PART
        PATRONALE » passe sur deux lignes). */
-    .ascii-tbl td.r { padding-right: 1.95rem; }
+    .ascii-tbl td.r { padding-right: 1.95rem; white-space: nowrap; }
     .ascii-tbl td.r { position: relative; }
     .ascii-tbl td.r > .formula-star {
       position: absolute; right: 0.75rem; top: 0.3rem;
@@ -1662,7 +1662,7 @@
     .expl-box {
       margin: 0.2rem 0.75rem 0.4rem 1.5rem;
       border-left: 2px solid var(--blue);
-      padding: 0.5rem 0.75rem;
+      padding: 0.8rem 1.1rem;
       display: flex;
       gap: 1.5rem;
       align-items: flex-start;
@@ -1671,8 +1671,8 @@
     .expl-txt  { font-size: 0.73rem; color: #f9a8d4; line-height: 1.6; flex: 1; }
     /* Histoire de la cotisation (anecdotes.rs) — sous l'explication, en retrait */
     .expl-histoire, .mob-histoire {
-      margin-top: 0.5rem;
-      padding: 0.35rem 0 0.1rem 0.6rem;
+      margin-top: 0.6rem;
+      padding: 0.5rem 0.8rem;
       border-left: 2px solid var(--dim);
       color: var(--muted-txt);
       font-size: 0.7rem;
@@ -1873,7 +1873,7 @@
     .mob-expand {
       background: #030710;
       border-left: 2px solid var(--border);
-      padding: 0.65rem 0.9rem 0.65rem 0.8rem;
+      padding: 0.85rem 1.1rem;
       border-bottom: 1px solid #0c1520;
     }
 

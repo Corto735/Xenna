@@ -1397,6 +1397,18 @@ function fmtS(val, sign = false) {
 function fmtPct(val) {
   return (parseFloat(val) * 100).toFixed(2) + " %";
 }
+
+// Bulletin : un zéro (0 €, 0 %) s'affiche comme une case vide, à la manière
+// d'un vrai bulletin. Les panneaux f(x), qui détaillent un calcul, gardent les
+// leurs : là, un zéro est une information.
+// Montants : nul en dessous du demi-centime. Taux : stockés en fraction
+// (0,40 % = 0,004), donc un seuil à part, sans quoi un petit taux disparaîtrait.
+const estZero = v => Math.abs(parseFloat(v) || 0) < 0.005;
+const tauxNul = v => Math.abs(parseFloat(v) || 0) < 1e-7;
+const pctOuVide = (v, signe = '') => tauxNul(v) ? '' : `${signe}${fmtPct(v)}`;
+const montantOuVide = (v, signe = '') => estZero(v) ? '' : `${signe}${fmt(v)}`;
+// Taux effectif (fraction) en « 1.3 % » ; vide si nul.
+const tauxEffOuVide = t => tauxNul(t) ? '' : ` (${(t * 100).toFixed(1)} %)`;
 // Lit la date de simulation depuis le formulaire actif (format ISO YYYY-MM-DD)
 function getDatePaie() {
   const src   = document.body.classList.contains("is-mobile") ? "m-date" : "d-date";
@@ -2309,7 +2321,7 @@ window.showFormula = function(key) {
   if (entry.type === 'pas') {
     document.getElementById('fm-title').textContent = 'Prélèvement à la Source (PAS)';
     document.getElementById('fm-badge').textContent = '── Détail par tranche — barème neutre mensuel DGFIP ─────────';
-    fmBody.className = 'fm-type-pas';
+    fmBody.className = 'fm-body fm-type-pas';
     fmBody.innerHTML = buildPasFormulaContent(entry.netImposable);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
@@ -2326,7 +2338,7 @@ window.showFormula = function(key) {
     }[entry.which];
     document.getElementById('fm-title').textContent = meta[0];
     document.getElementById('fm-badge').textContent = meta[1];
-    fmBody.className = meta[2];
+    fmBody.className = 'fm-body ' + meta[2];
     fmBody.innerHTML = buildAbsenceFormulaContent(entry.which, entry.a, lastBulletin);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
@@ -2337,7 +2349,7 @@ window.showFormula = function(key) {
     const l = entry.l;
     document.getElementById('fm-title').textContent = l.libelle;
     document.getElementById('fm-badge').textContent = '── Avantage en nature — soumis, puis retenu ──';
-    fmBody.className = 'fm-type-sal';
+    fmBody.className = 'fm-body fm-type-sal';
     fmBody.innerHTML = `
       <div class="fm-generic">${esc(l.calcul)}</div>
       <table class="fm-calc">
@@ -2355,7 +2367,7 @@ window.showFormula = function(key) {
     const l = entry.l;
     document.getElementById('fm-title').textContent = l.libelle;
     document.getElementById('fm-badge').textContent = '── Frais professionnels — versés en net ──────';
-    fmBody.className = 'fm-type-alleg';
+    fmBody.className = 'fm-body fm-type-alleg';
     fmBody.innerHTML = `
       <div class="fm-generic">Indemnité  =  nombre  ×  montant conventionnel</div>
       <table class="fm-calc">
@@ -2377,7 +2389,7 @@ window.showFormula = function(key) {
     }[entry.which];
     document.getElementById('fm-title').textContent = meta[0];
     document.getElementById('fm-badge').textContent = meta[1];
-    fmBody.className = meta[2];
+    fmBody.className = 'fm-body ' + meta[2];
     fmBody.innerHTML = buildCongesFormulaContent(entry.which, entry.c);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
@@ -2398,7 +2410,7 @@ window.showFormula = function(key) {
     if (!meta) return;
     document.getElementById('fm-title').textContent = meta[0];
     document.getElementById('fm-badge').textContent = meta[1];
-    fmBody.className = meta[2];
+    fmBody.className = 'fm-body ' + meta[2];
     fmBody.innerHTML = buildTotalFormulaContent(entry.which, lastBulletin);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
@@ -2420,7 +2432,7 @@ window.showFormula = function(key) {
             : '── Part patronale ───────────────────────────';
   document.getElementById('fm-title').textContent = c.libelle;
   document.getElementById('fm-badge').textContent = badge;
-  fmBody.className = `fm-type-${type}`;
+  fmBody.className = `fm-body fm-type-${type}`;
   fmBody.innerHTML = buildFormulaContent(c, type);
   document.getElementById('fm-modal').classList.add('open');
   document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
@@ -2542,7 +2554,7 @@ function renderDesktop(b) {
         <div class="sb-ded">
           <div class="sb-ded-row">
             <span>Cot. salariales</span>
-            <span style="color:var(--sal)">− ${fmt(isItalie ? totalSalCotSeules : totalSalSansIS)}</span>
+            <span style="color:var(--sal)">${montantOuVide(isItalie ? totalSalCotSeules : totalSalSansIS, '− ')}</span>
           </div>
           ${isChCot ? `<div class="sb-ded-row">
             <span>Impôt à la source (${(isChTaux * 100).toFixed(1)} %)</span>
@@ -2561,12 +2573,12 @@ function renderDesktop(b) {
             <span style="color:var(--green)">base PAS − ${fmt(b.heures_sup.exo_fiscale)}</span>
           </div>` : ''}
           ${!skipPas ? `<div class="sb-ded-row">
-            <span>PAS (${(pas.taux_effectif * 100).toFixed(1)} %)</span>
-            <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('PAS')">− ${fmt(pas.total)}${buildFormulaStar('PAS')}</span>
+            <span>PAS${tauxEffOuVide(pas.taux_effectif)}</span>
+            <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('PAS')">${estZero(pas.total) ? '' : `− ${fmt(pas.total)}${buildFormulaStar('PAS')}`}</span>
           </div>` : ''}
           <div class="sb-ded-total">
             <span>Total retenues</span>
-            <span style="color:var(--sal)">− ${fmt(totalSal + pas.total)}</span>
+            <span style="color:var(--sal)">${montantOuVide(totalSal + pas.total, '− ')}</span>
           </div>
         </div>
       </div>
@@ -2616,11 +2628,11 @@ function renderDesktop(b) {
             <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
             <span class="trad-skip">${c.libelle}</span>
           </td>
-          <td class="r">${fmt(c.base)}</td>
-          <td class="r">${parseFloat(c.taux_sal) > 0 ? '− ' : ''}${fmtPct(c.taux_sal)}</td>
-          <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${hasFmSal ? '− ' : ''}${fmt(c.montant_sal)}${starSal}</td>
-          <td class="r">${parseFloat(c.taux_pat) > 0 ? '− ' : ''}${fmtPct(c.taux_pat)}</td>
-          <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${hasFmPat ? '− ' : ''}${fmt(c.montant_pat)}${starPat}</td>
+          <td class="r">${montantOuVide(c.base)}</td>
+          <td class="r">${pctOuVide(c.taux_sal, parseFloat(c.taux_sal) > 0 ? '− ' : '')}</td>
+          <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${estZero(c.montant_sal) ? '' : `${hasFmSal ? '− ' : ''}${fmt(c.montant_sal)}${starSal}`}</td>
+          <td class="r">${pctOuVide(c.taux_pat, parseFloat(c.taux_pat) > 0 ? '− ' : '')}</td>
+          <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${estZero(c.montant_pat) ? '' : `${hasFmPat ? '− ' : ''}${fmt(c.montant_pat)}${starPat}`}</td>
         </tr>
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
@@ -2661,9 +2673,9 @@ function renderDesktop(b) {
         ${buildRows(cotAll, 0)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
-          <td class="r c-sal" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">= − ${fmt(totalSalCot)}${buildFormulaStar('TOT_COT_SAL')}</td>
+          <td class="r c-sal" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">${estZero(totalSalCot) ? '' : `= − ${fmt(totalSalCot)}${buildFormulaStar('TOT_COT_SAL')}`}</td>
           <td></td>
-          <td class="r c-pat" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">= − ${fmt(totalPatBrut)}${buildFormulaStar('TOT_COT_PAT')}</td>
+          <td class="r c-pat" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">${estZero(totalPatBrut) ? '' : `= − ${fmt(totalPatBrut)}${buildFormulaStar('TOT_COT_PAT')}`}</td>
         </tr>
       </tbody>
     </table>`;
@@ -2692,8 +2704,8 @@ function renderDesktop(b) {
           const taux    = Math.abs(parseFloat(isSalSide ? c.taux_sal : c.taux_pat));
           const keyAlleg = `${c.code}_alleg`;
           _fmStore[keyAlleg] = { c, type: 'alleg' };
-          const cellMontant = `<td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">− ${fmt(montant)}${buildFormulaStar(keyAlleg)}</td>`;
-          const cellTaux = `<td class="r c-alleg">${fmtPct(taux)}</td>`;
+          const cellMontant = `<td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">${estZero(montant) ? '' : `− ${fmt(montant)}${buildFormulaStar(keyAlleg)}`}</td>`;
+          const cellTaux = `<td class="r c-alleg">${pctOuVide(taux)}</td>`;
           return `
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>
@@ -2701,7 +2713,7 @@ function renderDesktop(b) {
                 <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
                 <span class="trad-skip">${c.libelle}</span>
               </td>
-              <td class="r">${fmt(c.base)}</td>
+              <td class="r">${montantOuVide(c.base)}</td>
               ${isSalSide ? `${cellTaux}${cellMontant}<td class="r"></td><td class="r"></td>`
                           : `<td class="r"></td><td class="r"></td>${cellTaux}${cellMontant}`}
             </tr>
@@ -3005,10 +3017,10 @@ function renderMobile(b) {
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
     const amtsSal = hasSal
       ? `<span class="mob-val mob-cot-amt" style="color:var(--sal)" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
-      : `<span class="mob-val c-dim">0 ${devSym().trim()}</span>`;
+      : '<span class="mob-val">&nbsp;</span>'; // vide, mais garde sa ligne
     const amtsPat = hasPat
       ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">− ${fmt(c.montant_pat)}</span>`
-      : `<span class="mob-val c-dim">0 ${devSym().trim()}</span>`;
+      : '<span class="mob-val">&nbsp;</span>';
     return `
       <div class="${stripeCls}">
         <div class="mob-row">
@@ -3028,7 +3040,7 @@ function renderMobile(b) {
       // Réduction salariale (HS) = crédit côté salarié (+) ; autres = économie patronale (−).
       const isSalSide = Math.abs(parseFloat(c.montant_sal)) > 0;
       const montant = Math.abs(parseFloat(isSalSide ? c.montant_sal : c.montant_pat));
-      const mHtml = `${isSalSide ? '+' : '−'} ${fmt(montant)}`;
+      const mHtml = estZero(montant) ? '' : `${isSalSide ? '+' : '−'} ${fmt(montant)}`;
       return buildMobCotRow(c, `${c.code}_alleg`, mHtml, 'c-alleg', isSalSide ? 'sal' : 'alleg', i);
     })
     .join('');
@@ -3055,11 +3067,11 @@ function renderMobile(b) {
       ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL cotisations salariales</span>
-        <span class="mob-val c-yellow" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">− ${fmt(totalSalCotMob)}${buildFormulaStar('TOT_COT_SAL')}</span>
+        <span class="mob-val c-yellow" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">${estZero(totalSalCotMob) ? '' : `− ${fmt(totalSalCotMob)}${buildFormulaStar('TOT_COT_SAL')}`}</span>
       </div>
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL charges patronales</span>
-        <span class="mob-val c-orange" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">− ${fmt(totalPatBrutMob)}${buildFormulaStar('TOT_COT_PAT')}</span>
+        <span class="mob-val c-orange" style="cursor:pointer" onclick="showFormula('TOT_COT_PAT')">${estZero(totalPatBrutMob) ? '' : `− ${fmt(totalPatBrutMob)}${buildFormulaStar('TOT_COT_PAT')}`}</span>
       </div>
 
       <!-- Impôt à la source suisse — accordéon dédié -->
@@ -3067,7 +3079,7 @@ function renderMobile(b) {
         <span class="mob-lbl">Impôt à la source (${(isChTaux * 100).toFixed(1)} %) <span id="is-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(isChAmt)}</span>
       </div>
-      <div id="is-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+      <div id="is-detail-mob" style="display:none;padding:0.7rem 1rem 0.6rem">
         <div class="fm-type-sal">${buildFormulaContent(isChCot, 'sal')}</div>
         <div class="mob-exp-txt" style="margin-top:0.5rem">${esc(isChCot.explication)}</div>${buildHistoire(isChCot, 'mob-histoire')}
         ${isChCot.loi_ref ? `<div class="mob-exp-loi">§ ${esc(isChCot.loi_ref)}</div>` : ''}
@@ -3085,10 +3097,10 @@ function renderMobile(b) {
 
       <!-- PAS (France / FPT) -->
       ${!skipPas ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
-        <span class="mob-lbl">Prélèvement à la source (${(pas.taux_effectif * 100).toFixed(1)} %) <span id="pas-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
-        <span class="mob-val c-purple">− ${fmt(pas.total)}</span>
+        <span class="mob-lbl">Prélèvement à la source${tauxEffOuVide(pas.taux_effectif)} <span id="pas-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
+        <span class="mob-val c-purple">${montantOuVide(pas.total, '− ')}</span>
       </div>
-      <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+      <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.7rem 1rem 0.6rem">
         ${buildPasFormulaContent(parseFloat(b.net_imposable))}
       </div>` : ''}
 
@@ -3097,7 +3109,7 @@ function renderMobile(b) {
         <span class="mob-lbl">IRPEF (${(itIrpefTauxMob * 100).toFixed(1)} % eff.) <span id="irpef-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">− ${fmt(itIrpefAmtMob)}</span>
       </div>
-      <div id="irpef-detail-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+      <div id="irpef-detail-mob" style="display:none;padding:0.7rem 1rem 0.6rem">
         <div class="mob-exp-txt">${esc(itIrpefCotMob.explication)}</div>${buildHistoire(itIrpefCotMob, 'mob-histoire')}
         ${itIrpefCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itIrpefCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
@@ -3107,7 +3119,7 @@ function renderMobile(b) {
         <span class="mob-lbl">Bonus cuneo fiscale <span id="bonus-cuneo-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-green">+ ${fmt(Math.abs(itBonusAmtMob))}</span>
       </div>
-      <div id="bonus-cuneo-mob" style="display:none;padding:0.4rem 0.6rem 0.2rem">
+      <div id="bonus-cuneo-mob" style="display:none;padding:0.7rem 1rem 0.6rem">
         <div class="mob-exp-txt">${esc(itBonusCotMob.explication)}</div>${buildHistoire(itBonusCotMob, 'mob-histoire')}
         ${itBonusCotMob.loi_ref ? `<div class="mob-exp-loi">§ ${esc(itBonusCotMob.loi_ref)}</div>` : ''}
       </div>` : ''}
