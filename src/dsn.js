@@ -1601,7 +1601,7 @@ export function renderDsnPanel(b, opt = {}) {
   _dsnCtx.set(id, { b, opt: { ...opt, id } });
   return `
   <div class="dsn-wrap trad-skip">
-    <div class="tbl-section-head">── DSN — DÉCLARATION SOCIALE NOMINATIVE ───────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> DSN — DÉCLARATION SOCIALE NOMINATIVE <span class="sh-fl">&lt;-</span></div>
     <div class="dsn-intro">
       Depuis 2017, ce bulletin ne reste pas dans l'entreprise : il part chaque mois,
       salarié par salarié, vers l'Urssaf, l'Agirc-Arrco, France Travail, la DGFiP et

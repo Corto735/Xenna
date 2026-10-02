@@ -67,7 +67,7 @@ window.openExternal = async function(url) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 // Paramètres figés au dernier CALCULER — voir « Paramètres appliqués ».
-const PARAMS_DEFAUT = { etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1 };
+const PARAMS_DEFAUT = { statut: 'non_cadre', etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1 };
 let _params = { ...PARAMS_DEFAUT };
 let _etpPrev = 100; // ETP de référence pour le recalcul brut proportionnel
 
@@ -1878,7 +1878,7 @@ function _anSectionDesktop(b) {
   const lignes = _anRetenue(b);
   if (!lignes.length) return '';
   return `
-    <div class="tbl-section-head">── AVANTAGES EN NATURE — RETENUE SUR LE NET ─────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> AVANTAGES EN NATURE — RETENUE SUR LE NET <span class="sh-fl">&lt;-</span></div>
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       ${_absenceEmbedTable(lignes.map((l, i) => _absenceRow(`${esc(l.libelle)} <span class="c-dim">(fourni en nature)</span>`, 'c-red', '−', l.montant, 'AN_' + i)).join(''))}
     </div>`;
@@ -1901,7 +1901,7 @@ function _fraisSectionDesktop(b) {
   const lignes = _fraisLignes(b);
   if (!lignes.length) return '';
   return `
-    <div class="tbl-section-head">── FRAIS PROFESSIONNELS — VERSÉS EN NET ────────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> FRAIS PROFESSIONNELS — VERSÉS EN NET <span class="sh-fl">&lt;-</span></div>
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       ${_absenceEmbedTable(lignes.map(l => _absenceRow(_fraisLibelle(l), 'c-green', '+', l.montant, 'FRAIS_' + l.code)).join(''))}
     </div>`;
@@ -2481,7 +2481,7 @@ function renderDesktop(b) {
 
   // Section IJSS réintégrées — bas de bulletin, avant les allègements.
   const ijssReintSection = ijssNet > 0 ? `
-    <div class="tbl-section-head">── IJSS — SUBROGATION ──────────────────────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> IJSS — SUBROGATION <span class="sh-fl">&lt;-</span></div>
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       ${_absenceEmbedTable(_absenceRow('IJSS nettes (subrogation) — reversées au salarié', 'c-green', '+', ijssNet, 'ABS_IJSS_REINT'))}
     </div>` : '';
@@ -2637,7 +2637,7 @@ function renderDesktop(b) {
     </thead>`;
 
   const tableAll = `
-    <div class="tbl-section-head">── COTISATIONS ────────────────────────────────────────────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> COTISATIONS <span class="sh-fl">&lt;-</span></div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
@@ -2663,7 +2663,7 @@ function renderDesktop(b) {
   const totalAllegPat = cotAlleg.reduce((s, c) => s + parseFloat(c.montant_pat), 0); // négatif
   const totalAllegSal = cotAlleg.reduce((s, c) => s + parseFloat(c.montant_sal), 0); // négatif
   const tableAlleg = cotAlleg.length === 0 ? "" : `
-    <div class="tbl-section-head">── ALLÈGEMENTS & EXONÉRATIONS ──────────────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> ALLÈGEMENTS & EXONÉRATIONS <span class="sh-fl">&lt;-</span></div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
@@ -2705,6 +2705,12 @@ function renderDesktop(b) {
         </tr>
       </tbody>
     </table>`;
+
+  // Répartition du coût employeur pour la jauge de la tête « Rémunération ».
+  // L'impôt retenu à la source à l'étranger (IS suisse, IRPEF net du bonus)
+  // rejoint le PAS : c'est de l'impôt, pas une cotisation.
+  const impot = pas.total + isChAmt + itIrpefAmt + itBonusAmt;
+  _repartition = { net: netPayer, sal: totalSal - isChAmt - itIrpefAmt - itBonusAmt, pas: impot, pat: totalPat };
 
   el.innerHTML = simBanner + summaryBar
     + `<div id="rem-result-d">${buildRemSection()}</div>`
@@ -3345,7 +3351,7 @@ async function calculate(source) {
   _basculerHeures();
   const isM = source === "mobile";
   const brut         = document.getElementById(isM ? "m-brut"   : "d-brut").value;
-  const statut       = document.getElementById(isM ? "m-statut" : "d-statut").value;
+  const statut       = _params.statut; // menu Paramètres, soumis à APPLIQUER
   const nom          = document.getElementById(isM ? "m-nom"    : "d-nom").value   || "Dupont";
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
   let date           = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
@@ -3438,7 +3444,6 @@ async function calculate(source) {
 
   // Sync les deux formulaires
   ["d-brut","m-brut"].forEach(id => { const e = document.getElementById(id); if(e) e.value = brut; });
-  ["d-statut","m-statut"].forEach(id => { const e = document.getElementById(id); if(e) e.value = statut; });
   ["d-nom","m-nom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = nom; });
   ["d-prenom","m-prenom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = prenom; });
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
@@ -3702,7 +3707,7 @@ function _restaurerDepuisLien() {
   // ne doit pas être reproratisé. Un lien antérieur au drapeau `ap` appliquait
   // toujours ses paramètres : on coche si l'un d'eux y figure.
   const ap = q.has('ap') ? q.get('ap') === '1'
-    : ['etp', 'effectif', 'anciennete', 'ccn'].some(k => q.has(k));
+    : ['statut', 'etp', 'effectif', 'anciennete', 'ccn'].some(k => q.has(k));
   ['d', 'm'].forEach(p => { const c = document.getElementById(`${p}-apply-brut-chk`); if (c) c.checked = false; });
   const etp = parseFloat(q.get('etp'));
   document.getElementById('d-etp').value = Number.isFinite(etp) && etp > 0 && etp <= 200 ? etp : 100;
@@ -3827,7 +3832,7 @@ function renderAnnuel(sim) {
     </div>`;
 
   el.innerHTML = `
-    <div class="tbl-section-head">── SIMULATION ANNUELLE ${sim.annee} ────────────────────────────────────</div>
+    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> SIMULATION ANNUELLE ${sim.annee} <span class="sh-fl">&lt;-</span></div>
     <div style="font-size:0.70rem;color:var(--muted-txt);margin-bottom:0.4rem">
       Décembre inclut un 13e mois (salaire doublé). Brut total = 13 mois. Fillon régularisé sur rémunération annuelle réelle.
     </div>
@@ -4331,7 +4336,7 @@ function _francePriveActif() {
 }
 
 // ── Paramètres appliqués ─────────────────────────────────────────────────────
-// Le menu Paramètres (ETP/heures, effectif, convention, ancienneté) ne pèse sur
+// Le menu Paramètres (statut, ETP/heures, ancienneté, effectif, convention) ne pèse sur
 // le bulletin qu'à deux conditions : la case APPLIQUER est cochée ET on clique
 // sur CALCULER. Case décochée, le calcul retient les valeurs par défaut quelles
 // que soient les saisies. Modifier un paramètre ne déclenche rien : calculate()
@@ -4343,6 +4348,7 @@ function _paramsSaisis() {
   const val = id => document.getElementById(`d-${id}`)?.value;
   const anc = parseInt(val('anciennete') ?? '1', 10);
   return {
+    statut:     val('statut') === 'cadre' ? 'cadre' : 'non_cadre',
     etp:        parseFloat(val('etp')) || 100,
     hMois:      parseFloat(val('h-mois')) || 151.67,
     effectif:   val('effectif') || 'moins20',
@@ -4491,6 +4497,24 @@ function _remHeureDetail(l, etp) {
 // heures (pas de 0,5 h), le détail du calcul s'affiche sous la ligne. Les
 // montants en euros avancent de 5 € en 5 € aux flèches, mais la saisie reste
 // libre au centime : le pas ne sert qu'à l'incrément, pas à la validation.
+// Ligne saisie de la rémunération : [×] type, quantité, unité — puis sa part
+// du brut en euros, dans la colonne du « Total brut » (alignée au-dessous
+// comme au-dessus : salaire de base, absences, total).
+function _remLineRow(id, saisie, val) {
+  return `
+      <div class="rem-line">
+        <div class="rem-line-saisie">
+        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${id}')" title="Retirer la ligne">×</button>${saisie}
+        </div>
+        <span class="rem-line-val" data-rlv="${id}">${val}</span>
+      </div>`;
+}
+// Part du brut d'une ligne en euros (heures : estimation, le back fait foi).
+function _remLineGain(l, etp) {
+  const v = _estHeure(l.type) ? _gainHeures(l.type, l.amount, etp) : parseFloat(l.amount) || 0;
+  return v > 0 ? fmt(v) : '';
+}
+
 function _remLineHtml(l, opts, etp) {
   const selOpts = opts.map(o =>
     `<option value="${o.value}"${o.value === l.type ? ' selected' : ''}>${o.label}</option>`
@@ -4504,25 +4528,42 @@ function _remLineHtml(l, opts, etp) {
     const detail = !lf ? ''
       : lf.montant_unitaire == null ? 'aucun barème intégré à cette date (montants depuis le 01/12/2022)'
       : `<b>${nb.toLocaleString('fr-FR')}</b> × <b>${fmt(lf.montant_unitaire)}</b> = <b>${fmt(lf.montant)}</b> <span class="rem-h-base">(versé en net, hors brut)</span>`;
-    return `
-      <div class="rem-line">
+    // Versées en net, hors brut : rien dans la colonne du total brut.
+    return _remLineRow(l.id, `
         <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
         <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="nombre" min="0" step="1" inputmode="numeric"
                oninput="onRemAmountChange('${l.id}',this.value)" />
-        <span class="rem-h-unit">×</span>
-        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
-      </div>${detail ? `
-      <div class="rem-h-detail" data-rl="${l.id}">${detail}</div>` : ''}`;
+        <span class="rem-h-unit">×</span>`, '') + (detail ? `
+      <div class="rem-h-detail" data-rl="${l.id}">${detail}</div>` : '');
   }
-  return `
-      <div class="rem-line">
+  return _remLineRow(l.id, `
         <select class="rem-type-sel" onchange="onRemTypeChange('${l.id}',this.value)">${selOpts}</select>
         <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${isHour ? 'heures' : '0.00'}" min="0" step="${isHour ? '0.5' : '5'}" inputmode="decimal"
                oninput="onRemAmountChange('${l.id}',this.value)" />
-        ${isHour ? '<span class="rem-h-unit">h</span>' : ''}
-        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${l.id}')">×</button>
-      </div>${isHour ? `
-      <div class="rem-h-detail" data-rl="${l.id}">${_remHeureDetail(l, etp)}</div>` : ''}`;
+        <span class="rem-h-unit">${isHour ? 'h' : '€'}</span>`, _remLineGain(l, etp)) + (isHour ? `
+      <div class="rem-h-detail" data-rl="${l.id}">${_remHeureDetail(l, etp)}</div>` : '');
+}
+
+// Jauge fine, à droite de « -> RÉMUNÉRATION <- » : où part chaque euro du coût
+// employeur, aux couleurs des totaux du bandeau récap. Vide avant tout calcul
+// ou si le bulletin affiché n'a pas été rendu par renderDesktop.
+let _repartition = null;
+function _jaugeRepartition() {
+  const r = _repartition;
+  if (!r || !lastBulletin) return '';
+  const parts = [
+    ['net', 'Net à payer',            r.net, 'var(--green)'],
+    ['sal', 'Cotisations salariales', r.sal, 'var(--sal)'],
+    ['pas', 'Impôt à la source',      r.pas, 'var(--purple)'],
+    ['pat', 'Charges patronales',     r.pat, 'var(--orange)'],
+  ].map(([k, lbl, v, c]) => [k, lbl, Math.max(0, v), c]).filter(p => p[2] > 0);
+  const total = parts.reduce((s, p) => s + p[2], 0);
+  if (total <= 0) return '';
+  const pct = v => (v / total * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  const segs = parts.map(([k, lbl, v, c]) =>
+    `<span class="jauge-seg" style="flex-grow:${v};background:${c}" title="${lbl} : ${fmt(v)} (${pct(v)} %)"></span>`).join('');
+  const resume = parts.map(([, lbl, v]) => `${lbl} ${pct(v)} %`).join(', ');
+  return `<span class="jauge-rep" role="img" aria-label="Répartition du coût employeur : ${resume}">${segs}</span>`;
 }
 
 function buildRemSection() {
@@ -4579,7 +4620,7 @@ function buildRemSection() {
       </tr>
     </tbody></table>` : '';
   return `
-    <div class="tbl-section-head">── RÉMUNÉRATION ────────────────────────────────────────────────────────────────────</div>
+    <div class="tbl-section-head sh-rem"><span><span class="sh-fl">-&gt;</span> RÉMUNÉRATION <span class="sh-fl">&lt;-</span></span>${_jaugeRepartition()}</div>
     <div class="rem-section">
       ${baseRow}
       ${absencePanel}${lines}${absInfo ? _buildAbsenceViz(absInfo, _absence) : ''}${absenceLine}${totalRow}
@@ -4697,14 +4738,11 @@ function _remAnLineHtml(l, selOpts) {
   const rang = _remLines.filter(x => _estAN(x.type)).indexOf(l);
   const la = (lastBulletin?.avantages_nature || [])[rang];
   const detail = la ? `${esc(la.calcul)} <span class="rem-h-base">(ajouté au brut, retenu sur le net)</span>` : '';
-  return `
-      <div class="rem-line">
+  return _remLineRow(id, `
         <select class="rem-type-sel" onchange="onRemTypeChange('${id}',this.value)">${selOpts}</select>
         <input type="number" class="rem-amt-inp" value="${l.amount || ''}" placeholder="${ph}" min="0" step="${t.step}" inputmode="decimal"
                oninput="onRemAmountChange('${id}',this.value)" />
-        <span class="rem-h-unit">${unite}</span>
-        <button class="btn-rm-rem" type="button" onclick="removeRemLineResult('${id}')">×</button>
-      </div>
+        <span class="rem-h-unit">${unite}</span>`, la ? fmt(la.montant) : '') + `
       <div class="rem-an-opts">${opts}</div>${detail ? `
       <div class="rem-h-detail" data-rl="${id}">${detail}</div>` : ''}`;
 }
@@ -4737,6 +4775,11 @@ window.onRemAmountChange = function(id, val) {
     const etp = _params.etp;
     document.querySelectorAll(`.rem-h-detail[data-rl="${id}"]`)
       .forEach(el => { el.innerHTML = _remHeureDetail(l, etp); });
+  }
+  // Montant en euros de la ligne (les avantages et les frais attendent le back).
+  if (l && !_estAN(l.type) && !_estFrais(l.type)) {
+    document.querySelectorAll(`.rem-line-val[data-rlv="${id}"]`)
+      .forEach(el => { el.textContent = _remLineGain(l, _params.etp); });
   }
   const total = getRemDisplayTotal();
   ['d', 'm'].forEach(p => {
