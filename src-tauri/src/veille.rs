@@ -77,6 +77,122 @@ pub enum Specificite {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-10-03",
+        pays: Pays::Suisse,
+        specificite: None,
+        objet: "LPP : déduction de coordination 26 460 CHF en 2025-2026 (et non 27 225), 24 675 en 2015-2018 ; salaires coordonnés maximaux 59 925 / 60 435 / 60 945 / 62 475 / 64 260 CHF corrigés",
+        taux: true,
+        sources: &[
+            "https://www.bsv.admin.ch/dam/bsv/fr/dokumente/bv/anleitungen/masszahlen-2025-2026.pdf.download.pdf/masszahlen-2025-2026.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Luxembourg,
+        specificite: None,
+        objet: "Pension 8,50 % salarié et employeur au 01/01/2026 (réforme des pensions) ; accidents 0,65 % (taux unique 2026) ; mutualité des employeurs classe 2 0,95 % ; dépendance sans plafond après abattement d'un quart du SSM ; plafond cotisable 13 518,68 € puis 13 856,63 € au 01/06/2026",
+        taux: true,
+        sources: &[
+            "https://fedil.lu/fr/publications/parametres-sociaux-applicables-a-partir-du-1er-janvier-2026/",
+            "https://fedil.lu/fr/publications/parametres-sociaux-applicables-a-partir-du-1er-juin-2026/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::FonctionPublique,
+        specificite: None,
+        objet: "Titulaires CNRACL : maladie 9,88 % (11,50 % avant 2018) au lieu de 13 % ; ATIACL 0,40 % au lieu de l'AT/MP ; FNAL, contribution solidarité autonomie 0,30 % et CNFPT (1 %, 0,9 % de 2016 à 2021, 0,95 % en 2022) ajoutés ; part agent CNRACL 9,54 % (2015) à 11,10 % (2020+), décalée d'un an auparavant",
+        taux: true,
+        sources: &[
+            "https://www.cdg44.fr/sites/default/files/content/Dossier%20RH/Cotisations%202026%20Agents%20CNRACL.pdf",
+            "https://www.ipp.eu/baremes-ipp/prelevements-sociaux/prelevements_sociaux.cotisations_secteur_public.cnracl/table",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Italia,
+        specificite: None,
+        objet: "IRPEF sur le revenu net des cotisations INPS ; détraction salarié 1 910 + 1 190 × (28 000 − R) / 13 000 + 65 € ; coin fiscal 2025-2026 par tranches (7,1 / 5,3 / 4,8 %, puis 1 000 € dégressif de 32 000 à 40 000 €) ; exonération de cotisations 2022-2024 aux seuils mensuels 1 923 / 2 692 € et par semestre ; prime 2024 inexistante supprimée",
+        taux: true,
+        sources: &[
+            "https://www.money.it/detrazioni-lavoro-dipendente-2026-calcolo",
+            "https://www.assolombarda.it/servizi/lavoro-e-previdenza/informazioni/decontribuzione-2024-per-i-lavoratori-dipendenti-indicazioni-inps",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Canada,
+        specificite: None,
+        objet: "2026 : AE 1,63 % / 2,282 %, MGA 74 600 $, MGAP2 85 000 $, MAGA 68 900 $ ; retenue d'impôt selon la T4127 (déduction du RPC supplémentaire, crédits RPC/AE et montant pour emploi, réduction de l'Ontario)",
+        taux: true,
+        sources: &[
+            "https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan/t4127-jan-payroll-deductions-formulas-computer-programs.html",
+            "https://www.canada.ca/en/employment-social-development/programs/ei/ei-list/ei-employers/premium-reduction-program/2026-maximum-insurable-earnings.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Quebec,
+        specificite: None,
+        objet: "2026 : RRQ 6,30 %, RQAP 0,430 % / 0,602 % (MRA 103 000 $), AE 1,30 % / 1,82 % ; historique RRQ 2016-2018, RQAP 2017-2020 et AE 2021, 2024 corrigé ; impôt du Québec après déduction pour travailleurs et RRQ supplémentaire, fédéral avec crédits RRQ/AE/RQAP",
+        taux: true,
+        sources: &[
+            "https://www.revenuquebec.ca/fr/entreprises/retenues-et-cotisations/calculer-les-retenues-a-la-source-et-vos-cotisations-demployeur/regime-de-rentes-du-quebec/maximum-du-salaire-admissible-et-taux-de-cotisation/",
+            "https://www.revenuquebec.ca/fr/entreprises/retenues-a-la-source-et-cotisations-de-lemployeur/calcul-des-retenues-et-des-cotisations/cotisations-au-rqap/maximum-de-revenus-assurables-et-taux-de-cotisation/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Allemagne,
+        specificite: None,
+        objet: "Lohnsteuer : part maladie de la Vorsorgepauschale au taux réduit du PAP (7,0 % + moitié du Zusatzbeitrag) et non au taux réel",
+        taux: false,
+        sources: &[
+            "https://www.bundesfinanzministerium.de/Content/DE/Downloads/Steuern/Steuerarten/Lohnsteuer/Programmablaufplan/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Portugal,
+        specificite: None,
+        objet: "Retenue IRS 2026 selon la table officielle I du Continent (Despacho n.º 233-A/2026) ; contributions FCT (0,925 %) et FGCT (0,075 %) arrêtées au 01/05/2023",
+        taux: true,
+        sources: &[
+            "https://www.doutorfinancas.pt/wp-content/uploads/2026/01/tabelas-retencao-trabalho-dependente.pdf",
+            "https://www.plmj.com/xms/files/03_Novidades_legislativas/2023/dezembro/FCT_e_FGCT.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Belgique,
+        specificite: None,
+        objet: "Précompte professionnel calculé sur la rémunération imposable (brut − ONSS 13,07 %) et non sur le brut ; frais forfaitaires 2025 plafonnés à 5 930 €",
+        taux: true,
+        sources: &[
+            "https://www.securex.be/getattachment/00e248e1-27eb-4cab-92ef-31d680e98826/Fiscoliste-janvier-2026.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Angleterre,
+        specificite: None,
+        objet: "National Insurance : seuils mensuels publiés par HMRC (1 048, 417, 4 189 £) au lieu de l'annuel ÷ 12",
+        taux: false,
+        sources: &[
+            "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Japon,
+        specificite: None,
+        objet: "Maladie, dépendance, soutien à l'enfance et pension sur la rémunération mensuelle standard (標準報酬月額, 50 et 32 paliers) et non sur le salaire réel ; part salariale arrondie à l'entier, 0,50 ¥ et moins tronqués",
+        taux: false,
+        sources: &[
+            "https://www.kyoukaikenpo.or.jp/g7/cat330/sb3150/r08/r8ryougakuhyou3gatukara/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
         pays: Pays::France,
         specificite: None,
         objet: "Taux corrigés après comparaison avec un bulletin réel : maladie patronale 13 % depuis 2018 (et non 13,13 % ; 12,80 / 12,84 / 12,89 % de 2015 à 2017) ; vieillesse déplafonnée patronale 2,02 % en 2025 et 2,11 % en 2026 (salariale 0,30 % en 2015, 0,35 % en 2016) ; allocations familiales 5,25 % (3,45 % n'était que le taux réduit) ; taux réduits maladie 7 % (≤ 2,5 SMIC de 2019 à 2024, ≤ 2,25 SMIC en 2025) et famille 3,45 % (≤ 1,6, 3,5 puis 3,3 SMIC), supprimés en 2026 ; chômage 4,00 % depuis le 01/05/2025 ; ligne AGS, en base mais jamais calculée, désormais sur le bulletin",

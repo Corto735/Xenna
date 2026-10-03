@@ -826,6 +826,53 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         // Correction du SMIC en cas d'absence — placeholders {ratio} {smic}
+        // Canada — T4127 : placeholders {f5} {k2} {k4}
+        "CA_T4127_NOTE" => match lang {
+            "en" => "\nT4127 formula: income reduced by the additional CPP contribution ({f5} CAD); \
+                credits for base CPP/EI contributions ({k2} CAD) and the Canada employment amount ({k4} CAD).",
+            "de" => "\nFormel T4127: Einkommen gemindert um den CPP-Zusatzbeitrag ({f5} CAD); \
+                Gutschriften für CPP/EI-Grundbeiträge ({k2} CAD) und Beschäftigungsbetrag ({k4} CAD).",
+            "nl" => "\nFormule T4127: inkomen verminderd met de aanvullende CPP-bijdrage ({f5} CAD); \
+                kredieten voor CPP/EI-basisbijdragen ({k2} CAD) en het arbeidsbedrag ({k4} CAD).",
+            "it" => "\nFormula T4127: reddito ridotto del contributo CPP supplementare ({f5} CAD); \
+                crediti per i contributi base CPP/EI ({k2} CAD) e importo per lavoro dipendente ({k4} CAD).",
+            "es" => "\nFórmula T4127: renta reducida en la cotización CPP adicional ({f5} CAD); \
+                créditos por cotizaciones base CPP/EI ({k2} CAD) e importe por empleo ({k4} CAD).",
+            _ => return None,
+        },
+        // Québec — TP-1015.F : placeholders {f5} {trav}
+        "QC_TP1015_NOTE" => match lang {
+            "en" => "\nIncome reduced by the additional QPP contribution ({f5} CAD) and the deduction \
+                for workers ({trav} CAD); no credit for base contributions (TP-1015.F).",
+            "de" => "\nEinkommen gemindert um den QPP-Zusatzbeitrag ({f5} CAD) und den Abzug für \
+                Erwerbstätige ({trav} CAD); keine Gutschrift für Grundbeiträge (TP-1015.F).",
+            "nl" => "\nInkomen verminderd met de aanvullende QPP-bijdrage ({f5} CAD) en de aftrek voor \
+                werknemers ({trav} CAD); geen krediet voor basisbijdragen (TP-1015.F).",
+            "it" => "\nReddito ridotto del contributo QPP supplementare ({f5} CAD) e della deduzione per \
+                lavoratori ({trav} CAD); nessun credito per i contributi base (TP-1015.F).",
+            "es" => "\nRenta reducida en la cotización QPP adicional ({f5} CAD) y la deducción para \
+                trabajadores ({trav} CAD); ningún crédito por cotizaciones base (TP-1015.F).",
+            _ => return None,
+        },
+        // Portugal — table de retenue 2026 : placeholders {brut} {taux} {parcela} {ret}
+        "PT_IRS_TABELA" => match lang {
+            "en" => "\nWithholding applied: official mainland table I (unmarried without dependants, \
+                Despacho n.º 233-A/2026): {brut} × {taux} % − {parcela} = {ret} €. The annualised \
+                calculation above is indicative.",
+            "de" => "\nAngewandter Abzug: amtliche Tabelle I des Festlands (unverheiratet ohne \
+                Unterhaltsberechtigte, Despacho n.º 233-A/2026): {brut} × {taux} % − {parcela} = \
+                {ret} €. Die obige Jahresberechnung ist nur ein Richtwert.",
+            "nl" => "\nToegepaste inhouding: officiële tabel I van het vasteland (ongehuwd zonder \
+                personen ten laste, Despacho n.º 233-A/2026): {brut} × {taux} % − {parcela} = \
+                {ret} €. De jaarberekening hierboven is indicatief.",
+            "it" => "\nRitenuta applicata: tabella ufficiale I del Continente (non coniugato senza \
+                persone a carico, Despacho n.º 233-A/2026): {brut} × {taux} % − {parcela} = \
+                {ret} €. Il calcolo annualizzato qui sopra è indicativo.",
+            "es" => "\nRetención aplicada: tabla oficial I del Continente (no casado sin personas a \
+                cargo, Despacho n.º 233-A/2026): {brut} × {taux} % − {parcela} = {ret} €. El \
+                cálculo anualizado anterior es indicativo.",
+            _ => return None,
+        },
         "REDUCTION_FILLON_ABSENCE" => match lang {
             "en" => "\n⚠ Absence: SMIC corrected pro rata to pay (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
             "de" => "\n⚠ Abwesenheit: SMIC anteilig zum Entgelt korrigiert (× {ratio}) → {smic} € (CSS Art. D241-7 IV)",

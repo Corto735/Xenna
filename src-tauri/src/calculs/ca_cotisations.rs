@@ -20,7 +20,7 @@ pub fn mga_mensuel(ctx: &ContextPaie) -> Decimal {
         2023            => dec!(5550.00),  // 66 600
         2024            => dec!(5708.33),  // 68 500
         2025            => dec!(5941.67),  // 71 300
-        _               => dec!(6133.33),  // 2026+ estimation
+        _               => dec!(6216.67),  // 74 600 / 12 (2026)
     }
 }
 
@@ -29,7 +29,7 @@ pub fn mgap2_mensuel(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
         2024 => dec!(6100.00),  // 73 200 / 12
         2025 => dec!(6825.00),  // 81 900 / 12
-        _    => dec!(7033.33),  // 2026+ estimation
+        _    => dec!(7083.33),  // 85 000 / 12 (2026)
     }
 }
 
@@ -47,7 +47,7 @@ pub fn maga_mensuel(ctx: &ContextPaie) -> Decimal {
         2023            => dec!(5125.00),  // 61 500
         2024            => dec!(5266.67),  // 63 200
         2025            => dec!(5475.00),  // 65 700
-        _               => dec!(5691.67),  // 2026+ estimation
+        _               => dec!(5741.67),  // 68 900 / 12 (2026)
     }
 }
 

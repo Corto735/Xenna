@@ -205,6 +205,40 @@ fn tranches(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) -> Decimal {
     impot
 }
 
+// ── Tables officielles de retenue (depuis 2026) ──────────────────────────────
+//
+// Table I du Continent, travail salarié, non marié sans personne à charge (ou
+// marié deux titulaires) — Despacho n.º 233-A/2026. Retenue = R × taux −
+// parcela a abater ; pour les deux premières tranches, la parcela vaut
+// taux × k × (C − R). Renvoie (taux, parcela) pour la rémunération mensuelle R.
+fn tabela_i_2026(r: Decimal) -> (Decimal, Decimal) {
+    let lignes: [(Decimal, Decimal, Decimal); 11] = [
+        (dec!(1154),  dec!(0.157),  dec!(94.71)),
+        (dec!(1212),  dec!(0.212),  dec!(158.18)),
+        (dec!(1819),  dec!(0.241),  dec!(193.33)),
+        (dec!(2119),  dec!(0.311),  dec!(320.66)),
+        (dec!(2499),  dec!(0.349),  dec!(401.19)),
+        (dec!(3305),  dec!(0.3836), dec!(487.66)),
+        (dec!(5547),  dec!(0.3969), dec!(531.62)),
+        (dec!(20221), dec!(0.4495), dec!(823.40)),
+        (Decimal::MAX, dec!(0.4717), dec!(1272.31)),
+        (Decimal::ZERO, Decimal::ZERO, Decimal::ZERO),
+        (Decimal::ZERO, Decimal::ZERO, Decimal::ZERO),
+    ];
+    if r <= dec!(920) {
+        return (Decimal::ZERO, Decimal::ZERO);
+    }
+    if r <= dec!(1042) {
+        return (dec!(0.125), dec!(0.125) * dec!(2.60) * (dec!(1273.85) - r));
+    }
+    if r <= dec!(1108) {
+        return (dec!(0.157), dec!(0.157) * dec!(1.35) * (dec!(1554.83) - r));
+    }
+    let (_, taux, parcela) = lignes.iter().find(|(plafond, _, _)| r <= *plafond).copied()
+        .unwrap_or((Decimal::MAX, dec!(0.4717), dec!(1272.31)));
+    (taux, parcela)
+}
+
 // ── Retenção na fonte mensuelle ───────────────────────────────────────────────
 
 pub fn irs_retencao(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
@@ -218,7 +252,14 @@ pub fn irs_retencao(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 
     let base_irs      = (rendimento_a - deducao).max(Decimal::ZERO);
     let irs_anual     = irs_annuel(base_irs, annee);
-    let irs_mensal    = (irs_anual / dec!(12)).round_dp(2);
+    let irs_estime    = (irs_anual / dec!(12)).round_dp(2);
+    // Depuis 2026, la retenue suit la table officielle ; le calcul annualisé
+    // reste affiché à titre indicatif.
+    let tabela = (annee >= 2026).then(|| tabela_i_2026(brut));
+    let irs_mensal = match tabela {
+        Some((taux, parcela)) => (brut * taux - parcela).max(Decimal::ZERO).round_dp(2),
+        None => irs_estime,
+    };
 
     let taux_eff = if brut > Decimal::ZERO {
         (irs_mensal / brut).round_dp(4)
@@ -263,7 +304,18 @@ pub fn irs_retencao(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Note : le calcul par barème annualisé est une approximation. \
             Les tables officielles AT (tabelas de retenção na fonte) sont publiées \
             annuellement et tiennent compte de la situation familiale. \
-            Base légale : CIRS art. 99 + Tables AT {annee}.")
+            Base légale : CIRS art. 99 + Tables AT {annee}.{tabela}")
+            .replace("{tabela}", &match tabela {
+                Some((taux, parcela)) => ctx.expl("PT_IRS_TABELA",
+                    "\nRetenue appliquée : table officielle I du Continent (non marié sans \
+                    personne à charge, Despacho n.º 233-A/2026) : {brut} × {taux} % − {parcela} = \
+                    {ret} €. Le calcul annualisé ci-dessus est indicatif.")
+                    .replace("{brut}", &format!("{:.2}", brut))
+                    .replace("{taux}", &format!("{:.2}", taux * dec!(100)))
+                    .replace("{parcela}", &format!("{:.2}", parcela))
+                    .replace("{ret}", &format!("{:.2}", irs_mensal)),
+                None => String::new(),
+            })
             .replace("{annee}", &annee.to_string())
             .replace("{nb_tr}", &nb_tranches.to_string())
             .replace("{brut}", &format!("{:.2}", brut))
@@ -273,7 +325,7 @@ pub fn irs_retencao(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             .replace("{df}", &format!("{:.2}", deducao_min))
             .replace("{base_irs}", &format!("{:.2}", base_irs))
             .replace("{irs_a}", &format!("{:.2}", irs_anual))
-            .replace("{irs_m}", &format!("{:.2}", irs_mensal))
+            .replace("{irs_m}", &format!("{:.2}", irs_estime))
             .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
         loi_ref: Some(ctx.loi_ref("CIRS art. 68 (barème) + art. 99 (retenção) — Lei OE {annee}")
                         .replace("{annee}", &annee.to_string())),

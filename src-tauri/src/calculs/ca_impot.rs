@@ -4,6 +4,97 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
+// ── Cotisations du mois et paramètres T4127 ─────────────────────────────────
+//
+// La retenue d'impôt suit l'ARC, T4127 « Formules pour le calcul des retenues
+// sur la paie » (122ᵉ édition, 01/01/2026), en version annualisée :
+//   A  = 12 × brut − F5, F5 = partie bonifiée du RPC/RRQ (taux supplémentaire
+//        ÷ taux total des cotisations) + RPC2/RRQ2 ;
+//   K2 = taux minimal × (part de base du RPC/RRQ + AE [+ RQAP au Québec]) ;
+//   K4 = taux minimal × min(A, montant canadien pour emploi) — fédéral seul.
+// Au Québec, l'impôt provincial (TP-1015.F) n'accorde aucun crédit pour ces
+// cotisations : seuls la partie supplémentaire du RRQ et la déduction pour
+// travailleurs réduisent le revenu.
+
+/// Cotisations salariales MENSUELLES du bulletin, qui entrent dans la retenue.
+#[derive(Clone, Copy, Default)]
+pub struct RetenuesCa {
+    /// RPC ou RRQ (taux total, base + supplémentaire).
+    pub rpc: Decimal,
+    /// Taux salarial RPC/RRQ appliqué (pour isoler la part supplémentaire).
+    pub taux_rpc: Decimal,
+    /// RPC2 ou RRQ2.
+    pub rpc2: Decimal,
+    /// Assurance-emploi.
+    pub ae: Decimal,
+    /// RQAP (Québec seulement).
+    pub rqap: Decimal,
+}
+
+/// Taux de la cotisation supplémentaire (bonification) RPC/RRQ, par année.
+fn taux_bonifie(annee: i32) -> Decimal {
+    match annee {
+        i32::MIN..=2018 => Decimal::ZERO,
+        2019 => dec!(0.0015),
+        2020 => dec!(0.003),
+        2021 => dec!(0.005),
+        2022 => dec!(0.0075),
+        _    => dec!(0.01),
+    }
+}
+
+impl RetenuesCa {
+    /// F5 annuel : part supplémentaire du RPC/RRQ + RPC2/RRQ2, déduits du revenu.
+    fn f5(&self, annee: i32) -> Decimal {
+        let part_sup = if self.taux_rpc > Decimal::ZERO {
+            self.rpc * taux_bonifie(annee) / self.taux_rpc
+        } else {
+            Decimal::ZERO
+        };
+        ((part_sup + self.rpc2) * dec!(12)).round_dp(2)
+    }
+
+    /// Cotisations ouvrant droit au crédit K2 (annuel) : part de base du
+    /// RPC/RRQ, AE et, pour l'impôt fédéral d'un Québécois, RQAP.
+    fn base_k2(&self, annee: i32, avec_rqap: bool) -> Decimal {
+        let part_base = if self.taux_rpc > Decimal::ZERO {
+            self.rpc * (self.taux_rpc - taux_bonifie(annee)) / self.taux_rpc
+        } else {
+            Decimal::ZERO
+        };
+        let rqap = if avec_rqap { self.rqap } else { Decimal::ZERO };
+        ((part_base + self.ae + rqap) * dec!(12)).round_dp(2)
+    }
+}
+
+/// Montant canadien pour emploi (crédit K4), par année.
+fn montant_emploi(annee: i32) -> Decimal {
+    match annee {
+        i32::MIN..=2015 => dec!(1146),
+        2016 => dec!(1161),
+        2017 => dec!(1178),
+        2018 => dec!(1195),
+        2019 => dec!(1222),
+        2020 => dec!(1245),
+        2021 => dec!(1257),
+        2022 => dec!(1287),
+        2023 => dec!(1368),
+        2024 => dec!(1433),
+        2025 => dec!(1471),
+        _    => dec!(1501),
+    }
+}
+
+/// Note commune aux explications : déduction F5 et crédits K2/K4 du calcul.
+fn note_t4127(ctx: &ContextPaie, f5: Decimal, k2: Decimal, k4: Decimal) -> String {
+    ctx.expl("CA_T4127_NOTE",
+        "\nFormule T4127 : revenu diminué de la cotisation RPC supplémentaire ({f5} CAD) ; \
+        crédits pour cotisations de base RPC/AE ({k2} CAD) et montant pour emploi ({k4} CAD).")
+        .replace("{f5}", &format!("{:.2}", f5))
+        .replace("{k2}", &format!("{:.2}", k2))
+        .replace("{k4}", &format!("{:.2}", k4))
+}
+
 // ── Impôt fédéral ─────────────────────────────────────────────────────────────
 
 fn impot_fed_annuel(revenu: Decimal, annee: i32) -> Decimal {
@@ -81,23 +172,26 @@ fn bpa_credit_fed(annee: i32) -> Decimal {
     (bpa * taux_base_fed(annee)).round_dp(2)
 }
 
-pub fn ca_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    impot_federal(brut, ctx, false)
+pub fn ca_impot_federal(brut: Decimal, r: &RetenuesCa, ctx: &ContextPaie) -> LigneCotisation {
+    impot_federal(brut, r, ctx, false)
 }
 
 /// Impôt fédéral d'un résident du Québec : l'impôt fédéral de base est réduit de
 /// l'abattement du Québec remboursable de 16,5 % (Loi de l'impôt sur le revenu,
 /// art. 120(2) ; Loi sur les arrangements fiscaux, art. 27).
-pub fn ca_impot_federal_qc(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    impot_federal(brut, ctx, true)
+pub fn ca_impot_federal_qc(brut: Decimal, r: &RetenuesCa, ctx: &ContextPaie) -> LigneCotisation {
+    impot_federal(brut, r, ctx, true)
 }
 
-fn impot_federal(brut: Decimal, ctx: &ContextPaie, quebec: bool) -> LigneCotisation {
+fn impot_federal(brut: Decimal, r: &RetenuesCa, ctx: &ContextPaie, quebec: bool) -> LigneCotisation {
     let annee        = ctx.date_paie.year();
-    let revenu_ann   = brut * dec!(12);
+    let f5           = r.f5(annee);
+    let revenu_ann   = brut * dec!(12) - f5;
     let impot_brut   = impot_fed_annuel(revenu_ann, annee);
     let credit_bpa   = bpa_credit_fed(annee);
-    let impot_base   = (impot_brut - credit_bpa).max(Decimal::ZERO);
+    let k2           = (taux_base_fed(annee) * r.base_k2(annee, quebec)).round_dp(2);
+    let k4           = (taux_base_fed(annee) * revenu_ann.min(montant_emploi(annee))).round_dp(2);
+    let impot_base   = (impot_brut - credit_bpa - k2 - k4).max(Decimal::ZERO);
     let abattement   = if quebec { (impot_base * dec!(0.165)).round_dp(2) } else { Decimal::ZERO };
     let impot_net    = impot_base - abattement;
     let impot_mens   = (impot_net / dec!(12)).round_dp(2);
@@ -129,7 +223,7 @@ fn impot_federal(brut: Decimal, ctx: &ContextPaie, quebec: bool) -> LigneCotisat
             Barème {an} : {t1}/20,5/26/29/33 %. \
             Le Montant personnel de base ({mpb} CAD) génère un crédit de {t1} % = {cred} CAD/an. \
             Résident du Québec : impôt fédéral réduit de l'abattement de 16,5 %. \
-            Régularisation en décembre ou déclaration T1 annuelle.")
+            Régularisation en décembre ou déclaration T1 annuelle.{t4127}")
             .replace("{an}", &annee.to_string())
             .replace("{rev}", &format!("{:.2}", revenu_ann))
             .replace("{ib}", &format!("{:.2}", impot_brut))
@@ -143,7 +237,8 @@ fn impot_federal(brut: Decimal, ctx: &ContextPaie, quebec: bool) -> LigneCotisat
                 i32::MIN..=2019 => "12 069", 2020 => "13 229", 2021 => "13 808",
                 2022 => "14 398", 2023 => "15 000", 2024 => "15 705", 2025 => "16 129",
                 _ => "16 452"
-            }),
+            })
+            .replace("{t4127}", &note_t4127(ctx, f5, k2, k4)),
         loi_ref: Some(ctx.loi_ref("L.R.C. 1985, ch. 1 (5e suppl.), art. 117-117.1 — Formulaire TD1")),
     }
 }
@@ -189,16 +284,30 @@ fn contribution_sante_on(revenu: Decimal) -> Decimal {
     else { (dec!(750) + (r - dec!(200000)) * dec!(0.25)).min(dec!(900)) }
 }
 
-pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+/// Réduction d'impôt de l'Ontario (T4127, facteur S, sans personne à charge) :
+/// min(T4 + V1, 2 × montant de base − (T4 + V1)), nulle si négative.
+fn reduction_on(impot_et_surtaxe: Decimal, annee: i32) -> Decimal {
+    let base = match annee {
+        i32::MIN..=2024 => return Decimal::ZERO,
+        2025            => dec!(294),
+        _               => dec!(300),
+    };
+    impot_et_surtaxe.min(dec!(2) * base - impot_et_surtaxe).max(Decimal::ZERO)
+}
+
+pub fn ca_impot_ontario(brut: Decimal, r: &RetenuesCa, ctx: &ContextPaie) -> LigneCotisation {
     let annee      = ctx.date_paie.year();
-    let revenu_ann = brut * dec!(12);
+    let f5         = r.f5(annee);
+    let revenu_ann = brut * dec!(12) - f5;
     let (_, mpb)   = bareme_on(annee);
     let impot_brut = impot_on_annuel(revenu_ann, annee);
-    let credit_bpa = (mpb * dec!(0.0505)).round_dp(2);
+    let k2p        = (dec!(0.0505) * r.base_k2(annee, false)).round_dp(2);
+    let credit_bpa = (mpb * dec!(0.0505)).round_dp(2) + k2p;
     let impot_base = (impot_brut - credit_bpa).max(Decimal::ZERO);
     let surtaxe    = surtaxe_on(impot_base, annee).round_dp(2);
+    let reduction  = reduction_on(impot_base + surtaxe, annee).round_dp(2);
     let sante      = contribution_sante_on(revenu_ann).round_dp(2);
-    let impot_net  = impot_base + surtaxe + sante;
+    let impot_net  = impot_base + surtaxe - reduction + sante;
     let impot_mens = (impot_net / dec!(12)).round_dp(2);
     let taux_eff   = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
 
@@ -228,7 +337,8 @@ pub fn ca_impot_ontario(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             \n\
             Note : non applicable au Québec (province ayant son propre impôt séparé). \
             Les autres provinces (CB, AB, QC excl.) ont leurs propres barèmes — \
-            utiliser Ontario comme approximation générale.")
+            utiliser Ontario comme approximation générale.{t4127}")
+            .replace("{t4127}", &note_t4127(ctx, f5, k2p, Decimal::ZERO))
             .replace("{an}", &annee.to_string())
             .replace("{mpb}", &mpb.to_string())
             .replace("{cred}", &format!("{:.2}", credit_bpa))
@@ -278,9 +388,24 @@ fn bpa_credit_qc(annee: i32) -> Decimal {
     (bpa_qc(annee) * dec!(0.14)).round_dp(2)
 }
 
-pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+/// Déduction pour travailleurs (Québec) : 6 % du revenu de travail, plafonnée.
+/// Plafonds relevés depuis 2024 seulement (CFFP, Université de Sherbrooke) :
+/// avant, aucune déduction n'est appliquée.
+fn deduction_travailleurs(revenu_travail: Decimal, annee: i32) -> Decimal {
+    let plafond = match annee {
+        i32::MIN..=2023 => return Decimal::ZERO,
+        2024 => dec!(1380),
+        2025 => dec!(1420),
+        _    => dec!(1450),
+    };
+    (revenu_travail * dec!(0.06)).min(plafond).round_dp(2)
+}
+
+pub fn qc_impot_provincial(brut: Decimal, r: &RetenuesCa, ctx: &ContextPaie) -> LigneCotisation {
     let annee      = ctx.date_paie.year();
-    let revenu_ann = brut * dec!(12);
+    let f5         = r.f5(annee);
+    let travail    = deduction_travailleurs(brut * dec!(12), annee);
+    let revenu_ann = brut * dec!(12) - f5 - travail;
     let impot_brut = impot_qc_annuel(revenu_ann, annee);
     let credit_bpa = bpa_credit_qc(annee);
     let impot_net  = (impot_brut - credit_bpa).max(Decimal::ZERO);
@@ -313,7 +438,12 @@ pub fn qc_impot_provincial(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation 
             Taux effectif           : {teff} %\n\
             \n\
             L'employeur produit le relevé 1 (RL-1) au lieu du T4. \
-            Le salarié québécois produit deux déclarations : T1 (fédéral) + TP-1 (provincial).")
+            Le salarié québécois produit deux déclarations : T1 (fédéral) + TP-1 (provincial).{tp1015}")
+            .replace("{tp1015}", &ctx.expl("QC_TP1015_NOTE",
+                "\nRevenu diminué de la cotisation RRQ supplémentaire ({f5} CAD) et de la déduction \
+                pour travailleurs ({trav} CAD) ; aucun crédit pour les cotisations de base (TP-1015.F).")
+                .replace("{f5}", &format!("{:.2}", f5))
+                .replace("{trav}", &format!("{:.2}", travail)))
             .replace("{an}", &annee.to_string())
             .replace("{mpb}", &bpa_qc(annee).to_string())
             .replace("{cred}", &format!("{:.2}", credit_bpa))
@@ -400,13 +530,14 @@ fn desc_bareme(taux: &[Decimal], bpa: Decimal) -> String {
     format!("{} %. MPB {} CAD.", t.join("/"), bpa.round_dp(0))
 }
 
-pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> LigneCotisation {
+pub fn ca_impot_provincial(brut: Decimal, province: &str, r: &RetenuesCa, ctx: &ContextPaie) -> LigneCotisation {
     if province == "ON" {
-        return ca_impot_ontario(brut, ctx);
+        return ca_impot_ontario(brut, r, ctx);
     }
 
     let annee      = ctx.date_paie.year();
-    let revenu_ann = brut * dec!(12);
+    let f5         = r.f5(annee);
+    let revenu_ann = brut * dec!(12) - f5;
 
     let (nom, loi) = match province {
         "AB" => ("Alberta", "Alberta Personal Income Tax Act, SA 1999 c A-33.5"),
@@ -420,7 +551,7 @@ pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> 
         "PE" => ("Île-du-Prince-Édouard", "Income Tax Act (P.E.I.), RSPEI 1988 c I-1"),
         "SK" => ("Saskatchewan", "The Income Tax Act, 2000 (Saskatchewan), SS 2000 c I-2.01"),
         "YT" => ("Yukon", "Income Tax Act (Yukon), RSY 2002 c 118"),
-        _ => return ca_impot_ontario(brut, ctx),  // fallback Ontario
+        _ => return ca_impot_ontario(brut, r, ctx),  // fallback Ontario
     };
     let (entrees, taux_txt, bpa) = bareme_prov(province, annee).expect("province couverte");
     // Seuils d'entrée → bornes hautes (dernière tranche ouverte).
@@ -429,7 +560,8 @@ pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> 
     let taux: Vec<Decimal> = taux_txt.iter().map(|t| t.parse().expect("taux")).collect();
     let bpa = Decimal::from(bpa);
     let impot_brut = impot_prov_brackets(revenu_ann, &seuils, &taux);
-    let bpa_credit = (bpa * taux[0]).round_dp(2);
+    let k2p = (taux[0] * r.base_k2(annee, false)).round_dp(2);
+    let bpa_credit = (bpa * taux[0]).round_dp(2) + k2p;
     let tranches_desc_s = desc_bareme(&taux, bpa);
     let tranches_desc = tranches_desc_s.as_str();
 
@@ -456,7 +588,8 @@ pub fn ca_impot_provincial(brut: Decimal, province: &str, ctx: &ContextPaie) -> 
             \n\
             Retenu conjointement avec l'impôt fédéral par l'employeur (sostituto d'imposta). \
             Régularisation via déclaration T1 annuelle (ARC) et, si applicable, \
-            déclaration provinciale complémentaire.")
+            déclaration provinciale complémentaire.{t4127}")
+            .replace("{t4127}", &note_t4127(ctx, f5, k2p, Decimal::ZERO))
             .replace("{nom}", nom)
             .replace("{annee}", &annee.to_string())
             .replace("{tranches_desc}", tranches_desc)

@@ -25,8 +25,17 @@ pub fn generer_bulletin_qc(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     cotisations.push(qc_cnt(brut, ctx));
 
     // ── Impôts à la source ───────────────────────────────────
-    cotisations.push(ca_impot_federal_qc(brut, ctx));
-    cotisations.push(qc_impot_provincial(brut, ctx));
+    let sal = |code: &str| cotisations.iter().find(|c| c.code == code)
+        .map(|c| c.montant_sal).unwrap_or(Decimal::ZERO);
+    let r = RetenuesCa {
+        rpc: sal("QC_RRQ"),
+        taux_rpc: ctx.taux_sal("QC_RRQ"),
+        rpc2: sal("QC_RRQ2"),
+        ae: sal("QC_AE"),
+        rqap: sal("QC_RQAP"),
+    };
+    cotisations.push(ca_impot_federal_qc(brut, &r, ctx));
+    cotisations.push(qc_impot_provincial(brut, &r, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();

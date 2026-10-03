@@ -158,9 +158,8 @@ fn an_pauschbetrag(annee: i32) -> Decimal {
     }
 }
 
-/// Vorsorgepauschale annuelle, simplifiée : part retraite (100 % dès 2023, 88 % en
-/// 2022…), puis maladie + dépendance au taux réel du salarié (le PAP retient le taux
-/// réduit, sans indemnités journalières — écart d'environ 4 %). Jusqu'en 2025,
+/// Vorsorgepauschale annuelle : part retraite (100 % dès 2023, 88 % en 2022…), puis
+/// maladie (au taux réduit du PAP, voir de_bulletin.rs) + dépendance. Jusqu'en 2025,
 /// plancher de 12 % du salaire plafonné à 1 900 € (3 000 € en classe III) ; dès 2026,
 /// plancher supprimé et part chômage ajoutée tant que maladie + dépendance +
 /// chômage ne dépassent pas 1 900 €.

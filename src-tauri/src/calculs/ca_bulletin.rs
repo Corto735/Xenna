@@ -19,8 +19,9 @@ pub fn generer_bulletin_ca(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
 
     // ── Impôts à la source ───────────────────────────────────
     let province = salarie.province.as_deref().unwrap_or("ON");
-    cotisations.push(ca_impot_federal(brut, ctx));
-    cotisations.push(ca_impot_provincial(brut, province, ctx));
+    let r = retenues(&cotisations, ctx);
+    cotisations.push(ca_impot_federal(brut, &r, ctx));
+    cotisations.push(ca_impot_provincial(brut, province, &r, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
@@ -36,5 +37,18 @@ pub fn generer_bulletin_ca(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         absence: None,
         heures_sup: None, conges: None, frais_professionnels: Vec::new(), avantages_nature: Vec::new(),
         salarie,
+    }
+}
+
+/// Cotisations salariales du mois qui entrent dans la retenue d'impôt (T4127).
+fn retenues(cotisations: &[crate::models::LigneCotisation], ctx: &ContextPaie) -> RetenuesCa {
+    let sal = |code: &str| cotisations.iter().find(|c| c.code == code)
+        .map(|c| c.montant_sal).unwrap_or(Decimal::ZERO);
+    RetenuesCa {
+        rpc: sal("CA_RPC"),
+        taux_rpc: ctx.taux_sal("CA_RPC"),
+        rpc2: sal("CA_RPC2"),
+        ae: sal("CA_AE"),
+        rqap: Decimal::ZERO,
     }
 }

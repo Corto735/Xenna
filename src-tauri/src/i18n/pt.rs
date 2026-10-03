@@ -129,7 +129,7 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
                 (× 12)\nSpecific deduction: − {ded} € (max(SS {ss} €, flat {df} €))\nAnnual taxable \
                 base: {base_irs} €\nAnnual IRS: {irs_a} €\nMonthly withholding: {irs_m} € (÷ 12)\n\
                 Effective rate: {teff} %\nApproximation by annualised scale; official AT tables \
-                apply. Legal basis: CIRS art. 99 + AT tables {annee}.",
+                apply. Legal basis: CIRS art. 99 + AT tables {annee}.{tabela}",
             "de" => "Monatlicher Quellensteuerabzug (retenção na fonte) der IRS (Einkommensteuer). \
                 Der Arbeitgeber (substituto tributário) behält einen Vorschuss auf die Jahres-IRS \
                 ein, abgerechnet über die Erklärung Modelo 3 (April).\n[ Berechnung {annee} — Tarif \
@@ -137,7 +137,7 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
                 {rend_a} € (× 12)\nSpezifischer Abzug: − {ded} € (max(SS {ss} €, Pauschale {df} €))\n\
                 Jährliche Bemessungsgrundlage: {base_irs} €\nJahres-IRS: {irs_a} €\nMonatlicher \
                 Abzug: {irs_m} € (÷ 12)\nEffektivsatz: {teff} %\nNäherung über Jahrestarif; offizielle \
-                AT-Tabellen gelten. Rechtsgrundlage: CIRS art. 99 + AT-Tabellen {annee}.",
+                AT-Tabellen gelten. Rechtsgrundlage: CIRS art. 99 + AT-Tabellen {annee}.{tabela}",
             "nl" => "Maandelijkse bronheffing (retenção na fonte) van de IRS (inkomstenbelasting). \
                 De werkgever (substituto tributário) houdt een voorschot op de jaarlijkse IRS in, \
                 verrekend via de aangifte Modelo 3 (april).\n[ Berekening {annee} — schaal CIRS art. \
@@ -145,7 +145,7 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
                 (× 12)\nSpecifieke aftrek: − {ded} € (max(SS {ss} €, forfait {df} €))\nJaarlijkse \
                 belastbare basis: {base_irs} €\nJaarlijkse IRS: {irs_a} €\nMaandelijkse inhouding: \
                 {irs_m} € (÷ 12)\nEffectief tarief: {teff} %\nBenadering via jaartarief; officiële \
-                AT-tabellen gelden. Rechtsgrond: CIRS art. 99 + AT-tabellen {annee}.",
+                AT-tabellen gelden. Rechtsgrond: CIRS art. 99 + AT-tabellen {annee}.{tabela}",
             "it" => "Ritenuta mensile alla fonte (retenção na fonte) dell'IRS (imposta sul \
                 reddito). Il datore (substituto tributário) trattiene un anticipo sull'IRS annua, \
                 conguagliato con la dichiarazione Modelo 3 (aprile).\n[ Calcolo {annee} — scala CIRS \
@@ -153,7 +153,7 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
                 {rend_a} € (× 12)\nDeduzione specifica: − {ded} € (max(SS {ss} €, forfait {df} €))\n\
                 Base imponibile annua: {base_irs} €\nIRS annua: {irs_a} €\nRitenuta mensile: \
                 {irs_m} € (÷ 12)\nAliquota effettiva: {teff} %\nApprossimazione su scala annualizzata; \
-                valgono le tabelle ufficiali AT. Base legale: CIRS art. 99 + tabelle AT {annee}.",
+                valgono le tabelle ufficiali AT. Base legale: CIRS art. 99 + tabelle AT {annee}.{tabela}",
             "es" => "Retención mensual en origen (retenção na fonte) del IRS (impuesto sobre la \
                 renta). El empleador (substituto tributário) retiene un anticipo del IRS anual, \
                 regularizado con la declaración Modelo 3 (abril).\n[ Cálculo {annee} — escala CIRS \
@@ -161,7 +161,7 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
                 (× 12)\nDeducción específica: − {ded} € (máx(SS {ss} €, fijo {df} €))\nBase imponible \
                 anual: {base_irs} €\nIRS anual: {irs_a} €\nRetención mensual: {irs_m} € (÷ 12)\nTipo \
                 efectivo: {teff} %\nAproximación por escala anualizada; rigen las tablas oficiales \
-                AT. Base legal: CIRS art. 99 + tablas AT {annee}.",
+                AT. Base legal: CIRS art. 99 + tablas AT {annee}.{tabela}",
             _ => return None,
         },
         _ => return None,

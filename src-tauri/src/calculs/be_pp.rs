@@ -31,7 +31,7 @@ fn forfait_fp(brut_annuel: Decimal, annee: i32) -> Decimal {
         2021             => dec!(5500),
         2022             => dec!(5750),
         2023 | 2024      => dec!(5940),
-        2025             => dec!(6010),
+        2025             => dec!(5930),
         _                => dec!(6070), // 2026
     };
     (brut_annuel * dec!(0.30)).min(cap)
@@ -113,7 +113,10 @@ fn facteur_regional(region: &str, annee: i32) -> Decimal {
 
 pub fn precompte_professionnel(brut: Decimal, region: &str, ctx: &ContextPaie) -> LigneCotisation {
     let annee      = ctx.date_paie.year();
-    let brut_a     = brut * dec!(12);
+    // Rémunération imposable = brut − cotisation ONSS personnelle (formule-clé,
+    // annexe III AR/CIR 92), annualisée.
+    let onss_sal   = (brut * ctx.taux_sal("BE_ONSS_SAL")).round_dp(2);
+    let brut_a     = (brut - onss_sal) * dec!(12);
     let fp         = forfait_fp(brut_a, annee);
     let revenu_net = (brut_a - fp).max(Decimal::ZERO);
     let exo        = exoneration(annee);
@@ -151,7 +154,7 @@ pub fn precompte_professionnel(brut: Decimal, region: &str, ctx: &ContextPaie) -
             Régularisation lors de la déclaration IPP annuelle.\n\n\
             [ Calcul {annee} — région : {rl} ]\n\
             Salaire brut mensuel          : {brut} €\n\
-            Revenu annuel estimé          : {brut_a} € (× 12)\n\
+            Rémunération imposable       : {brut_a} € ((brut − ONSS) × 12)\n\
             Forfait frais pro (30 %,  cap): − {fp} €\n\
             Revenu net imposable estimé   : {rn} €\n\
             IPP brute annuelle            : {ipp} €\n\

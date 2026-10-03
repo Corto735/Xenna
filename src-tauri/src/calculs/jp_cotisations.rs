@@ -24,12 +24,72 @@ fn plafond_kosei(annee: i32) -> Decimal {
     }
 }
 
+// ── 標準報酬月額 — rémunération mensuelle standard ──────────────────────────────
+//
+// Maladie, dépendance, soutien à l'enfance et pension ne se calculent pas sur le
+// salaire réel mais sur la rémunération mensuelle standard du palier où il
+// tombe (健康保険法 art. 40 ; 厚生年金保険法 art. 20). Pension : 32 paliers de
+// 88 000 à 650 000 ¥ ; maladie : 50 paliers de 58 000 à 1 390 000 ¥ (les
+// paliers 4 à 35 de la maladie coïncident avec ceux de la pension).
+// (borne haute exclue du palier, rémunération standard)
+const PALIERS_KOSEI: [(u32, u32); 31] = [
+    (93_000, 88_000), (101_000, 98_000), (107_000, 104_000), (114_000, 110_000),
+    (122_000, 118_000), (130_000, 126_000), (138_000, 134_000), (146_000, 142_000),
+    (155_000, 150_000), (165_000, 160_000), (175_000, 170_000), (185_000, 180_000),
+    (195_000, 190_000), (210_000, 200_000), (230_000, 220_000), (250_000, 240_000),
+    (270_000, 260_000), (290_000, 280_000), (310_000, 300_000), (330_000, 320_000),
+    (350_000, 340_000), (370_000, 360_000), (395_000, 380_000), (425_000, 410_000),
+    (455_000, 440_000), (485_000, 470_000), (515_000, 500_000), (545_000, 530_000),
+    (575_000, 560_000), (605_000, 590_000), (635_000, 620_000),
+];
+const PALIERS_KENPO_HAUTS: [(u32, u32); 15] = [
+    (665_000, 650_000), (695_000, 680_000), (730_000, 710_000), (770_000, 750_000),
+    (810_000, 790_000), (855_000, 830_000), (905_000, 880_000), (955_000, 930_000),
+    (1_005_000, 980_000), (1_055_000, 1_030_000), (1_115_000, 1_090_000),
+    (1_175_000, 1_150_000), (1_235_000, 1_210_000), (1_295_000, 1_270_000),
+    (1_355_000, 1_330_000),
+];
+
+fn palier(brut: Decimal, paliers: &[(u32, u32)], dernier: u32) -> Decimal {
+    paliers.iter()
+        .find(|(borne, _)| brut < Decimal::from(*borne))
+        .map(|(_, std)| Decimal::from(*std))
+        .unwrap_or(Decimal::from(dernier))
+}
+
+/// Seuil d'affiliation du salarié à temps partiel : 88 000 ¥ par mois
+/// (被用者保険の適用要件). En deçà, Xenna ne retient aucune cotisation maladie
+/// ni pension — sans quoi le palier minimal dépasserait le salaire.
+const SEUIL_AFFILIATION: Decimal = dec!(88000);
+
+/// Rémunération standard de la pension (厚生年金), nulle sous le seuil.
+fn hyojun_kosei(brut: Decimal) -> Decimal {
+    if brut < SEUIL_AFFILIATION { return Decimal::ZERO; }
+    palier(brut, &PALIERS_KOSEI, 650_000)
+}
+
+/// Rémunération standard de la maladie (健康保険), aussi base de la dépendance
+/// et du soutien à l'enfance ; nulle sous le seuil d'affiliation (les paliers
+/// 1 à 3, de 58 000 à 78 000 ¥, ne servent donc pas).
+fn hyojun_kenpo(brut: Decimal) -> Decimal {
+    if brut < SEUIL_AFFILIATION { return Decimal::ZERO; }
+    if brut < dec!(93000) { return dec!(88000); }
+    if brut < dec!(635000) { return hyojun_kosei(brut); }
+    palier(brut, &PALIERS_KENPO_HAUTS, 1_390_000)
+}
+
+/// Part retenue sur le salaire : arrondi à l'entier, 0,50 ¥ et moins tronqués
+/// (通知 : 50銭以下切り捨て、50銭超切り上げ).
+fn arrondi_salarie(x: Decimal) -> Decimal {
+    x.round_dp_with_strategy(0, rust_decimal::RoundingStrategy::MidpointTowardZero)
+}
+
 // ── 健康保険 — Assurance maladie ──────────────────────────────────────────────
 
 pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee   = ctx.date_paie.year();
     let plafond = plafond_kenpo(annee);
-    let base    = brut.min(plafond);
+    let base    = hyojun_kenpo(brut);
     let ts      = ctx.taux_sal("JP_KENPO"); // 0,0499
     let tp      = ctx.taux_pat("JP_KENPO");
 
@@ -38,7 +98,7 @@ pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         libelle:     ctx.libelle("JP_KENPO", "健康保険 — Assurance maladie (協会けんぽ Tokyo)"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(0),
+        montant_sal: arrondi_salarie(base * ts),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
@@ -46,7 +106,7 @@ pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             "Assurance maladie salariés (健康保険) — Kyokai Kenpo Tokyo {an}.\n\n\
             Taux : {ts} % sal + {tp} % pat = {tot} % total\n\
             Plafond 標準報酬月額 : ¥{plaf} /mois\n\
-            Base retenue : ¥{base} (min(brut, plafond))\n\
+            Base retenue : ¥{base} (rémunération standard du palier)\n\
             Salarié : ¥{ms} | Employeur : ¥{mp}\n\n\
             Base légale : 健康保険法.")
             .replace("{an}", &annee.to_string())
@@ -55,7 +115,7 @@ pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
             .replace("{plaf}", &format!("{}", plafond))
             .replace("{base}", &format!("{}", base))
-            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{ms}", &format!("{}", arrondi_salarie(base * ts)))
             .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
         loi_ref: Some(ctx.loi_ref("健康保険法 — 協会けんぽ Tokyo 料率")),
     }
@@ -74,13 +134,13 @@ pub fn jp_kodomo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     if ts == Decimal::ZERO && tp == Decimal::ZERO {
         return None;
     }
-    let base = brut.min(plafond_kenpo(ctx.date_paie.year()));
+    let base = hyojun_kenpo(brut);
     Some(LigneCotisation {
         code:        "JP_KODOMO".into(),
         libelle:     ctx.libelle("JP_KODOMO", "子ども・子育て支援金 — Contribution enfance et parentalité"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(0),
+        montant_sal: arrondi_salarie(base * ts),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
@@ -94,7 +154,7 @@ pub fn jp_kodomo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
             .replace("{tp}", &format!("{:.3}", tp * dec!(100)))
             .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
             .replace("{base}", &format!("{}", base))
-            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{ms}", &format!("{}", arrondi_salarie(base * ts)))
             .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
         loi_ref: Some(ctx.loi_ref("子ども・子育て支援法")),
     })
@@ -105,7 +165,7 @@ pub fn jp_kodomo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
 pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee   = ctx.date_paie.year();
     let plafond = plafond_kenpo(annee); // même plafond que 健康保険
-    let base    = brut.min(plafond);
+    let base    = hyojun_kenpo(brut);
     let ts      = ctx.taux_sal("JP_KAIGO"); // 0,008
     let tp      = ctx.taux_pat("JP_KAIGO");
 
@@ -114,7 +174,7 @@ pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         libelle:     ctx.libelle("JP_KAIGO", "介護保険 — Soins longue durée (≥ 40 ans)"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(0),
+        montant_sal: arrondi_salarie(base * ts),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Sécurité sociale".into(),
@@ -130,7 +190,7 @@ pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
             .replace("{plaf}", &format!("{}", plafond))
             .replace("{base}", &format!("{}", base))
-            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{ms}", &format!("{}", arrondi_salarie(base * ts)))
             .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
         loi_ref: Some(ctx.loi_ref("介護保険法 — MHLW 料率")),
     }
@@ -141,7 +201,7 @@ pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 pub fn jp_kosei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee   = ctx.date_paie.year();
     let plafond = plafond_kosei(annee);
-    let base    = brut.min(plafond);
+    let base    = hyojun_kosei(brut);
     let ts      = ctx.taux_sal("JP_KOSEI"); // 0,0915
     let tp      = ctx.taux_pat("JP_KOSEI");
 
@@ -150,7 +210,7 @@ pub fn jp_kosei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         libelle:     ctx.libelle("JP_KOSEI", "厚生年金保険 — Assurance retraite salariés"),
         base,
         taux_sal:    ts,
-        montant_sal: (base * ts).round_dp(0),
+        montant_sal: arrondi_salarie(base * ts),
         taux_pat:    tp,
         montant_pat: (base * tp).round_dp(0),
         categorie:   "Retraite".into(),
@@ -165,7 +225,7 @@ pub fn jp_kosei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
             .replace("{plaf}", &format!("{}", plafond))
             .replace("{base}", &format!("{}", base))
-            .replace("{ms}", &format!("{}", (base * ts).round_dp(0)))
+            .replace("{ms}", &format!("{}", arrondi_salarie(base * ts)))
             .replace("{mp}", &format!("{}", (base * tp).round_dp(0))),
         loi_ref: Some(ctx.loi_ref("厚生年金保険法")),
     }
@@ -182,7 +242,7 @@ pub fn jp_koyo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         libelle:     ctx.libelle("JP_KOYO", "雇用保険 — Assurance emploi (chômage)"),
         base:        brut,
         taux_sal:    ts,
-        montant_sal: (brut * ts).round_dp(0),
+        montant_sal: arrondi_salarie(brut * ts),
         taux_pat:    tp,
         montant_pat: (brut * tp).round_dp(0),
         categorie:   "Chômage".into(),
@@ -195,7 +255,7 @@ pub fn jp_koyo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             .replace("{ts}", &format!("{:.2}", ts * dec!(100)))
             .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
             .replace("{tot}", &format!("{:.2}", (ts + tp) * dec!(100)))
-            .replace("{ms}", &format!("{}", (brut * ts).round_dp(0)))
+            .replace("{ms}", &format!("{}", arrondi_salarie(brut * ts)))
             .replace("{mp}", &format!("{}", (brut * tp).round_dp(0)))
             .replace("{annee}", &ctx.date_paie.year().to_string()),
         loi_ref: Some(ctx.loi_ref("雇用保険法 — MHLW 料率")),

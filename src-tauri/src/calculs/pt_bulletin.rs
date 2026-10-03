@@ -7,13 +7,17 @@ use super::pt_irs::irs_retencao;
 pub fn generer_bulletin_pt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
 
-    let cotisations = vec![
+    let mut cotisations = vec![
         seguranca_social(brut, ctx),
         acidentes_trabalho(brut, ctx),
-        fct(brut, ctx),
-        fgct(brut, ctx),
-        irs_retencao(brut, ctx),
     ];
+    // FCT et FGCT : plus de contribution depuis le 01/05/2023 (taux absent en base).
+    for ligne in [fct(brut, ctx), fgct(brut, ctx)] {
+        if ligne.taux_pat > Decimal::ZERO {
+            cotisations.push(ligne);
+        }
+    }
+    cotisations.push(irs_retencao(brut, ctx));
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();

@@ -36,12 +36,14 @@ fn seuils(annee: i32) -> UkSeuils {
     // Threshold bouge : £9 100 jusqu'en 2024/25, £5 000 dès 2025/26 (National
     // Insurance Contributions (Secondary Class 1 Contributions) Act 2025),
     // inchangé en 2026/27 (GOV.UK, « Rates and thresholds for employers 2026 to 2027 »).
-    let st_annuel = if annee >= 2025 { dec!(5000) } else { dec!(9100) };
+    // Seuils NI mensuels tels que publiés par HMRC (arrondis à la livre) : ce
+    // sont eux, et non l'annuel ÷ 12, qu'appliquent les logiciels de paie.
+    let st_mensuel = if annee >= 2025 { dec!(417) } else { dec!(758) };
     match annee {
         _ => UkSeuils {
-            pt:     dec!(12570) / dec!(12), // £1 047,50/mois
-            uel:    dec!(50270) / dec!(12), // £4 189,17/mois
-            st:     st_annuel   / dec!(12), // £758,33/mois (≤ 2024/25) ; £416,67 (≥ 2025/26)
+            pt:     dec!(1048),             // £12 570/an
+            uel:    dec!(4189),             // £50 270/an
+            st:     st_mensuel,             // £9 100/an (≤ 2024/25) ; £5 000 (≥ 2025/26)
             pa:     dec!(12570) / dec!(12), // £1 047,50/mois
             br_max: dec!(50270) / dec!(12), // £4 189,17/mois
             hr_max: dec!(125140)/ dec!(12), // £10 428,33/mois

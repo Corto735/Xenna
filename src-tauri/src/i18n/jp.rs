@@ -24,11 +24,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
     let i = match lang { "en" => 0, "de" => 1, "nl" => 2, "it" => 3, "es" => 4, _ => return None };
     let row: [&str; 5] = match key {
         "JP_KENPO" => [
-            "Employee health insurance (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nRate: {ts} % empl + {tp} % empr = {tot} % total\nCeiling 標準報酬月額: ¥{plaf}/month\nBase: ¥{base} (min(gross, ceiling))\nEmployee: ¥{ms} | Employer: ¥{mp}\n\nLegal basis: 健康保険法.",
-            "Arbeitnehmer-Krankenversicherung (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nSatz: {ts} % AN + {tp} % AG = {tot} % gesamt\nObergrenze 標準報酬月額: ¥{plaf}/Monat\nGrundlage: ¥{base} (min(brutto, Obergrenze))\nArbeitnehmer: ¥{ms} | Arbeitgeber: ¥{mp}\n\nRechtsgrundlage: 健康保険法.",
-            "Werknemersziektekostenverzekering (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nTarief: {ts} % wn + {tp} % wg = {tot} % totaal\nPlafond 標準報酬月額: ¥{plaf}/maand\nGrondslag: ¥{base} (min(bruto, plafond))\nWerknemer: ¥{ms} | Werkgever: ¥{mp}\n\nWettelijke basis: 健康保険法.",
-            "Assicurazione malattia dipendenti (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nAliquota: {ts} % dip + {tp} % dat = {tot} % totale\nMassimale 標準報酬月額: ¥{plaf}/mese\nBase: ¥{base} (min(lordo, massimale))\nDipendente: ¥{ms} | Datore di lavoro: ¥{mp}\n\nBase giuridica: 健康保険法.",
-            "Seguro de enfermedad de los trabajadores (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nTipo: {ts} % trab + {tp} % empr = {tot} % total\nTope 標準報酬月額: ¥{plaf}/mes\nBase: ¥{base} (mín(bruto, tope))\nTrabajador: ¥{ms} | Empleador: ¥{mp}\n\nBase legal: 健康保険法.",
+            "Employee health insurance (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nRate: {ts} % empl + {tp} % empr = {tot} % total\nCeiling 標準報酬月額: ¥{plaf}/month\nBase: ¥{base} (standard monthly remuneration of the grade)\nEmployee: ¥{ms} | Employer: ¥{mp}\n\nLegal basis: 健康保険法.",
+            "Arbeitnehmer-Krankenversicherung (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nSatz: {ts} % AN + {tp} % AG = {tot} % gesamt\nObergrenze 標準報酬月額: ¥{plaf}/Monat\nGrundlage: ¥{base} (Standardmonatsentgelt der Stufe)\nArbeitnehmer: ¥{ms} | Arbeitgeber: ¥{mp}\n\nRechtsgrundlage: 健康保険法.",
+            "Werknemersziektekostenverzekering (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nTarief: {ts} % wn + {tp} % wg = {tot} % totaal\nPlafond 標準報酬月額: ¥{plaf}/maand\nGrondslag: ¥{base} (standaard maandloon van de schaal)\nWerknemer: ¥{ms} | Werkgever: ¥{mp}\n\nWettelijke basis: 健康保険法.",
+            "Assicurazione malattia dipendenti (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nAliquota: {ts} % dip + {tp} % dat = {tot} % totale\nMassimale 標準報酬月額: ¥{plaf}/mese\nBase: ¥{base} (retribuzione mensile standard dello scaglione)\nDipendente: ¥{ms} | Datore di lavoro: ¥{mp}\n\nBase giuridica: 健康保険法.",
+            "Seguro de enfermedad de los trabajadores (健康保険) — Kyokai Kenpo Tokyo {an}.\n\nTipo: {ts} % trab + {tp} % empr = {tot} % total\nTope 標準報酬月額: ¥{plaf}/mes\nBase: ¥{base} (remuneración mensual estándar del tramo)\nTrabajador: ¥{ms} | Empleador: ¥{mp}\n\nBase legal: 健康保険法.",
         ],
         "JP_KAIGO" => [
             "Long-term care insurance (介護保険) — for ages 40-64.\n\nNational rate {an}: {ts} % empl + {tp} % empr = {tot} % total\nSame ceiling as 健康保険: ¥{plaf}/month\nBase: ¥{base} | Employee: ¥{ms} | Employer: ¥{mp}\n\nLegal basis: 介護保険法.",

@@ -1,4 +1,5 @@
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
 use super::de_cotisations::*;
@@ -30,7 +31,14 @@ pub fn generer_bulletin_de(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     };
     let vorsorge = Vorsorge {
         rv: part(&["DE_RENTENVERSICHERUNG"]),
-        kv: part(&["DE_KRANKENVERSICHERUNG"]),
+        // Le PAP retient la maladie au taux RÉDUIT (14,0 % au lieu de 14,6 %, sans
+        // indemnités journalières) : part salariale 7,0 % + moitié du Zusatzbeitrag,
+        // soit 0,3 point de moins que la cotisation réelle.
+        kv: {
+            let kv = part(&["DE_KRANKENVERSICHERUNG"]);
+            let taux = ctx.taux_sal("DE_KRANKENVERSICHERUNG");
+            if taux > Decimal::ZERO { kv * (taux - dec!(0.003)) / taux } else { kv }
+        },
         pv: part(&["DE_PFLEGEVERSICHERUNG", "DE_PV_KINDERLOS"]),
         av: part(&["DE_ARBEITSLOSENVERSICHERUNG"]),
     };
