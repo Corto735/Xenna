@@ -1,8 +1,8 @@
 use rust_decimal::Decimal;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
-use super::cotisations::{ss_maladie, famille, accident_travail, csg_contributions, maladie_alsace_moselle};
-use super::fpt_cotisations::fpt_cnracl;
+use super::cotisations::{famille, csg_contributions, maladie_alsace_moselle};
+use super::fpt_cotisations::{fpt_cnracl, fpt_maladie, fpt_atiacl, fpt_fnal, fpt_csa, fpt_cnfpt};
 
 /// Bulletin pour les agents titulaires de la Fonction Publique Territoriale (FPT).
 ///
@@ -10,16 +10,23 @@ use super::fpt_cotisations::fpt_cnracl;
 ///   - CNRACL remplace SS_VIEILLESSE + AGIRC-ARRCO
 ///   - Pas de cotisation chômage (titulaires : emploi garanti)
 ///   - Pas de réduction Fillon (employeurs publics exclus du dispositif)
-///   - Maladie, famille, AT/MP, CSG/CRDS : mêmes règles
+///   - Maladie : régime spécial (9,88 % employeur depuis 2018, pas de part agent)
+///   - ATIACL (0,40 %) à la place de la cotisation AT/MP du régime général
+///   - Famille, CSG/CRDS : mêmes règles ; FNAL, contribution solidarité
+///     autonomie et CNFPT en plus
+///   - Non modélisés : RAFP (primes), centre de gestion, versement mobilité
 ///   - Alsace-Moselle compatible (agents des 3 départements)
 pub fn generer_bulletin_fpt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
     let mut cotisations = Vec::new();
 
-    cotisations.push(ss_maladie(brut, ctx));
+    cotisations.extend(fpt_maladie(brut, ctx));
     cotisations.push(fpt_cnracl(brut, ctx));
     cotisations.push(famille(brut, ctx));
-    cotisations.push(accident_travail(brut, ctx));
+    cotisations.extend(fpt_atiacl(brut, ctx));
+    cotisations.extend(fpt_fnal(brut, salarie.effectif.as_deref(), ctx));
+    cotisations.extend(fpt_csa(brut, ctx));
+    cotisations.extend(fpt_cnfpt(brut, ctx));
     cotisations.extend(csg_contributions(brut, ctx));
 
     if salarie.alsace_moselle {

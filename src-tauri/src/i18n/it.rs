@@ -58,11 +58,11 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         "IT_ESONERO_2022" => match lang {
-            "en" => "Contribution relief H2 2022 (−0.80 % IVS)",
-            "de" => "Beitragsentlastung H2 2022 (−0,80 % IVS)",
-            "nl" => "Bijdragevermindering H2 2022 (−0,80 % IVS)",
-            "it" => "Esonero contributivo H2 2022 (−0,80 % IVS)",
-            "es" => "Exoneración de cotización H2 2022 (−0,80 % IVS)",
+            "en" => "Contribution relief 2022 (−{taux_pp} % IVS)",
+            "de" => "Beitragsentlastung 2022 (−{taux_pp} % IVS)",
+            "nl" => "Bijdragevermindering 2022 (−{taux_pp} % IVS)",
+            "it" => "Esonero contributivo 2022 (−{taux_pp} % IVS)",
+            "es" => "Exoneración de cotización 2022 (−{taux_pp} % IVS)",
             _ => return None,
         },
         "IT_ESONERO_2023" => match lang {
@@ -79,6 +79,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "nl" => "Bijdragevermindering 2024 (−{taux_pp} % IVS)",
             "it" => "Esonero contributivo 2024 (−{taux_pp} % IVS)",
             "es" => "Exoneración de cotización 2024 (−{taux_pp} % IVS)",
+            _ => return None,
+        },
+        "IT_BONUS_CUNEO" => match lang {
+            "en" => "Tax wedge cut {annee} (taglio del cuneo fiscale)",
+            "de" => "Senkung der Steuerlast {annee} (taglio del cuneo fiscale)",
+            "nl" => "Verlaging van de belastingwig {annee} (taglio del cuneo fiscale)",
+            "it" => "Taglio del cuneo fiscale {annee}",
+            "es" => "Reducción de la cuña fiscal {annee} (taglio del cuneo fiscale)",
             _ => return None,
         },
         "IT_IRPEF" => match lang {
@@ -311,58 +319,27 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 de pensiones). Revalorización 75 % ISTAT + 1,5 %.",
             _ => return None,
         },
-        "IT_ESONERO_2022" => match lang {
-            "en" => "Temporary 0.80 pt reduction of the employee IVS contribution, July–December \
-                2022 if reddito ≤ 35,000 € (DL 115/2022, conv. L. 142/2022). The negative amount \
-                increases net pay.",
-            "de" => "Vorübergehende Senkung um 0,80 Pkt. des AN-IVS-Beitrags, Juli–Dezember 2022 \
-                bei reddito ≤ 35.000 € (DL 115/2022, umgew. L. 142/2022). Der negative Betrag \
-                erhöht das Netto.",
-            "nl" => "Tijdelijke verlaging van 0,80 pt van de werknemers-IVS-bijdrage, \
-                juli–december 2022 bij reddito ≤ 35.000 € (DL 115/2022, omgez. L. 142/2022). Het \
-                negatieve bedrag verhoogt het netto.",
-            "it" => "Riduzione temporanea di 0,80 pt del contributo IVS dipendente, luglio–\
-                dicembre 2022 se reddito ≤ 35.000 € (DL 115/2022, conv. L. 142/2022). L'importo \
-                negativo aumenta il netto.",
-            "es" => "Reducción temporal de 0,80 pt de la cotización IVS del trabajador, julio–\
-                diciembre 2022 si reddito ≤ 35.000 € (DL 115/2022, conv. L. 142/2022). El importe \
-                negativo aumenta el neto.",
-            _ => return None,
-        },
-        "IT_ESONERO_2023" => match lang {
-            "en" => "Reduction of {taux_pp} pts on employee IVS contribution (2023): −3 pts if \
-                reddito ≤ 25,000 €, −2 pts if 25,001–35,000 €. Estimated reddito: {reddito} €/yr \
-                → {taux_pp} pts. L. 197/2022 art. 1 c. 281-286.",
-            "de" => "Senkung um {taux_pp} Pkt. beim AN-IVS-Beitrag (2023): −3 bei reddito ≤ \
-                25.000 €, −2 bei 25.001–35.000 €. Geschätzter reddito: {reddito} €/Jahr → \
-                {taux_pp} Pkt. L. 197/2022 Art. 1 Abs. 281-286.",
-            "nl" => "Verlaging van {taux_pp} pt op de werknemers-IVS-bijdrage (2023): −3 bij \
-                reddito ≤ 25.000 €, −2 bij 25.001–35.000 €. Geschatte reddito: {reddito} €/jr → \
-                {taux_pp} pt. L. 197/2022 art. 1 c. 281-286.",
-            "it" => "Riduzione di {taux_pp} pt sul contributo IVS dipendente (2023): −3 se \
-                reddito ≤ 25.000 €, −2 se 25.001–35.000 €. Reddito stimato: {reddito} €/anno → \
-                {taux_pp} pt. L. 197/2022 art. 1 c. 281-286.",
-            "es" => "Reducción de {taux_pp} pt en la cotización IVS del trabajador (2023): −3 si \
-                reddito ≤ 25.000 €, −2 si 25.001–35.000 €. Reddito estimado: {reddito} €/año → \
-                {taux_pp} pt. L. 197/2022 art. 1 c. 281-286.",
-            _ => return None,
-        },
-        "IT_ESONERO_2024" => match lang {
-            "en" => "Reduction of {taux_pp} pts on employee IVS (2024): −7 if reddito ≤ 25,000 €, \
-                −6 if 25,001–35,000 €. Estimated reddito: {reddito} €/yr → {taux_pp} pts. \
-                L. 213/2023 art. 1 cc. 15-17.",
-            "de" => "Senkung um {taux_pp} Pkt. (2024): −7 bei reddito ≤ 25.000 €, −6 bei \
-                25.001–35.000 €. Geschätzter reddito: {reddito} €/Jahr → {taux_pp} Pkt. \
-                L. 213/2023 Art. 1 cc. 15-17.",
-            "nl" => "Verlaging van {taux_pp} pt (2024): −7 bij reddito ≤ 25.000 €, −6 bij \
-                25.001–35.000 €. Geschatte reddito: {reddito} €/jr → {taux_pp} pt. L. 213/2023 \
-                art. 1 cc. 15-17.",
-            "it" => "Riduzione di {taux_pp} pt (2024): −7 se reddito ≤ 25.000 €, −6 se \
-                25.001–35.000 €. Reddito stimato: {reddito} €/anno → {taux_pp} pt. L. 213/2023 \
-                art. 1 cc. 15-17.",
-            "es" => "Reducción de {taux_pp} pt (2024): −7 si reddito ≤ 25.000 €, −6 si \
-                25.001–35.000 €. Reddito estimado: {reddito} €/año → {taux_pp} pt. L. 213/2023 \
-                art. 1 cc. 15-17.",
+        "IT_ESONERO" => match lang {
+            "en" => "Temporary cut in the employee IVS contribution (taglio del cuneo \
+                contributivo), based on monthly taxable pay (13 monthly payments basis). Points \
+                removed in {annee}: {regle}. Here {brut} € → −{taux_pp} points. The negative amount \
+                increases net pay. Replaced in 2025 by a tax benefit.",
+            "de" => "Vorübergehende Senkung des AN-IVS-Beitrags (taglio del cuneo contributivo), \
+                nach dem monatlichen beitragspflichtigen Entgelt (Basis 13 Monatsgehälter). \
+                Abgezogene Punkte {annee}: {regle}. Hier {brut} € → −{taux_pp} Punkte. Der negative \
+                Betrag erhöht das Netto. 2025 durch einen Steuervorteil ersetzt.",
+            "nl" => "Tijdelijke verlaging van de werknemers-IVS-bijdrage (taglio del cuneo \
+                contributivo), volgens het maandelijkse belastbare loon (basis 13 maandlonen). \
+                Afgetrokken punten in {annee}: {regle}. Hier {brut} € → −{taux_pp} punten. Het \
+                negatieve bedrag verhoogt het netto. In 2025 vervangen door een belastingvoordeel.",
+            "it" => "Riduzione temporanea del contributo IVS a carico del dipendente (taglio del \
+                cuneo contributivo), in base alla retribuzione imponibile mensile (su 13 \
+                mensilità). Punti tolti nel {annee}: {regle}. Qui {brut} € → −{taux_pp} punti. \
+                L'importo negativo aumenta il netto. Sostituito nel 2025 da un beneficio fiscale.",
+            "es" => "Reducción temporal de la cotización IVS del trabajador (taglio del cuneo \
+                contributivo), según la retribución imponible mensual (base 13 pagas). Puntos \
+                retirados en {annee}: {regle}. Aquí {brut} € → −{taux_pp} puntos. El importe \
+                negativo aumenta el neto. Sustituida en 2025 por un beneficio fiscal.",
             _ => return None,
         },
         "IT_BONUS_CUNEO" => match lang {
@@ -392,25 +369,22 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 730/Redditi.",
             _ => return None,
         },
-        "IT_BONUS_CUNEO_DESC_2024" => match lang {
-            "en" => "L. 213/2023: bonus 1,200 €/yr for reddito ≤ 35,000 €.",
-            "de" => "L. 213/2023: Bonus 1.200 €/Jahr bei reddito ≤ 35.000 €.",
-            "nl" => "L. 213/2023: bonus 1.200 €/jr bij reddito ≤ 35.000 €.",
-            "it" => "L. 213/2023: bonus 1.200 €/anno per reddito ≤ 35.000 €.",
-            "es" => "L. 213/2023: bono 1.200 €/año para reddito ≤ 35.000 €.",
-            _ => return None,
-        },
         "IT_BONUS_CUNEO_DESC_2025" => match lang {
-            "en" => "L. 207/2024: bonus 7.1 % × reddito (max 1,400 €) if reddito ≤ 20,000 €; \
-                fixed detrazione 1,000 € if reddito 20,001–40,000 €.",
-            "de" => "L. 207/2024: Bonus 7,1 % × reddito (max. 1.400 €) bei reddito ≤ 20.000 €; \
-                feste detrazione 1.000 € bei reddito 20.001–40.000 €.",
-            "nl" => "L. 207/2024: bonus 7,1 % × reddito (max 1.400 €) bij reddito ≤ 20.000 €; \
-                vaste detrazione 1.000 € bij reddito 20.001–40.000 €.",
-            "it" => "L. 207/2024: bonus 7,1 % × reddito (max 1.400 €) se reddito ≤ 20.000 €; \
-                detrazione fissa 1.000 € se reddito 20.001–40.000 €.",
-            "es" => "L. 207/2024: bono 7,1 % × reddito (máx 1.400 €) si reddito ≤ 20.000 €; \
-                detrazione fija 1.000 € si reddito 20.001–40.000 €.",
+            "en" => "L. 207/2024: sum of 7.1 % (reddito ≤ 8,500 €), 5.3 % (≤ 15,000 €) or 4.8 % \
+                (≤ 20,000 €) of reddito; above, a 1,000 € deduction up to 32,000 €, tapering off \
+                up to 40,000 €.",
+            "de" => "L. 207/2024: Betrag von 7,1 % (reddito ≤ 8.500 €), 5,3 % (≤ 15.000 €) oder \
+                4,8 % (≤ 20.000 €) des reddito; darüber ein Abzug von 1.000 € bis 32.000 €, \
+                abnehmend bis 40.000 €.",
+            "nl" => "L. 207/2024: bedrag van 7,1 % (reddito ≤ 8.500 €), 5,3 % (≤ 15.000 €) of \
+                4,8 % (≤ 20.000 €) van de reddito; daarboven een aftrek van 1.000 € tot 32.000 €, \
+                afnemend tot 40.000 €.",
+            "it" => "L. 207/2024: somma del 7,1 % (reddito ≤ 8.500 €), 5,3 % (≤ 15.000 €) o \
+                4,8 % (≤ 20.000 €) del reddito; oltre, ulteriore detrazione di 1.000 € fino a \
+                32.000 €, decrescente fino a 40.000 €.",
+            "es" => "L. 207/2024: suma del 7,1 % (reddito ≤ 8.500 €), 5,3 % (≤ 15.000 €) o \
+                4,8 % (≤ 20.000 €) del reddito; por encima, deducción de 1.000 € hasta 32.000 €, \
+                decreciente hasta 40.000 €.",
             _ => return None,
         },
         "IT_IRPEF" => match lang {

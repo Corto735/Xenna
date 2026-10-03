@@ -49,24 +49,24 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
 pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
     Some(match code {
         "LU_AP" => match lang {
-            "en" => "Mandatory pension insurance (CNAP, CSS LU Book II), pay-as-you-go. Rate 16 % \
-                total (8 % employee, 8 % employer); the State adds a third. Base capped at 5 × SSM \
+            "en" => "Mandatory pension insurance (CNAP, CSS LU Book II), pay-as-you-go. Rate 8 % \
+                employee and 8 % employer until 2025, 8.5 % each since 1 January 2026 (pension reform); the State adds a third. Base capped at 5 × SSM \
                 (≈ {plafond} €/month in {annee}). Full pension after 40 years; retirement at 65 \
                 (or 57 early).",
             "de" => "Obligatorische Rentenversicherung (CNAP, CSS LU Buch II), Umlageverfahren. \
-                Satz 16 % gesamt (8 % AN, 8 % AG); der Staat ergänzt ein Drittel. Bemessung \
+                Satz 8 % AN und 8 % AG bis 2025, je 8,5 % seit dem 1. Januar 2026 (Rentenreform); der Staat ergänzt ein Drittel. Bemessung \
                 gedeckelt auf 5 × SSM (≈ {plafond} €/Monat in {annee}). Volle Rente nach 40 Jahren; \
                 Rente mit 65 (oder 57 vorgezogen).",
             "nl" => "Verplichte pensioenverzekering (CNAP, CSS LU Boek II), omslagstelsel. Tarief \
-                16 % totaal (8 % wn, 8 % wg); de Staat voegt een derde toe. Grondslag begrensd op \
+                8 % wn en 8 % wg tot 2025, elk 8,5 % sinds 1 januari 2026 (pensioenhervorming); de Staat voegt een derde toe. Grondslag begrensd op \
                 5 × SSM (≈ {plafond} €/maand in {annee}). Volledig pensioen na 40 jaar; pensioen op \
                 65 (of 57 vervroegd).",
             "it" => "Assicurazione pensione obbligatoria (CNAP, CSS LU Libro II), a ripartizione. \
-                Aliquota 16 % totale (8 % dipendente, 8 % datore); lo Stato aggiunge un terzo. Base \
+                Aliquota 8 % dipendente e 8 % datore fino al 2025, 8,5 % ciascuno dal 1° gennaio 2026 (riforma delle pensioni); lo Stato aggiunge un terzo. Base \
                 limitata a 5 × SSM (≈ {plafond} €/mese in {annee}). Pensione piena dopo 40 anni; \
                 pensione a 65 (o 57 anticipata).",
-            "es" => "Seguro de pensión obligatorio (CNAP, CSS LU Libro II), por reparto. Tipo 16 % \
-                total (8 % trabajador, 8 % empleador); el Estado añade un tercio. Base limitada a \
+            "es" => "Seguro de pensión obligatorio (CNAP, CSS LU Libro II), por reparto. Tipo 8 % \
+                trabajador y 8 % empleador hasta 2025, 8,5 % cada uno desde el 1 de enero de 2026 (reforma de pensiones); el Estado añade un tercio. Base limitada a \
                 5 × SSM (≈ {plafond} €/mes en {annee}). Pensión completa tras 40 años; jubilación a \
                 los 65 (o 57 anticipada).",
             _ => return None,
@@ -96,20 +96,20 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
         },
         "LU_AD" => match lang {
             "en" => "Long-term care insurance (law of 19/06/1998): benefits for dependent persons. \
-                Notably 100 % employee contribution (1.40 %), no employer share. Capped at 5 × SSM \
-                (≈ {plafond} €/month in {annee}). Managed by CNS.",
+                Notably 100 % employee contribution (1.40 %), no employer share. No ceiling: base = gross \
+                minus an allowance of a quarter of the minimum wage ({abattement} €/month in {annee}). Managed by CNS.",
             "de" => "Pflegeversicherung (Gesetz vom 19.06.1998): Leistungen für pflegebedürftige \
                 Personen. Besonderheit: 100 % Arbeitnehmerbeitrag (1,40 %), kein Arbeitgeberanteil. \
-                Gedeckelt auf 5 × SSM (≈ {plafond} €/Monat in {annee}). Verwaltung CNS.",
+                Keine Obergrenze: Bemessungsgrundlage = Brutto abzüglich eines Freibetrags von einem Viertel des Mindestlohns ({abattement} €/Monat in {annee}). Verwaltung CNS.",
             "nl" => "Langdurigezorgverzekering (wet 19-06-1998): uitkeringen voor zorgafhankelijke \
                 personen. Bijzonderheid: 100 % werknemersbijdrage (1,40 %), geen werkgeversdeel. \
-                Begrensd op 5 × SSM (≈ {plafond} €/maand in {annee}). Beheer CNS.",
+                Geen plafond: grondslag = brutoloon min een aftrek van een kwart van het minimumloon ({abattement} €/maand in {annee}). Beheer CNS.",
             "it" => "Assicurazione dipendenza (legge 19/06/1998): prestazioni per persone non \
                 autonome. Particolarità: contributo 100 % dipendente (1,40 %), senza quota \
-                datoriale. Limitata a 5 × SSM (≈ {plafond} €/mese in {annee}). Gestione CNS.",
+                datoriale. Nessun massimale: base = lordo meno una franchigia di un quarto del salario minimo ({abattement} €/mese in {annee}). Gestione CNS.",
             "es" => "Seguro de dependencia (ley 19/06/1998): prestaciones para personas \
                 dependientes. Particularidad: cotización 100 % del trabajador (1,40 %), sin parte \
-                patronal. Limitada a 5 × SSM (≈ {plafond} €/mes en {annee}). Gestión CNS.",
+                patronal. Sin tope: base = bruto menos una deducción de un cuarto del salario mínimo ({abattement} €/mes en {annee}). Gestión CNS.",
             _ => return None,
         },
         "LU_AA" => match lang {

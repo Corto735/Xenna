@@ -10,8 +10,12 @@ use crate::models::LigneCotisation;
 // et peut faire l'objet de revalorisations discrétionnaires (accords tripartites).
 // Source : CCSS — Journal officiel luxembourgeois.
 // Valeurs approximatives pour les années 2015-2024 (à vérifier contre CCSS).
+// Depuis 2025, au mois près : SSM non qualifié 2 637,79 € (janv.-avr. 2025),
+// 2 703,74 € (indice 968,04, mai 2025-mai 2026), 2 771,33 € (indice 992,24,
+// dès juin 2026) — FEDIL, paramètres sociaux au 01/01/2026 et au 01/06/2026.
 fn lu_plafond_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
+    let d = ctx.date_paie;
+    match d.year() {
         i32::MIN..=2016 => dec!(9615.00),   // ~5 × 1 923 EUR — SSM pré-indexation 2017
         2017 | 2018     => dec!(9995.00),   // ~5 × 1 999 EUR — indexation jan. 2017
         2019            => dec!(10245.00),  // ~5 × 2 049 EUR — indexation 2019
@@ -20,9 +24,16 @@ fn lu_plafond_mensuel(ctx: &ContextPaie) -> Decimal {
         2022            => dec!(11985.00),  // ~5 × 2 397 EUR — forte hausse post-COVID
         2023            => dec!(12855.00),  // ~5 × 2 571 EUR
         2024            => dec!(13185.00),  // ~5 × 2 637 EUR
-        2025            => dec!(13518.80),  // 5 × 2 703,76 EUR — valeur CCSS confirmée
-        _               => dec!(13900.00),  // 2026+ estimation
+        2025 if d.month() < 5 => dec!(13188.95), // 5 × 2 637,79 EUR
+        2025            => dec!(13518.68),  // 5 × 2 703,74 EUR (indice 968,04)
+        2026 if d.month() < 6 => dec!(13518.68),
+        _               => dec!(13856.63),  // 5 × 2 771,33 EUR (indice 992,24, juin 2026)
     }
+}
+
+/// Salaire social minimum non qualifié (18 ans), cinquième du plafond.
+fn lu_ssm(ctx: &ContextPaie) -> Decimal {
+    (lu_plafond_mensuel(ctx) / dec!(5)).round_dp(2)
 }
 
 pub fn lu_ap(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
@@ -43,7 +54,8 @@ pub fn lu_ap(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             "L'assurance pension obligatoire est gérée par la CNAP (Caisse nationale d'assurance pension). \
             Fondée par le Code de la Sécurité Sociale (CSS LU, Livre II), entré en vigueur le 1er janvier 1988. \
             Le régime est par répartition : les cotisations actuelles financent les pensions en cours. \
-            Taux : 16 % total, partagé à parts égales (8 % salarié, 8 % employeur). \
+            Taux partagé à parts égales : 8 % salarié et 8 % employeur jusqu'en 2025, 8,5 % chacun \
+            depuis le 1er janvier 2026 (réforme des pensions, loi du 18/12/2025). \
             L'État contribue également un tiers supplémentaire directement depuis le budget national. \
             Assiette : salaire brut plafonné à 5 × SSM (≈ {plafond} €/mois en {annee}). \
             La pension complète est acquise après 40 années de cotisation. \
@@ -82,9 +94,11 @@ pub fn lu_am(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     }
 }
 
+/// Assurance dépendance : 1,40 % sur TOUT le brut (pas de plafond), après un
+/// abattement d'un quart du SSM non qualifié (CSS LU art. 375).
 pub fn lu_ad(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let plafond = lu_plafond_mensuel(ctx);
-    let base = brut.min(plafond);
+    let abattement = (lu_ssm(ctx) / dec!(4)).round_dp(2);
+    let base = (brut - abattement).max(Decimal::ZERO);
     let ts = ctx.taux_sal("LU_AD");
     LigneCotisation {
         code:        "LU_AD".into(),
@@ -101,10 +115,11 @@ pub fn lu_ad(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             en nature accordées aux personnes ne pouvant plus accomplir les actes essentiels \
             de la vie quotidienne de manière autonome. \
             Originalité luxembourgeoise : la cotisation est uniquement salariale (1,40 %), \
-            sans participation patronale. Plafonné à 5 × SSM (≈ {plafond} €/mois en {annee}). \
+            sans participation patronale. Pas de plafond : assiette = brut moins un abattement \
+            d'un quart du salaire social minimum ({abattement} €/mois en {annee}). \
             Les prestations incluent l'aide à domicile, les séjours en maisons de soins \
             et les congés d'appui proches aidants. Gestion : CNS.")
-            .replace("{plafond}", &format!("{:.2}", plafond))
+            .replace("{abattement}", &format!("{:.2}", abattement))
             .replace("{annee}", &ctx.date_paie.year().to_string()),
         loi_ref: Some(ctx.loi_ref("Loi du 19/06/1998 portant introduction de l'assurance dépendance (CSS LU Livre IV)")),
     }

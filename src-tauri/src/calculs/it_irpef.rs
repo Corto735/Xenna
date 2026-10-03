@@ -67,77 +67,67 @@ pub fn detrazione_lavdip(revenu: Decimal, annee: i32) -> Decimal {
         if revenu <= dec!(8000) {
             dec!(1880)
         } else if revenu <= dec!(28000) {
-            dec!(902) + dec!(978) * (dec!(28000) - revenu) / dec!(20000)
+            dec!(978) + dec!(902) * (dec!(28000) - revenu) / dec!(20000)
         } else if revenu <= dec!(55000) {
             dec!(978) * (dec!(55000) - revenu) / dec!(27000)
         } else {
             Decimal::ZERO
         }
-    } else if annee <= 2023 {
-        // L. 234/2021 — relèvement seuils + montant plat 15–28 k
-        if revenu <= dec!(15000) {
-            dec!(1880)
-        } else if revenu <= dec!(28000) {
-            dec!(1910) // montant plat (allègement classe moyenne)
-        } else if revenu <= dec!(50000) {
-            dec!(1910) * (dec!(50000) - revenu) / dec!(22000)
-        } else {
-            Decimal::ZERO
-        }
     } else {
-        // L. 213/2023 — 1ère tranche portée à 1 955 €
-        if revenu <= dec!(15000) {
-            dec!(1955)
+        // L. 234/2021 (depuis 2022) : 1 880 € jusqu'à 15 000 € (1 955 € depuis 2024,
+        // L. 213/2023), puis 1 910 + 1 190 × (28 000 − R) / 13 000 jusqu'à 28 000 €,
+        // 1 910 × (50 000 − R) / 22 000 jusqu'à 50 000 € ; + 65 € entre 25 000 et
+        // 35 000 € (art. 13 c. 1.1 TUIR).
+        let base = if revenu <= dec!(15000) {
+            if annee <= 2023 { dec!(1880) } else { dec!(1955) }
         } else if revenu <= dec!(28000) {
-            dec!(1910)
+            dec!(1910) + dec!(1190) * (dec!(28000) - revenu) / dec!(13000)
         } else if revenu <= dec!(50000) {
             dec!(1910) * (dec!(50000) - revenu) / dec!(22000)
         } else {
             Decimal::ZERO
-        }
+        };
+        let majoration = if revenu > dec!(25000) && revenu <= dec!(35000) { dec!(65) } else { Decimal::ZERO };
+        base + majoration
     }
 }
 
-// ── Bonus cuneo (trattamento integrativo) 2024–2025 ──────────────────────────
+// ── Taglio del cuneo fiscale (depuis 2025) ──────────────────────────────────
 //
-// Converti depuis l'esonero contributivo 2022–2023 en avantage IRPEF.
-// Montant annuel → divisé par 12 pour le mensuel.
-// Retourne None hors période concernée ou si revenu > seuil.
-pub fn bonus_cuneo_mensuel(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
+// L. 207/2024 art. 1 c. 4-9, sur le revenu de travail salarié annuel R :
+//   R ≤ 20 000 € : somme non imposable de 7,1 % (R ≤ 8 500), 5,3 % (≤ 15 000)
+//                  ou 4,8 % (≤ 20 000) de R ;
+//   20 000 < R ≤ 32 000 : détraction supplémentaire de 1 000 € ;
+//   32 000 < R ≤ 40 000 : 1 000 × (40 000 − R) / 8 000.
+// `imponibile` = brut − cotisations salariales INPS (mensuel).
+// Montant annuel → divisé par 12 pour le mensuel. None avant 2025 ou au-delà.
+pub fn bonus_cuneo_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee          = ctx.date_paie.year();
-    let reddito_annuo  = brut * dec!(12);
+    let reddito_annuo  = imponibile * dec!(12);
 
-    let bonus_annuel = if annee == 2024 {
-        // L. 213/2023 : 1 200 €/an si reddito ≤ 35 000 €
-        if reddito_annuo <= dec!(35000) {
-            dec!(1200)
-        } else {
-            return None;
-        }
-    } else if annee >= 2025 {
-        // L. 207/2024 : deux formules
-        if reddito_annuo <= dec!(20000) {
-            // Bonus = 7,1 % × reddito, plafonné à 1 400 €
-            (reddito_annuo * dec!(0.071)).min(dec!(1400))
-        } else if reddito_annuo <= dec!(40000) {
-            dec!(1000) // detrazione fissa
-        } else {
-            return None;
-        }
+    if annee < 2025 {
+        return None;
+    }
+    let bonus_annuel = if reddito_annuo <= dec!(8500) {
+        reddito_annuo * dec!(0.071)
+    } else if reddito_annuo <= dec!(15000) {
+        reddito_annuo * dec!(0.053)
+    } else if reddito_annuo <= dec!(20000) {
+        reddito_annuo * dec!(0.048)
+    } else if reddito_annuo <= dec!(32000) {
+        dec!(1000)
+    } else if reddito_annuo <= dec!(40000) {
+        dec!(1000) * (dec!(40000) - reddito_annuo) / dec!(8000)
     } else {
         return None;
     };
 
     let bonus_mensuel = (bonus_annuel / dec!(12)).round_dp(2);
 
-    let desc = if annee == 2024 {
-        ctx.expl("IT_BONUS_CUNEO_DESC_2024",
-            "L. 213/2023 : bonus 1 200 €/an pour reddito ≤ 35 000 €.")
-    } else {
-        ctx.expl("IT_BONUS_CUNEO_DESC_2025",
-            "L. 207/2024 : bonus 7,1 % × reddito (max 1 400 €) si reddito ≤ 20 000 € ; \
-            detrazione fissa 1 000 € si reddito 20 001–40 000 €.")
-    };
+    let desc = ctx.expl("IT_BONUS_CUNEO_DESC_2025",
+        "L. 207/2024 : somme de 7,1 % (reddito ≤ 8 500 €), 5,3 % (≤ 15 000 €) ou 4,8 % \
+        (≤ 20 000 €) du reddito ; au-delà, détraction de 1 000 € jusqu'à 32 000 €, \
+        dégressive jusqu'à 40 000 €.");
     let explication = ctx.expl("IT_BONUS_CUNEO",
         "Avantage fiscal mensuel versé par l'employeur (sostituto d'imposta) \
         au titre du taglio del cuneo fiscale. \
@@ -158,7 +148,7 @@ pub fn bonus_cuneo_mensuel(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCoti
 
     Some(LigneCotisation {
         code:        "IT_BONUS_CUNEO".into(),
-        libelle:     ctx.libelle("IT_BONUS_CUNEO", "Bonus cuneo fiscale {annee} (trattamento integrativo)")
+        libelle:     ctx.libelle("IT_BONUS_CUNEO", "Taglio del cuneo fiscale {annee}")
                         .replace("{annee}", &annee.to_string()),
         base:        brut,
         taux_sal:    -bonus_mensuel / brut, // taux effectif indicatif
@@ -167,22 +157,18 @@ pub fn bonus_cuneo_mensuel(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCoti
         montant_pat: Decimal::ZERO,
         categorie:   "Bonus IRPEF".into(),
         explication,
-        loi_ref: Some(ctx.loi_ref(if annee == 2024 {
-            "L. 213/2023 art. 1 c. 2-9 (Bilancio 2024)"
-        } else {
-            "L. 207/2024 art. 1 c. 4-9 (Bilancio 2025)"
-        })),
+        loi_ref: Some(ctx.loi_ref("L. 207/2024 art. 1 c. 4-9 (Bilancio 2025)")),
     })
 }
 
 // ── IRPEF mensuelle (retenue à la source) ────────────────────────────────────
 //
-// Méthode : estimation du revenu annuel = brut × 12, calcul de l'IRPEF annuelle,
-// soustraction de la détraction travail salarié, division par 12.
-// Cette méthode suit la pratique des sostituti d'imposta italiens pour les paies mensuelles.
-pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
+// Méthode : revenu imposable annuel estimé = (brut − cotisations salariales
+// INPS) × 12 (art. 51 TUIR), IRPEF annuelle, moins la détraction travail
+// salarié, divisée par 12 — pratique des sostituti d'imposta.
+pub fn irpef_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee        = ctx.date_paie.year();
-    let reddito_ann  = brut * dec!(12);
+    let reddito_ann  = imponibile * dec!(12);
 
     let irpef_brute  = irpef_annuel(reddito_ann, annee);
     let detrazione   = detrazione_lavdip(reddito_ann, annee).max(Decimal::ZERO);
@@ -226,7 +212,7 @@ pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         code:        "IT_IRPEF".into(),
         libelle:     ctx.libelle("IT_IRPEF", "IRPEF — Retenue à la source {annee}")
                         .replace("{annee}", &annee.to_string()),
-        base:        brut,
+        base:        imponibile,
         taux_sal:    taux_effectif,
         montant_sal: irpef_mensuelle,
         taux_pat:    Decimal::ZERO,
@@ -245,7 +231,7 @@ pub fn irpef_mensuel(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 //
 // Taux de base 2024 par code région (voir migration 0017_it_plafonds_irpef.sql).
 // Retourne None si la région n'est pas reconnue.
-pub fn addizionale_regionale(brut: Decimal, regione: &str, ctx: &ContextPaie) -> Option<LigneCotisation> {
+pub fn addizionale_regionale(imponibile: Decimal, regione: &str, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let taux: Decimal = match regione {
         "AB" => dec!(0.0173),
         "BS" => dec!(0.0090),
@@ -274,7 +260,7 @@ pub fn addizionale_regionale(brut: Decimal, regione: &str, ctx: &ContextPaie) ->
     // L'addizionale est calculée sur le revenu annuel et retenue en 11 mensualités
     // (de mars à novembre de l'année N+1 via modèle 730, ou en novembre-décembre
     // via retenue complémentaire de l'employeur). Ici simplifiée en mensuel direct.
-    let reddito_ann     = brut * dec!(12);
+    let reddito_ann     = imponibile * dec!(12);
     let addiz_annuelle  = (reddito_ann * taux).round_dp(2);
     let addiz_mensuelle = (addiz_annuelle / dec!(12)).round_dp(2);
 
@@ -308,7 +294,7 @@ pub fn addizionale_regionale(brut: Decimal, regione: &str, ctx: &ContextPaie) ->
         code:        format!("IT_ADD_REG_{regione}"),
         libelle:     ctx.libelle("IT_ADD_REG", "Addizionale regionale IRPEF — {libelle_region}")
                         .replace("{libelle_region}", libelle_region),
-        base:        brut,
+        base:        imponibile,
         taux_sal:    taux,
         montant_sal: addiz_mensuelle,
         taux_pat:    Decimal::ZERO,

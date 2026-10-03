@@ -278,108 +278,58 @@ pub fn it_tfr(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     }
 }
 
-// ── Esonero contributivo (taglio cuneo) 2022–2023 ────────────────────────────
+// ── Esonero contributivo (taglio del cuneo contributivo) 2022–2024 ─────────
 //
-// Retourne None hors période ou si le revenu dépasse les seuils.
+// Réduction de la cotisation IVS du salarié, selon la rétribution imposable
+// MENSUELLE (base 13 mensualités) :
+//   2022 : 0,8 pt si ≤ 2 692 € (L. 234/2021 art. 1 c. 121), porté à 2 pts de
+//          juillet à décembre (DL 115/2022 art. 20) ;
+//   2023 : 2 pts si ≤ 2 692 €, 3 pts si ≤ 1 923 € (L. 197/2022 art. 1 c. 281),
+//          portés à 6 et 7 pts de juillet à décembre (DL 48/2023 art. 39) ;
+//   2024 : 6 pts si ≤ 2 692 €, 7 pts si ≤ 1 923 € (L. 213/2023 art. 1 c. 15).
+// Dès 2025, remplacé par un avantage fiscal (voir bonus_cuneo_mensuel).
 // Le montant est NÉGATIF : réduit les cotisations salariales (augmente le net).
 pub fn esonero_contributivo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let mois  = ctx.date_paie.month();
-
-    // Estimation revenu annuel (brut × 12 — simplifié, exclut 13e mois)
-    let reddito_annuo = brut * dec!(12);
-
-    if annee == 2022 && mois >= 7 {
-        // DL 115/2022 : −0,8 % si reddito ≤ 35 000 €
-        if reddito_annuo > dec!(35000) {
-            return None;
-        }
-        let taux   = dec!(0.0080);
-        let montant = -(brut * taux).round_dp(2);
-        return Some(LigneCotisation {
-            code:        "IT_ESONERO_2022".into(),
-            libelle:     ctx.libelle("IT_ESONERO_2022", "Esonero contributivo H2 2022 (−0,80 % IVS)"),
-            base:        brut,
-            taux_sal:    -taux,
-            montant_sal: montant,
-            taux_pat:    Decimal::ZERO,
-            montant_pat: Decimal::ZERO,
-            categorie:   "Allegement".into(),
-            explication: ctx.expl("IT_ESONERO_2022",
-                "Réduction temporaire de la cotisation IVS salarié de 0,80 point \
-                de pourcentage, applicable de juillet à décembre 2022 pour les salariés \
-                dont le reddito annuel estimé n'excède pas 35 000 €. \
-                DL 115/2022 art. 20 (Decreto Aiuti-bis), conv. L. 142/2022. \
-                Le montant négatif augmente le net à payer du salarié."),
-            loi_ref: Some(ctx.loi_ref("DL 115/2022 art. 20 — L. 142/2022")),
-        });
+    let h2 = ctx.date_paie.month() >= 7;
+    let bas = brut <= dec!(1923);
+    let sous_plafond = brut <= dec!(2692);
+    if !sous_plafond {
+        return None;
     }
-
-    if annee == 2023 {
-        let taux = if reddito_annuo <= dec!(25000) {
-            dec!(0.03)
-        } else if reddito_annuo <= dec!(35000) {
-            dec!(0.02)
-        } else {
-            return None;
-        };
-        let taux_pp    = taux * dec!(100);
-        let taux_pp_s  = format!("{:.0}", taux_pp);
-        let montant = -(brut * taux).round_dp(2);
-        return Some(LigneCotisation {
-            code:        "IT_ESONERO_2023".into(),
-            libelle:     ctx.libelle("IT_ESONERO_2023", "Esonero contributivo 2023 (−{taux_pp} % IVS)")
-                            .replace("{taux_pp}", &taux_pp_s),
-            base:        brut,
-            taux_sal:    -taux,
-            montant_sal: montant,
-            taux_pat:    Decimal::ZERO,
-            montant_pat: Decimal::ZERO,
-            categorie:   "Allegement".into(),
-            explication: ctx.expl("IT_ESONERO_2023",
-                "Réduction de {taux_pp} points de pourcentage sur la cotisation IVS salarié. \
-                Applicable en 2023 selon le reddito annuel estimé (brut × 12) : \
-                −3 pp si reddito ≤ 25 000 € ; −2 pp si reddito 25 001–35 000 €. \
-                Ici reddito estimé : {reddito} €/an → taux appliqué : {taux_pp} pp. \
-                Legge 197/2022 art. 1 c. 281-286 (Legge di Bilancio 2023).")
-                .replace("{taux_pp}", &taux_pp_s)
-                .replace("{reddito}", &format!("{:.0}", reddito_annuo)),
-            loi_ref: Some(ctx.loi_ref("L. 197/2022 art. 1 c. 281-286")),
-        });
-    }
-
-    if annee == 2024 {
-        let taux = if reddito_annuo <= dec!(25000) {
-            dec!(0.07)
-        } else if reddito_annuo <= dec!(35000) {
-            dec!(0.06)
-        } else {
-            return None;
-        };
-        let taux_pp   = taux * dec!(100);
-        let taux_pp_s = format!("{:.0}", taux_pp);
-        let montant = -(brut * taux).round_dp(2);
-        return Some(LigneCotisation {
-            code:        "IT_ESONERO_2024".into(),
-            libelle:     ctx.libelle("IT_ESONERO_2024", "Esonero contributivo 2024 (−{taux_pp} % IVS)")
-                            .replace("{taux_pp}", &taux_pp_s),
-            base:        brut,
-            taux_sal:    -taux,
-            montant_sal: montant,
-            taux_pat:    Decimal::ZERO,
-            montant_pat: Decimal::ZERO,
-            categorie:   "Allegement".into(),
-            explication: ctx.expl("IT_ESONERO_2024",
-                "Réduction de {taux_pp} points de pourcentage sur la cotisation IVS salarié. \
-                Applicable en 2024 selon le reddito annuel estimé (brut × 12) : \
-                −7 pp si reddito ≤ 25 000 € ; −6 pp si reddito 25 001–35 000 €. \
-                Ici reddito estimé : {reddito} €/an → taux appliqué : {taux_pp} pp. \
-                L.213/2023 art. 1 cc. 15-17 (Legge di Bilancio 2024).")
-                .replace("{taux_pp}", &taux_pp_s)
-                .replace("{reddito}", &format!("{:.0}", reddito_annuo)),
-            loi_ref: Some(ctx.loi_ref("L. 213/2023 art. 1 cc. 15-17")),
-        });
-    }
-
-    None
+    let (taux, regle, loi) = match annee {
+        2022 if h2 => (dec!(0.02), "≤ 2692 € : 2", "L. 234/2021 art. 1 c. 121 — DL 115/2022 art. 20"),
+        2022       => (dec!(0.008), "≤ 2692 € : 0,8", "L. 234/2021 art. 1 c. 121"),
+        2023 if h2 => (if bas { dec!(0.07) } else { dec!(0.06) }, "≤ 1923 € : 7 ; ≤ 2692 € : 6",
+                       "L. 197/2022 art. 1 c. 281 — DL 48/2023 art. 39"),
+        2023       => (if bas { dec!(0.03) } else { dec!(0.02) }, "≤ 1923 € : 3 ; ≤ 2692 € : 2",
+                       "L. 197/2022 art. 1 c. 281"),
+        2024       => (if bas { dec!(0.07) } else { dec!(0.06) }, "≤ 1923 € : 7 ; ≤ 2692 € : 6",
+                       "L. 213/2023 art. 1 c. 15"),
+        _ => return None,
+    };
+    let code = format!("IT_ESONERO_{annee}");
+    let taux_pp_s = (taux * dec!(100)).normalize().to_string().replace('.', ",");
+    Some(LigneCotisation {
+        libelle:     ctx.libelle(&code, "Esonero contributivo {annee} (−{taux_pp} % IVS)")
+                        .replace("{annee}", &annee.to_string())
+                        .replace("{taux_pp}", &taux_pp_s),
+        code,
+        base:        brut,
+        taux_sal:    -taux,
+        montant_sal: -(brut * taux).round_dp(2),
+        taux_pat:    Decimal::ZERO,
+        montant_pat: Decimal::ZERO,
+        categorie:   "Allegement".into(),
+        explication: ctx.expl("IT_ESONERO",
+            "Réduction temporaire de la cotisation IVS du salarié (taglio del cuneo \
+            contributivo), selon la rétribution imposable mensuelle (base 13 mensualités). \
+            Points retirés en {annee} : {regle}. Ici {brut} € → −{taux_pp} points. Le montant \
+            négatif augmente le net. Remplacée en 2025 par un avantage fiscal.")
+            .replace("{annee}", &annee.to_string())
+            .replace("{regle}", regle)
+            .replace("{brut}", &brut.to_string())
+            .replace("{taux_pp}", &taux_pp_s),
+        loi_ref: Some(ctx.loi_ref(loi)),
+    })
 }

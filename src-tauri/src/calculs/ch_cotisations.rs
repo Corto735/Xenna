@@ -9,7 +9,10 @@ use crate::models::LigneCotisation;
 const CH_PLAFOND_MENSUEL: Decimal = dec!(12350);
 
 // ── LPP — plafonds OPP 2, revalorisés tous les 2 ans par le CF ───────────────
-// Source : OFAS, RS 831.441.1 (OPP 2), art. 2 et 8.
+// Source : OFAS, RS 831.441.1 (OPP 2), art. 2 et 8 ; montants limites OFAS.
+// Déduction de coordination = 7/8, seuil d'entrée = 3/4, salaire coordonné
+// minimal = 1/8 de la rente AVS maximale annuelle ; salaire coordonné maximal
+// = 3 rentes maximales − déduction de coordination.
 // Valeurs en CHF/mois (= annuel ÷ 12).
 
 fn lpp_seuil_entree(ctx: &ContextPaie) -> Decimal {
@@ -24,11 +27,11 @@ fn lpp_seuil_entree(ctx: &ContextPaie) -> Decimal {
 
 fn lpp_deduction_coord(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(2047.50),  // 24 570 CHF/an
+        i32::MIN..=2018 => dec!(2056.25),  // 24 675 CHF/an
         2019 | 2020     => dec!(2073.75),  // 24 885 CHF/an
         2021 | 2022     => dec!(2091.25),  // 25 095 CHF/an
         2023 | 2024     => dec!(2143.75),  // 25 725 CHF/an
-        _               => dec!(2268.75),  // 27 225 CHF/an (2025+)
+        _               => dec!(2205.00),  // 26 460 CHF/an (2025+)
     }
 }
 
@@ -44,10 +47,10 @@ fn lpp_coord_min(ctx: &ContextPaie) -> Decimal {
 
 fn lpp_coord_max(ctx: &ContextPaie) -> Decimal {
     match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(4961.25),  // 59 535 CHF/an
-        2019 | 2020     => dec!(4998.75),  // 59 985 CHF/an
-        2021 | 2022     => dec!(5036.25),  // 60 435 CHF/an
-        2023 | 2024     => dec!(5162.50),  // 61 950 CHF/an
+        i32::MIN..=2018 => dec!(4993.75),  // 59 925 CHF/an
+        2019 | 2020     => dec!(5036.25),  // 60 435 CHF/an
+        2021 | 2022     => dec!(5078.75),  // 60 945 CHF/an
+        2023 | 2024     => dec!(5206.25),  // 62 475 CHF/an
         _               => dec!(5355.00),  // 64 260 CHF/an (2025+)
     }
 }

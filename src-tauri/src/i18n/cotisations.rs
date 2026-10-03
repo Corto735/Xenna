@@ -244,6 +244,46 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Deducción a tanto alzado del empleador (horas extra)",
             _ => return None,
         },
+        "FPT_MALADIE" => match lang {
+            "en" => "Health, maternity, disability, death (civil servants)",
+            "de" => "Kranken-, Mutterschafts-, Invaliditäts-, Todesfallversicherung (Beamte)",
+            "nl" => "Ziekte, moederschap, invaliditeit, overlijden (ambtenaren)",
+            "it" => "Malattia, maternità, invalidità, morte (funzionari)",
+            "es" => "Enfermedad, maternidad, invalidez, muerte (funcionarios)",
+            _ => return None,
+        },
+        "FPT_ATIACL" => match lang {
+            "en" => "ATIACL — temporary disability allowance",
+            "de" => "ATIACL — vorübergehende Invaliditätszulage",
+            "nl" => "ATIACL — tijdelijke invaliditeitsuitkering",
+            "it" => "ATIACL — indennità temporanea d'invalidità",
+            "es" => "ATIACL — subsidio temporal de invalidez",
+            _ => return None,
+        },
+        "FPT_FNAL" | "FPT_FNAL_50" => match lang {
+            "en" => "FNAL — housing aid",
+            "de" => "FNAL — Wohngeld",
+            "nl" => "FNAL — huursteun",
+            "it" => "FNAL — aiuto all'alloggio",
+            "es" => "FNAL — ayuda a la vivienda",
+            _ => return None,
+        },
+        "FPT_CSA" => match lang {
+            "en" => "Autonomy solidarity contribution",
+            "de" => "Solidaritätsbeitrag für Selbstständigkeit im Alter",
+            "nl" => "Solidariteitsbijdrage voor zelfredzaamheid",
+            "it" => "Contributo di solidarietà per l'autonomia",
+            "es" => "Contribución de solidaridad para la autonomía",
+            _ => return None,
+        },
+        "FPT_CNFPT" => match lang {
+            "en" => "CNFPT — staff training",
+            "de" => "CNFPT — Fortbildung der Bediensteten",
+            "nl" => "CNFPT — opleiding van het personeel",
+            "it" => "CNFPT — formazione del personale",
+            "es" => "CNFPT — formación del personal",
+            _ => return None,
+        },
         "FPT_CNRACL" => match lang {
             "en" => "CNRACL — Main pension (local civil service)",
             "de" => "CNRACL — Hauptrente (kommunaler öffentlicher Dienst)",
@@ -1136,6 +1176,114 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             _ => return None,
         },
         // Dynamique — placeholders {ts_pct} {tp_pct}
+        "FPT_MALADIE" => match lang {
+            "en" => "Civil servants affiliated to the CNRACL fall under a special health insurance \
+                scheme: the local authority pays its own rate, 11.50 % until 2017 then 9.88 % since \
+                2018 (cut linked to the CSG increase), on the gross index-based salary and the NBI. \
+                The civil servant pays nothing.",
+            "de" => "Bei der CNRACL versicherte Beamte unterliegen einem Sondersystem der \
+                Krankenversicherung: Die Gebietskörperschaft zahlt einen eigenen Satz, 11,50 % bis \
+                2017, seit 2018 9,88 % (Senkung infolge der CSG-Erhöhung), auf das indexierte \
+                Grundgehalt und die NBI. Der Beamte zahlt nichts.",
+            "nl" => "Bij de CNRACL aangesloten ambtenaren vallen onder een bijzondere \
+                ziekteverzekering: de overheid betaalt een eigen tarief, 11,50 % tot 2017 en 9,88 % \
+                sinds 2018 (verlaging door de CSG-verhoging), op het geïndexeerde brutoloon en de \
+                NBI. De ambtenaar betaalt niets.",
+            "it" => "I funzionari iscritti alla CNRACL rientrano in un regime speciale di \
+                assicurazione malattia: l'ente versa un'aliquota propria, 11,50 % fino al 2017 poi \
+                9,88 % dal 2018 (riduzione legata all'aumento della CSG), sul trattamento indiciario \
+                lordo e la NBI. Il funzionario non versa nulla.",
+            "es" => "Los funcionarios afiliados a la CNRACL dependen de un régimen especial de \
+                seguro de enfermedad: la entidad cotiza a un tipo propio, 11,50 % hasta 2017 y \
+                9,88 % desde 2018 (rebaja ligada al aumento de la CSG), sobre el sueldo indiciario \
+                bruto y la NBI. El funcionario no cotiza.",
+            _ => return None,
+        },
+        "FPT_ATIACL" => match lang {
+            "en" => "Tenured civil servants are not covered by the general scheme's occupational \
+                accident branch: the temporary disability allowance (ATIACL), managed by the Caisse \
+                des dépôts, compensates permanent disability following a service accident or an \
+                occupational disease. Employer contribution of 0.40 % of the gross index-based \
+                salary, excluding NBI.",
+            "de" => "Verbeamtete unterliegen nicht dem Arbeitsunfallzweig des allgemeinen Systems: \
+                Die von der Caisse des dépôts verwaltete vorübergehende Invaliditätszulage (ATIACL) \
+                entschädigt dauerhafte Invalidität nach einem Dienstunfall oder einer \
+                Berufskrankheit. Arbeitgeberbeitrag 0,40 % des indexierten Grundgehalts, ohne NBI.",
+            "nl" => "Vaste ambtenaren vallen niet onder de tak arbeidsongevallen van het algemene \
+                stelsel: de tijdelijke invaliditeitsuitkering (ATIACL), beheerd door de Caisse des \
+                dépôts, vergoedt blijvende invaliditeit na een dienstongeval of beroepsziekte. \
+                Werkgeversbijdrage van 0,40 % van het geïndexeerde brutoloon, zonder NBI.",
+            "it" => "I funzionari di ruolo non rientrano nel ramo infortuni del regime generale: \
+                l'indennità temporanea d'invalidità (ATIACL), gestita dalla Caisse des dépôts, \
+                indennizza l'invalidità permanente dovuta a un infortunio in servizio o a una \
+                malattia professionale. Contributo dell'ente dello 0,40 % del trattamento \
+                indiciario lordo, NBI esclusa.",
+            "es" => "Los funcionarios de carrera no dependen de la rama de accidentes de trabajo \
+                del régimen general: el subsidio temporal de invalidez (ATIACL), gestionado por la \
+                Caisse des dépôts, indemniza la invalidez permanente tras un accidente de servicio \
+                o una enfermedad profesional. Cotización patronal del 0,40 % del sueldo indiciario \
+                bruto, sin la NBI.",
+            _ => return None,
+        },
+        "FPT_FNAL" => match lang {
+            "en" => "The National Housing Aid Fund finances personal housing allowances. Authorities \
+                with fewer than 50 staff: 0.10 % up to the Social Security ceiling; 50 staff or more: \
+                0.50 % on the whole salary.",
+            "de" => "Der Nationale Wohngeldfonds finanziert das persönliche Wohngeld. Körperschaften \
+                mit weniger als 50 Bediensteten: 0,10 % bis zur Beitragsbemessungsgrenze; ab 50 \
+                Bediensteten: 0,50 % auf das gesamte Gehalt.",
+            "nl" => "Het Nationaal Fonds voor huursteun financiert de persoonlijke huurtoeslagen. \
+                Overheden met minder dan 50 personeelsleden: 0,10 % tot het plafond van de sociale \
+                zekerheid; 50 of meer: 0,50 % op het volledige loon.",
+            "it" => "Il Fondo nazionale di aiuto all'alloggio finanzia gli aiuti personali \
+                all'alloggio. Enti con meno di 50 dipendenti: 0,10 % entro il massimale della \
+                previdenza sociale; 50 o più: 0,50 % sull'intero trattamento.",
+            "es" => "El Fondo nacional de ayuda a la vivienda financia las ayudas personales a la \
+                vivienda. Entidades de menos de 50 agentes: 0,10 % dentro del tope de la Seguridad \
+                Social; 50 o más: 0,50 % sobre la totalidad del sueldo.",
+            _ => return None,
+        },
+        "FPT_CSA" => match lang {
+            "en" => "Employer contribution of 0.30 %, created in 2004 together with the solidarity \
+                day: it funds the National Solidarity Fund for Autonomy (elderly and disabled \
+                people).",
+            "de" => "Arbeitgeberbeitrag von 0,30 %, 2004 zusammen mit dem Solidaritätstag \
+                eingeführt: Er finanziert die Nationale Solidaritätskasse für Selbstständigkeit \
+                (ältere und behinderte Menschen).",
+            "nl" => "Werkgeversbijdrage van 0,30 %, in 2004 ingevoerd samen met de \
+                solidariteitsdag: ze financiert het Nationaal Solidariteitsfonds voor \
+                zelfredzaamheid (ouderen en personen met een handicap).",
+            "it" => "Contributo dello 0,30 % a carico del datore, creato nel 2004 insieme alla \
+                giornata di solidarietà: finanzia la Cassa nazionale di solidarietà per l'autonomia \
+                (anziani e persone con disabilità).",
+            "es" => "Contribución patronal del 0,30 %, creada en 2004 junto con la jornada de \
+                solidaridad: financia la Caja nacional de solidaridad para la autonomía (personas \
+                mayores y con discapacidad).",
+            _ => return None,
+        },
+        "FPT_CNFPT" => match lang {
+            "en" => "The National Centre for the Territorial Civil Service trains local government \
+                staff. Compulsory employer contribution: 1 % until 2015, 0.9 % from 2016 to 2021, \
+                then an apprenticeship contribution is added: 0.95 % in 2022, 1 % since 2023 (of \
+                which 0.10 % for apprentice training).",
+            "de" => "Das Nationale Zentrum für den kommunalen öffentlichen Dienst bildet die \
+                Bediensteten der Gebietskörperschaften aus. Pflichtbeitrag des Arbeitgebers: 1 % \
+                bis 2015, 0,9 % von 2016 bis 2021, dann kommt ein Ausbildungsbeitrag hinzu: 0,95 % \
+                2022, 1 % seit 2023 (davon 0,10 % für die Ausbildung der Lehrlinge).",
+            "nl" => "Het Nationaal Centrum voor de lokale overheidsdienst leidt het personeel van \
+                de lokale overheden op. Verplichte werkgeversbijdrage: 1 % tot 2015, 0,9 % van 2016 \
+                tot 2021, daarna komt er een leerlingenbijdrage bij: 0,95 % in 2022, 1 % sinds 2023 \
+                (waarvan 0,10 % voor de opleiding van leerlingen).",
+            "it" => "Il Centro nazionale della funzione pubblica territoriale forma il personale \
+                degli enti locali. Contributo obbligatorio dell'ente: 1 % fino al 2015, 0,9 % dal \
+                2016 al 2021, poi si aggiunge un contributo per l'apprendistato: 0,95 % nel 2022, \
+                1 % dal 2023 (di cui 0,10 % per la formazione degli apprendisti).",
+            "es" => "El Centro nacional de la función pública territorial forma al personal de las \
+                entidades locales. Cotización obligatoria de la entidad: 1 % hasta 2015, 0,9 % de \
+                2016 a 2021, y después se añade una cotización de aprendizaje: 0,95 % en 2022, 1 % \
+                desde 2023 (de la cual 0,10 % para la formación de aprendices).",
+            _ => return None,
+        },
         "FPT_CNRACL" => match lang {
             "en" => "The CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) is the mandatory pension scheme for established local civil servants. \
@@ -1147,8 +1295,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 years as in the private sector\n\
                 • Target replacement rate: 75 % after 41 years and 3 quarters (2016)\n\
                 • No funding: pay-as-you-go scheme\n\n\
-                Phase-in 2012-2019 (decree no. 2011-291):\n\
-                2016: 10.29 % — 2017: 10.56 % — 2018: 10.83 % — 2019+: 11.10 %\n\
+                Phase-in 2011-2020 (decree no. 2011-291):\n\
+                2015: 9.54 % — 2016: 9.94 % — 2017: 10.29 % — 2018: 10.56 % — 2019: 10.83 % — 2020+: 11.10 %\n\
                 Employer (local authority) rate: 30.65 % until 2024, then raised by 3 points a year \
                 (Decree 2025-86): 34.65 % in 2025, 37.65 % in 2026, 40.65 % in 2027, 43.65 % in 2028 (vs ≈ 16 % total in the private \
                 sector)\n\n\
@@ -1163,8 +1311,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 im Privatsektor\n\
                 • Ziel-Ersatzquote: 75 % nach 41 Jahren und 3 Quartalen (2016)\n\
                 • Keine Kapitaldeckung: Umlagesystem\n\n\
-                Stufenweiser Anstieg 2012-2019 (Dekret Nr. 2011-291):\n\
-                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Stufenweiser Anstieg 2011-2020 (Dekret Nr. 2011-291):\n\
+                2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
                 Satz der Körperschaft: 30,65 % bis 2024, dann jährlich um 3 Punkte angehoben (Dekret 2025-86): 34,65 % 2025, 37,65 % 2026, 40,65 % 2027, 43,65 % 2028 (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
                 Angewandte Sätze: Bediensteter {ts_pct} % — Körperschaft {tp_pct} %.",
             "nl" => "De CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
@@ -1177,8 +1325,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 jaar zoals in de privé\n\
                 • Beoogde vervangingsratio: 75 % na 41 jaar en 3 kwartalen (2016)\n\
                 • Geen kapitalisatie: repartitiestelsel\n\n\
-                Geleidelijke stijging 2012-2019 (decreet nr. 2011-291):\n\
-                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Geleidelijke stijging 2011-2020 (decreet nr. 2011-291):\n\
+                2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
                 Tarief bestuur: 30,65 % tot en met 2024, daarna jaarlijks met 3 punten verhoogd (decreet 2025-86): 34,65 % in 2025, 37,65 % in 2026, 40,65 % in 2027, 43,65 % in 2028 (vs ≈ 16 % totaal in de privé)\n\n\
                 Toegepaste tarieven: ambtenaar {ts_pct} % — bestuur {tp_pct} %.",
             "it" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
@@ -1191,8 +1339,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 anni migliori come nel privato\n\
                 • Tasso di sostituzione obiettivo: 75 % dopo 41 anni e 3 trimestri (2016)\n\
                 • Nessuna capitalizzazione: sistema a ripartizione\n\n\
-                Aumento graduale 2012-2019 (decreto n. 2011-291):\n\
-                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Aumento graduale 2011-2020 (decreto n. 2011-291):\n\
+                2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
                 Aliquota ente: 30,65 % fino al 2024, poi aumentata di 3 punti l'anno (decreto 2025-86): 34,65 % nel 2025, 37,65 % nel 2026, 40,65 % nel 2027, 43,65 % nel 2028 (vs ≈ 16 % totale nel privato)\n\n\
                 Aliquote applicate: agente {ts_pct} % — ente {tp_pct} %.",
             "es" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
@@ -1205,8 +1353,8 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 mejores años como en el privado\n\
                 • Tasa de sustitución objetivo: 75 % tras 41 años y 3 trimestres (2016)\n\
                 • Sin capitalización: sistema de reparto\n\n\
-                Subida progresiva 2012-2019 (decreto n.º 2011-291):\n\
-                2016: 10,29 % — 2017: 10,56 % — 2018: 10,83 % — 2019+: 11,10 %\n\
+                Subida progresiva 2011-2020 (decreto n.º 2011-291):\n\
+                2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
                 Tipo de la entidad: 30,65 % hasta 2024, luego elevado 3 puntos al año (decreto 2025-86): 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028 (vs ≈ 16 % total en el privado)\n\n\
                 Tipos aplicados: agente {ts_pct} % — entidad {tp_pct} %.",
             _ => return None,

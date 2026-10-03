@@ -115,7 +115,7 @@ fn libelle_identique_ok(code: &str, lang: &str) -> bool {
         | ("DE_RENTENVERSICHERUNG", "de")
         | ("DE_ARBEITSLOSENVERSICHERUNG", "de")
         | ("AGIRC_ARRCO_T1", "de") | ("AGIRC_ARRCO_T2", "de") // « Tranche » se dit Tranche en allemand
-        | ("IT_IVS", "it") | ("IT_FONDO_GARANZIA", "it") | ("IT_INAIL", "it")
+        | ("IT_IVS", "it") | ("IT_FONDO_GARANZIA", "it") | ("IT_INAIL", "it") | ("IT_BONUS_CUNEO", "it")
         | ("ES_FOGASA", "es") | ("ES_MEI", "es")
         | ("NL_OPSLAG_KO", "nl")
         | ("RO_CAS", "en") // « Pension » identique en anglais
