@@ -339,6 +339,7 @@ export function trStatic(raw, lang) {
 // La valeur brute reste la clé logique côté front (filtres/CAT_CLASS) ; seul
 // l'AFFICHAGE est traduit via trCat().
 export const CAT_DICT = {
+  'Ajout manuel':            ['Manual addition', 'Manuell hinzugefügt', 'Handmatig toegevoegd', 'Aggiunta manuale', 'Añadido manual'],
   'Sécurité sociale':        ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Sicurezza sociale', 'Seguridad social'],
   'Sécurité Sociale':        ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Sicurezza sociale', 'Seguridad social'],
   'Previdenza sociale':      ['Social security', 'Sozialversicherung', 'Sociale zekerheid', 'Previdenza sociale', 'Seguridad social'],

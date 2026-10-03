@@ -1209,6 +1209,48 @@
       border-bottom: 1px solid var(--border);
       border-top: 1px solid var(--border);
     }
+    /* ── Retouches manuelles (écoute, ajout de cotisation) ── */
+    .tbl-section-head.sh-perso { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .perso-ctrl { display: flex; align-items: center; gap: 0.75rem; text-transform: none; letter-spacing: 0; }
+    .perso-ecoute { display: flex; align-items: center; gap: 0.3rem; color: var(--gray); cursor: pointer; font-weight: normal; }
+    .perso-ecoute input { accent-color: var(--gray); cursor: pointer; }
+    .perso-raz, .perso-retirer {
+      background: none; border: none; color: var(--gray); cursor: pointer;
+      font: inherit; font-size: 0.62rem; padding: 0 0.2rem;
+    }
+    .perso-raz:hover, .perso-retirer:hover { color: var(--text); }
+    .perso-plus-row td { padding: 0.25rem 0.9rem; }
+    .perso-plus {
+      width: 1.6rem; height: 1.6rem; border-radius: 50%;
+      background: var(--bg2); border: 1px solid var(--gray); color: var(--gray);
+      font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+    }
+    .perso-plus:hover { color: var(--text); border-color: var(--text); }
+    .perso-form td { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+    .perso-form input, .perso-input {
+      background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+      font: inherit; font-size: 0.75rem; padding: 0.15rem 0.35rem;
+    }
+    .perso-form #perso-lib { flex: 1; min-width: 8rem; }
+    .perso-form #perso-base, .perso-form #perso-taux { width: 6.5rem; text-align: right; }
+    .perso-input { width: 100%; text-align: right; }
+    .perso-invalide { border-color: var(--red) !important; }
+    .perso-cote, .perso-ok {
+      background: var(--bg2); border: 1px solid var(--gray); color: var(--gray);
+      font: inherit; font-size: 0.65rem; padding: 0.15rem 0.45rem; cursor: pointer;
+    }
+    .perso-cote.is-sal { color: var(--sal); border-color: var(--sal); }
+    .perso-cote.is-pat { color: var(--orange); border-color: var(--orange); }
+    .perso-ok:hover { color: var(--text); border-color: var(--text); }
+    .cat-perso { color: var(--gray); }
+    td.perso-mod { text-decoration: underline dotted var(--gray); text-underline-offset: 3px; }
+    body.perso-ecoute-on [data-perso] { cursor: cell; user-select: none; }
+    body.perso-ecoute-on [data-perso]:hover { outline: 1px dotted var(--gray); outline-offset: -2px; }
+    [data-perso].perso-appui {
+      background: linear-gradient(var(--dim), var(--dim)) left / 0% 100% no-repeat;
+      animation: perso-appui 2s linear forwards;
+    }
+    @keyframes perso-appui { to { background-size: 100% 100%; } }
     /* Tête « Rémunération » : libellé puis jauge de répartition du coût
        employeur, jusqu'à la marge droite. */
     .tbl-section-head.sh-rem { display: flex; align-items: center; gap: 0.75rem; }

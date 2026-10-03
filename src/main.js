@@ -335,8 +335,7 @@ async function _recalcForLang(lang) {
   _lastCalcReq = { ..._lastCalcReq, lang };
   try {
     const b = await api("calculer_bulletin", _lastCalcReq);
-    lastBulletin = b;
-    renderAll(b);
+    renderAll(_poserBulletin(b));
   } catch (e) {
     console.error('[recalc langue] échec :', e);
   }
@@ -1476,6 +1475,7 @@ const CAT_CLASS = {
   "Allègement":             "cat-alleg",
   "Aide à l'emploi":        "cat-alleg",
   "Heures supplémentaires": "cat-alleg",
+  "Ajout manuel":           "cat-perso",
   // Suisse
   "1er pilier":             "cat-ss",
   "Assurance chômage":      "cat-cho",
@@ -2626,12 +2626,12 @@ function renderDesktop(b) {
           <td>
             <span class="expand-icon">▶</span>
             <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
-            <span class="trad-skip">${c.libelle}</span>
+            <span class="trad-skip">${c.libelle}</span>${c.perso === 'ajout' ? ` <button class="perso-retirer" title="Retirer cette cotisation" onclick="event.stopPropagation();persoRetirer('${c.code}')">×</button>` : ''}
           </td>
-          <td class="r">${montantOuVide(c.base)}</td>
-          <td class="r">${pctOuVide(c.taux_sal, parseFloat(c.taux_sal) > 0 ? '− ' : '')}</td>
+          <td class="r${_persoCls(c, 'base')}" data-perso="${c.code}|base">${montantOuVide(c.base)}</td>
+          <td class="r${_persoCls(c, 'taux_sal')}" data-perso="${c.code}|taux_sal">${pctOuVide(c.taux_sal, parseFloat(c.taux_sal) > 0 ? '− ' : '')}</td>
           <td class="r ${salCls}"${hasFmSal ? ` onclick="event.stopPropagation();showFormula('${keySal}')" style="cursor:pointer"` : ''}>${estZero(c.montant_sal) ? '' : `${hasFmSal ? '− ' : ''}${fmt(c.montant_sal)}${starSal}`}</td>
-          <td class="r">${pctOuVide(c.taux_pat, parseFloat(c.taux_pat) > 0 ? '− ' : '')}</td>
+          <td class="r${_persoCls(c, 'taux_pat')}" data-perso="${c.code}|taux_pat">${pctOuVide(c.taux_pat, parseFloat(c.taux_pat) > 0 ? '− ' : '')}</td>
           <td class="r ${patCls}"${hasFmPat ? ` onclick="event.stopPropagation();showFormula('${keyPat}')" style="cursor:pointer"` : ''}>${estZero(c.montant_pat) ? '' : `${hasFmPat ? '− ' : ''}${fmt(c.montant_pat)}${starPat}`}</td>
         </tr>
         <tr class="expl-row" id="expl-${idx}" style="display:none">
@@ -2666,11 +2666,12 @@ function renderDesktop(b) {
     </thead>`;
 
   const tableAll = `
-    <div class="tbl-section-head"><span class="sh-fl">-&gt;</span> COTISATIONS <span class="sh-fl">&lt;-</span></div>
+    <div class="tbl-section-head sh-perso"><span><span class="sh-fl">-&gt;</span> COTISATIONS <span class="sh-fl">&lt;-</span></span>${_persoControles()}</div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
         ${buildRows(cotAll, 0)}
+        ${_persoLigneAjout(b)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
           <td class="r c-sal" style="cursor:pointer" onclick="showFormula('TOT_COT_SAL')">${estZero(totalSalCot) ? '' : `= − ${fmt(totalSalCot)}${buildFormulaStar('TOT_COT_SAL')}`}</td>
@@ -3198,6 +3199,244 @@ function buildHistoire(c, cls = 'expl-histoire') {
   return c.anecdote ? `<div class="${cls} trad-skip"><span class="histoire-tag">${tag}</span> ${esc(c.anecdote)}</div>` : '';
 }
 
+// ── Retouches manuelles du bulletin ─────────────────────────────────────────
+// L'utilisateur corrige à la volée une base ou un taux, ou ajoute une
+// cotisation de son cru. Tout se joue côté front, sur une COPIE du bulletin
+// renvoyé par le back : seules la ligne touchée, les totaux, le net, le net
+// imposable et le coût employeur bougent. Rien d'autre n'est recalculé
+// (réduction générale, CSG, paye inversée, projection annuelle). Les retouches
+// sont indexées par code de cotisation et survivent à un nouveau calcul.
+//
+// Édition d'une case : case « écoute » cochée, puis clic, et second clic
+// maintenu 2 s sur la base ou un taux.
+let _bulletinBack = null;            // bulletin tel que renvoyé par le back
+const _perso = { modifs: {}, ajouts: [], seq: 0 };
+let _persoEcoute = false;
+let _persoCote = 'sal';              // côté de la cotisation ajoutée : 'sal' | 'pat'
+let _persoFormOuvert = false;
+const PERSO_DELAI_DOUBLE = 400;      // ms entre le 1er clic et le 2e appui
+const PERSO_DUREE_APPUI  = 2000;     // ms de maintien du 2e appui
+const PERSO_NON_DEDUCTIBLES = ['CSG_NON_DEDUCTIBLE', 'CRDS'];
+
+function _poserBulletin(b) {
+  _bulletinBack = b;
+  lastBulletin = _appliquerPerso(b);
+  return lastBulletin;
+}
+
+function _persoActif() {
+  return Object.keys(_perso.modifs).length > 0 || _perso.ajouts.length > 0;
+}
+
+function _appliquerPerso(src) {
+  if (!_persoActif()) return src;
+  const b = structuredClone(src);
+  const r2 = x => (Math.round(x * 100) / 100).toFixed(2);
+  for (const a of _perso.ajouts) {
+    b.cotisations.push({
+      code: a.code, libelle: a.libelle, base: String(a.base),
+      taux_sal: a.cote === 'sal' ? String(a.taux) : '0', montant_sal: '0',
+      taux_pat: a.cote === 'pat' ? String(a.taux) : '0', montant_pat: '0',
+      categorie: 'Ajout manuel',
+      explication: `Cotisation ajoutée à la main (${a.cote === 'sal' ? 'salariale' : 'patronale'}) : ` +
+        'montant = base × taux. Elle est retenue sur le net (et le net imposable) si elle est salariale, ' +
+        'ajoutée au coût employeur si elle est patronale ; aucune autre ligne n\'est recalculée.',
+      loi_ref: null,
+      perso: 'ajout',
+    });
+  }
+  let dSal = 0, dPat = 0, dImp = 0;
+  for (const c of b.cotisations) {
+    const m = _perso.modifs[c.code];
+    const ajout = c.perso === 'ajout';
+    if (!m && !ajout) continue;
+    const avantSal = parseFloat(c.montant_sal) || 0;
+    const avantPat = parseFloat(c.montant_pat) || 0;
+    const avant = { base: c.base, taux_sal: c.taux_sal, taux_pat: c.taux_pat };
+    if (m) {
+      for (const champ of Object.keys(m)) c[champ] = String(m[champ]);
+      c.perso_champs = Object.keys(m);
+    }
+    const base = parseFloat(c.base) || 0;
+    // Un côté n'est recalculé que si sa base ou son taux a bougé : les autres
+    // montants du back (plafonds, arrondis) restent intacts.
+    const touche = champ => ajout || (m && (champ in m || 'base' in m));
+    if (touche('taux_sal')) c.montant_sal = r2(base * (parseFloat(c.taux_sal) || 0));
+    if (touche('taux_pat')) c.montant_pat = r2(base * (parseFloat(c.taux_pat) || 0));
+    const ds = (parseFloat(c.montant_sal) || 0) - avantSal;
+    dSal += ds;
+    dPat += (parseFloat(c.montant_pat) || 0) - avantPat;
+    if (!PERSO_NON_DEDUCTIBLES.includes(c.code)) dImp += ds;
+    if (m && !ajout) {
+      const lib = { base: 'base', taux_sal: 'taux salarial', taux_pat: 'taux patronal' };
+      const val = (champ, v) => champ === 'base' ? fmt(v) : fmtPct(v);
+      const note = '\n✎ Retouché à la main : ' + Object.keys(m)
+        .map(champ => `${lib[champ]} ${val(champ, avant[champ])} → ${val(champ, m[champ])}`).join(', ') +
+        '. Montant = base × taux ; les autres lignes ne sont pas recalculées.';
+      // Avant le détail aide au poste (U+0001) et l'anecdote (U+0002).
+      const k = c.explication.search(/[\u0001\u0002]/);
+      c.explication = k < 0 ? c.explication + note : c.explication.slice(0, k) + note + c.explication.slice(k);
+    }
+  }
+  b.net_a_payer          = r2(parseFloat(b.net_a_payer) - dSal);
+  b.net_imposable        = r2(parseFloat(b.net_imposable) - dImp);
+  b.cout_total_employeur = r2(parseFloat(b.cout_total_employeur) + dPat);
+  return b;
+}
+
+function _persoRendre() {
+  if (!_bulletinBack) return;
+  lastBulletin = _appliquerPerso(_bulletinBack);
+  renderAll(lastBulletin);
+}
+
+function _persoCls(c, champ) {
+  return c.perso_champs?.includes(champ) ? ' perso-mod' : '';
+}
+
+function _persoNombre(s) {
+  const n = parseFloat(String(s).replace(/[\s €%]/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function _persoControles() {
+  return `<span class="perso-ctrl">
+    <label class="perso-ecoute" title="Clic, puis second clic maintenu 2 secondes sur une base ou un taux pour le modifier">
+      <input type="checkbox" ${_persoEcoute ? 'checked' : ''} onchange="persoEcoute(this.checked)"> ÉCOUTE ✎
+    </label>
+    ${_persoActif() ? '<button class="perso-raz" onclick="persoToutRetirer()">↺ annuler mes retouches</button>' : ''}
+  </span>`;
+}
+
+function _persoLigneAjout(b) {
+  if (!_persoFormOuvert) {
+    return `<tr class="perso-plus-row"><td colspan="6">
+      <button class="perso-plus" title="Ajouter une cotisation à la simulation" onclick="event.stopPropagation();persoOuvrir(true)">+</button>
+    </td></tr>`;
+  }
+  const sal = _persoCote === 'sal';
+  return `<tr class="perso-plus-row perso-form"><td colspan="6" onclick="event.stopPropagation()">
+    <button type="button" class="perso-cote ${sal ? 'is-sal' : 'is-pat'}" onclick="persoBasculer()"
+      title="Basculer salariale / patronale">${sal ? 'SALARIALE' : 'PATRONALE'} ⇄</button>
+    <input id="perso-lib" type="text" placeholder="libellé" maxlength="80">
+    <input id="perso-base" type="text" inputmode="decimal" placeholder="base" value="${String(b.brut).replace('.', ',')}" title="Base (€)">
+    <input id="perso-taux" type="text" inputmode="decimal" placeholder="taux %" title="Taux (%)">
+    <button type="button" class="perso-ok" onclick="persoAjouter()">AJOUTER</button>
+    <button type="button" class="perso-retirer" onclick="persoOuvrir(false)" title="Fermer">×</button>
+  </td></tr>`;
+}
+
+window.persoEcoute = function (on) {
+  _persoEcoute = on;
+  document.body.classList.toggle('perso-ecoute-on', on);
+};
+window.persoOuvrir = function (on) {
+  _persoFormOuvert = on;
+  _persoRendre();
+  if (on) document.getElementById('perso-lib')?.focus();
+};
+window.persoBasculer = function () {
+  // Garde la saisie en cours : on ne fait que repeindre le bouton.
+  _persoCote = _persoCote === 'sal' ? 'pat' : 'sal';
+  const btn = document.querySelector('.perso-cote');
+  if (btn) {
+    btn.textContent = (_persoCote === 'sal' ? 'SALARIALE' : 'PATRONALE') + ' ⇄';
+    btn.classList.toggle('is-sal', _persoCote === 'sal');
+    btn.classList.toggle('is-pat', _persoCote === 'pat');
+  }
+};
+window.persoAjouter = function () {
+  const champ = id => document.getElementById(id);
+  // Le libellé s'affiche tel quel dans le tableau : on retire tout balisage.
+  const libelle = (champ('perso-lib')?.value || '').replace(/[<>&"'`]/g, '').trim() || 'Cotisation ajoutée';
+  const base = _persoNombre(champ('perso-base')?.value);
+  const taux = _persoNombre(champ('perso-taux')?.value);
+  let ok = true;
+  for (const [id, v] of [['perso-base', base], ['perso-taux', taux]]) {
+    champ(id)?.classList.toggle('perso-invalide', v === null);
+    if (v === null) ok = false;
+  }
+  if (!ok) return;
+  _perso.ajouts.push({ code: `PERSO_${++_perso.seq}`, libelle, cote: _persoCote, base, taux: taux / 100 });
+  _persoFormOuvert = false;
+  _persoRendre();
+};
+window.persoRetirer = function (code) {
+  _perso.ajouts = _perso.ajouts.filter(a => a.code !== code);
+  delete _perso.modifs[code];
+  _persoRendre();
+};
+window.persoToutRetirer = function () {
+  _perso.modifs = {};
+  _perso.ajouts = [];
+  _persoRendre();
+};
+
+function _persoEditer(cell) {
+  const [code, champ] = cell.dataset.perso.split('|');
+  const c = lastBulletin?.cotisations.find(x => x.code === code);
+  if (!c) return;
+  const estTaux = champ !== 'base';
+  const v = parseFloat(c[champ]) || 0;
+  const init = estTaux ? String(+(v * 100).toFixed(4)) : v.toFixed(2);
+  cell.innerHTML = `<input class="perso-input" type="text" inputmode="decimal" value="${init.replace('.', ',')}"
+    title="${estTaux ? 'Taux en %' : 'Base en €'} — Entrée pour valider, Échap pour annuler">`;
+  const inp = cell.querySelector('input');
+  inp.focus();
+  inp.select();
+  let fini = false;
+  const finir = valider => {
+    if (fini) return;
+    fini = true;
+    const n = valider ? _persoNombre(inp.value) : null;
+    if (n !== null) (_perso.modifs[code] ??= {})[champ] = estTaux ? n / 100 : n;
+    _persoRendre();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') finir(true);
+    else if (e.key === 'Escape') finir(false);
+  });
+  inp.addEventListener('blur', () => finir(true));
+  inp.addEventListener('click', e => e.stopPropagation());
+}
+
+// Geste d'édition : clic, puis second appui maintenu PERSO_DUREE_APPUI ms sur
+// la même case. Relâcher trop tôt annule.
+{
+  const g = { cell: null, finClic: -Infinity, timer: null };
+  const annuler = () => {
+    if (g.timer) clearTimeout(g.timer);
+    g.timer = null;
+    g.cell?.classList.remove('perso-appui');
+  };
+  document.addEventListener('pointerdown', e => {
+    if (!_persoEcoute || e.button !== 0) return;
+    const cell = e.target.closest('[data-perso]');
+    if (!cell || cell.querySelector('input')) { g.cell = null; return; }
+    if (g.cell === cell && performance.now() - g.finClic < PERSO_DELAI_DOUBLE) {
+      cell.classList.add('perso-appui');
+      g.timer = setTimeout(() => {
+        g.timer = null;
+        cell.classList.remove('perso-appui');
+        g.cell = null;
+        _persoEditer(cell);
+      }, PERSO_DUREE_APPUI);
+    } else {
+      g.cell = cell;
+      g.finClic = -Infinity;
+    }
+  });
+  document.addEventListener('pointerup', e => {
+    if (g.timer) { annuler(); g.cell = null; return; }
+    if (g.cell && e.target.closest('[data-perso]') === g.cell) g.finClic = performance.now();
+  });
+  document.addEventListener('pointercancel', () => { annuler(); g.cell = null; });
+  // En écoute, cliquer une case éditable ne déplie pas l'explication de la ligne.
+  document.addEventListener('click', e => {
+    if (_persoEcoute && e.target.closest('[data-perso]') && !e.target.closest('input')) e.stopPropagation();
+  }, true);
+}
+
 function renderAll(b) {
   DEVISE = b.devise || "EUR";
   extractAidePosteDetail(b);
@@ -3548,7 +3787,7 @@ async function calculate(source) {
       ...(_modeSaisie === 'net' ? { netCible: brutVal.toString() } : {}),
     };
     const bulletin = await api("calculer_bulletin", _lastCalcReq);
-    lastBulletin = bulletin;
+    _poserBulletin(bulletin);
     // Mode net : la ligne « Salaire de base » (section RÉMUNÉRATION) et l'aperçu
     // de retenue d'absence doivent reposer sur le BRUT RECONSTITUÉ plein, pas
     // sur le net saisi. En cas d'absence, ce brut plein est `absence.brut_mensuel`
@@ -3563,7 +3802,7 @@ async function calculate(source) {
         _remBase = Math.max(0, (parseFloat(bulletin.brut) || 0) - gainHs);
       }
     }
-    renderAll(bulletin);
+    renderAll(lastBulletin);
     _afficherBrutReconstitue(bulletin);
     _updateAnnuelBtn();
     _ecrireLien();
