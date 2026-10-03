@@ -129,7 +129,17 @@ pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         p.pit_seuil * p.pit_t1 + (taxable - p.pit_seuil) * p.pit_t2
     };
     let pit_ann = (pit_brut - p.kwota_relief).max(Decimal::ZERO);
-    let pit_mens = (pit_ann / dec!(12)).round_dp(2);
+    // Avance mensuelle (art. 32 ustawy o PIT) : base et avance arrondies au
+    // złoty entier (Ordynacja podatkowa art. 63 : moins de 50 gr tronqués, 50 gr
+    // et plus au złoty supérieur). Au-delà du seuil de 120 000 PLN, moyenne
+    // annuelle, elle aussi arrondie au złoty.
+    let zloty = |x: Decimal| x.round_dp_with_strategy(0, rust_decimal::RoundingStrategy::MidpointAwayFromZero);
+    let base_mens = zloty(taxable / dec!(12));
+    let pit_mens = if taxable <= p.pit_seuil {
+        zloty((base_mens * p.pit_t1 - p.kwota_relief / dec!(12)).max(Decimal::ZERO))
+    } else {
+        zloty(pit_ann / dec!(12))
+    };
     let taux_pit = if brut > Decimal::ZERO { (pit_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "PL_PIT".into(),

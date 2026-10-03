@@ -1,7 +1,8 @@
 // ── Monaco — CAR + CCSS + chômage (pas d'impôt sur le revenu) ────────────────
 //
 // Salarié secteur privé. Pas d'IR pour les résidents (sauf nationaux français,
-// imposés par la France — convention 1963). Côté salarié : CAR 6,85 % + chômage 2,4 %.
+// imposés par la France — convention 1963). Côté salarié : CAR 6,85 %, chômage 2,4 %
+// et retraite complémentaire CMRC.
 // CCSS (maladie/famille) : 100 % patronale. Taux lus en base. Devise EUR.
 
 use chrono::Datelike;
@@ -10,6 +11,7 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
+/// Ligne de cotisation sur `base` (salaire plafonné ou tranche).
 fn ligne(code: &str, libelle: &str, categorie: &str, brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let ts = ctx.taux_sal(code);
     let tp = ctx.taux_pat(code);
@@ -44,11 +46,24 @@ pub fn generer_bulletin_mc(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             "Monaco : données disponibles pour 2020-2026.", ctx);
     }
 
-    let cotisations = vec![
-        ligne("MC_CAR",  "CAR — Retraite",         "Retraite",          brut, ctx),
-        ligne("MC_CCSS", "CCSS — Maladie/famille", "Sécurité sociale",  brut, ctx),
-        ligne("MC_CHOM", "Chômage",                "Chômage",           brut, ctx),
+    // Plafonds mensuels (Caisses sociales, depuis octobre 2025) : absents avant,
+    // l'assiette reste alors le brut entier.
+    let plafonne = |code: &str| ctx.plafond(code).map_or(brut, |p| brut.min(p));
+    let mut cotisations = vec![
+        ligne("MC_CAR",  "CAR — Retraite",         "Retraite",          plafonne("MC_PLAF_CAR"),  ctx),
+        ligne("MC_CCSS", "CCSS — Maladie/famille", "Sécurité sociale",  plafonne("MC_PLAF_CCSS"), ctx),
+        ligne("MC_CHOM", "Chômage",                "Chômage",           plafonne("MC_PLAF_CHOM"), ctx),
     ];
+    // Retraite complémentaire CMRC : tranche A jusqu'au plafond, tranche B
+    // jusqu'à 8 fois ce plafond.
+    if let Some(ta) = ctx.plafond("MC_PLAF_TA") {
+        cotisations.push(ligne("MC_CMRC_TA", "CMRC — Retraite complémentaire, tranche A",
+            "Retraite", brut.min(ta), ctx));
+        if brut > ta {
+            cotisations.push(ligne("MC_CMRC_TB", "CMRC — Retraite complémentaire, tranche B",
+                "Retraite", brut.min(ta * dec!(8)) - ta, ctx));
+        }
+    }
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
     let net_a_payer = (brut - total_sal).round_dp(2);

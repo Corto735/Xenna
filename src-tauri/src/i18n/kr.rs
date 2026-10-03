@@ -58,11 +58,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "산재보험 — accidentes laborales, 100 % empleador. ≈ {tp} % (medio).\n\nBase legal: 고용보험법/산재.",
         ],
         "KR_INCOME_TAX" => [
-            "소득세 — national tax (annualised).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1,500,000 ₩\n= taxable income {tx} ₩\nScale 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩\n= {na} ₩/yr / 12 = {nm} ₩/month.\n\nLegal basis: 소득세법.",
-            "소득세 — nationale Steuer (annualisiert).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩\n= zu versteuerndes Einkommen {tx} ₩\nTarif 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩\n= {na} ₩/Jahr / 12 = {nm} ₩/Monat.\n\nRechtsgrundlage: 소득세법.",
-            "소득세 — nationale belasting (op jaarbasis).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1.500.000 ₩\n= belastbaar inkomen {tx} ₩\nSchaal 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩\n= {na} ₩/jr / 12 = {nm} ₩/maand.\n\nWettelijke basis: 소득세법.",
-            "소득세 — imposta nazionale (annualizzata).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩\n= reddito imponibile {tx} ₩\nScaglioni 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩\n= {na} ₩/anno / 12 = {nm} ₩/mese.\n\nBase giuridica: 소득세법.",
-            "소득세 — impuesto nacional (anualizado).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩\n= renta imponible {tx} ₩\nEscala 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩\n= {na} ₩/año / 12 = {nm} ₩/mes.\n\nBase legal: 소득세법.",
+            "소득세 — national tax (annualised).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1,500,000 ₩ − 보험료공제 {soc} ₩\n= taxable income {tx} ₩\nScale 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n= {na} ₩/yr / 12 = {nm} ₩/month.\n\nLegal basis: 소득세법.",
+            "소득세 — nationale Steuer (annualisiert).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩ − 보험료공제 {soc} ₩\n= zu versteuerndes Einkommen {tx} ₩\nTarif 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n= {na} ₩/Jahr / 12 = {nm} ₩/Monat.\n\nRechtsgrundlage: 소득세법.",
+            "소득세 — nationale belasting (op jaarbasis).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1.500.000 ₩ − 보험료공제 {soc} ₩\n= belastbaar inkomen {tx} ₩\nSchaal 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n= {na} ₩/jr / 12 = {nm} ₩/maand.\n\nWettelijke basis: 소득세법.",
+            "소득세 — imposta nazionale (annualizzata).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩ − 보험료공제 {soc} ₩\n= reddito imponibile {tx} ₩\nScaglioni 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n= {na} ₩/anno / 12 = {nm} ₩/mese.\n\nBase giuridica: 소득세법.",
+            "소득세 — impuesto nacional (anualizado).\n\n총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩ − 보험료공제 {soc} ₩\n= renta imponible {tx} ₩\nEscala 6→45 %: {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n= {na} ₩/año / 12 = {nm} ₩/mes.\n\nBase legal: 소득세법.",
         ],
         "KR_LOCAL_TAX" => [
             "지방소득세 — local tax = 10 % of national tax.\n{n} ₩ × 10 % = {l} ₩/month.\n\nLegal basis: 지방세법.",

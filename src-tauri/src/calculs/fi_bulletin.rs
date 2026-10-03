@@ -17,19 +17,35 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Impôt d'État annuel (barème 2026), cumul calculé à partir des taux marginaux confirmés.
+/// Impôt d'État annuel, barème 2026 (Tuloverolaki ; VM, tuloveroasteikko 2026) :
+/// 12,64 % jusqu'à 22 000 €, puis 19 / 30,25 / 33,25 / 37,5 %.
 fn impot_etat(t: Decimal) -> Decimal {
-    if t <= dec!(21200) {
+    if t <= dec!(22000) {
         t * dec!(0.1264)
     } else if t <= dec!(32600) {
-        dec!(2679.68) + (t - dec!(21200)) * dec!(0.19)
+        dec!(2780.80) + (t - dec!(22000)) * dec!(0.19)
     } else if t <= dec!(40100) {
-        dec!(4845.68) + (t - dec!(32600)) * dec!(0.3025)
+        dec!(4794.80) + (t - dec!(32600)) * dec!(0.3025)
     } else if t <= dec!(52100) {
-        dec!(7114.43) + (t - dec!(40100)) * dec!(0.3325)
+        dec!(7063.55) + (t - dec!(40100)) * dec!(0.3325)
     } else {
-        dec!(11104.43) + (t - dec!(52100)) * dec!(0.375)
+        dec!(11053.55) + (t - dec!(52100)) * dec!(0.375)
     }
+}
+
+/// Crédit d'impôt sur le revenu du travail (työtulovähennys) 2026 : 18 % du
+/// salaire, plafonné à 3 430 €, réduit de 2 % du revenu net au-delà de 35 000 €
+/// (Veronmaksajat, vähennykset 2026). Au-delà de 50 550 €, réduction non
+/// relevée : on poursuit à 2 %.
+fn tyotulovahennys(salaire: Decimal, revenu_net: Decimal) -> Decimal {
+    let plein = (salaire * dec!(0.18)).min(dec!(3430));
+    (plein - (revenu_net - dec!(35000)).max(Decimal::ZERO) * dec!(0.02)).max(Decimal::ZERO)
+}
+
+/// Abattement de base communal (perusvähennys) 2026 : 4 265 €, réduit de 18 %
+/// du revenu communal imposable au-delà de 4 265 €.
+fn perusvahennys(revenu: Decimal) -> Decimal {
+    (dec!(4265) - (revenu - dec!(4265)).max(Decimal::ZERO) * dec!(0.18)).max(Decimal::ZERO).min(revenu)
 }
 
 fn ligne_cot(code: &str, libelle: &str, base: Decimal, ctx: &ContextPaie) -> LigneCotisation {
@@ -88,14 +104,18 @@ pub fn generer_bulletin_fi(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     cotisations.push(ligne_cot("FI_SAIRAANHOITO", "Sairaanhoitomaksu — Soins de santé", brut, ctx));
     cotisations.push(ligne_cot("FI_TYONANTAJA_SV", "Sairausvakuutus employeur", brut, ctx));
 
-    // Cotisations déductibles du revenu imposable : TyEL + chômage + päiväraha (annuel)
-    let ded_annuel = (ctx.taux_sal("FI_TYEL") + ctx.taux_sal("FI_TYOTTOMYYS")) * g
+    // Revenu net : salaire − déduction forfaitaire de frais (750 €) − cotisations
+    // salariales déductibles (TyEL, chômage, päiväraha).
+    let ded_annuel = dec!(750).min(g)
+        + (ctx.taux_sal("FI_TYEL") + ctx.taux_sal("FI_TYOTTOMYYS")) * g
         + paiva_montant * dec!(12);
     let taxable = (g - ded_annuel).max(Decimal::ZERO);
 
     let etat = impot_etat(taxable);
-    let communal = taxable * dec!(0.0750);
-    let impot_mens = ((etat + communal) / dec!(12)).round_dp(2);
+    // Impôt communal moyen 2026 : 7,57 %, après perusvähennys.
+    let communal = (taxable - perusvahennys(taxable)).max(Decimal::ZERO) * dec!(0.0757);
+    let credit = tyotulovahennys(g, taxable).min(etat + communal);
+    let impot_mens = ((etat + communal - credit) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "FI_TULOVERO".into(), libelle: ctx.libelle("FI_TULOVERO", "Tulovero — Impôt (État + communal)"),
@@ -104,18 +124,19 @@ pub fn generer_bulletin_fi(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Impôt sur le revenu".into(),
         explication: ctx.expl("FI_TULOVERO",
             "Impôt sur le revenu 2026 (annualisé).\n\n\
-            Revenu imposable : {g} € − cotisations déductibles {ded} € = {tx} €\n\
+            Revenu imposable : {g} € − frais (750 €) et cotisations déductibles = {ded} € → {tx} €\n\
             Barème d'État : 12,64 % / 19 % / 30,25 % / 33,25 % / 37,5 %\n\
-            (seuils 21 200 / 32 600 / 40 100 / 52 100 €) → {et} €\n\
-            Impôt communal moyen 7,50 % → {co} €\n\
+            (seuils 22 000 / 32 600 / 40 100 / 52 100 €) → {et} €\n\
+            Impôt communal moyen 7,57 % (après perusvähennys) → {co} €\n\
+            − työtulovähennys {cr} €\n\
             = {im} €/mois.\n\n\
-            Note : crédits työtulovähennys / perusvähennys non modélisés (net prudent).\n\
             Base légale : Tuloverolaki.")
             .replace("{g}", &format!("{:.0}", g))
             .replace("{ded}", &format!("{:.0}", ded_annuel))
             .replace("{tx}", &format!("{:.0}", taxable))
             .replace("{et}", &format!("{:.0}", etat))
             .replace("{co}", &format!("{:.0}", communal))
+            .replace("{cr}", &format!("{:.0}", credit))
             .replace("{im}", &format!("{:.2}", impot_mens)),
         loi_ref: Some(ctx.loi_ref("Tuloverolaki")),
     });

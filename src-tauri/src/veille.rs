@@ -77,6 +77,69 @@ pub enum Specificite {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-10-03",
+        pays: Pays::CoreeDuSud,
+        specificite: None,
+        objet: "Impôt : cotisations sociales salariales déduites du revenu imposable et crédit standard de 130 000 ₩ appliqués (impôt surestimé d'environ 45 % auparavant)",
+        taux: true,
+        sources: &[
+            "https://www.nts.go.kr/english/main.do",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Pologne,
+        specificite: None,
+        objet: "Avance PIT : base et avance arrondies au złoty entier (Ordynacja podatkowa art. 63)",
+        taux: false,
+        sources: &[
+            "https://isap.sejm.gov.pl/isap.nsf/DocDetails.xsp?id=WDU19970370601",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Monaco,
+        specificite: None,
+        objet: "D'octobre 2025 à septembre 2026 : CAR employeur 8,33 % (base 7,45 % + variable 0,88 %), plafonds CAR 6 112 €, CCSS 9 800 €, chômage 15 700 € ; retraite complémentaire CMRC ajoutée (TA 4,008 % / 6,012 %, TB 9,716 % / 14,574 %) ; dès octobre 2026 : CAR 8,39 %, plafonds 6 276 / 10 000 / 16 020 €, TA 4 067 €",
+        taux: true,
+        sources: &[
+            "https://www.caisses-sociales.mc/content/download/3439/file/Lettre_information_aux_employeurs_octobre_2025.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Danemark,
+        specificite: None,
+        objet: "ATP 2026 : 99 / 198 DKK par mois ; beskæftigelsesfradrag (10,65 % / 12,30 % / 12,75 %, plafonds 45 100 / 55 600 / 63 300 DKK) et jobfradrag déduits de l'assiette de l'impôt communal",
+        taux: true,
+        sources: &[
+            "https://www.borger.dk/pension-og-efterloen/atp-livslang-pension-oversigt/atp-bidraget/atp-satser-for-privat-virksomhed",
+            "https://tax.dk/skat/beskaeftigelsesfradrag.htm",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Suede,
+        specificite: None,
+        objet: "Impôt selon Skatteverket (SKV 433 éd. 35 et 36) : grundavdrag, jobbskatteavdrag, réduction pour revenu d'activité et redevance public service, auparavant non modélisés (impôt surestimé d'environ 60 %)",
+        taux: true,
+        sources: &[
+            "https://www.skatteverket.se/download/18.1522bf3f19aea8075ba55c/1766385913260/teknisk-beskrivning-skv-433-2026-utgava-36.pdf",
+            "https://www.skatteverket.se/download/18.262c54c219391f2e9632607/1733849404498/teknisk-beskrivning-SKV433-2025-utgava-35.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Finlande,
+        specificite: None,
+        objet: "2026 : barème d'État (première tranche jusqu'à 22 000 €), impôt communal moyen 7,57 %, déduction de 750 €, työtulovähennys (18 %, plafond 3 430 €) et perusvähennys appliqués ; chômage employeur 0,31 % ; TyEL employeur moyen 17,10 %",
+        taux: true,
+        sources: &[
+            "https://www.veronmaksajat.fi/neuvot/henkiloverotus/tyo-elake-ja-etuudet/verovahennykset/2026/ansiotulosta-tehtavat-vahennykset-2026/",
+            "https://www.veronmaksajat.fi/neuvot/henkiloverotus/tyo-elake-ja-etuudet/ansiotulojen-verot-ja-maksut/2026/tyottomyysvakuutusmaksu-2026/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
         pays: Pays::Suisse,
         specificite: None,
         objet: "LPP : déduction de coordination 26 460 CHF en 2025-2026 (et non 27 225), 24 675 en 2015-2018 ; salaires coordonnés maximaux 59 925 / 60 435 / 60 945 / 62 475 / 64 260 CHF corrigés",

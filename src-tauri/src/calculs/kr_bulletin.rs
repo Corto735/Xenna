@@ -169,12 +169,18 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some(ctx.loi_ref("산업재해보상보험법")),
     });
 
-    // 소득세 + 지방소득세 (annualisé)
+    // 소득세 + 지방소득세 (annualisé). Déductibles du revenu : la cotisation de
+    // pension (연금보험료공제) et les primes santé, dépendance et emploi
+    // (특별소득공제) ; crédit standard de 130 000 ₩ (표준세액공제) en plus du
+    // crédit pour revenu salarial.
     let g = brut * dec!(12);
-    let taxable = (g - geunro_deduction(g) - dec!(1500000)).max(Decimal::ZERO);
+    let soc_ann: Decimal = cotisations.iter()
+        .filter(|c| matches!(c.code.as_str(), "KR_NPS" | "KR_NHI" | "KR_LTC" | "KR_EI"))
+        .map(|c| c.montant_sal).sum::<Decimal>() * dec!(12);
+    let taxable = (g - geunro_deduction(g) - dec!(1500000) - soc_ann).max(Decimal::ZERO);
     let tax_brut = impot_bareme(taxable);
     let credit = credit_impot(tax_brut, g);
-    let national_ann = (tax_brut - credit).max(Decimal::ZERO);
+    let national_ann = (tax_brut - credit - dec!(130000)).max(Decimal::ZERO);
     let national_mens = (national_ann / dec!(12)).round_dp(0);
     let local_mens = (national_mens * dec!(0.10)).round_dp(0);
     let taux_it = if brut > Decimal::ZERO { (national_mens / brut).round_dp(4) } else { Decimal::ZERO };
@@ -184,13 +190,14 @@ pub fn generer_bulletin_kr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Impôt sur le revenu".into(),
         explication: ctx.expl("KR_INCOME_TAX",
             "소득세 — impôt national (annualisé).\n\n\
-            총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩\n\
+            총급여 {g} ₩ − 근로소득공제 {ded} ₩ − 기본공제 1 500 000 ₩ − 보험료공제 {soc} ₩\n\
             = revenu imposable {tx} ₩\n\
-            Barème 6→45 % : {tb} ₩ − 근로소득세액공제 {cr} ₩\n\
+            Barème 6→45 % : {tb} ₩ − 근로소득세액공제 {cr} ₩ − 표준세액공제 130 000 ₩\n\
             = {na} ₩/an / 12 = {nm} ₩/mois.\n\n\
             Base légale : 소득세법.")
             .replace("{g}", &format!("{:.0}", g))
             .replace("{ded}", &format!("{:.0}", geunro_deduction(g)))
+            .replace("{soc}", &format!("{:.0}", soc_ann))
             .replace("{tx}", &format!("{:.0}", taxable))
             .replace("{tb}", &format!("{:.0}", tax_brut))
             .replace("{cr}", &format!("{:.0}", credit))

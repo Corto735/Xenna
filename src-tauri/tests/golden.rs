@@ -468,6 +468,189 @@ async fn golden_japon() {
     ], "273923", "408025").await;
 }
 
+/// Chine (Pékin), 12 000 ¥. Assiette entre 7 270 et 36 348 ¥ (07/2026) :
+/// pension 8 % / 16 %, maladie 2 % / 9 % (fonds des grosses dépenses compris),
+/// chômage 0,5 % / 0,5 %, accidents 0,4 %, maternité 0,8 %, fonds logement
+/// 12 % / 12 %. IIT : (12 000 − 5 000 − 1 260 − 1 440) × 12 = 51 600 ¥ → 10 %
+/// − 2 520 = 2 640 ¥/an, soit 220 ¥/mois en moyenne (la méthode cumulative
+/// réelle commence à 3 % en janvier). Les 3 ¥ forfaitaires de grosses
+/// dépenses du salarié ne sont pas modélisés.
+#[tokio::test]
+async fn golden_chine() {
+    golden_regime(Pays::Chine, &[
+        ("CN_YANGLAO",   "12000"  , "0.0800" , "960.00" , "0.1600" , "1920.00"),
+        ("CN_YILIAO",    "12000"  , "0.0200" , "240.00" , "0.0900" , "1080.00"),
+        ("CN_SHIYE",     "12000"  , "0.0050" , "60.00"  , "0.0050" , "60.00"  ),
+        ("CN_GONGSHANG", "12000"  , "0"      , "0"      , "0.0040" , "48.00"  ),
+        ("CN_SHENGYU",   "12000"  , "0"      , "0"      , "0.0080" , "96.00"  ),
+        ("CN_GONGJIJIN", "12000"  , "0.1200" , "1440.00", "0.1200" , "1440.00"),
+        ("CN_IIT",       "12000"  , "0.0183" , "220.00" , "0"      , "0"      ),
+    ], "9080.00", "16644.00").await;
+}
+
+/// Pays-Bas, 4 000 €/mois sans pécule de vacances. Loonheffing 2026 :
+/// 38 883 × 35,75 % + 9 117 × 37,56 % = 17 325,02 − algemene heffingskorting
+/// 1 946,45 − arbeidskorting 5 528,24 = 9 850,33 €/an = 820,86 €/mois.
+/// Employeur : Zvw 6,10 %, AWf 2,74 %, Aof (petit employeur) 6,27 %, Whk
+/// indicatif 1,52 %, opslag kinderopvang 0,50 %.
+#[tokio::test]
+async fn golden_pays_bas() {
+    golden_regime(Pays::PaysBas, &[
+        ("NL_LOONHEFFING", "4000"   , "0.2052" , "820.86" , "0"      , "0"      ),
+        ("NL_ZVW",         "4000"   , "0"      , "0"      , "0.0610" , "244.00" ),
+        ("NL_AWF",         "4000"   , "0"      , "0"      , "0.0274" , "109.60" ),
+        ("NL_AOF",         "4000"   , "0"      , "0"      , "0.0627" , "250.80" ),
+        ("NL_WHK",         "4000"   , "0"      , "0"      , "0.0152" , "60.80"  ),
+        ("NL_OPSLAG_KO",   "4000"   , "0"      , "0"      , "0.0050" , "20.00"  ),
+    ], "3179.14", "4685.20").await;
+}
+
+/// Australie, 7 000 $ AU/mois, exercice 2026-27 (première tranche abaissée à
+/// 15 % au 01/07/2026) : 18 200 / 45 000 / 135 000 $ ; 84 000 $ → 4 019,85 +
+/// 39 000 × 30 % = 15 719,85 $/an = 1 310 $/mois ; Medicare 2 % ; super
+/// guarantee 12 %.
+#[tokio::test]
+async fn golden_australie() {
+    golden_regime(Pays::Australie, &[
+        ("AU_INCOME_TAX", "7000"   , "0.1871" , "1310.00", "0"      , "0"      ),
+        ("AU_MEDICARE",   "7000"   , "0.02"   , "140.00" , "0"      , "0"      ),
+        ("AU_SUPER",      "7000"   , "0"      , "0"      , "0.1200" , "840.00" ),
+    ], "5550.00", "7840.00").await;
+}
+
+/// Nouvelle-Zélande, 6 000 $ NZ/mois : PAYE 10,5 / 17,5 / 30 % (seuils
+/// 15 600 / 53 500 / 78 100 $) = 13 820,50 $/an = 1 151,71 $/mois ; ACC
+/// 1,75 % (2026/27) ; KiwiSaver employeur 3,5 % (minimum relevé au
+/// 01/04/2026), cotisation salariée et ESCT non modélisées.
+#[tokio::test]
+async fn golden_nouvelle_zelande() {
+    golden_regime(Pays::NouvelleZelande, &[
+        ("NZ_PAYE",          "6000"   , "0.1920" , "1151.71", "0"      , "0"      ),
+        ("NZ_ACC",           "6000"   , "0.0175" , "105.00" , "0"      , "0"      ),
+        ("NZ_KIWISAVER_EMP", "6000"   , "0"      , "0"      , "0.0350" , "210.00" ),
+    ], "4743.29", "6210.00").await;
+}
+
+/// Pologne, 8 000 PLN. ZUS : emerytalne 9,76 % / 9,76 %, rentowe 1,5 % / 6,5 %,
+/// chorobowe 2,45 %, wypadkowe 1,67 %, FP 2,45 %, FGŚP 0,10 % ; zdrowotne
+/// 9 % de 6 903,20. Avance PIT : 8 000 − 1 096,80 − 250 = 6 653,20 → 6 653 ×
+/// 12 % − 300 = 498,36 → 498 PLN (arrondis au złoty, Ordynacja art. 63).
+#[tokio::test]
+async fn golden_pologne() {
+    golden_regime(Pays::Pologne, &[
+        ("PL_EMERYTALNE", "8000"   , "0.0976" , "780.80" , "0.0976" , "780.80" ),
+        ("PL_RENTOWE",    "8000"   , "0.0150" , "120.00" , "0.0650" , "520.00" ),
+        ("PL_CHOROBOWE",  "8000"   , "0.0245" , "196.00" , "0"      , "0"      ),
+        ("PL_WYPADKOWE",  "8000"   , "0"      , "0"      , "0.0167" , "133.60" ),
+        ("PL_FP",         "8000"   , "0"      , "0"      , "0.0245" , "196.00" ),
+        ("PL_FGSP",       "8000"   , "0"      , "0"      , "0.0010" , "8.00"   ),
+        ("PL_ZDROWOTNE",  "6903.20", "0.09"   , "621.29" , "0"      , "0"      ),
+        ("PL_PIT",        "8000"   , "0.0622" , "498"    , "0"      , "0"      ),
+    ], "5783.91", "9638.40").await;
+}
+
+/// Corée du Sud, 3 500 000 ₩. Pension 4,75 % / 4,75 % (2026), santé 3,595 %
+/// chacun, dépendance 13,14 % de la prime santé, emploi 0,9 % / 1,15 %,
+/// accidents indicatif 0,7 %. Impôt annualisé : 42 M − 근로소득공제 11,55 M −
+/// 기본공제 1,5 M − cotisations 4 081 296 = 24 868 704 ₩ → 2 470 306 −
+/// crédit salarial 668 000 − crédit standard 130 000 = 1 672 306 ₩/an =
+/// 139 359 ₩/mois ; taxe locale 10 %. Approximation de la table 간이세액표.
+#[tokio::test]
+async fn golden_coree() {
+    golden_regime(Pays::CoreeDuSud, &[
+        ("KR_NPS",        "3500000", "0.0475" , "166250" , "0.0475" , "166250" ),
+        ("KR_NHI",        "3500000", "0.03595", "125825" , "0.03595", "125825" ),
+        ("KR_LTC",        "125825" , "0.1314" , "16533"  , "0.1314" , "16533"  ),
+        ("KR_EI",         "3500000", "0.009"  , "31500"  , "0.0115" , "40250"  ),
+        ("KR_SANJAE",     "3500000", "0"      , "0"      , "0.007"  , "24500"  ),
+        ("KR_INCOME_TAX", "3500000", "0.0398" , "139359" , "0"      , "0"      ),
+        ("KR_LOCAL_TAX",  "139359" , "0.10"   , "13936"  , "0"      , "0"      ),
+    ], "3006597", "3873358").await;
+}
+
+/// Andorre, 2 500 €. CASS 6,5 % / 15,5 %. IRPF : 0 % jusqu'à 24 000 €/an,
+/// 5 % jusqu'à 40 000 € : (30 000 − 24 000) × 5 % = 300 €/an = 25 €/mois.
+/// Déductibilité des cotisations CASS non vérifiée (non appliquée).
+#[tokio::test]
+async fn golden_andorre() {
+    golden_regime(Pays::Andorre, &[
+        ("AD_CASS", "2500"   , "0.065"  , "162.50" , "0.155"  , "387.50" ),
+        ("AD_IRPF", "2500"   , "0.01"   , "25.00"  , "0"      , "0"      ),
+    ], "2312.50", "2887.50").await;
+}
+
+/// Monaco, 5 000 €, période d'octobre 2025 à septembre 2026 (Caisses sociales,
+/// lettres aux employeurs) : CAR 6,85 % / 8,33 % (base 7,45 % + variable
+/// 0,88 %) sous le plafond de 6 112 € ; CCSS 13,40 % sous 9 800 € ; chômage
+/// 2,40 % / 4,00 % sous 15 700 € ; CMRC tranche A (3 971 €) 4,008 % / 6,012 %,
+/// tranche B 9,716 % / 14,574 %. Pas d'impôt sur le revenu.
+#[tokio::test]
+async fn golden_monaco() {
+    golden_regime(Pays::Monaco, &[
+        ("MC_CAR",     "5000"   , "0.0685" , "342.50" , "0.0833" , "416.50" ),
+        ("MC_CCSS",    "5000"   , "0"      , "0"      , "0.1340" , "670.00" ),
+        ("MC_CHOM",    "5000"   , "0.024"  , "120.00" , "0.040"  , "200.00" ),
+        ("MC_CMRC_TA", "3971"   , "0.04008", "159.16" , "0.06012", "238.74" ),
+        ("MC_CMRC_TB", "1029"   , "0.09716", "99.98"  , "0.14574", "149.97" ),
+    ], "4278.36", "6675.21").await;
+}
+
+/// Danemark, 40 000 DKK. AM-bidrag 8 % ; ATP temps plein 2026 99 / 198 DKK.
+/// Impôt : bundskat 12,01 % sur 36 800 − 99 − personfradrag 4 508,33 =
+/// 32 192,67 ; kommuneskat moyen 25,049 % sur la même base moins
+/// beskæftigelsesfradrag (12,75 % × 480 000 = 61 200) et jobfradrag (3 100)
+/// par mois = 26 834,34 → 3 866,34 + 6 721,73 = 10 588,07 DKK.
+#[tokio::test]
+async fn golden_danemark() {
+    golden_regime(Pays::Danemark, &[
+        ("DK_AM",           "40000"  , "0.08"   , "3200.00", "0"      , "0"      ),
+        ("DK_ATP",          "40000"  , "0"      , "99.00"  , "0"      , "198.00" ),
+        ("DK_INDKOMSTSKAT", "40000"  , "0.2647" , "10588.07", "0"      , "0"      ),
+    ], "26112.93", "40198.00").await;
+}
+
+/// Finlande, 3 800 €. TyEL 7,30 % / 17,10 % ; chômage 0,89 % / 0,31 % ;
+/// päiväraha 0,88 % ; sairaanhoito 1,10 % ; employeur 1,91 %. Impôt 2026 :
+/// 45 600 − 750 − cotisations 4 135,92 = 40 714,08 ; État 7 267,73 (seuil
+/// 22 000) ; communal 7,57 % = 3 082,06 ; työtulovähennys 3 430 − 2 % ×
+/// 5 714,08 = 3 315,72 → 7 034,07 €/an = 586,17 €/mois.
+#[tokio::test]
+async fn golden_finlande() {
+    golden_regime(Pays::Finlande, &[
+        ("FI_TYEL",          "3800"   , "0.073"  , "277.40" , "0.1710" , "649.80" ),
+        ("FI_TYOTTOMYYS",    "3800"   , "0.0089" , "33.82"  , "0.0031" , "11.78"  ),
+        ("FI_PAIVARAHA",     "3800"   , "0.0088" , "33.44"  , "0"      , "0"      ),
+        ("FI_SAIRAANHOITO",  "3800"   , "0.0110" , "41.80"  , "0"      , "0"      ),
+        ("FI_TYONANTAJA_SV", "3800"   , "0"      , "0"      , "0.0191" , "72.58"  ),
+        ("FI_TULOVERO",      "3800"   , "0.1543" , "586.17" , "0"      , "0"      ),
+    ], "2827.37", "4534.16").await;
+}
+
+/// Suède, 40 000 SEK, moins de 66 ans (Skatteverket, SKV 433 éd. 36) :
+/// arbetsgivaravgifter 31,42 % ; grundavdrag 0,293 PBB → 17 400 ; impôt
+/// communal moyen 32,38 % sur 462 600 = 149 789 ; jobbskatteavdrag (3,027 PBB
+/// − 17 400) × 32,38 % = 52 390 ; réduction pour revenu d'activité 1 500 ;
+/// public service 1 184 → 97 083 SEK/an = 8 090,25 SEK/mois.
+#[tokio::test]
+async fn golden_suede() {
+    golden_regime(Pays::Suede, &[
+        ("SE_ARBETSGIVARAVGIFT", "40000"  , "0"      , "0"      , "0.3142" , "12568.00"),
+        ("SE_SKATT",             "40000"  , "0.2023" , "8090.25", "0"      , "0"      ),
+    ], "31909.75", "52568.00").await;
+}
+
+/// Estonie, 2 000 €. Chômage 1,6 % / 0,8 %, 2ᵉ pilier 2 %, taxe sociale 33 %.
+/// Impôt 22 % sur 2 000 − 32 − 40 − 700 (abattement uniforme 2026) = 270,16 €.
+#[tokio::test]
+async fn golden_estonie() {
+    golden_regime(Pays::Estonie, &[
+        ("EE_TOOTUS",         "2000"   , "0.016"  , "32.00"  , "0.008"  , "16.00"  ),
+        ("EE_KOGUMISPENSION", "2000"   , "0.02"   , "40.00"  , "0"      , "0"      ),
+        ("EE_SOTSIAALMAKS",   "2000"   , "0"      , "0"      , "0.33"   , "660.00" ),
+        ("EE_TULUMAKS",       "2000"   , "0.1351" , "270.16" , "0"      , "0"      ),
+    ], "1657.84", "2676.00").await;
+}
+
 // ────────────────────────────── Relevé ───────────────────────────────
 
 /// Outil, pas un test : imprime toutes les lignes de chaque régime pour un
