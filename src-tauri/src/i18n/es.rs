@@ -3,6 +3,14 @@
 
 pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
     Some(match code {
+        "ES_IRPF" => match lang {
+            "en" => "IRPF withholding — Income tax",
+            "de" => "IRPF-Einbehalt — Einkommensteuer",
+            "nl" => "IRPF-inhouding — Inkomstenbelasting",
+            "it" => "Ritenuta IRPF — Imposta sul reddito",
+            "es" => "Retención IRPF — Impuesto sobre la renta",
+            _ => return None,
+        },
         "ES_CC" => match lang {
             "en" => "Contingencias Comunes — sickness, maternity, pension",
             "de" => "Contingencias Comunes — Kranken, Mutterschaft, Rente",
@@ -57,6 +65,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
 
 pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
     Some(match code {
+        "ES_IRPF" => match lang {
+            "en" => "IRPF withholding under the official AEAT algorithm ({annee}), for an employee with no dependent spouse or children, under 65, paid 12 times a year.\n\nAnnual pay: {r} € − contributions {c} € = {rnt} €\n− other expenses 2,000 € − earned income reduction {red} € = base {b} €\nWithholding scale 19 / 24 / 30 / 37 / 45 / 47 % on the base, less the same scale on the personal allowance of 5,550 € → {q} €/yr\nWithholding rate: {t} % (truncated to two decimals) → {m} €/month.\n\nSource: AEAT, Algoritmo de cálculo del tipo de retención {annee}.",
+            "de" => "IRPF-Einbehalt nach dem amtlichen Algorithmus der AEAT ({annee}), für Beschäftigte ohne unterhaltsberechtigten Ehepartner und ohne Kinder, unter 65, mit 12 Zahlungen im Jahr.\n\nJahresvergütung: {r} € − Beiträge {c} € = {rnt} €\n− sonstige Aufwendungen 2.000 € − Minderung für Arbeitseinkünfte {red} € = Bemessungsgrundlage {b} €\nEinbehaltungstarif 19 / 24 / 30 / 37 / 45 / 47 % auf die Grundlage, abzüglich desselben Tarifs auf den persönlichen Freibetrag von 5.550 € → {q} €/Jahr\nEinbehaltungssatz: {t} % (auf zwei Dezimalstellen abgeschnitten) → {m} €/Monat.\n\nQuelle: AEAT, Algoritmo de cálculo del tipo de retención {annee}.",
+            "nl" => "IRPF-inhouding volgens het officiële AEAT-algoritme ({annee}), voor een werknemer zonder echtgenoot ten laste of kinderen, jonger dan 65, 12 keer per jaar betaald.\n\nJaarloon: {r} € − bijdragen {c} € = {rnt} €\n− overige kosten 2.000 € − vermindering voor arbeidsinkomen {red} € = grondslag {b} €\nInhoudingsschaal 19 / 24 / 30 / 37 / 45 / 47 % op de grondslag, min dezelfde schaal op het persoonlijk minimum van 5.550 € → {q} €/jr\nInhoudingspercentage: {t} % (afgekapt op twee decimalen) → {m} €/maand.\n\nBron: AEAT, Algoritmo de cálculo del tipo de retención {annee}.",
+            "it" => "Ritenuta IRPF secondo l'algoritmo ufficiale dell'AEAT ({annee}), per un dipendente senza coniuge a carico né figli, sotto i 65 anni, pagato 12 volte l'anno.\n\nRetribuzione annua: {r} € − contributi {c} € = {rnt} €\n− altre spese 2.000 € − riduzione per redditi da lavoro {red} € = base {b} €\nScala di ritenuta 19 / 24 / 30 / 37 / 45 / 47 % sulla base, meno la stessa scala sul minimo personale di 5.550 € → {q} €/anno\nAliquota di ritenuta: {t} % (troncata a due decimali) → {m} €/mese.\n\nFonte: AEAT, Algoritmo de cálculo del tipo de retención {annee}.",
+            "es" => "Retención de IRPF según el algoritmo oficial de la AEAT ({annee}), para un trabajador sin cónyuge a cargo ni hijos, menor de 65 años, con 12 pagas al año.\n\nRetribución anual: {r} € − cotizaciones {c} € = {rnt} €\n− otros gastos 2.000 € − reducción por rendimientos del trabajo {red} € = base {b} €\nEscala de retención 19 / 24 / 30 / 37 / 45 / 47 % sobre la base, menos la misma escala sobre el mínimo personal de 5.550 € → {q} €/año\nTipo de retención: {t} % (truncado a dos decimales) → {m} €/mes.\n\nFuente: AEAT, Algoritmo de cálculo del tipo de retención {annee}.",
+            _ => return None,
+        },
         "ES_CC" => match lang {
             "en" => "Main contribution of the Spanish general scheme (sickness, maternity, \
                 disability, pension, death/survivors). Base bounded between {base_min} € and \

@@ -2,6 +2,14 @@
 
 pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
     Some(match code {
+        "LU_IMPOT" => match lang {
+            "en" => "Income tax — wage withholding (tax class 1)",
+            "de" => "Einkommensteuer — Lohnsteuerabzug (Steuerklasse 1)",
+            "nl" => "Inkomstenbelasting — loonbelasting (belastingklasse 1)",
+            "it" => "Imposta sul reddito — ritenuta sui salari (classe 1)",
+            "es" => "Impuesto sobre la renta — retención salarial (clase 1)",
+            _ => return None,
+        },
         "LU_AP" => match lang {
             "en" => "AP — Pension insurance",
             "de" => "AP — Rentenversicherung",
@@ -48,6 +56,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
 
 pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
     Some(match code {
+        "LU_IMPOT" => match lang {
+            "en" => "Wage tax withholding {annee}, tax class 1 (single, no children).\n\nTaxable income: {b} € − pension and health contributions − flat expense allowance 540 € − flat special expenses 480 € = {r} €/yr\nScale 0 to 42 % → {i} €; employment fund contribution {fe} % → {ife} €\n− employee tax credit and CO2 credit {cr} € = {a} €/yr, {m} €/month.\n\nSource: ACD (basic scale, CIS and CI-CO2).",
+            "de" => "Lohnsteuerabzug {annee}, Steuerklasse 1 (ledig, ohne Kinder).\n\nSteuerpflichtiges Einkommen: {b} € − Renten- und Krankenversicherungsbeiträge − Werbungskostenpauschale 540 € − Sonderausgabenpauschale 480 € = {r} €/Jahr\nTarif 0 bis 42 % → {i} €; Beitrag zum Beschäftigungsfonds {fe} % → {ife} €\n− Steuerkredit für Arbeitnehmer und CO2-Steuerkredit {cr} € = {a} €/Jahr, {m} €/Monat.\n\nQuelle: ACD (Grundtarif, CIS und CI-CO2).",
+            "nl" => "Loonbelastinginhouding {annee}, belastingklasse 1 (alleenstaand, zonder kinderen).\n\nBelastbaar inkomen: {b} € − pensioen- en ziektebijdragen − forfaitaire beroepskosten 540 € − forfaitaire bijzondere uitgaven 480 € = {r} €/jr\nSchaal 0 tot 42 % → {i} €; bijdrage aan het werkgelegenheidsfonds {fe} % → {ife} €\n− belastingkrediet werknemer en CO2-krediet {cr} € = {a} €/jr, {m} €/maand.\n\nBron: ACD (basistarief, CIS en CI-CO2).",
+            "it" => "Ritenuta d'imposta sui salari {annee}, classe d'imposta 1 (celibe, senza figli).\n\nReddito imponibile: {b} € − contributi pensione e malattia − spese di produzione forfettarie 540 € − spese speciali forfettarie 480 € = {r} €/anno\nScaglioni da 0 a 42 % → {i} €; contributo al fondo per l'occupazione {fe} % → {ife} €\n− credito d'imposta per dipendenti e credito CO2 {cr} € = {a} €/anno, {m} €/mese.\n\nFonte: ACD (tariffa di base, CIS e CI-CO2).",
+            "es" => "Retención del impuesto sobre salarios {annee}, clase impositiva 1 (soltero, sin hijos).\n\nRenta imponible: {b} € − cotizaciones de pensión y enfermedad − gastos de obtención a tanto alzado 540 € − gastos especiales a tanto alzado 480 € = {r} €/año\nEscala de 0 a 42 % → {i} €; contribución al fondo para el empleo {fe} % → {ife} €\n− crédito fiscal del asalariado y crédito CO2 {cr} € = {a} €/año, {m} €/mes.\n\nFuente: ACD (tarifa básica, CIS y CI-CO2).",
+            _ => return None,
+        },
         "LU_AP" => match lang {
             "en" => "Mandatory pension insurance (CNAP, CSS LU Book II), pay-as-you-go. Rate 8 % \
                 employee and 8 % employer until 2025, 8.5 % each since 1 January 2026 (pension reform); the State adds a third. Base capped at 5 × SSM \

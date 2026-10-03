@@ -273,22 +273,6 @@ async fn golden_suisse() {
     ], "5755.50", "7244.50").await;
 }
 
-/// Luxembourg, 5 000 €. Pension 8,50 % + 8,50 % (réforme au 01/01/2026),
-/// maladie 3,05 % + 3,05 %, dépendance 1,40 % sur 5 000 − 2 771,33 / 4 =
-/// 4 307,17 (abattement d'un quart du SSM, indice 992,24 depuis juin 2026),
-/// accidents 0,65 % (taux unique 2026), mutualité classe 2 0,95 % (FEDIL,
-/// paramètres sociaux au 01/06/2026). Aucun impôt modélisé.
-#[tokio::test]
-async fn golden_luxembourg() {
-    golden_regime(Pays::Luxembourg, &[
-        ("LU_AP", "5000"   , "0.0850" , "425.00" , "0.0850" , "425.00" ),
-        ("LU_AM", "5000"   , "0.0305" , "152.50" , "0.0305" , "152.50" ),
-        ("LU_AD", "4307.17", "0.0140" , "60.30"  , "0"      , "0"      ),
-        ("LU_AA", "5000"   , "0"      , "0"      , "0.0065" , "32.50"  ),
-        ("LU_ME", "5000"   , "0"      , "0"      , "0.0095" , "47.50"  ),
-    ], "4362.20", "5657.50").await;
-}
-
 /// Fonctionnaire territorial titulaire CNRACL, 2 800 € de traitement.
 /// Maladie 9,88 %, CNRACL 11,10 % / 37,65 %, famille 5,25 %, ATIACL 0,40 %,
 /// FNAL 0,10 % (≤ PMSS, moins de 50 agents), CSA 0,30 %, CNFPT 1 %, CSG/CRDS
@@ -387,21 +371,6 @@ async fn golden_allemagne() {
         ("DE_UNFALLVERSICHERUNG",       "4000"   , "0"      , "0"      , "0.0130" , "52.00"  ),
         ("DE_LOHNSTEUER",               "4000"   , "0.1330" , "531.83" , "0"      , "0"      ),
     ], "2622.17", "4898.00").await;
-}
-
-/// Espagne, 2 500 €, CDI. Contingences communes 4,70 % / 23,60 %, chômage
-/// 1,55 % / 5,50 %, FOGASA 0,20 %, formation 0,10 % / 0,60 %, MEI 0,15 % /
-/// 0,75 % (Orden PJC/297/2026) ; base entre 1 424,40 et 5 101,20 €. Aucune
-/// retenue IRPF modélisée : le net est avant impôt.
-#[tokio::test]
-async fn golden_espagne() {
-    golden_regime(Pays::Espagne, &[
-        ("ES_CC",        "2500"   , "0.0470" , "117.50" , "0.2360" , "590.00" ),
-        ("ES_DESEMPLEO", "2500"   , "0.0155" , "38.75"  , "0.0550" , "137.50" ),
-        ("ES_FOGASA",    "2500"   , "0"      , "0"      , "0.0020" , "5.00"   ),
-        ("ES_FP",        "2500"   , "0.0010" , "2.50"   , "0.0060" , "15.00"  ),
-        ("ES_MEI",       "2500"   , "0.0015" , "3.75"   , "0.0075" , "18.75"  ),
-    ], "2337.50", "3266.25").await;
 }
 
 /// Portugal (Continent), 1 600 €, non marié sans personne à charge. Segurança
@@ -871,6 +840,42 @@ async fn golden_inde() {
         ("IN_PT",    "50000"  , "0"      , "200"    , "0"      , "0"      ),
         ("IN_IMPOT", "50000"  , "0"      , "0"      , "0"      , "0"      ),
     ], "48000.00", "51800.00").await;
+}
+
+/// Espagne, 2 500 €, CDI. Contingences communes 4,70 % / 23,60 %, chômage
+/// 1,55 % / 5,50 %, FOGASA 0,20 %, formation 0,10 % / 0,60 %, MEI 0,15 % /
+/// 0,75 % (Orden PJC/297/2026). Retenue IRPF (algorithme AEAT 2026, situation
+/// 3, sans enfant, 12 paies) : 30 000 − cotisations 1 950 = 28 050 − 2 000 =
+/// base 26 050 (pas de réduction au-delà de 19 747,50) ; barème 5 980,50 −
+/// minimum personnel 1 054,50 = 4 926 ; taux 16,42 % → 410,50 €.
+#[tokio::test]
+async fn golden_espagne() {
+    golden_regime(Pays::Espagne, &[
+        ("ES_CC",        "2500"   , "0.0470" , "117.50" , "0.2360" , "590.00" ),
+        ("ES_DESEMPLEO", "2500"   , "0.0155" , "38.75"  , "0.0550" , "137.50" ),
+        ("ES_FOGASA",    "2500"   , "0"      , "0"      , "0.0020" , "5.00"   ),
+        ("ES_FP",        "2500"   , "0.0010" , "2.50"   , "0.0060" , "15.00"  ),
+        ("ES_MEI",       "2500"   , "0.0015" , "3.75"   , "0.0075" , "18.75"  ),
+        ("ES_IRPF",      "2500"   , "0.1642" , "410.50" , "0"      , "0"      ),
+    ], "1927.00", "3266.25").await;
+}
+
+/// Luxembourg, 5 000 €, classe d'impôt 1. Pension 8,50 % + 8,50 % (réforme au
+/// 01/01/2026), maladie 3,05 % + 3,05 %, dépendance 1,40 % sur 5 000 −
+/// 2 771,33 / 4 = 4 307,17, accidents 0,65 %, mutualité classe 2 0,95 %
+/// (FEDIL, 01/06/2026). Impôt (ACD) : 60 000 − 6 930 − 540 − 480 = 52 050 →
+/// barème 8 084,40 × 1,07 (fonds pour l'emploi) = 8 650,31 − CIS 300 −
+/// CI-CO2 108 = 8 242,31 €/an = 686,86 €/mois.
+#[tokio::test]
+async fn golden_luxembourg() {
+    golden_regime(Pays::Luxembourg, &[
+        ("LU_AP",    "5000"   , "0.0850" , "425.00" , "0.0850" , "425.00" ),
+        ("LU_AM",    "5000"   , "0.0305" , "152.50" , "0.0305" , "152.50" ),
+        ("LU_AD",    "4307.17", "0.0140" , "60.30"  , "0"      , "0"      ),
+        ("LU_AA",    "5000"   , "0"      , "0"      , "0.0065" , "32.50"  ),
+        ("LU_ME",    "5000"   , "0"      , "0"      , "0.0095" , "47.50"  ),
+        ("LU_IMPOT", "5000"   , "0.1374" , "686.86" , "0"      , "0"      ),
+    ], "3675.34", "5657.50").await;
 }
 
 // ────────────────────────────── Relevé ───────────────────────────────

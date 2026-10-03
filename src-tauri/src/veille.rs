@@ -77,6 +77,27 @@ pub enum Specificite {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-10-03",
+        pays: Pays::Espagne,
+        specificite: None,
+        objet: "Retenue d'IRPF ajoutée (2025-2026), absente jusqu'ici : algorithme officiel de l'AEAT (réduction pour revenus du travail, frais de 2 000 €, minimum personnel de 5 550 €, barème de retenue 19 à 47 %, limite d'exonération de 15 876 € et plafond de 43 %), salarié sans charge de famille payé 12 fois",
+        taux: true,
+        sources: &[
+            "https://sede.agenciatributaria.gob.es/static_files/Sede/Programas_ayuda/Retenciones/2026/ALGORITMO_2026.pdf",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Luxembourg,
+        specificite: None,
+        objet: "Impôt sur les salaires ajouté (2025-2026, classe 1), absent jusqu'ici : barème 0 à 42 % (tranche exonérée 13 230 €), contribution au fonds pour l'emploi 7 % / 9 %, forfaits de 540 et 480 €, crédit d'impôt salarié et crédit CO2 (192 € en 2025, 216 € en 2026)",
+        taux: true,
+        sources: &[
+            "https://impotsdirects.public.lu/fr/az/t/tarif_pers.html",
+            "https://impotsdirects.public.lu/fr/az/c/credit-impot-salaries/cis2026.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
         pays: Pays::Autriche,
         specificite: None,
         objet: "Lohnsteuer : Werbungskostenpauschale 132 € et Verkehrsabsetzbetrag (487 € en 2025, 496 € en 2026) appliqués",

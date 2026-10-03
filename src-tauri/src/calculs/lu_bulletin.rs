@@ -5,13 +5,23 @@ use super::lu_cotisations::*;
 
 pub fn generer_bulletin_lu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
-    let cotisations = vec![
+    let mut cotisations = vec![
         lu_ap(brut, ctx),
         lu_am(brut, ctx),
         lu_ad(brut, ctx),
         lu_aa(brut, ctx),
         lu_me(brut, ctx),
     ];
+
+    // Impôt : pension et maladie déductibles, dépendance non.
+    let deductibles: Decimal = cotisations.iter()
+        .filter(|c| c.code == "LU_AP" || c.code == "LU_AM")
+        .map(|c| c.montant_sal).sum();
+    let cotis_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
+    let net_imposable = (brut - cotis_sal).round_dp(2);
+    if let Some(impot) = super::lu_impot::impot_lu(brut, deductibles, ctx) {
+        cotisations.push(impot);
+    }
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
@@ -20,7 +30,7 @@ pub fn generer_bulletin_lu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     Bulletin {
         cotisations,
         brut,
-        net_imposable: net_a_payer,
+        net_imposable,
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),

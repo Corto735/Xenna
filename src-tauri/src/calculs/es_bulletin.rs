@@ -20,6 +20,13 @@ pub fn generer_bulletin_es(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cotisations.push(ligne);
     }
 
+    // Retenue d'IRPF, sur le revenu diminué des cotisations salariales.
+    let cotisations_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
+    let net_imposable = (brut - cotisations_sal).round_dp(2);
+    if let Some(ligne) = super::es_irpf::irpf(brut, cotisations_sal, ctx) {
+        cotisations.push(ligne);
+    }
+
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();
     let net_a_payer = (brut - total_sal).round_dp(2);
@@ -27,7 +34,7 @@ pub fn generer_bulletin_es(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     Bulletin {
         cotisations,
         brut,
-        net_imposable: net_a_payer,
+        net_imposable,
         net_a_payer,
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "EUR".into(),
