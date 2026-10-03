@@ -9,7 +9,7 @@
 // 2026 : prispevki inchangés ; barème dohodnina indexé (seuils 9 721,43 / 28 592,44 /
 // 57 184,88 / 82 346,23 €, taux 16/26/33/39/50 % inchangés) ; abattement général de
 // base 5 551,93 €/an.
-// Simplification : abattement général fixé (5 000 €/an en 2025, 5 551,93 € en 2026) ;
+// Simplification : abattement général fixé (5 260 €/an en 2025, 5 551,93 € en 2026) ;
 // l'abattement majoré dégressif pour bas revenus n'est pas modélisé (net prudent).
 // Source : ZPIZ/ZZZS (prispevki) ; FURS (dohodnina 2025 et 2026).
 
@@ -56,7 +56,7 @@ pub fn generer_bulletin_si(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             salarie, brut, "EUR", "SI",
             "Slovénie : données disponibles pour 2025 et 2026.", ctx);
     }
-    let abattement = if annee >= 2026 { dec!(5551.93) } else { dec!(5000) };
+    let abattement = if annee >= 2026 { dec!(5551.93) } else { dec!(5260) };
 
     let ts = ctx.taux_sal("SI_PRISPEVKI");
     let tp = ctx.taux_pat("SI_PRISPEVKI");
@@ -76,8 +76,27 @@ pub fn generer_bulletin_si(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some(ctx.loi_ref("ZPIZ-2 / ZZVZZ")),
     }];
 
+    // Assurance dépendance (depuis le 01/07/2025) : 1 % + 1 %, déductible.
+    let do_ts = ctx.taux_sal("SI_DOLGOTRAJNA");
+    let do_sal = (brut * do_ts).round_dp(2);
+    if do_ts > Decimal::ZERO {
+        let do_tp = ctx.taux_pat("SI_DOLGOTRAJNA");
+        cotisations.push(LigneCotisation {
+            code: "SI_DOLGOTRAJNA".into(),
+            libelle: ctx.libelle("SI_DOLGOTRAJNA", "Dolgotrajna oskrba — Assurance dépendance"),
+            base: brut, taux_sal: do_ts, montant_sal: do_sal,
+            taux_pat: do_tp, montant_pat: (brut * do_tp).round_dp(2),
+            categorie: "Sécurité sociale".into(),
+            explication: ctx.expl("SI_DOLGOTRAJNA",
+                "Cotisation d'assurance dépendance créée le 1er juillet 2025 : 1 % du brut à la \
+                charge du salarié et 1 % à celle de l'employeur. Elle finance les soins de longue \
+                durée et se déduit de l'assiette de la dohodnina comme les autres cotisations."),
+            loi_ref: Some(ctx.loi_ref("Zakon o dolgotrajni oskrbi (ZDOsk-1)")),
+        });
+    }
+
     // Dohodnina : base annuelle = (brut − cotisations salariales) × 12 − abattement général.
-    let base_an = (((brut - prisp_sal).max(Decimal::ZERO)) * dec!(12) - abattement).max(Decimal::ZERO);
+    let base_an = (((brut - prisp_sal - do_sal).max(Decimal::ZERO)) * dec!(12) - abattement).max(Decimal::ZERO);
     let impot_mens = (dohodnina(base_an, annee) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
@@ -104,6 +123,24 @@ pub fn generer_bulletin_si(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             }),
         loi_ref: Some(ctx.loi_ref("Zakon o dohodnini (ZDoh-2)")),
     });
+
+    // Contribution santé obligatoire (OZP) : forfait mensuel retenu sur le net,
+    // non déductible de la dohodnina.
+    if let Some(ozp) = ctx.plafond("SI_OZP") {
+        cotisations.push(LigneCotisation {
+            code: "SI_OZP".into(),
+            libelle: ctx.libelle("SI_OZP", "Obvezni zdravstveni prispevek — Contribution santé forfaitaire"),
+            base: brut, taux_sal: Decimal::ZERO, montant_sal: ozp,
+            taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
+            categorie: "Sécurité sociale".into(),
+            explication: ctx.expl("SI_OZP",
+                "Contribution santé obligatoire, forfaitaire, qui a remplacé l'assurance \
+                complémentaire en 2024 : {m} € par mois, revalorisée chaque 1er mars selon le \
+                salaire moyen. Retenue sur le net, elle ne réduit pas l'assiette de la dohodnina.")
+                .replace("{m}", &format!("{:.2}", ozp)),
+            loi_ref: Some(ctx.loi_ref("ZZVZZ")),
+        });
+    }
 
     let total_sal: Decimal = cotisations.iter().map(|c| c.montant_sal).sum();
     let total_pat: Decimal = cotisations.iter().map(|c| c.montant_pat).sum();

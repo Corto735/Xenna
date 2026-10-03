@@ -5,14 +5,14 @@
 //     7 572,62 €/mois (plafond 2025).
 //   • Impôt sur le revenu : 9 / 22 / 28 / 36 / 44 % (seuils 10 000 / 20 000 /
 //     30 000 / 40 000 €), assiette = revenu après cotisations salariales.
-//   • Réduction d'impôt salarié : 777 € (sans enfant, simplifiée).
+//   • Réduction d'impôt salarié : 777 € (sans enfant), dégressive au-delà de 12 000 €.
 //
 // 2026 (réforme Ν. 5246/2025) : baisse des taux intermédiaires de 2 points et nouveau
 // palier 39 % de 40 000 à 60 000 € ; le 44 % ne s'applique plus qu'au-delà de 60 000 €.
 // Barème 9 / 20 / 26 / 34 / 39 / 44 %. Taux EFKA réduits (salarié 13,37 % / employeur
 // 21,79 %, lus en base) et plafond porté à 7 761,94 €/mois.
-// Simplification (net prudent) : réduction d'impôt fixée à 777 € (majorations pour
-// enfants, dégressivité et taux 0 % des moins de 25 ans non modélisés).
+// Retenue annualisée sur 14 paies (salaire mensuel versé 14 fois). Non modélisés :
+// majorations pour enfants, taux réduits des moins de 30 ans.
 // Source : EFKA ; AADE (barème 2025 et 2026, Ν. 5246/2025).
 
 use chrono::Datelike;
@@ -83,10 +83,15 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some(ctx.loi_ref("Ν. 4387/2016 (EFKA)")),
     }];
 
-    // Impôt : base annuelle = (brut − EFKA) × 12 ; réduction 777 €.
-    let base_an = ((brut - efka_sal).max(Decimal::ZERO)) * dec!(12);
-    let impot_an = (impot_brut(base_an, annee) - dec!(777)).max(Decimal::ZERO);
-    let impot_mens = (impot_an / dec!(12)).round_dp(2);
+    // Impôt (ΦΜΥ) : le salaire mensuel est versé 14 fois (dont primes de Noël,
+    // de Pâques et de congés) ; la retenue annualise sur 14 paies et répartit
+    // l'impôt annuel sur 14. Réduction salarié 777 € (sans enfant), diminuée de
+    // 20 € par tranche de 1 000 € de revenu imposable au-delà de 12 000 €
+    // (Κ.Φ.Ε. art. 16).
+    let base_an = ((brut - efka_sal).max(Decimal::ZERO)) * dec!(14);
+    let reduction = (dec!(777) - (base_an - dec!(12000)).max(Decimal::ZERO) * dec!(0.02)).max(Decimal::ZERO);
+    let impot_an = (impot_brut(base_an, annee) - reduction).max(Decimal::ZERO);
+    let impot_mens = (impot_an / dec!(14)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "GR_FOROS".into(),
@@ -95,19 +100,21 @@ pub fn generer_bulletin_gr(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Impôt sur le revenu".into(),
         explication: ctx.expl("GR_FOROS",
-            "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Base = (brut − EFKA) × 12 = {b} €\n\
+            "Impôt sur le revenu {annee} (retenue ΦΜΥ, 14 paies par an).\n\n\
+            Base = (brut − EFKA) × 14 = {b} €\n\
             {bareme}\n\
-            − réduction salarié 777 € → {im} €/mois.\n\n\
-            Note : majorations pour enfants non modélisées (net prudent).\n\
+            − réduction salarié {red} € (777 € moins 20 € par 1 000 € au-delà de 12 000 €)\n\
+            → {im} € par paie (÷ 14).\n\n\
+            Note : majorations pour enfants et taux réduits des moins de 30 ans non modélisés.\n\
             Source : AADE.")
             .replace("{annee}", &annee.to_string())
+            .replace("{red}", &format!("{:.2}", reduction))
             .replace("{b}", &format!("{:.0}", base_an))
             .replace("{im}", &format!("{:.2}", impot_mens))
             .replace("{bareme}", if annee >= 2026 {
-                "Barème 9 / 20 / 26 / 34 / 39 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 / 60 000 €)"
+                "9 / 20 / 26 / 34 / 39 / 44 % (10 000 / 20 000 / 30 000 / 40 000 / 60 000 €)"
             } else {
-                "Barème 9 / 22 / 28 / 36 / 44 % (seuils 10 000 / 20 000 / 30 000 / 40 000 €)"
+                "9 / 22 / 28 / 36 / 44 % (10 000 / 20 000 / 30 000 / 40 000 €)"
             }),
         loi_ref: Some(ctx.loi_ref("Ν. 4172/2013 (Κ.Φ.Ε.)")),
     });

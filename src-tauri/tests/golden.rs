@@ -651,6 +651,228 @@ async fn golden_estonie() {
     ], "1657.84", "2676.00").await;
 }
 
+/// Lettonie, 1 700 €. VSAOI 10,5 % / 23,59 % ; IIN 25,5 % sur 1 700 − 178,50
+/// − minimum non imposable 550 € = 971,50 → 247,73 €.
+#[tokio::test]
+async fn golden_lettonie() {
+    golden_regime(Pays::Lettonie, &[
+        ("LV_VSAOI", "1700"   , "0.105"  , "178.50" , "0.2359" , "401.03" ),
+        ("LV_IIN",   "1700"   , "0.1457" , "247.73" , "0"      , "0"      ),
+    ], "1273.77", "2101.03").await;
+}
+
+/// Lituanie, 2 200 €. Sodra 19,5 % / 1,77 % ; NPD 2026 = 747 − 0,49 × (2 200 −
+/// 1 153) = 233,97 ; GPM 20 % × (2 200 − 233,97) = 393,21 €.
+#[tokio::test]
+async fn golden_lituanie() {
+    golden_regime(Pays::Lituanie, &[
+        ("LT_SODRA", "2200"   , "0.195"  , "429.00" , "0.0177" , "38.94"  ),
+        ("LT_GPM",   "2200"   , "0.1787" , "393.21" , "0"      , "0"      ),
+    ], "1377.79", "2238.94").await;
+}
+
+/// Autriche, 3 500 €, mois ordinaire (13ᵉ et 14ᵉ mois non modélisés). SV
+/// 18,07 % / 21,03 % ; Lohnsteuer 2026 : (3 500 − 632,45) × 12 − 132 =
+/// 34 278,60 → 1 690,60 + 30 % × 12 286,60 = 5 376,58 − Verkehrsabsetzbetrag
+/// 496 = 4 880,58 €/an = 406,72 €/mois.
+#[tokio::test]
+async fn golden_autriche() {
+    golden_regime(Pays::Autriche, &[
+        ("AT_SV",         "3500"   , "0.1807" , "632.45" , "0.2103" , "736.05" ),
+        ("AT_LOHNSTEUER", "3500"   , "0.1162" , "406.72" , "0"      , "0"      ),
+    ], "2460.83", "4236.05").await;
+}
+
+/// Tchéquie, 45 000 CZK. Sociální 7,1 % / 24,8 %, zdravotní 4,5 % / 9 % ;
+/// impôt 15 % × 45 000 − sleva na poplatníka 2 570 = 4 180 CZK.
+#[tokio::test]
+async fn golden_tchequie() {
+    golden_regime(Pays::Tchequie, &[
+        ("CZ_SOCIAL",    "45000"  , "0.071"  , "3195.00", "0.248"  , "11160.00"),
+        ("CZ_ZDRAVOTNI", "45000"  , "0.045"  , "2025.00", "0.09"   , "4050.00"),
+        ("CZ_DAN",       "45000"  , "0.0929" , "4180.00", "0"      , "0"      ),
+    ], "35600.00", "60210.00").await;
+}
+
+/// Slovaquie, 1 800 €. Santé 5 % / 11 %, social 9,4 % / 25,2 % ; impôt 19 % ×
+/// (1 800 − 259,20 − NČZD 497,23) = 198,28 €.
+#[tokio::test]
+async fn golden_slovaquie() {
+    golden_regime(Pays::Slovaquie, &[
+        ("SK_ZDRAVOTNE", "1800"   , "0.05"   , "90.00"  , "0.11"   , "198.00" ),
+        ("SK_SOCIALNE",  "1800"   , "0.094"  , "169.20" , "0.252"  , "453.60" ),
+        ("SK_DAN",       "1800"   , "0.1102" , "198.28" , "0"      , "0"      ),
+    ], "1342.52", "2451.60").await;
+}
+
+/// Hongrie, 650 000 HUF. TB 18,5 %, SZJA 15 %, szocho 13 % (sans allocation
+/// familiale ni exonération des moins de 25 ans).
+#[tokio::test]
+async fn golden_hongrie() {
+    golden_regime(Pays::Hongrie, &[
+        ("HU_TB",     "650000" , "0.185"  , "120250.00", "0"      , "0"      ),
+        ("HU_SZOCHO", "650000" , "0"      , "0"      , "0.13"   , "84500.00"),
+        ("HU_SZJA",   "650000" , "0.15"   , "97500.00", "0"      , "0"      ),
+    ], "432250.00", "734500.00").await;
+}
+
+/// Slovénie, 2 400 €. Prispevki 22,1 % / 16,1 % ; dépendance 1 % / 1 %
+/// (depuis le 01/07/2025) ; dohodnina 2026 : (2 400 − 530,40 − 24) × 12 −
+/// 5 551,93 = 16 595,27 → 3 342,63 €/an = 278,55 €/mois ; contribution santé
+/// forfaitaire 39,36 € (dès le 01/03/2026).
+#[tokio::test]
+async fn golden_slovenie() {
+    golden_regime(Pays::Slovenie, &[
+        ("SI_PRISPEVKI",   "2400"   , "0.221"  , "530.40" , "0.161"  , "386.40" ),
+        ("SI_DOLGOTRAJNA", "2400"   , "0.01"   , "24.00"  , "0.01"   , "24.00"  ),
+        ("SI_DOHODNINA",   "2400"   , "0.1161" , "278.55" , "0"      , "0"      ),
+        ("SI_OZP",         "2400"   , "0"      , "39.36"  , "0"      , "0"      ),
+    ], "1527.69", "2810.40").await;
+}
+
+/// Grèce, 1 500 €/mois versés 14 fois. EFKA 13,37 % / 21,79 % ; ΦΜΥ 2026 :
+/// (1 500 − 200,55) × 14 = 18 192,30 → 900 + 20 % × 8 192,30 = 2 538,46 −
+/// réduction (777 − 20 × 6,19) 653,15 = 1 885,31 €/an = 134,66 € par paie.
+#[tokio::test]
+async fn golden_grece() {
+    golden_regime(Pays::Grece, &[
+        ("GR_EFKA",  "1500"   , "0.1337" , "200.55" , "0.2179" , "326.85" ),
+        ("GR_FOROS", "1500"   , "0.0898" , "134.66" , "0"      , "0"      ),
+    ], "1164.79", "1826.85").await;
+}
+
+/// Chypre, 2 500 €. Sécurité sociale 8,8 % / 8,8 %, GESY 2,65 % / 2,90 % ;
+/// impôt 2026 (seuil 22 000 €) : (30 000 − 3 435) − 22 000 = 4 565 × 20 % =
+/// 913 €/an = 76,08 €/mois.
+#[tokio::test]
+async fn golden_chypre() {
+    golden_regime(Pays::Chypre, &[
+        ("CY_SI",    "2500"   , "0.088"  , "220.00" , "0.088"  , "220.00" ),
+        ("CY_GESY",  "2500"   , "0.0265" , "66.25"  , "0.029"  , "72.50"  ),
+        ("CY_FOROS", "2500"   , "0.0304" , "76.08"  , "0"      , "0"      ),
+    ], "2137.67", "2792.50").await;
+}
+
+/// Malte, 2 000 €. SSC 10 % / 10 % ; impôt célibataire : 0 % jusqu'à 12 000 €,
+/// 15 % à 16 000 €, 25 % au-delà = 2 600 €/an = 216,67 €/mois.
+#[tokio::test]
+async fn golden_malte() {
+    golden_regime(Pays::Malte, &[
+        ("MT_SSC", "2000"   , "0.10"   , "200.00" , "0.10"   , "200.00" ),
+        ("MT_TAX", "2000"   , "0.1083" , "216.67" , "0"      , "0"      ),
+    ], "1583.33", "2200.00").await;
+}
+
+/// Croatie, 1 800 €. Pension 20 % (15 % + 5 %), santé employeur 16,5 % ;
+/// impôt 20 % (taux bas indicatif, variable par commune) × (1 800 − 360 −
+/// abattement 600) = 168 €.
+#[tokio::test]
+async fn golden_croatie() {
+    golden_regime(Pays::Croatie, &[
+        ("HR_MIROVINSKO",  "1800"   , "0.20"   , "360.00" , "0"      , "0"      ),
+        ("HR_ZDRAVSTVENO", "1800"   , "0"      , "0"      , "0.165"  , "297.00" ),
+        ("HR_POREZ",       "1800"   , "0.0933" , "168.00" , "0"      , "0"      ),
+    ], "1272.00", "2097.00").await;
+}
+
+/// Irlande, 4 500 €. PRSI 4,20 % / 11,25 % (jusqu'au 30/09/2026) ; USC 2026
+/// 0,5 / 2 / 3 % (12 012 / 28 700 €) = 96,07 € ; PAYE 20 % jusqu'à 44 000 €
+/// puis 40 % = 12 800 − crédits 4 000 = 733,33 €/mois.
+#[tokio::test]
+async fn golden_irlande() {
+    golden_regime(Pays::Irlande, &[
+        ("IE_PRSI", "4500"   , "0.0420" , "189.00" , "0.1125" , "506.25" ),
+        ("IE_USC",  "4500"   , "0.0213" , "96.07"  , "0"      , "0"      ),
+        ("IE_PAYE", "4500"   , "0.1630" , "733.33" , "0"      , "0"      ),
+    ], "3481.60", "5006.25").await;
+}
+
+/// Roumanie, 8 000 RON. CAS 25 %, CASS 10 %, CAM 2,25 % ; impôt 10 % ×
+/// (8 000 − 2 800) = 520 RON (pas de déduction personnelle au-delà du salaire
+/// minimum + 2 000).
+#[tokio::test]
+async fn golden_roumanie() {
+    golden_regime(Pays::Roumanie, &[
+        ("RO_CAS",     "8000"   , "0.25"   , "2000.00", "0"      , "0"      ),
+        ("RO_CASS",    "8000"   , "0.10"   , "800.00" , "0"      , "0"      ),
+        ("RO_CAM",     "8000"   , "0"      , "0"      , "0.0225" , "180.00" ),
+        ("RO_IMPOZIT", "8000"   , "0.0650" , "520.00" , "0"      , "0"      ),
+    ], "4680.00", "8180.00").await;
+}
+
+/// Bulgarie, 1 200 €. Cotisations 13,78 % / 18,92 % sous le plafond (2 300 €
+/// depuis le 01/08/2026) ; impôt 10 % × (1 200 − 165,36) = 103,46 €.
+#[tokio::test]
+async fn golden_bulgarie() {
+    golden_regime(Pays::Bulgarie, &[
+        ("BG_OSIG",  "1200"   , "0.1378" , "165.36" , "0.1892" , "227.04" ),
+        ("BG_DANAK", "1200"   , "0.0862" , "103.46" , "0"      , "0"      ),
+    ], "931.18", "1427.04").await;
+}
+
+/// États-Unis (Texas, pas d'impôt d'État), 5 000 $/mois, célibataire. Social
+/// Security 6,2 % / 6,2 %, Medicare 1,45 % / 1,45 % ; FUTA 0,6 % sur 7 000 $
+/// répartis sur l'année (583,33 $/mois). Fédéral 2026 : 60 000 − abattement
+/// standard 16 100 = 43 900 → 10 % × 12 400 + 12 % × 31 500 = 5 020 $/an =
+/// 418,33 $/mois.
+#[tokio::test]
+async fn golden_etats_unis() {
+    golden_regime(Pays::EtatsUnis, &[
+        ("US_SS",        "5000"   , "0.062"  , "310.00" , "0.062"  , "310.00" ),
+        ("US_MEDICARE",  "5000"   , "0.0145" , "72.50"  , "0.0145" , "72.50"  ),
+        ("US_FUTA",      "583.33" , "0"      , "0"      , "0.006"  , "3.50"   ),
+        ("US_IMPOT_FED", "5000"   , "0.0837" , "418.33" , "0"      , "0"      ),
+    ], "4199.17", "5386.00").await;
+}
+
+/// Mexique, 15 000 MXN. ISR 2026 (Anexo 8 RMF 2026) : 1 339,14 + 17,92 % ×
+/// (15 000 − 14 644,65) = 1 402,82 MXN, sans subsidio (revenu > 11 492,66) ;
+/// IMSS ouvrier 2,375 % et excédent de 3 UMA 0,40 % ; INFONAVIT 5 %, retiro 2 %.
+#[tokio::test]
+async fn golden_mexique() {
+    golden_regime(Pays::Mexique, &[
+        ("MX_IMSS",      "15000"  , "0.02375", "356.25" , "0"      , "0"      ),
+        ("MX_IMSS_EXC",  "4301.34", "0.004"  , "17.21"  , "0"      , "0"      ),
+        ("MX_ISR",       "15000"  , "0.0935" , "1402.82", "0"      , "0"      ),
+        ("MX_INFONAVIT", "15000"  , "0"      , "0"      , "0.05"   , "750.00" ),
+        ("MX_RETIRO",    "15000"  , "0"      , "0"      , "0.02"   , "300.00" ),
+    ], "13223.72", "16050.00").await;
+}
+
+/// Brésil, 5 000 R$. INSS 2026 progressif (7,5 / 9 / 12 / 14 %) = 501,51 R$ ;
+/// IRRF nul jusqu'à 5 000 R$ de revenu mensuel (Lei 15.270/2025) ; patronal
+/// INSS 20 % et FGTS 8 % (RAT et contributions de tiers non modélisés).
+#[tokio::test]
+async fn golden_bresil() {
+    golden_regime(Pays::Bresil, &[
+        ("BR_INSS",     "5000"   , "0.1003" , "501.51" , "0"      , "0"      ),
+        ("BR_IRRF",     "4392.80", "0"      , "0.00"   , "0"      , "0"      ),
+        ("BR_INSS_PAT", "5000"   , "0"      , "0"      , "0.20"   , "1000.00"),
+        ("BR_FGTS",     "5000"   , "0"      , "0"      , "0.08"   , "400.00" ),
+    ], "4498.49", "6400.00").await;
+}
+
+/// Émirats arabes unis, 15 000 AED, salarié expatrié : ni cotisation sociale
+/// (la GPSSA ne couvre que les nationaux) ni impôt sur le revenu.
+#[tokio::test]
+async fn golden_emirats() {
+    golden_regime(Pays::Emirats, &[
+        ("AE_EXPAT", "15000"  , "0"      , "0"      , "0"      , "0"      ),
+    ], "15000", "15000").await;
+}
+
+/// Inde (Karnataka), 50 000 ₹. EPF 12 % / 12 % sur le plafond de 15 000 ₹ ;
+/// ESI non applicable au-delà de 21 000 ₹ ; Professional Tax 200 ₹ ; impôt nul
+/// (nouveau régime : rabais jusqu'à 12 lakh de revenu imposable).
+#[tokio::test]
+async fn golden_inde() {
+    golden_regime(Pays::Inde, &[
+        ("IN_EPF",   "15000"  , "0.12"   , "1800.00", "0.12"   , "1800.00"),
+        ("IN_PT",    "50000"  , "0"      , "200"    , "0"      , "0"      ),
+        ("IN_IMPOT", "50000"  , "0"      , "0"      , "0"      , "0"      ),
+    ], "48000.00", "51800.00").await;
+}
+
 // ────────────────────────────── Relevé ───────────────────────────────
 
 /// Outil, pas un test : imprime toutes les lignes de chaque régime pour un

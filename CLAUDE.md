@@ -47,6 +47,7 @@ cargo clippy                          # Lint Rust code
 **Tests de fiabilité (Phase 1) :**
 ```bash
 cargo test --test fiabilite          # filet de sécurité multi-pays + golden France
+cargo test --test golden             # chaque ligne de chaque régime figée au centime (référence externe)
 cargo test --test i18n               # couverture des 6 langues (libellés, explications, réfs légales)
 cargo test --test contrat_pdf        # moteur de composition du contrat de travail
 cargo test --test bulletin_pdf       # moteur de composition du bulletin de paie
@@ -64,6 +65,13 @@ page, en-tête de colonnes — titres de groupe « Part salarié » / « Part em
 répété sur chaque page de grille, filigrane tracé par-dessus et translucide,
 document vide non fatal. Un test `#[ignore]` écrit un PDF pour inspection :
 `cargo test --test bulletin_pdf -- --ignored --nocapture` (chemin via `BULLETIN_PDF_OUT`).
+
+`src-tauri/tests/golden.rs` fige, pour chacun des 44 régimes, TOUTES les lignes d'un
+bulletin de référence (base, taux, montants) : France sur un vrai bulletin anonymisé,
+les autres sur le barème officiel cité en commentaire, recalculé à la main. Une ligne
+qui apparaît ou disparaît casse le test. Qui change un taux met le golden à jour avec
+sa source. `cargo test --test golden releve -- --ignored --nocapture` imprime toutes
+les lignes de tous les régimes, de quoi écrire ou revoir un golden.
 
 `src-tauri/tests/fiabilite.rs` rejoue les vraies migrations sur une base SQLite jetable, puis vérifie : invariants universels sur les 44 régimes (net ≤ brut, coût employeur ≥ net, devise ISO…), exhaustivité de l'enum `Pays` (un pays ajouté sans câblage casse la compilation du test), et bornes de plausibilité France (ratios net/brut, Fillon, monotonicité). Pas de valeurs exactes figées : on attrape les régressions grossières.
 

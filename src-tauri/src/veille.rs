@@ -77,6 +77,47 @@ pub enum Specificite {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-10-03",
+        pays: Pays::Autriche,
+        specificite: None,
+        objet: "Lohnsteuer : Werbungskostenpauschale 132 € et Verkehrsabsetzbetrag (487 € en 2025, 496 € en 2026) appliqués",
+        taux: true,
+        sources: &[
+            "https://www.bmf.gv.at/themen/steuern/arbeitnehmerveranlagung/steuertarif-steuerabsetzbetraege/uebersicht-steuerabsetzbetraege.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Grece,
+        specificite: None,
+        objet: "Retenue ΦΜΥ annualisée sur 14 paies (et non 12) ; réduction salarié de 777 € dégressive de 20 € par 1 000 € au-delà de 12 000 €",
+        taux: true,
+        sources: &[
+            "https://www.aade.gr/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Slovenie,
+        specificite: None,
+        objet: "Cotisation dépendance 1 % / 1 % depuis le 01/07/2025 ; contribution santé forfaitaire (OZP) 35 €, 37,17 € (03/2025), 39,36 € (03/2026) ; abattement général 2025 5 260 €",
+        taux: true,
+        sources: &[
+            "https://www.rtvslo.si/slovenija/z-marcem-visji-obvezni-zdravstveni-prispevek-sd-predlaga-zamrznitev-usklajevanja/774070",
+            "https://www.racunovodstvo.net/tabelice/169/davcne-olajsave-v-letu-2025",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::Bulgarie,
+        specificite: None,
+        objet: "Revenu maximal assurable 2 300 € dès le 01/08/2026 (2 111,64 € auparavant) ; taux inchangés, la hausse de 2 points de la pension n'a pas été adoptée",
+        taux: true,
+        sources: &[
+            "https://www.innovires.com/blog/danaci-i-osigurovki.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-03",
         pays: Pays::CoreeDuSud,
         specificite: None,
         objet: "Impôt : cotisations sociales salariales déduites du revenu imposable et crédit standard de 130 000 ₩ appliqués (impôt surestimé d'environ 45 % auparavant)",

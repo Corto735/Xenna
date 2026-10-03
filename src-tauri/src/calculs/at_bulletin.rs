@@ -92,9 +92,12 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some(ctx.loi_ref("ASVG")),
     }];
 
-    // Lohnsteuer : base annuelle = (brut − SV salarié) × 12.
-    let base_an = ((brut - sv_sal).max(Decimal::ZERO)) * dec!(12);
-    let impot_mens = (lohnsteuer(base_an, annee) / dec!(12)).round_dp(2);
+    // Lohnsteuer : base annuelle = (brut − SV salarié) × 12 − forfait de frais
+    // professionnels (Werbungskostenpauschale 132 €), impôt diminué du
+    // Verkehrsabsetzbetrag (487 € en 2025, 496 € en 2026 — BMF).
+    let vab = if annee >= 2026 { dec!(496) } else { dec!(487) };
+    let base_an = (((brut - sv_sal).max(Decimal::ZERO)) * dec!(12) - dec!(132)).max(Decimal::ZERO);
+    let impot_mens = ((lohnsteuer(base_an, annee) - vab).max(Decimal::ZERO) / dec!(12)).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot_mens / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
         code: "AT_LOHNSTEUER".into(),
@@ -104,13 +107,14 @@ pub fn generer_bulletin_at(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         categorie: "Impôt sur le revenu".into(),
         explication: ctx.expl("AT_LOHNSTEUER",
             "Impôt sur le revenu {annee} (annualisé).\n\n\
-            Base = (brut − SV salarié) × 12 = {b} €\n\
+            Base = (brut − SV salarié) × 12 − Werbungskostenpauschale 132 € = {b} €\n\
             Barème 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n\
             (seuils {seuils})\n\
-            → {im} €/mois.\n\n\
-            Note : 13ᵉ/14ᵉ mois (Sonderzahlungen) et crédits non modélisés (net prudent).\n\
+            − Verkehrsabsetzbetrag {vab} € → {im} €/mois.\n\n\
+            Note : 13ᵉ/14ᵉ mois (Sonderzahlungen, imposés à 6 %) non modélisés.\n\
             Source : BMF.")
             .replace("{annee}", &annee.to_string())
+            .replace("{vab}", &vab.to_string())
             .replace("{b}", &format!("{:.0}", base_an))
             .replace("{im}", &format!("{:.2}", impot_mens))
             .replace("{seuils}", if annee >= 2026 {

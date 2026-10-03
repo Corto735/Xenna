@@ -69,6 +69,8 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
         // ── Slovénie ──
         "SI_PRISPEVKI" => ["Prispevki — Social contributions", "Prispevki — Sozialbeiträge", "Prispevki — Sociale bijdragen", "Prispevki — Contributi sociali", "Prispevki — Cotizaciones sociales"],
         "SI_DOHODNINA" => ["Dohodnina — Income tax", "Dohodnina — Einkommensteuer", "Dohodnina — Inkomstenbelasting", "Dohodnina — Imposta sul reddito", "Dohodnina — Impuesto sobre la renta"],
+        "SI_DOLGOTRAJNA" => ["Dolgotrajna oskrba — Long-term care insurance", "Dolgotrajna oskrba — Pflegeversicherung", "Dolgotrajna oskrba — Langdurigezorgverzekering", "Dolgotrajna oskrba — Assicurazione per la non autosufficienza", "Dolgotrajna oskrba — Seguro de dependencia"],
+        "SI_OZP" => ["Obvezni zdravstveni prispevek — Flat-rate health contribution", "Obvezni zdravstveni prispevek — Pauschaler Gesundheitsbeitrag", "Obvezni zdravstveni prispevek — Forfaitaire gezondheidsbijdrage", "Obvezni zdravstveni prispevek — Contributo sanitario forfettario", "Obvezni zdravstveni prispevek — Cotización sanitaria a tanto alzado"],
         // ── Suède ──
         "SE_ARBETSGIVARAVGIFT" => ["Arbetsgivaravgifter — employer contributions", "Arbetsgivaravgifter — Arbeitgeberbeiträge", "Arbetsgivaravgifter — werkgeversbijdragen", "Arbetsgivaravgifter — contributi del datore di lavoro", "Arbetsgivaravgifter — cotizaciones patronales"],
         "SE_SKATT" => ["Inkomstskatt — Tax (municipal + state)", "Inkomstskatt — Steuer (Gemeinde + Staat)", "Inkomstskatt — Belasting (gemeente + staat)", "Inkomstskatt — Imposta (comunale + statale)", "Inkomstskatt — Impuesto (municipal + estatal)"],
@@ -233,11 +235,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "Sozialversicherung — trabajador {ts} % / empleador {tp} % (pensión PV, enfermedad KV, desempleo ALV, AK, WBF). Base limitada a 6.450 €/mes (Höchstbeitragsgrundlage). Trabajador: {ms} €.",
         ],
         "AT_LOHNSTEUER" => [
-            "Income tax 2025 (annualised).\n\nBase = (gross − employee SV) × 12 = {b} €\nScale 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(thresholds 13,308 / 21,617 / 35,836 / 69,166 / 103,072 / 1,000,000 €)\n→ {im} €/month.\n\nNote: 13th/14th salary (Sonderzahlungen) and credits not modelled (conservative net).\nSource: BMF.",
-            "Einkommensteuer 2025 (auf Jahresbasis).\n\nBemessung = (brutto − AN-SV) × 12 = {b} €\nTarif 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(Grenzen 13.308 / 21.617 / 35.836 / 69.166 / 103.072 / 1.000.000 €)\n→ {im} €/Monat.\n\nHinweis: 13./14. Gehalt (Sonderzahlungen) und Absetzbeträge nicht modelliert (vorsichtiger Nettowert).\nQuelle: BMF.",
-            "Inkomstenbelasting 2025 (op jaarbasis).\n\nGrondslag = (bruto − werknemers-SV) × 12 = {b} €\nSchaal 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(drempels 13.308 / 21.617 / 35.836 / 69.166 / 103.072 / 1.000.000 €)\n→ {im} €/maand.\n\nNoot: 13e/14e maand (Sonderzahlungen) en kortingen niet gemodelleerd (voorzichtig netto).\nBron: BMF.",
-            "Imposta sul reddito 2025 (annualizzata).\n\nBase = (lordo − SV dipendente) × 12 = {b} €\nScala 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(soglie 13.308 / 21.617 / 35.836 / 69.166 / 103.072 / 1.000.000 €)\n→ {im} €/mese.\n\nNota: 13ª/14ª mensilità (Sonderzahlungen) e detrazioni non modellate (netto prudente).\nFonte: BMF.",
-            "Impuesto sobre la renta 2025 (anualizado).\n\nBase = (bruto − SV trabajador) × 12 = {b} €\nEscala 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(umbrales 13.308 / 21.617 / 35.836 / 69.166 / 103.072 / 1.000.000 €)\n→ {im} €/mes.\n\nNota: pagas 13ª/14ª (Sonderzahlungen) y deducciones no modeladas (neto prudente).\nFuente: BMF.",
+            "Income tax {annee} (annualised).\n\nBase = (gross − employee SV) × 12 − flat expense allowance 132 € = {b} €\nScale 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(thresholds {seuils})\n− commuter tax credit {vab} € → {im} €/month.\n\nNote: 13th/14th salary (Sonderzahlungen, taxed at 6 %) not modelled.\nSource: BMF.",
+            "Einkommensteuer {annee} (auf Jahresbasis).\n\nBemessung = (brutto − AN-SV) × 12 − Werbungskostenpauschale 132 € = {b} €\nTarif 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(Grenzen {seuils})\n− Verkehrsabsetzbetrag {vab} € → {im} €/Monat.\n\nHinweis: 13./14. Gehalt (Sonderzahlungen, mit 6 % besteuert) nicht modelliert.\nQuelle: BMF.",
+            "Inkomstenbelasting {annee} (op jaarbasis).\n\nGrondslag = (bruto − werknemers-SV) × 12 − forfaitaire beroepskosten 132 € = {b} €\nSchaal 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(drempels {seuils})\n− verkeersaftrek {vab} € → {im} €/maand.\n\nNoot: 13e/14e maand (Sonderzahlungen, belast tegen 6 %) niet gemodelleerd.\nBron: BMF.",
+            "Imposta sul reddito {annee} (annualizzata).\n\nBase = (lordo − SV dipendente) × 12 − forfait spese professionali 132 € = {b} €\nScaglioni 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(soglie {seuils})\n− detrazione per il tragitto {vab} € → {im} €/mese.\n\nNota: 13ª/14ª mensilità (Sonderzahlungen, tassate al 6 %) non modellate.\nFonte: BMF.",
+            "Impuesto sobre la renta {annee} (anualizado).\n\nBase = (bruto − SV del trabajador) × 12 − gastos profesionales a tanto alzado 132 € = {b} €\nEscala 0 / 20 / 30 / 40 / 48 / 50 / 55 %\n(umbrales {seuils})\n− deducción por transporte {vab} € → {im} €/mes.\n\nNota: pagas 13.ª/14.ª (Sonderzahlungen, gravadas al 6 %) no modeladas.\nFuente: BMF.",
         ],
         // ── Bulgarie ──
         "BG_OSIG" => [
@@ -338,11 +340,11 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "EFKA — trabajador {ts} % / empleador {tp} % (pensión, enfermedad, complementaria). Base limitada a 7.572,62 €/mes. Trabajador: {ms} €.",
         ],
         "GR_FOROS" => [
-            "Income tax 2025 (annualised).\n\nBase = (gross − EFKA) × 12 = {b} €\nScale 9 / 22 / 28 / 36 / 44 % (thresholds 10,000 / 20,000 / 30,000 / 40,000 €)\n− employee relief 777 € → {im} €/month.\n\nNote: child increases not modelled (conservative net).\nSource: AADE.",
-            "Einkommensteuer 2025 (auf Jahresbasis).\n\nBemessung = (brutto − EFKA) × 12 = {b} €\nTarif 9 / 22 / 28 / 36 / 44 % (Grenzen 10.000 / 20.000 / 30.000 / 40.000 €)\n− AN-Ermäßigung 777 € → {im} €/Monat.\n\nHinweis: Kinderzuschläge nicht modelliert (vorsichtiger Nettowert).\nQuelle: AADE.",
-            "Inkomstenbelasting 2025 (op jaarbasis).\n\nGrondslag = (bruto − EFKA) × 12 = {b} €\nSchaal 9 / 22 / 28 / 36 / 44 % (drempels 10.000 / 20.000 / 30.000 / 40.000 €)\n− werknemerskorting 777 € → {im} €/maand.\n\nNoot: kindverhogingen niet gemodelleerd (voorzichtig netto).\nBron: AADE.",
-            "Imposta sul reddito 2025 (annualizzata).\n\nBase = (lordo − EFKA) × 12 = {b} €\nScala 9 / 22 / 28 / 36 / 44 % (soglie 10.000 / 20.000 / 30.000 / 40.000 €)\n− riduzione dipendente 777 € → {im} €/mese.\n\nNota: maggiorazioni per figli non modellate (netto prudente).\nFonte: AADE.",
-            "Impuesto sobre la renta 2025 (anualizado).\n\nBase = (bruto − EFKA) × 12 = {b} €\nEscala 9 / 22 / 28 / 36 / 44 % (umbrales 10.000 / 20.000 / 30.000 / 40.000 €)\n− reducción del trabajador 777 € → {im} €/mes.\n\nNota: incrementos por hijos no modelados (neto prudente).\nFuente: AADE.",
+            "Income tax {annee} (ΦΜΥ withholding, 14 payments a year).\n\nBase = (gross − EFKA) × 14 = {b} €\nScale {bareme}\n− employee relief {red} € (777 € less 20 € per 1,000 € above 12,000 €)\n→ {im} € per payment (÷ 14).\n\nNote: child increases and reduced rates for under-30s not modelled.\nSource: AADE.",
+            "Einkommensteuer {annee} (Quellenabzug ΦΜΥ, 14 Zahlungen im Jahr).\n\nBemessung = (brutto − EFKA) × 14 = {b} €\nTarif {bareme}\n− AN-Ermäßigung {red} € (777 € abzüglich 20 € je 1.000 € über 12.000 €)\n→ {im} € je Zahlung (÷ 14).\n\nHinweis: Kinderzuschläge und ermäßigte Sätze unter 30 Jahren nicht modelliert.\nQuelle: AADE.",
+            "Inkomstenbelasting {annee} (inhouding ΦΜΥ, 14 betalingen per jaar).\n\nGrondslag = (bruto − EFKA) × 14 = {b} €\nSchaal {bareme}\n− werknemerskorting {red} € (777 € min 20 € per 1.000 € boven 12.000 €)\n→ {im} € per betaling (÷ 14).\n\nNoot: toeslagen voor kinderen en verlaagde tarieven onder 30 jaar niet gemodelleerd.\nBron: AADE.",
+            "Imposta sul reddito {annee} (ritenuta ΦΜΥ, 14 mensilità all'anno).\n\nBase = (lordo − EFKA) × 14 = {b} €\nScaglioni {bareme}\n− detrazione dipendente {red} € (777 € meno 20 € ogni 1.000 € oltre 12.000 €)\n→ {im} € per mensilità (÷ 14).\n\nNota: maggiorazioni per figli e aliquote ridotte sotto i 30 anni non modellate.\nFonte: AADE.",
+            "Impuesto sobre la renta {annee} (retención ΦΜΥ, 14 pagas al año).\n\nBase = (bruto − EFKA) × 14 = {b} €\nEscala {bareme}\n− reducción del trabajador {red} € (777 € menos 20 € por cada 1.000 € por encima de 12.000 €)\n→ {im} € por paga (÷ 14).\n\nNota: incrementos por hijos y tipos reducidos para menores de 30 años no modelados.\nFuente: AADE.",
         ],
         // ── Croatie ──
         "HR_MIROVINSKO" => [
@@ -462,6 +464,20 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "Prispevki — werknemer {ts} % (pensioen/invaliditeit 15,5 %, ziekte 6,36 %, werkloosheid 0,14 %, ouderschap 0,10 %) / werkgever {tp} %. Werknemer: {ms} €.",
             "Prispevki — dipendente {ts} % (pensione/invalidità 15,5 %, malattia 6,36 %, disoccupazione 0,14 %, parentale 0,10 %) / datore di lavoro {tp} %. Dipendente: {ms} €.",
             "Prispevki — trabajador {ts} % (pensión/invalidez 15,5 %, enfermedad 6,36 %, desempleo 0,14 %, parental 0,10 %) / empleador {tp} %. Trabajador: {ms} €.",
+        ],
+        "SI_DOLGOTRAJNA" => [
+            "Long-term care insurance contribution created on 1 July 2025: 1 % of gross pay borne by the employee and 1 % by the employer. It funds long-term care and is deducted from the dohodnina base like the other contributions.",
+            "Am 1. Juli 2025 eingeführter Pflegeversicherungsbeitrag: 1 % des Bruttolohns zulasten des Arbeitnehmers und 1 % zulasten des Arbeitgebers. Er finanziert die Langzeitpflege und mindert wie die übrigen Beiträge die Bemessungsgrundlage der dohodnina.",
+            "Op 1 juli 2025 ingevoerde bijdrage voor langdurige zorg: 1 % van het brutoloon ten laste van de werknemer en 1 % ten laste van de werkgever. Ze financiert de langdurige zorg en wordt, zoals de andere bijdragen, afgetrokken van de grondslag van de dohodnina.",
+            "Contributo per la non autosufficienza istituito il 1° luglio 2025: 1 % del lordo a carico del dipendente e 1 % a carico del datore. Finanzia l'assistenza di lunga durata e si deduce dalla base della dohodnina come gli altri contributi.",
+            "Cotización al seguro de dependencia creada el 1 de julio de 2025: 1 % del bruto a cargo del trabajador y 1 % a cargo del empleador. Financia los cuidados de larga duración y se deduce de la base de la dohodnina como las demás cotizaciones.",
+        ],
+        "SI_OZP" => [
+            "Compulsory flat-rate health contribution, which replaced supplementary insurance in 2024: {m} € a month, uprated every 1 March in line with the average wage. Withheld from net pay, it does not reduce the dohodnina base.",
+            "Pauschaler Pflichtbeitrag zur Krankenversicherung, der 2024 die Zusatzversicherung ersetzt hat: {m} € pro Monat, jeweils zum 1. März an den Durchschnittslohn angepasst. Er wird vom Nettolohn einbehalten und mindert die Bemessungsgrundlage der dohodnina nicht.",
+            "Verplichte forfaitaire gezondheidsbijdrage, die in 2024 de aanvullende verzekering verving: {m} € per maand, elk jaar op 1 maart aangepast aan het gemiddelde loon. Ze wordt van het nettoloon ingehouden en verlaagt de grondslag van de dohodnina niet.",
+            "Contributo sanitario obbligatorio forfettario, che nel 2024 ha sostituito l'assicurazione complementare: {m} € al mese, rivalutato ogni 1° marzo in base al salario medio. Trattenuto dal netto, non riduce la base della dohodnina.",
+            "Cotización sanitaria obligatoria a tanto alzado, que sustituyó en 2024 al seguro complementario: {m} € al mes, actualizada cada 1 de marzo según el salario medio. Se retiene del neto y no reduce la base de la dohodnina.",
         ],
         "SI_DOHODNINA" => [
             "Income tax 2025 (annualised).\n\nBase = (gross − contributions) × 12 − allowance 5,000 € = {b} €\nScale 16 / 26 / 33 / 39 / 50 % (thresholds 9,210 / 27,089 / 54,179 / 78,016 €)\n→ {im} €/month.\n\nNote: increased low-income allowance not modelled (conservative net).\nSource: FURS.",

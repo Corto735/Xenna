@@ -31,7 +31,15 @@ pub fn generer_bulletin_bg(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let euro = annee >= 2026;
     let devise = if euro { "EUR" } else { "BGN" };
     let sym = if euro { "€" } else { "BGN" };
-    let plafond = if euro { dec!(2111.64) } else { dec!(3750) };
+    // Revenu maximal assurable : 4 130 BGN = 2 111,64 € jusqu'au 31/07/2026, puis
+    // 2 300 € dès le 01/08/2026 (loi sur le budget de la sécurité sociale 2026).
+    let plafond = if !euro {
+        dec!(3750)
+    } else if ctx.date_paie >= chrono::NaiveDate::from_ymd_opt(2026, 8, 1).unwrap() {
+        dec!(2300)
+    } else {
+        dec!(2111.64)
+    };
     // Cotisations sur assiette plafonnée.
     let assiette = brut.min(plafond);
     let ts = ctx.taux_sal("BG_OSIG");
