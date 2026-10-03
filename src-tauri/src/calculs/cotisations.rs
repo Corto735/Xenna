@@ -103,10 +103,64 @@ pub fn famille(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
         montant_pat: (brut * tp).round_dp(2),
         categorie:   "Sécurité Sociale".into(),
         explication: ctx.expl("FAMILLE", "Financement des prestations familiales (allocations, crèches, aide à \
-            la garde d'enfants). Taux réduit à 3,45% pour les salaires ≤ 3,5 SMIC (taux plein : 5,25%). \
+            la garde d'enfants). Taux plein : 5,25 %. De 2015 à 2025, un taux réduit de 3,45 % \
+            s'appliquait sous un seuil de rémunération (1,6 puis 3,5 puis 3,3 SMIC) ; il est \
+            supprimé depuis 2026, l'allègement passant par la réduction générale. \
             Politique nataliste française datant de l'entre-deux-guerres, institutionnalisée en 1945."),
         loi_ref: Some(ctx.loi_ref("Décret 2015-390 du 3/04/2015 — CSS art. L241-6")),
     }
+}
+
+/// Taux patronal réduit maladie (7 %) ou famille (3,45 %) quand la rémunération
+/// ne dépasse pas le seuil en vigueur (employeurs éligibles à la réduction
+/// générale, CSS art. L241-2-1 et L241-6-1). Seuil et taux viennent de
+/// plafond_reference (TX_REDUIT_{MALADIE|FAMILLE}_{SEUIL|TAUX}) : absents à la
+/// date (2026 et après, ou avant l'instauration) → la ligne reste au taux plein.
+/// SMIC de référence : TX_REDUIT_SMIC_REF si présent (gel 2024), sinon le SMIC
+/// en vigueur, proratisé selon la quotité comme pour la réduction générale.
+/// Comparaison mensuelle : approximation de la règle annuelle.
+fn appliquer_taux_reduit(
+    mut ligne: LigneCotisation,
+    prefixe: &str,
+    article: &str,
+    etp_pct: f64,
+    ctx: &ContextPaie,
+) -> LigneCotisation {
+    let (Some(taux), Some(coef)) = (
+        ctx.plafond(&format!("TX_REDUIT_{prefixe}_TAUX")),
+        ctx.plafond(&format!("TX_REDUIT_{prefixe}_SEUIL")),
+    ) else {
+        return ligne;
+    };
+    let smic = ctx.plafond("TX_REDUIT_SMIC_REF").unwrap_or(ctx.smic_mensuel);
+    let ratio: Decimal = format!("{:.6}", (etp_pct / 100.0).clamp(0.0, 2.0))
+        .parse()
+        .unwrap_or(dec!(1));
+    let seuil = (coef * smic * ratio).round_dp(2);
+    if ligne.base > seuil {
+        return ligne;
+    }
+    ligne.taux_pat = taux;
+    ligne.montant_pat = (ligne.base * taux).round_dp(2);
+    ligne.explication.push_str(
+        &ctx.expl("TX_REDUIT_NOTE",
+            "\n⚠ Taux réduit {taux} % : rémunération ≤ {coef} SMIC ({seuil} €), {art}")
+            .replace("{taux}", &(taux * dec!(100)).normalize().to_string())
+            .replace("{coef}", &coef.normalize().to_string())
+            .replace("{seuil}", &seuil.to_string())
+            .replace("{art}", article),
+    );
+    ligne
+}
+
+/// Maladie patronale du secteur privé : taux plein, ou réduit sous le seuil.
+pub fn ss_maladie_prive(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisation {
+    appliquer_taux_reduit(ss_maladie(brut, ctx), "MALADIE", "CSS art. L241-2-1", etp_pct, ctx)
+}
+
+/// Allocations familiales du secteur privé : taux plein, ou réduit sous le seuil.
+pub fn famille_prive(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisation {
+    appliquer_taux_reduit(famille(brut, ctx), "FAMILLE", "CSS art. L241-6-1", etp_pct, ctx)
 }
 
 pub fn accident_travail(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
@@ -207,6 +261,34 @@ pub fn chomage(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> LigneCotisatio
             .replace("{etp_info}", &note),
         loi_ref: Some(ctx.loi_ref("Convention UNEDIC — suppression cotisation sal. : LFSS 2018")),
     }
+}
+
+/// Cotisation AGS (garantie des salaires), patronale, plafonnée à 4 PMSS
+/// comme l'assurance chômage. None si aucun taux en base à la date.
+pub fn ags(brut: Decimal, etp_pct: f64, ctx: &ContextPaie) -> Option<LigneCotisation> {
+    let tp = ctx.taux_pat("AGS");
+    if tp == Decimal::ZERO {
+        return None;
+    }
+    let (pmss, note) = pmss_proratise(ctx, etp_pct);
+    let base = brut.min(pmss * dec!(4));
+    Some(LigneCotisation {
+        code:        "AGS".into(),
+        libelle:     ctx.libelle("AGS", "AGS — garantie des salaires"),
+        base,
+        taux_sal:    Decimal::ZERO,
+        montant_sal: Decimal::ZERO,
+        taux_pat:    tp,
+        montant_pat: (base * tp).round_dp(2),
+        categorie:   "Chômage".into(),
+        explication: ctx.expl("AGS", "L'AGS paie aux salariés les sommes que leur doit un \
+            employeur en redressement ou en liquidation judiciaire (salaires, préavis, \
+            indemnités). Cotisation uniquement patronale, plafonnée à 4 PMSS comme \
+            l'assurance chômage ; son taux est fixé par le conseil d'administration de \
+            l'AGS.{etp_info}")
+            .replace("{etp_info}", &note),
+        loi_ref: Some(ctx.loi_ref("Loi n°73-1194 du 27/12/1973 — C. trav. art. L3253-18")),
+    })
 }
 
 /// Calcule le coefficient Fillon pour un ratio SMIC/brut donné.

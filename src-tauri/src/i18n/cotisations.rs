@@ -51,6 +51,14 @@ pub fn t_libelle(code: &str, lang: &str) -> Option<&'static str> {
             "es" => "Accidentes de trabajo / enfermedades profesionales",
             _ => return None,
         },
+        "AGS" => match lang {
+            "en" => "AGS — wage guarantee insurance",
+            "de" => "AGS — Lohngarantieversicherung",
+            "nl" => "AGS — loongarantieverzekering",
+            "it" => "AGS — garanzia dei salari",
+            "es" => "AGS — garantía salarial",
+            _ => return None,
+        },
         "CHOMAGE" => match lang {
             "en" => "Unemployment insurance",
             "de" => "Arbeitslosenversicherung",
@@ -334,19 +342,29 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
         },
         "FAMILLE" => match lang {
             "en" => "Funds family benefits (allowances, nurseries, childcare support). \
-                Reduced rate of 3.45% for salaries ≤ 3.5 SMIC (full rate: 5.25%). \
+                Full rate: 5.25%. From 2015 to 2025, a reduced rate of 3.45% applied below a pay \
+                threshold (1.6, then 3.5, then 3.3 SMIC); it was abolished in 2026, the relief now \
+                going through the general reduction. \
                 A French pro-birth policy dating from the interwar period, institutionalised in 1945.",
             "de" => "Finanziert Familienleistungen (Beihilfen, Kinderkrippen, Betreuungshilfe). \
-                Ermäßigter Satz von 3,45 % für Gehälter ≤ 3,5 SMIC (voller Satz: 5,25 %). \
+                Voller Satz: 5,25 %. Von 2015 bis 2025 galt unterhalb einer Entgeltschwelle \
+                (1,6, dann 3,5, dann 3,3 SMIC) ein ermäßigter Satz von 3,45 %; er wurde 2026 \
+                abgeschafft, die Entlastung läuft nun über die allgemeine Ermäßigung. \
                 Französische Geburtenförderpolitik aus der Zwischenkriegszeit, 1945 institutionalisiert.",
             "nl" => "Financiert gezinsuitkeringen (toelagen, kinderdagverblijven, opvanghulp). \
-                Verlaagd tarief van 3,45% voor lonen ≤ 3,5 SMIC (vol tarief: 5,25%). \
+                Vol tarief: 5,25%. Van 2015 tot 2025 gold onder een loondrempel (1,6, daarna 3,5, \
+                daarna 3,3 SMIC) een verlaagd tarief van 3,45%; het is in 2026 afgeschaft, de \
+                verlichting loopt nu via de algemene vermindering. \
                 Frans geboortebevorderingsbeleid uit het interbellum, geïnstitutionaliseerd in 1945.",
             "it" => "Finanzia le prestazioni familiari (assegni, asili nido, sostegno alla custodia). \
-                Aliquota ridotta del 3,45% per le retribuzioni ≤ 3,5 SMIC (aliquota piena: 5,25%). \
+                Aliquota piena: 5,25%. Dal 2015 al 2025 si applicava un'aliquota ridotta del 3,45% \
+                sotto una soglia retributiva (1,6, poi 3,5, poi 3,3 SMIC); è stata soppressa nel \
+                2026, lo sgravio passa ora dalla riduzione generale. \
                 Politica natalista francese risalente al periodo tra le due guerre, istituzionalizzata nel 1945.",
             "es" => "Financia las prestaciones familiares (subsidios, guarderías, ayuda al cuidado). \
-                Tipo reducido del 3,45% para salarios ≤ 3,5 SMIC (tipo pleno: 5,25%). \
+                Tipo pleno: 5,25%. De 2015 a 2025 se aplicaba un tipo reducido del 3,45% por debajo \
+                de un umbral salarial (1,6, luego 3,5, luego 3,3 SMIC); se suprimió en 2026 y la \
+                rebaja pasa ahora por la reducción general. \
                 Política natalista francesa del período de entreguerras, institucionalizada en 1945.",
             _ => return None,
         },
@@ -774,6 +792,38 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "nl" => "\n⚠ Afwezigheid: SMIC gecorrigeerd naar rato van het loon (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
             "it" => "\n⚠ Assenza: SMIC corretto in proporzione alla retribuzione (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
             "es" => "\n⚠ Ausencia: SMIC corregido a prorrata de la remuneración (× {ratio}) → {smic} € (CSS art. D241-7 IV)",
+            _ => return None,
+        },
+        // Taux réduit maladie / famille — placeholders {taux} {coef} {seuil} {art}
+        "TX_REDUIT_NOTE" => match lang {
+            "en" => "\n⚠ Reduced rate {taux} %: pay ≤ {coef} SMIC ({seuil} €), {art}",
+            "de" => "\n⚠ Ermäßigter Satz {taux} %: Entgelt ≤ {coef} SMIC ({seuil} €), {art}",
+            "nl" => "\n⚠ Verlaagd tarief {taux} %: loon ≤ {coef} SMIC ({seuil} €), {art}",
+            "it" => "\n⚠ Aliquota ridotta {taux} %: retribuzione ≤ {coef} SMIC ({seuil} €), {art}",
+            "es" => "\n⚠ Tipo reducido {taux} %: remuneración ≤ {coef} SMIC ({seuil} €), {art}",
+            _ => return None,
+        },
+        // AGS — placeholder {etp_info}
+        "AGS" => match lang {
+            "en" => "The AGS pays employees the sums owed to them by an employer in receivership \
+                or compulsory liquidation (wages, notice, indemnities). Employer-only contribution, \
+                capped at 4 PMSS like unemployment insurance; its rate is set by the AGS board.{etp_info}",
+            "de" => "Die AGS zahlt den Beschäftigten die Beträge, die ihnen ein Arbeitgeber im \
+                gerichtlichen Sanierungs- oder Liquidationsverfahren schuldet (Löhne, Kündigungsfrist, \
+                Abfindungen). Reiner Arbeitgeberbeitrag, wie die Arbeitslosenversicherung auf 4 PMSS \
+                begrenzt; der Satz wird vom Verwaltungsrat der AGS festgelegt.{etp_info}",
+            "nl" => "De AGS betaalt werknemers de bedragen die een werkgever in gerechtelijke \
+                reorganisatie of vereffening hun verschuldigd is (lonen, opzegtermijn, vergoedingen). \
+                Uitsluitend werkgeversbijdrage, zoals de werkloosheidsverzekering geplafonneerd op \
+                4 PMSS; het tarief wordt vastgesteld door de raad van bestuur van de AGS.{etp_info}",
+            "it" => "L'AGS paga ai dipendenti le somme loro dovute da un datore di lavoro in \
+                amministrazione o liquidazione giudiziale (stipendi, preavviso, indennità). Contributo \
+                solo a carico del datore, con massimale a 4 PMSS come l'assicurazione contro la \
+                disoccupazione; l'aliquota è fissata dal consiglio di amministrazione dell'AGS.{etp_info}",
+            "es" => "La AGS paga a los asalariados las cantidades que les adeuda un empleador en \
+                concurso o liquidación judicial (salarios, preaviso, indemnizaciones). Cotización solo \
+                patronal, con tope de 4 PMSS como el seguro de desempleo; su tipo lo fija el consejo \
+                de administración de la AGS.{etp_info}",
             _ => return None,
         },
         // Fragment plafond proratisé temps partiel — placeholders {etp} {pmss}

@@ -274,14 +274,27 @@ fn lignes_france(
 ) -> Vec<LigneCotisation> {
     let mut cotisations = Vec::new();
 
-    cotisations.push(ss_maladie(assiette, ctx));
+    // ESAT : hors du champ de la réduction générale, donc sans taux réduits
+    // maladie / famille (réservés aux employeurs éligibles, CSS art. L241-2-1).
+    if salarie.esat {
+        cotisations.push(ss_maladie(assiette, ctx));
+    } else {
+        cotisations.push(ss_maladie_prive(assiette, salarie.etp, ctx));
+    }
     cotisations.push(ss_vieillesse_plafonnee(assiette, salarie.etp, ctx));
     cotisations.push(ss_vieillesse_deplafonnee(assiette, ctx));
-    cotisations.push(famille(assiette, ctx));
+    if salarie.esat {
+        cotisations.push(famille(assiette, ctx));
+    } else {
+        cotisations.push(famille_prive(assiette, salarie.etp, ctx));
+    }
     cotisations.push(accident_travail(assiette, ctx));
     // ESAT : pas de contrat de travail, donc ni assurance chômage ni AGS.
     if !salarie.esat {
         cotisations.push(chomage(assiette, salarie.etp, ctx));
+        if let Some(l) = ags(assiette, salarie.etp, ctx) {
+            cotisations.push(l);
+        }
     }
     cotisations.extend(csg_contributions(assiette, ctx));
     cotisations.extend(retraite_complementaire(assiette, &salarie.statut, salarie.etp, ctx));

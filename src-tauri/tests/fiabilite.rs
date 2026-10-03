@@ -391,6 +391,38 @@ async fn golden_france_monotonicite() {
 
 // ─────────────────────────────── ESAT ───────────────────────────────────────
 
+/// Taux patronaux France relevés sur un bulletin réel de septembre 2026 :
+/// maladie 13 %, famille 5,25 %, déplafonnée 2,11 %, chômage 4,00 %, AGS
+/// 0,25 %, sans taux réduits. En 2025, maladie 7 % sous 2,25 SMIC (4 054,05 €)
+/// et 13 % au-dessus ; famille 3,45 % sous 3,3 SMIC (5 945,94 €).
+#[tokio::test]
+async fn golden_taux_patronaux_france() {
+    let (pool, path) = base_test().await;
+    let taux = |b: &Bulletin, c: &str| b.cotisations.iter().find(|l| l.code == c).map(|l| l.taux_pat);
+    let t = |s: &str| Some(s.parse::<Decimal>().unwrap());
+
+    let ctx = ContextPaie::charger(&pool, date("2026-09-01")).await.unwrap();
+    let b = generer_bulletin(salarie_base(Pays::France, "2000"), &ctx, None);
+    assert_eq!(taux(&b, "SS_MALADIE"), t("0.13"));
+    assert_eq!(taux(&b, "FAMILLE"), t("0.0525"));
+    assert_eq!(taux(&b, "SS_VIEILLESSE_DEPLAF"), t("0.0211"));
+    assert_eq!(taux(&b, "CHOMAGE"), t("0.04"));
+    assert_eq!(taux(&b, "AGS"), t("0.0025"));
+
+    let ctx = ContextPaie::charger(&pool, date("2025-06-01")).await.unwrap();
+    let b = generer_bulletin(salarie_base(Pays::France, "4000"), &ctx, None);
+    assert_eq!(taux(&b, "SS_MALADIE"), t("0.07"));
+    assert_eq!(taux(&b, "FAMILLE"), t("0.0345"));
+    assert_eq!(taux(&b, "SS_VIEILLESSE_DEPLAF"), t("0.0202"));
+    let b = generer_bulletin(salarie_base(Pays::France, "4100"), &ctx, None);
+    assert_eq!(taux(&b, "SS_MALADIE"), t("0.13"));
+    assert_eq!(taux(&b, "FAMILLE"), t("0.0345"));
+    let b = generer_bulletin(salarie_base(Pays::France, "6000"), &ctx, None);
+    assert_eq!(taux(&b, "FAMILLE"), t("0.0525"));
+
+    nettoyer(&path);
+}
+
 /// Travailleur d'ESAT au minimum 2026 : rémunération garantie = 55,7 % du SMIC
 /// (1 823,03 €) = 1 015,43 €, dont aide au poste 50,7 % (924,28 €) et part ESAT
 /// 5 % (91,15 €). Ni chômage ni réduction générale ; les aides de l'État
@@ -429,8 +461,9 @@ async fn golden_esat_minimum_2026() {
     assert!(code("REDUCTION_FILLON").is_none(), "pas de réduction générale en ESAT");
     assert_eq!(code("ESAT_AIDE_POSTE").unwrap().montant_pat, "-924.28".parse::<Decimal>().unwrap());
     // Compensation = aide au poste × taux patronaux obligatoires (maladie,
-    // vieillesse, famille, AT, Agirc-Arrco) : 924,28 × 35,39 % = 327,10.
-    assert_eq!(code("ESAT_COMPENSATION").unwrap().montant_pat, "-327.10".parse::<Decimal>().unwrap());
+    // vieillesse, famille, AT, Agirc-Arrco) : 13 + 8,55 + 2,11 + 5,25 + 2,35
+    // + 4,72 + 1,29 = 37,27 % en 2026, d'où 924,28 × 37,27 % = 344,48.
+    assert_eq!(code("ESAT_COMPENSATION").unwrap().montant_pat, "-344.48".parse::<Decimal>().unwrap());
 
     // Les aides ne touchent pas le net : même net que sans elles, chômage à part.
     let sal_hors_aides: Decimal = b.cotisations.iter().map(|l| l.montant_sal).sum();

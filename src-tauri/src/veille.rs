@@ -76,6 +76,21 @@ pub enum Specificite {
 /// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
+        date: "2026-10-03",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Taux corrigés après comparaison avec un bulletin réel : maladie patronale 13 % depuis 2018 (et non 13,13 % ; 12,80 / 12,84 / 12,89 % de 2015 à 2017) ; vieillesse déplafonnée patronale 2,02 % en 2025 et 2,11 % en 2026 (salariale 0,30 % en 2015, 0,35 % en 2016) ; allocations familiales 5,25 % (3,45 % n'était que le taux réduit) ; taux réduits maladie 7 % (≤ 2,5 SMIC de 2019 à 2024, ≤ 2,25 SMIC en 2025) et famille 3,45 % (≤ 1,6, 3,5 puis 3,3 SMIC), supprimés en 2026 ; chômage 4,00 % depuis le 01/05/2025 ; ligne AGS, en base mais jamais calculée, désormais sur le bulletin",
+        taux: true,
+        sources: &[
+            "https://www.urssaf.fr/accueil/actualites/informations-nouvelle-annee.html",
+            "https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/taux-cotisations-secteur-prive.html",
+            "https://www.legisocial.fr/reperes-sociaux/taux-cotisations-sociales-urssaf-2017.html",
+            "https://www.legisocial.fr/actualites-sociales/1743-cotisations-urssaf-en-2016.html",
+            "https://www.legisocial.fr/actualites-sociales/7292-taux-reduits-cotisations-assurance-maladie-allocations-familiales-comment-calculer-2025.html",
+            "https://www.unedic.org/actualites/publication-de-la-circulaire-du-1er-mai-2025-relative-aux-contributions-d-assurance-chomage",
+        ],
+    },
+    MiseAJour {
         date: "2026-09-30",
         pays: Pays::France,
         specificite: None,
