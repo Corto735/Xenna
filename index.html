@@ -524,7 +524,7 @@
     body.bw-mode .params-panel,
     body.bw-mode .ann-tbl tr.treizieme-mois { background: #f4f4f4 !important; }
     body.bw-mode .etp-sel {
-      background: #ffffff; color: #000000; border-color: #000000;
+      background-color: #ffffff; color: #000000; border-color: #000000;
     }
 
     /* Titres de rubrique et libellés dorés */
@@ -797,7 +797,7 @@
     /* Saisie et bouton principal — vidéo inverse, comme les zones de saisie
        d'un service Vidéotex */
     body.minitel-mode input,
-    body.minitel-mode select { color: var(--mnt-fg) !important; background: #001206; }
+    body.minitel-mode select { color: var(--mnt-fg) !important; background-color: #001206; }
     body.minitel-mode select option { color: var(--mnt-fg); background: #001206; }
     body.minitel-mode .btn-calc { background: var(--mnt-fg); color: #000000; border-color: var(--mnt-fg); }
     body.minitel-mode .hf-knob,
@@ -882,7 +882,7 @@
     body.minitel-mode .ann-tbl tr.treizieme-mois,
     body.minitel-mode .ascii-tbl tbody tr.data-row.open { background: #001206 !important; }
     body.minitel-mode .etp-sel {
-      background: #001206; color: var(--mnt-fg);
+      background-color: #001206; color: var(--mnt-fg);
     }
     body.minitel-mode .ai-credit { color: rgba(51, 255, 102, 0.25); }
 
@@ -1610,7 +1610,7 @@
       border-bottom: 1px solid var(--border);
       font-weight: normal;
     }
-    .ascii-tbl thead th.r { text-align: right; }
+    .ascii-tbl thead th.r { text-align: right; padding-left: 0.25rem; padding-right: 1.95rem; vertical-align: bottom; }
     .ascii-tbl tbody tr.data-row {
       border-bottom: 1px solid #0c1520;
       cursor: pointer;
@@ -1625,8 +1625,11 @@
        la gauche de sa largeur — les totaux sans f(x) (allègements) ne tombaient
        plus sous leurs lignes. On le sort du flux, dans une marge droite réservée
        à TOUTES les cellules chiffrées : chaque montant finit au même aplomb,
-       avec ou sans f(x). Les en-têtes gardent leur marge (sinon « PART
-       PATRONALE » passe sur deux lignes). */
+       avec ou sans f(x). Les en-têtes reçoivent la même marge droite pour
+       tomber pile au-dessus de leurs chiffres ; leur marge gauche est réduite
+       pour garder la place du libellé, et si l'écran est trop étroit
+       (« PART PATRONALE »), le libellé passe sur deux lignes, toujours calé à
+       droite et en bas de l'en-tête. */
     .ascii-tbl td.r { padding-right: 1.95rem; white-space: nowrap; }
     .ascii-tbl td.r { position: relative; }
     .ascii-tbl td.r > .formula-star {
@@ -2250,15 +2253,7 @@
     }
     .chk-apply-brut.disabled { opacity: 0.35; cursor: not-allowed; }
     .chk-apply-brut.disabled input[type="checkbox"] { cursor: not-allowed; }
-    .etp-sel {
-      font-size: 0.72rem;
-      padding: 0.15rem 0.3rem;
-      background: #d4d8ea;
-      color: #1a1c2e;
-      border: 1px solid #8890b0;
-      font-family: inherit;
-      cursor: pointer;
-    }
+    .etp-sel { font-family: inherit; cursor: pointer; }
     .param-item {
       display: flex;
       align-items: center;
@@ -2285,6 +2280,29 @@
       margin-left: 0.3rem;
       white-space: nowrap;
     }
+    /* Sélecteurs des pays : libellé au-dessus, sélecteur dessous, et jamais
+       plus large que le panneau (les longues options — Steuerklasse, Land,
+       canton, tarif IS… — le faisaient déborder du bord). */
+    .param-item.param-stack { flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+    .param-row {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem;
+      padding: 0.12rem 0; font-size: 0.68rem; color: var(--text);
+    }
+    .params-panel select { max-width: 100%; box-sizing: border-box; font-family: inherit; }
+    /* Fond sombre imposé : sans « appearance: none », WebKitGTK (Tauri) garde le
+       fond clair natif du thème GTK alors que le texte prend l'encre claire du
+       thème — illisible. On redessine donc la flèche nous-mêmes. Vaut pour
+       tous les sélecteurs du panneau (pays, Statut, ETP, Effectif, Convention). */
+    .params-panel select {
+      -webkit-appearance: none; appearance: none;
+      font-size: 0.72rem; padding: 0.15rem 1.3rem 0.15rem 0.3rem;
+      background: var(--bg3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%238a9bb5'/%3E%3C/svg%3E") no-repeat right 0.4rem center / 0.5rem auto;
+      color: var(--text); border: 1px solid var(--border);
+      color-scheme: dark; cursor: pointer;
+    }
+    .params-panel select:focus { outline: none; border-color: var(--blue); }
+    .params-panel select option { background: var(--bg2); color: var(--text); }
+    body.bw-mode .params-panel select { color-scheme: light; }
     .param-item .flag-emoji { font-size: 0.9rem; line-height: 1; }
     .param-item .flag-img   { height: 0.9rem; width: auto; vertical-align: middle; object-fit: contain; }
     .param-group-title {
@@ -3820,7 +3838,7 @@
           Hercuule <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Compta</span>
         </button>
         <button class="burger-item" onclick="setView('meliinda'); closeBurger()">
-          <span class="burger-item-icon">✎</span>
+          <span class="burger-item-icon">▍</span>
           Meliinda <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">prototype</span>
         </button>
         <button class="burger-item" onclick="setView('amphipoolis'); closeBurger()">
@@ -3988,9 +4006,9 @@
               <span class="flag-emoji">♿</span> Entreprise adaptée (AAP)
             </label>
             <div id="d-ea-tranche-wrap" style="padding-left:1.1rem;display:none">
-              <label class="param-item">
+              <label class="param-item param-stack">
                 Tranche d'âge
-                <select id="d-ea-tranche" onchange="syncParam('ea-tranche', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <select id="d-ea-tranche" onchange="syncParam('ea-tranche', this.value)">
                   <option value="m50">Moins de 50 ans</option>
                   <option value="50_55">50 à 55 ans</option>
                   <option value="56p">56 ans et plus</option>
@@ -4007,9 +4025,9 @@
             <span class="flag-emoji">🇩🇪</span> Allemagne
           </label>
           <div id="d-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;display:none;flex-direction:column;gap:0.2rem">
-            <label class="param-item">
+            <label class="param-item param-stack">
               Steuerklasse
-              <select id="d-steuerklasse" onchange="syncParam('steuerklasse', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <select id="d-steuerklasse" onchange="syncParam('steuerklasse', this.value)">
                 <option value="1">I — Célibataire</option>
                 <option value="2">II — Parent isolé</option>
                 <option value="3">III — Marié·e (revenu élevé)</option>
@@ -4027,9 +4045,9 @@
               Membre d'une église (Kirchensteuer)
             </label>
             <div id="d-de-kirche-detail" style="display:none;padding-left:1.1rem">
-              <label class="param-item">
+              <label class="param-item param-stack">
                 Land
-                <select id="d-land" onchange="syncParam('land', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <select id="d-land" onchange="syncParam('land', this.value)">
                   <option value="BW">Baden-Württemberg (8 %)</option>
                   <option value="BY">Bayern (8 %)</option>
                   <option value="BE">Berlin (9 %)</option>
@@ -4067,7 +4085,7 @@
             <span class="flag-emoji">🇧🇪</span> Belgique
           </label>
           <div id="d-be-region-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-            <select id="d-be-region" onchange="syncParam('be-region', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+            <select id="d-be-region" onchange="syncParam('be-region', this.value)">
               <option value="bruxelles">Bruxelles-Capitale</option>
               <option value="flandre">Flandres</option>
               <option value="wallonie">Wallonie</option>
@@ -4239,7 +4257,7 @@
           </label>
           <div id="d-ca-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem;flex-direction:column;gap:0.1rem">
             <div id="d-ca-province-wrap" style="display:none">
-              <select id="d-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <select id="d-ca-province" onchange="syncParam('ca-province', this.value)">
                 <option value="ON">Ontario (ON)</option>
                 <option value="AB">Alberta (AB)</option>
                 <option value="BC">Colombie-Britannique (BC)</option>
@@ -4264,7 +4282,7 @@
             <span class="flag-emoji">🇺🇸</span> États-Unis
           </label>
           <div id="d-us-state-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-            <select id="d-us-state" onchange="syncParam('us-state', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+            <select id="d-us-state" onchange="syncParam('us-state', this.value)">
               <option value="TX">Texas (sans impôt d'État)</option>
               <option value="FL">Floride (sans impôt d'État)</option>
               <option value="WA">Washington (sans impôt d'État)</option>
@@ -4311,7 +4329,7 @@
             <span class="flag-emoji">🇮🇳</span> Inde
           </label>
           <div id="d-in-regime-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-            <select id="d-inde-regime" onchange="syncParam('inde-regime', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+            <select id="d-inde-regime" onchange="syncParam('inde-regime', this.value)">
               <option value="nouveau">Nouveau régime (défaut)</option>
               <option value="ancien">Ancien régime</option>
             </select>
@@ -4476,9 +4494,9 @@
                 <span class="flag-emoji">♿</span> Entreprise adaptée (AAP)
               </label>
               <div id="m-ea-tranche-wrap" style="padding-left:1.1rem;display:none">
-                <label class="param-item">
+                <label class="param-item param-stack">
                   Tranche d'âge
-                  <select id="m-ea-tranche" onchange="syncParam('ea-tranche', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <select id="m-ea-tranche" onchange="syncParam('ea-tranche', this.value)">
                     <option value="m50">Moins de 50 ans</option>
                     <option value="50_55">50 à 55 ans</option>
                     <option value="56p">56 ans et plus</option>
@@ -4495,9 +4513,9 @@
               <span class="flag-emoji">🇩🇪</span> Allemagne
             </label>
             <div id="m-de-wrap" style="display:none;padding-left:1.1rem;margin-top:0.25rem;flex-direction:column;gap:0.2rem">
-              <label class="param-item">
+              <label class="param-item param-stack">
                 Steuerklasse
-                <select id="m-steuerklasse" onchange="syncParam('steuerklasse', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <select id="m-steuerklasse" onchange="syncParam('steuerklasse', this.value)">
                   <option value="1">I — Célibataire</option>
                   <option value="2">II — Parent isolé</option>
                   <option value="3">III — Marié·e (revenu élevé)</option>
@@ -4515,9 +4533,9 @@
                 Membre d'une église (Kirchensteuer)
               </label>
               <div id="m-de-kirche-detail" style="display:none;padding-left:1.1rem">
-                <label class="param-item">
+                <label class="param-item param-stack">
                   Land
-                  <select id="m-land" onchange="syncParam('land', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                  <select id="m-land" onchange="syncParam('land', this.value)">
                     <option value="BW">Baden-Württemberg (8 %)</option>
                     <option value="BY">Bayern (8 %)</option>
                     <option value="BE">Berlin (9 %)</option>
@@ -4555,7 +4573,7 @@
               <span class="flag-emoji">🇧🇪</span> Belgique
             </label>
             <div id="m-be-region-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-              <select id="m-be-region" onchange="syncParam('be-region', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <select id="m-be-region" onchange="syncParam('be-region', this.value)">
                 <option value="bruxelles">Bruxelles-Capitale</option>
                 <option value="flandre">Flandres</option>
                 <option value="wallonie">Wallonie</option>
@@ -4727,7 +4745,7 @@
             </label>
             <div id="m-ca-sub-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem;flex-direction:column;gap:0.1rem">
               <div id="m-ca-province-wrap" style="display:none">
-                <select id="m-ca-province" onchange="syncParam('ca-province', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+                <select id="m-ca-province" onchange="syncParam('ca-province', this.value)">
                   <option value="ON">Ontario (ON)</option>
                   <option value="AB">Alberta (AB)</option>
                   <option value="BC">Colombie-Britannique (BC)</option>
@@ -4752,7 +4770,7 @@
               <span class="flag-emoji">🇺🇸</span> États-Unis
             </label>
             <div id="m-us-state-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-              <select id="m-us-state" onchange="syncParam('us-state', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <select id="m-us-state" onchange="syncParam('us-state', this.value)">
                 <option value="TX">Texas (sans impôt d'État)</option>
                 <option value="FL">Floride (sans impôt d'État)</option>
                 <option value="WA">Washington (sans impôt d'État)</option>
@@ -4799,7 +4817,7 @@
               <span class="flag-emoji">🇮🇳</span> Inde
             </label>
             <div id="m-in-regime-wrap" style="display:none;padding-left:1.1rem;margin-top:0.15rem">
-              <select id="m-inde-regime" onchange="syncParam('inde-regime', this.value)" style="font-size:0.72rem;padding:0.15rem 0.3rem;background:var(--bg3);color:var(--fg);border:1px solid var(--border)">
+              <select id="m-inde-regime" onchange="syncParam('inde-regime', this.value)">
                 <option value="nouveau">Nouveau régime (défaut)</option>
                 <option value="ancien">Ancien régime</option>
               </select>
