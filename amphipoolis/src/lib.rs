@@ -17,6 +17,7 @@
 //! Rien n'est éternel : un texte publié vit 7 jours, chaque +1 d'un autre
 //! pseudonyme les rallonge de 7, dans la limite de 30 jours après publication.
 
+pub mod admin;
 pub mod db;
 pub mod routes;
 

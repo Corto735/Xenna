@@ -283,6 +283,34 @@ async fn delete_meliinda_sequence(
     }
 }
 
+// ── {prefixe}/amphipoolis — modération supérieure ────────────────────────────
+// Le super administrateur voit tous les sujets et messages d'Amphipoolis, quel
+// que soit leur statut, et peut en supprimer en dernier recours, même publiés.
+// Même montage que Meliinda : la crate fournit les fonctions, l'authentification
+// reste ici.
+
+async fn amphipoolis_liste(
+    State(pool): State<Db>,
+    _auth: AdminAuth,
+) -> Result<Json<Vec<amphipoolis::admin::SujetAdmin>>, (StatusCode, &'static str)> {
+    amphipoolis::admin::tout_lister(&pool)
+        .await
+        .map(Json)
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Erreur DB"))
+}
+
+async fn amphipoolis_supprimer(
+    State(pool): State<Db>,
+    _auth: AdminAuth,
+    Path((objet, id)): Path<(String, i64)>,
+) -> impl IntoResponse {
+    match amphipoolis::admin::supprimer(&pool, &objet, id).await {
+        Ok(true)  => StatusCode::NO_CONTENT,
+        Ok(false) => StatusCode::NOT_FOUND,
+        Err(_)    => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
 // ── GET /api/apropos/posts (public) ──────────────────────────────────────────
 
 async fn list_apropos_posts(
@@ -330,6 +358,8 @@ pub fn admin_router() -> Router<Db> {
         .route(&p("/apropos/publish"),            post(publish_apropos))
         .route(&p("/apropos/{id}"),               delete(delete_apropos))
         .route(&p("/meliinda/sequence/{id}"),     delete(delete_meliinda_sequence))
+        .route(&p("/amphipoolis"),                get(amphipoolis_liste))
+        .route(&p("/amphipoolis/{objet}/{id}"),   delete(amphipoolis_supprimer))
         .route("/api/apropos/posts",              get(list_apropos_posts))
         // Édition des réglementations conventionnelles : les handlers
         // vivent dans le module ccn, l'authentification et le préfixe

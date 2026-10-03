@@ -83,6 +83,26 @@
   .ccn-adm-acts { display: flex; gap: 0.3rem; flex-shrink: 0; }
 
   /* Human input — page À propos */
+  /* ── Amphipoolis — modération supérieure ── */
+  #amph-section { margin-top: 1.5rem; }
+  #amph-section .panel { border-top-color: var(--red); }
+  .amph-sujet { background: var(--bg3); border: 1px solid var(--dim); padding: 0.7rem; margin-bottom: 0.7rem; }
+  .amph-tete  { display: flex; gap: 0.6rem; align-items: flex-start; }
+  .amph-main  { flex: 1; min-width: 0; }
+  .amph-titre { color: var(--white); font-weight: bold; font-size: 0.8rem; }
+  .amph-meta  { color: var(--muted); font-size: 0.62rem; margin-top: 0.2rem; }
+  .amph-texte { color: var(--text); font-size: 0.72rem; white-space: pre-wrap; word-break: break-word;
+                margin-top: 0.4rem; max-height: 9rem; overflow: auto; }
+  .amph-msgs  { margin: 0.6rem 0 0 1rem; border-left: 1px solid var(--dim); padding-left: 0.7rem; }
+  .amph-msg   { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.4rem 0; border-bottom: 1px dashed var(--dim); }
+  .amph-msg:last-child { border-bottom: none; }
+  .amph-st    { font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; margin-left: 0.3rem; }
+  .amph-st-publie  { color: var(--green); }
+  .amph-st-attente { color: var(--yellow); }
+  .amph-st-refuse  { color: var(--red); }
+  #amph-status { font-size: 0.65rem; margin-bottom: 0.6rem; min-height: 1rem; }
+  #amph-status.ok { color: var(--green); } #amph-status.err { color: var(--red); }
+
   #hi-section { margin-top: 1.5rem; }
   #hi-section .panel { border-top-color: var(--green); }
   #hi-editor {
@@ -188,6 +208,22 @@
       <div class="panel">
         <div class="panel-title">QUESTIONS QUIZZ À VALIDER <span class="panel-count" id="quizz-count"></span></div>
         <div id="quizz-list"><div class="spinner">chargement…</div></div>
+      </div>
+    </div>
+
+    <!-- AMPHIPOOLIS — MODÉRATION SUPÉRIEURE -->
+    <div id="amph-section">
+      <div class="panel">
+        <div class="panel-title">AMPHIPOOLIS — MODÉRATION SUPÉRIEURE
+          <span class="panel-count" id="amph-count"></span></div>
+        <p class="subtitle" style="margin-bottom:1rem">
+          Tous les sujets et messages, quel que soit leur statut, avec le vrai nom des pseudonymes.
+          En dernier recours : la suppression est définitive, même pour un texte publié.
+          Supprimer un sujet emporte toutes ses réponses.
+          <button class="btn btn-sm" onclick="amphLoad()">↻ Actualiser</button>
+        </p>
+        <div id="amph-status"></div>
+        <div id="amph-list"><div class="spinner">chargement…</div></div>
       </div>
     </div>
 
@@ -393,6 +429,7 @@ function showDashboard(user) {
   loadDashboard();
   hiLoadList();
   ccnLoad();
+  amphLoad();
 }
 
 async function loadDashboard() {
@@ -922,6 +959,77 @@ async function ccnDelete(id) {
   if (r.status === 401) { doLogout(); return; }
   if (r.ok) { ccnStatus(`Règle #${id} supprimée.`, 'ok'); if (ccnEditId === id) ccnResetForm(); ccnLoad(); }
   else ccnStatus('Suppression refusée', 'err');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AMPHIPOOLIS — MODÉRATION SUPÉRIEURE
+// Dernier recours du super administrateur : voir tout, supprimer
+// ce qui doit l'être, publié ou non. Les modérateurs du site, eux,
+// ne font que publier ou refuser.
+// ═══════════════════════════════════════════════════════════════
+
+const AMPH_STATUTS = { attente: 'en attente', publie: 'publié', refuse: 'refusé' };
+
+function amphStatus(msg, kind) {
+  const el = document.getElementById('amph-status');
+  el.textContent = msg;
+  el.className = kind || '';
+}
+
+function amphMeta(x) {
+  const st = `<span class="amph-st amph-st-${esc(x.statut)}">${esc(AMPH_STATUTS[x.statut] || x.statut)}</span>`;
+  const decide = x.decide_par ? ` · tranché par ${esc(x.decide_par)}` : '';
+  const motif  = x.motif ? ` · motif : ${esc(x.motif)}` : '';
+  const expire = x.expire_le ? ` · expire le ${esc(x.expire_le.slice(0, 10))}` : '';
+  return `par <b>${esc(x.auteur)}</b> · ${esc(x.cree_le.slice(0, 16).replace('T', ' '))}${st}${decide}${motif}${expire}`;
+}
+
+async function amphLoad() {
+  const el = document.getElementById('amph-list');
+  try {
+    const r = await fetch(BASE + '/amphipoolis', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (r.status === 401) { doLogout(); return; }
+    if (!r.ok) { el.innerHTML = '<div class="empty">Erreur de chargement</div>'; return; }
+    const sujets = await r.json();
+    const nbMsg = sujets.reduce((n, s) => n + s.messages.length, 0);
+    document.getElementById('amph-count').textContent = `(${sujets.length} sujets · ${nbMsg} messages)`;
+    if (!sujets.length) { el.innerHTML = '<div class="empty">Aucun sujet</div>'; return; }
+    el.innerHTML = sujets.map(s => `
+      <div class="amph-sujet">
+        <div class="amph-tete">
+          <div class="amph-main">
+            <div class="amph-titre">#${s.id} · ${esc(s.titre)}</div>
+            <div class="amph-meta">${amphMeta(s)}</div>
+            <div class="amph-texte">${esc(s.texte)}</div>
+          </div>
+          <button class="btn btn-sm btn-red" onclick="amphSupprimer('sujet', ${s.id})">✗ Supprimer le sujet</button>
+        </div>
+        ${s.messages.length ? `<div class="amph-msgs">${s.messages.map(m => `
+          <div class="amph-msg">
+            <div class="amph-main">
+              <div class="amph-meta">${amphMeta(m)}</div>
+              <div class="amph-texte">${esc(m.texte)}</div>
+            </div>
+            <button class="btn btn-sm btn-red" onclick="amphSupprimer('message', ${m.id})">✗ Supprimer</button>
+          </div>`).join('')}</div>` : ''}
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="empty">Erreur réseau</div>';
+  }
+}
+
+async function amphSupprimer(objet, id) {
+  const quoi = objet === 'sujet' ? `le sujet #${id} et toutes ses réponses` : `le message #${id}`;
+  if (!confirm(`Supprimer définitivement ${quoi} ?`)) return;
+  const r = await fetch(`${BASE}/amphipoolis/${objet}/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+  });
+  if (r.status === 401) { doLogout(); return; }
+  if (r.ok)                 amphStatus(`${objet === 'sujet' ? 'Sujet' : 'Message'} #${id} supprimé.`, 'ok');
+  else if (r.status === 404) amphStatus(`#${id} n'existe plus (déjà supprimé ou expiré).`, 'err');
+  else                      amphStatus('Suppression refusée', 'err');
+  amphLoad();
 }
 
 // Auto-connect si token en session

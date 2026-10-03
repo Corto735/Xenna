@@ -9,7 +9,9 @@
 //   - un texte publié vit 7 jours ; chaque +1 d'un autre les rallonge de 7,
 //     jusqu'à 30 jours après sa publication ;
 //   - un sujet ou un message n'est visible des autres qu'une fois publié par
-//     un modérateur — jamais par son propre auteur ;
+//     un modérateur — jamais par le pseudonyme qui l'a écrit ; une même
+//     personne peut en revanche publier avec son pseudonyme modérateur ce
+//     qu'elle a écrit en participant (voulu : c'est ainsi qu'on teste) ;
 //   - un refus porte un motif, que seul l'auteur voit ;
 //   - un pseudonyme refusé doit être remplacé, l'ancien nom est réservé.
 //
@@ -233,7 +235,8 @@ const REGLES = `
       <li><b>Pseudonyme strictement respecté.</b> On entre avec un pseudonyme et une phrase secrète : ni e-mail, ni adresse IP conservée. Personne d'autre ne peut parler sous votre nom.</li>
       <li><b>Révéler son identité est permis</b>, en votre âme et conscience — c'est votre choix, jamais une obligation. Mais rien ici ne vérifie qui est qui : n'importe qui peut prétendre être n'importe qui. Prenez toute identité annoncée pour ce qu'elle est, une simple affirmation.</li>
       <li><b>Chaque texte est lu avant d'être publié.</b> Un modérateur publie ou refuse ; en cas de refus, vous seul voyez le motif.</li>
-      <li><b>Participant ou modérateur</b> : le rôle se choisit à la création du pseudonyme, un de chaque par jour. Un modérateur ne valide jamais ses propres textes.</li>
+      <li><b>Participant ou modérateur</b> : le rôle se choisit à la création du pseudonyme, un de chaque par jour. Vous pouvez valider vos propres textes : écrivez avec votre pseudonyme participant, puis publiez-les avec votre pseudonyme modérateur. C'est voulu, pour pouvoir tester tout le circuit sur ce prototype.</li>
+      <li><b>En dernier recours</b>, un super administrateur peut également supprimer des messages, même déjà publiés.</li>
       <li><b>Rien n'est éternel.</b> Un texte publié vit 7 jours ; chaque +1 d'un autre pseudonyme lui ajoute 7 jours, jusqu'à 30 jours après sa publication. Un texte refusé ou jamais modéré disparaît au bout de 7 jours.</li>
       <li><b>Un pseudonyme discourtois</b> peut être refusé : vous en choisissez alors un autre, vos textes vous suivent.</li>
       <li class="am-avert"><b>Prototype.</b> Si vous voulez rester anonyme, n'écrivez rien qui permette de vous reconnaître (nom, poste, lieu, dates précises).</li>

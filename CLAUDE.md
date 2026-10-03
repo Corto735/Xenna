@@ -351,6 +351,15 @@ Règles portées par le serveur — le front ne fait que les montrer :
    publication. Refusé ou jamais modéré : 7 jours. Un sujet expiré reste tant
    qu'une réponse vit. `db::purger` tourne au démarrage puis toutes les 10 min
    (+1 et journal orphelins compris) ; les pseudonymes et noms réservés restent.
+6. **Super administrateur, en dernier recours.** Le panneau admin
+   (`/archives-bareme-1997`, section « Amphipoolis — modération supérieure »)
+   liste tous les sujets et messages, quel que soit leur statut, sous le vrai nom
+   des pseudonymes, et supprime définitivement un message ou un sujet (avec toutes
+   ses réponses, +1 et journal compris), même publié. Les fonctions vivent dans
+   `amphipoolis/src/admin.rs` ; les routes, derrière le JWT admin, dans
+   `src-tauri/src/admin/routes.rs` — la crate n'a pas d'authentification admin.
+   Valider ses propres textes avec deux pseudonymes distincts (participant puis
+   modérateur) est VOULU : c'est ainsi qu'on teste, et les règles affichées le disent.
 
 Quotas (`web.rs`) : création/entrée bornées comme les autres connexions ; seuls
 les POST de sujets/messages sont bornés (les GET servent le rafraîchissement :
