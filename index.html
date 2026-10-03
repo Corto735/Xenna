@@ -2423,6 +2423,11 @@
     .burger-item--soutien { margin-top: 0.35rem; border-top: 1px solid var(--border); }
     .burger-item--soutien .burger-item-icon { color: var(--or); }
     .burger-item:hover { background: var(--bg3); color: var(--blue); }
+    /* Les trois applications principales (Xenna, Gaabrielle, Hercuule) : icône
+       ×1,5. La boîte garde sa largeur de 1,1rem pour que tous les libellés du
+       menu restent alignés au même aplomb. */
+    .burger-item--majeur .burger-item-icon { font-size: 1.5rem; width: 1.1rem; }
+    .burger-item--majeur .pastille-or { width: 1.2rem; height: 1.2rem; border-width: 3px; }
     .burger-item-icon {
       font-size: 1rem;
       line-height: 1;
@@ -3823,17 +3828,17 @@
         <span></span>
       </button>
       <nav class="burger-menu" id="burger-menu" aria-label="Navigation principale">
-        <button class="burger-item" style="font-size:0.88rem" onclick="setView('desktop'); closeBurger()">
+        <button class="burger-item burger-item--majeur" style="font-size:0.88rem" onclick="setView('desktop'); closeBurger()">
           <span class="burger-item-icon" style="display:inline-flex;align-items:center;justify-content:center">
             <span class="pastille-or"></span>
           </span>
           Xenna <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
         </button>
-        <button class="burger-item" onclick="setView('gaabrielle'); closeBurger()">
+        <button class="burger-item burger-item--majeur" onclick="setView('gaabrielle'); closeBurger()">
           <span class="burger-item-icon">/</span>
           Gaabrielle <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">RH</span>
         </button>
-        <button class="burger-item" onclick="setView('hercule'); closeBurger()">
+        <button class="burger-item burger-item--majeur" onclick="setView('hercule'); closeBurger()">
           <span class="burger-item-icon">□</span>
           Hercuule <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Compta</span>
         </button>
@@ -3845,21 +3850,13 @@
           <span class="burger-item-icon">♟</span>
           Amphipoolis <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">prototype</span>
         </button>
-        <button class="burger-item" onclick="setView('apropos'); closeBurger()">
-          <span class="burger-item-icon">?</span>
-          À propos
-        </button>
-        <button class="burger-item" onclick="setView('carnet'); closeBurger()">
-          <span class="burger-item-icon">▤</span>
-          Carnet de bord
-        </button>
         <button class="burger-item" onclick="setView('ccn'); closeBurger()">
           <span class="burger-item-icon">◎</span>
           Le Chakrram<sup class="ccn-idcc">IDCC</sup>
         </button>
         <button class="burger-item" onclick="setView('quizz'); closeBurger()">
           <span class="burger-item-icon">✦</span>
-          Quizz <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Paie</span>
+          Cyyrène <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">Quizz</span>
         </button>
         <button id="burger-login" class="burger-item" style="display:none" onclick="window.location.href='/la_forge'; closeBurger()">
           <span class="burger-item-icon">⬡</span>
@@ -3868,6 +3865,14 @@
         <button id="burger-admin" class="burger-item" style="display:none">
           <span class="burger-item-icon">⚷</span>
           Admin <span style="color:var(--muted-txt);font-size:0.65em;margin-left:0.3em">modération</span>
+        </button>
+        <button class="burger-item" onclick="setView('carnet'); closeBurger()">
+          <span class="burger-item-icon">▤</span>
+          Carnet de bord
+        </button>
+        <button class="burger-item" onclick="setView('apropos'); closeBurger()">
+          <span class="burger-item-icon">?</span>
+          À propos
         </button>
         <button id="burger-mecenat" class="burger-item burger-item--soutien" onclick="setView('mecenat'); closeBurger()">
           <span class="burger-item-icon">♥</span>

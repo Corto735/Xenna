@@ -18,7 +18,6 @@ export const STATIC_DICT = {
   '☰ MOBILE':               ['☰ MOBILE', '☰ MOBIL', '☰ MOBIEL', '☰ MOBILE', '☰ MÓVIL'],
   '▦ SIMULATION ANNUELLE':  ['▦ ANNUAL SIMULATION', '▦ JAHRESSIMULATION', '▦ JAARSIMULATIE', '▦ SIMULAZIONE ANNUALE', '▦ SIMULACIÓN ANUAL'],
   'HISTOIRE':               ['HISTORY', 'GESCHICHTE', 'GESCHIEDENIS', 'STORIA', 'HISTORIA'],
-  'Quizz Paie':             ['Payroll Quiz', 'Gehaltsquiz', 'Loonquiz', 'Quiz Paghe', 'Quiz de Nómina'],
   'La Forge':               ['The Forge', 'Die Schmiede', 'De Smidse', 'La Fucina', 'La Fragua'],
   'À propos':               ['About', 'Über uns', 'Over ons', 'Informazioni', 'Acerca de'],
   'Menu':                   ['Menu', 'Menü', 'Menu', 'Menu', 'Menú'],
