@@ -247,9 +247,10 @@ Quatre règles à respecter en y touchant :
    Disposition reprise du bulletin réel : en-tête employeur (raison sociale,
    adresse, Siret, Code Naf, Urssaf), blocs du salarié (matricule ; emploi et
    classification ; entrée et ancienneté), convention collective, cadre
-   d'adresse bleu pâle pour l'enveloppe à fenêtre. Puis une **grille à hauteur
+   d'adresse gris clair pour l'enveloppe à fenêtre. Puis une **grille à hauteur
    fixe** — *Éléments de paie · Base · Taux · À déduire · À payer · Charges
-   patronales* (base, taux, montant sous un seul titre), en-tête bleu marine,
+   patronales* (base, taux, montant sous un seul titre), en-tête gris anthracite (bulletin
+   monochrome, pour l'impression noir et blanc),
    filets verticaux jusqu'au pied — et un **pied fixe** : cumuls *Mensuel /
    Annuel* (heures, heures supp., brut, plafond S.S., net imposable, charges
    patronales, coût global, total versé, allègements), compteurs de congés N-1 /

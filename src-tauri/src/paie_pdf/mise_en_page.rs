@@ -9,7 +9,7 @@
 //! ── La disposition ───────────────────────────────────────────────────────────
 //! Celle d'un bulletin de logiciel de paie du marché, relevée sur un bulletin
 //! réel : en-tête employeur à gauche et titre au centre, blocs du salarié, cadre
-//! d'adresse bleuté pour l'enveloppe à fenêtre, puis une GRILLE À HAUTEUR FIXE —
+//! d'adresse grisé pour l'enveloppe à fenêtre, puis une GRILLE À HAUTEUR FIXE —
 //! ses filets verticaux descendent jusqu'au pied, quel que soit le nombre de
 //! lignes — et un PIED FIXE en bas de page : cumuls mensuels et annuels,
 //! compteurs de congés, net payé encadré, mention légale.
@@ -74,8 +74,11 @@ const H_GRAND: f32 = 16.0;
 const NOIR: f32 = 0.0;
 const GRIS: f32 = 0.40;
 const BLANC: f32 = 1.0;
-const BLEU: [f32; 3] = [0.05, 0.07, 0.55];
-const BLEU_PALE: [f32; 3] = [0.84, 0.89, 0.98];
+/// Bulletin MONOCHROME, pour une impression noir et blanc fidèle : en-têtes gris
+/// anthracite (texte blanc), cadre d'adresse gris très clair. Aucune teinte —
+/// un test vérifie que chaque aplat est un gris neutre.
+const ANTHRACITE: [f32; 3] = [0.22, 0.22, 0.22];
+const GRIS_PALE: [f32; 3] = [0.90, 0.90, 0.90];
 const EP_CADRE: f32 = 0.6;
 const EP_FILET: f32 = 0.45;
 
@@ -225,7 +228,7 @@ impl<'a> Composeur<'a> {
 
         // Cadre d'adresse, placé pour la fenêtre d'une enveloppe.
         let (cx, cy, cl, ch) = (298.0, 115.0, 240.0, 84.0);
-        self.aplat(cx, cy, cl, ch, BLEU_PALE);
+        self.aplat(cx, cy, cl, ch, GRIS_PALE);
         let n = b.destinataire.len() as f32;
         let y0 = cy + ch / 2.0 - (n - 1.0) * 10.6 / 2.0 + 2.5;
         for (i, l) in b.destinataire.iter().enumerate() {
@@ -240,12 +243,12 @@ impl<'a> Composeur<'a> {
 
     // ── La grille ─────────────────────────────────────────────────────────────
 
-    /// Cadre, en-tête bleu et filets verticaux d'une page de grille, de `haut`
+    /// Cadre, en-tête anthracite et filets verticaux d'une page de grille, de `haut`
     /// jusqu'au pied.
     fn cadre_grille(&mut self, haut: f32, colonnes: &[String]) {
         let l = grille(&CHIFFRES_GRILLE);
         let b = bords(&l);
-        self.aplat(MARGE, haut, COL, H_ENTETE, BLEU);
+        self.aplat(MARGE, haut, COL, H_ENTETE, ANTHRACITE);
         let y = haut + H_ENTETE / 2.0 + T_ENTETE * 0.35;
         // Libellé, base, taux, à déduire, à payer : une colonne chacun ; le
         // sixième titre couvre les trois colonnes des charges patronales.
@@ -356,7 +359,7 @@ impl<'a> Composeur<'a> {
 
     fn rangee_entete(&mut self, y: f32, titres: &[String], larg: &[f32], jusqua: usize) {
         let b = bords(larg);
-        self.aplat(MARGE, y, COL, H_PIED, BLEU);
+        self.aplat(MARGE, y, COL, H_PIED, ANTHRACITE);
         for (i, t) in titres.iter().enumerate().take(jusqua) {
             let gauche = if i == 0 { MARGE } else { b[i - 1] };
             self.ecrire_centre(gauche, b[i], y + H_PIED - 3.6, t, Face::Regulier, T_PIED, BLANC);
@@ -490,7 +493,7 @@ impl<'a> Composeur<'a> {
         let haut = self.y;
         let h_groupe = if a.groupes.is_empty() { 0.0 } else { 11.0 };
         let h = h_groupe + 14.0;
-        self.aplat(MARGE, haut, COL, h, BLEU);
+        self.aplat(MARGE, haut, COL, h, ANTHRACITE);
         for g in a.groupes.iter().filter(|g: &&Groupe| g.de >= 1 && g.de <= g.a && g.a < b.len()) {
             self.ecrire_centre(b[g.de - 1], b[g.a], haut + 8.5, &g.titre, Face::Gras, T_PIED, BLANC);
         }
@@ -527,7 +530,7 @@ fn habiller(pages: &mut [Vec<Dessin>], b: &BulletinPdf, p: &Polices) {
     let total = pages.len();
     for (i, page) in pages.iter_mut().enumerate() {
         // Le filigrane passe PAR-DESSUS, en diagonale et translucide : les
-        // aplats bleus le mangeraient par morceaux s'il passait derrière.
+        // aplats anthracite le mangeraient par morceaux s'il passait derrière.
         if !b.filigrane.is_empty() {
             let large = p.largeur(Face::Gras, &b.filigrane, T_FILIGRANE);
             let rad = ANGLE_FILIGRANE.to_radians();

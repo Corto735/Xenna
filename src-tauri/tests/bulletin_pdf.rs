@@ -234,7 +234,7 @@ fn une_grille_trop_longue_continue_avec_son_entete_et_un_seul_pied() {
     assert!(textes(grille[0]).iter().any(|(_, x)| x == "Suite page suivante"));
 }
 
-/// Le filigrane doit passer PAR-DESSUS — les aplats bleus le mangeraient par
+/// Le filigrane doit passer PAR-DESSUS — les aplats anthracite le mangeraient par
 /// morceaux s'il passait derrière —, être assez translucide pour ne pas gêner
 /// la lecture, et se trouver sur chacune des pages.
 #[test]
@@ -340,6 +340,21 @@ fn l_annexe_ne_fait_pas_chevaucher_libelle_et_code() {
             if (y - cy).abs() < 0.5 && texte != "ALSACE_MOSELLE_MALADIE" && *x < cx {
                 let droite = x + polices.largeur(*face, texte, *taille);
                 assert!(droite < cx, "« {texte} » chevauche le code ({droite:.1} > {cx:.1})");
+            }
+        }
+    }
+}
+
+/// Le bulletin est MONOCHROME, pour s'imprimer fidèlement en noir et blanc :
+/// chaque aplat doit être un gris neutre, sans la moindre teinte.
+#[test]
+fn le_bulletin_est_monochrome() {
+    let polices = Polices::charger().expect("polices");
+    for page in mise_en_page::composer(&gabarit(30), &polices) {
+        for d in page {
+            if let Dessin::Aplat { rvb: [r, v, b], .. } = d {
+                assert!((r - v).abs() < 1e-6 && (v - b).abs() < 1e-6,
+                    "aplat teinté ({r}, {v}, {b}) : le bulletin doit rester en niveaux de gris");
             }
         }
     }
