@@ -5072,7 +5072,10 @@ function _reRenderRemInPlace() {
 let _recalcTimer = null;
 function _triggerRecalculate() {
   clearTimeout(_recalcTimer);
-  _recalcTimer = setTimeout(() => calculate('desktop'), 350);
+  // Recalcul depuis le formulaire de la vue affichée : sur mobile, lire le
+  // formulaire bureau écrasait le brut saisi sans clic sur CALCULER.
+  const source = document.body.classList.contains('is-mobile') ? 'mobile' : 'desktop';
+  _recalcTimer = setTimeout(() => calculate(source), 350);
 }
 // Exposé pour les handlers inline (onchange) du HTML (module → scope non global).
 window._triggerRecalculate = _triggerRecalculate;
@@ -5288,11 +5291,6 @@ function _buildAbsenceViz(absInfo, absState) {
   const end   = absState?.dateFin ? _parseISO(absState.dateFin) : start;
   const dateLabel = start.toLocaleDateString(locale,
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const hasMaintien = fm.some(c => c !== 'hors');
-  // Frise IJSS affichée seulement si des IJSS figurent au bulletin ce mois-ci : hors
-  // subrogation (pas de maintien, ou maintien terminé) la CPAM paie en direct et la
-  // frise ne montrerait que des cases « carence » et « hors ».
-  const hasIjss = parseFloat(absInfo.jours_ijss) > 0;
 
   // Mois de paie : si l'arrêt déborde (avant et/ou après), on encadre les jours
   // du mois dans les frises et on affiche un encadré rappelant les jours retenus.
@@ -5317,10 +5315,13 @@ function _buildAbsenceViz(absInfo, absState) {
   // Coût employeur des seuls jours d'arrêt de ce bulletin (jamais le mois entier).
   const coutAbs = _coutAbsencePeriode(lastBulletin)?.cout ?? 0;
 
-  const friseMaintien = hasMaintien
+  // Les deux frises sont toujours affichées : sans maintien (ancienneté < 1 an,
+  // maintien épuisé) ou hors subrogation, leurs jours restent en cases vides
+  // (« hors ») pour montrer que l'employeur ne verse rien.
+  const friseMaintien = fm.length
     ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Maintien de salaire')}</div>${_friseGrid(fm, 'maintien', absInfo, startDate, mois)}</div>`
     : '';
-  const friseIjss = hasIjss
+  const friseIjss = fi.length
     ? `<div class="frise-wrap"><div class="frise-title">${_friseTr('Indemnités journalières (IJSS)')}</div>${_friseGrid(fi, 'ijss', absInfo, startDate, mois)}</div>`
     : '';
   _fmStore['TOT_PERTE_ABSENCE'] = { type: 'total', which: 'perte_absence' };
@@ -5472,11 +5473,11 @@ function _buildAbsencePanel(isMob) {
       <div class="absence-dates">
         <label class="absence-date-row" for="abs-debut-${p}">
           <span>Début</span>
-          <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
+          <input type="date" id="abs-debut-${p}" value="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')" onchange="onAbsenceChange('${p}')">
         </label>
         <label class="absence-date-row" for="abs-fin-${p}">
           <span>Fin</span>
-          <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" min="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')">
+          <input type="date" id="abs-fin-${p}" value="${abs.dateFin||''}" min="${abs.dateDebut||''}" oninput="onAbsenceChange('${p}')" onchange="onAbsenceChange('${p}')">
         </label>
       </div>
       <div class="absence-methode-row">
@@ -5542,7 +5543,14 @@ function _refreshAbsencePanel(p) {
 }
 
 window.appliquerAbsence = function(p) {
-  if (!_absence?.dateDebut || !_absence?.dateFin) return;
+  if (!_absence) return;
+  // Relit les dates à la validation : le sélecteur de date de Firefox Android
+  // ne déclenche pas toujours `input`, et l'état restait alors vide.
+  const debut = document.getElementById(`abs-debut-${p}`)?.value;
+  const fin   = document.getElementById(`abs-fin-${p}`)?.value;
+  if (debut) _absence.dateDebut = debut;
+  if (fin)   _absence.dateFin   = fin;
+  if (!_absence.dateDebut || !_absence.dateFin) return;
   _absence.active = true;
   _reRenderRemInPlace();
   _triggerRecalculate();
