@@ -1162,16 +1162,13 @@
       margin: 2.5rem auto 0;
       background: url('/hexega2.webp') center / contain no-repeat;
       opacity: 0.92;
-      animation: heros-entree 1.4s ease-out both, heros-souffle 6s ease-in-out 1.4s infinite alternate;
+      /* Aucune animation d'arrivée : l'image est là dès le chargement. */
+      animation: heros-souffle 6s ease-in-out infinite alternate;
     }
     /* Mobile : même image, réduite, sous [ CALCULER ], à la place du futur
        bulletin. */
     .accueil-heros--mobile {
       margin: 1.2rem auto 0.5rem;
-    }
-    @keyframes heros-entree {
-      from { opacity: 0; transform: translateY(14px) scale(0.985); }
-      to   { opacity: 0.92; transform: none; }
     }
     /* Les néons respirent. Par l'opacité et non par un filtre de luminosité :
        un filtre éclaircirait aussi le fond de l'image, qui se détacherait alors
