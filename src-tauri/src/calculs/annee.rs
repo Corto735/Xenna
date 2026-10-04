@@ -81,6 +81,8 @@ pub async fn generer_annee(
             heures_supp_50: 0.0,
             heures_comp_10: 0.0,
             heures_comp_25: 0.0,
+            heures_struct_25: 0.0,
+            heures_struct_50: 0.0,
             salaire_base: None,
             effectif: None,
             anciennete: None,

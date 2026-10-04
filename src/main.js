@@ -68,7 +68,7 @@ window.openExternal = async function(url) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 // Paramètres figés au dernier CALCULER — voir « Paramètres appliqués ».
-const PARAMS_DEFAUT = { statut: 'non_cadre', etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1 };
+const PARAMS_DEFAUT = { statut: 'non_cadre', etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1, hsStruct: null };
 let _params = { ...PARAMS_DEFAUT };
 let _etpPrev = 100; // ETP de référence pour le recalcul brut proportionnel
 
@@ -291,7 +291,9 @@ function _afficherBrutReconstitue(bulletin) {
     if (!el) return;
     if (!bulletin || _modeSaisie !== 'net') { el.hidden = true; return; }
     const b = el.querySelector('b');
-    if (b) b.textContent = `${parseFloat(bulletin.brut).toFixed(2)} ${bulletin.devise}`;
+    // Brut de base trouvé par l'inversion (hors primes et heures supp.).
+    const base = parseFloat(bulletin.salarie?.salaire_base) || parseFloat(bulletin.brut);
+    if (b) b.textContent = `${base.toFixed(2)} ${bulletin.devise}`;
     el.hidden = false;
   });
 }
@@ -2867,6 +2869,9 @@ window.bpGenererPdf = async function (id) {
 
   try {
     const datePaie = getDatePaie();
+    // Plafond de la Sécurité sociale du mois, pour le pied du bulletin. Son
+    // absence n'empêche pas l'impression : la case reste vide.
+    const pmss = await api('plafond_ss', { datePaie }).catch(() => null);
     const doc = composerBulletinPdf(b, {
       datePaie,
       pas:             calculerPas(b.net_imposable),
@@ -2877,6 +2882,10 @@ window.bpGenererPdf = async function (id) {
       // calcul a tourné, et le formulaire a pu bouger depuis.
       etp:             b.salarie?.etp ?? _bpChampDuree('etp', 100),
       heuresMois:      _bpChampDuree('h-mois', 151.67),
+      pmss,
+      // Paramètres figés au dernier calcul : ceux avec lesquels le bulletin a tourné.
+      anciennete:      _params.anciennete,
+      ccn:             _idcc16Active() ? 'Transports routiers et activités auxiliaires du transport (IDCC 0016)' : '',
       versionLogiciel: pkg.version,
     });
 
@@ -3207,15 +3216,15 @@ function buildHistoire(c, cls = 'expl-histoire') {
 // (réduction générale, CSG, paye inversée, projection annuelle). Les retouches
 // sont indexées par code de cotisation et survivent à un nouveau calcul.
 //
-// Édition d'une case : case « écoute » cochée, puis clic, et second clic
-// maintenu 2 s sur la base ou un taux.
+// Édition d'une case : case « modifier » cochée, puis clic, et second clic
+// maintenu 1,5 s sur la base ou un taux.
 let _bulletinBack = null;            // bulletin tel que renvoyé par le back
 const _perso = { modifs: {}, ajouts: [], seq: 0 };
 let _persoEcoute = false;
 let _persoCote = 'sal';              // côté de la cotisation ajoutée : 'sal' | 'pat'
 let _persoFormOuvert = false;
 const PERSO_DELAI_DOUBLE = 400;      // ms entre le 1er clic et le 2e appui
-const PERSO_DUREE_APPUI  = 2000;     // ms de maintien du 2e appui
+const PERSO_DUREE_APPUI  = 1500;     // ms de maintien du 2e appui
 const PERSO_NON_DEDUCTIBLES = ['CSG_NON_DEDUCTIBLE', 'CRDS'];
 
 function _poserBulletin(b) {
@@ -3301,8 +3310,8 @@ function _persoNombre(s) {
 
 function _persoControles() {
   return `<span class="perso-ctrl">
-    <label class="perso-ecoute" title="Clic, puis second clic maintenu 2 secondes sur une base ou un taux pour le modifier">
-      <input type="checkbox" ${_persoEcoute ? 'checked' : ''} onchange="persoEcoute(this.checked)"> ÉCOUTE ✎
+    <label class="perso-ecoute" title="Clic, puis second clic maintenu 1,5 seconde sur une base ou un taux pour le modifier">
+      <input type="checkbox" ${_persoEcoute ? 'checked' : ''} onchange="persoEcoute(this.checked)"> MODIFIER ✎
     </label>
     ${_persoActif() ? '<button class="perso-raz" onclick="persoToutRetirer()">↺ annuler mes retouches</button>' : ''}
   </span>`;
@@ -3431,7 +3440,7 @@ function _persoEditer(cell) {
     if (g.cell && e.target.closest('[data-perso]') === g.cell) g.finClic = performance.now();
   });
   document.addEventListener('pointercancel', () => { annuler(); g.cell = null; });
-  // En écoute, cliquer une case éditable ne déplie pas l'explication de la ligne.
+  // Case « modifier » cochée, cliquer une case éditable ne déplie pas l'explication de la ligne.
   document.addEventListener('click', e => {
     if (_persoEcoute && e.target.closest('[data-perso]') && !e.target.closest('input')) e.stopPropagation();
   }, true);
@@ -3790,14 +3799,18 @@ async function calculate(source) {
     _poserBulletin(bulletin);
     // Mode net : la ligne « Salaire de base » (section RÉMUNÉRATION) et l'aperçu
     // de retenue d'absence doivent reposer sur le BRUT RECONSTITUÉ plein, pas
-    // sur le net saisi. En cas d'absence, ce brut plein est `absence.brut_mensuel`
-    // (bulletin.brut n'est alors que l'assiette après retenue/maintien/IJSS).
+    // sur le net saisi. Le back renvoie ce salaire de base seul (hors primes et
+    // heures supp., exclues de l'inversion) dans salarie.salaire_base.
     if (_modeSaisie === 'net') {
-      if (bulletin.absence) {
+      const baseInv = parseFloat(bulletin.salarie?.salaire_base);
+      if (baseInv > 0) {
+        _remBase = baseInv;
+      } else if (bulletin.absence) {
         _remBase = parseFloat(bulletin.absence.brut_mensuel) || 0;
       } else {
         const gainHs = bulletin.heures_sup
           ? (parseFloat(bulletin.heures_sup.gain_hs) || 0) + (parseFloat(bulletin.heures_sup.gain_hc) || 0)
+            + (parseFloat(bulletin.heures_sup.gain_hs_struct) || 0)
           : 0;
         _remBase = Math.max(0, (parseFloat(bulletin.brut) || 0) - gainHs);
       }
@@ -4523,8 +4536,11 @@ window.onDureeChange = function(prefix, field) {
   _syncEtpSel(other, parseFloat(etpEl.value));
 
   const isChecked = document.getElementById('d-apply-brut-chk')?.checked;
-  if (isChecked && !isNaN(etp) && _etpPrev > 0 && Math.abs(etp - _etpPrev) > 0.001) {
-    const factor = etp / _etpPrev;
+  // Au-delà de 100 %, le salaire de base reste celui de 35 h : le surplus est
+  // payé en heures supp. structurelles, pas par proratisation du brut.
+  const plaf = v => _francePriveActif() ? Math.min(v, 100) : v;
+  if (isChecked && !isNaN(etp) && _etpPrev > 0 && Math.abs(plaf(etp) - plaf(_etpPrev)) > 0.001) {
+    const factor = plaf(etp) / plaf(_etpPrev);
     ['d-brut', 'm-brut'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -4617,14 +4633,34 @@ function _paramsSaisis() {
   if (!document.getElementById('d-apply-brut-chk')?.checked) return { ...PARAMS_DEFAUT };
   const val = id => document.getElementById(`d-${id}`)?.value;
   const anc = parseInt(val('anciennete') ?? '1', 10);
+  const etp = parseFloat(val('etp')) || 100;
+  // Au-delà de 35 h (France privé), le salaire de base reste celui de 35 h et
+  // les heures au-delà deviennent des heures supp. structurelles mensualisées.
+  const hsStruct = _francePriveActif() ? _hsStructurelles(etp) : null;
   return {
     statut:     val('statut') === 'cadre' ? 'cadre' : 'non_cadre',
-    etp:        parseFloat(val('etp')) || 100,
+    etp:        hsStruct ? 100 : etp,
     hMois:      parseFloat(val('h-mois')) || 151.67,
     effectif:   val('effectif') || 'moins20',
     ccn:        val('ccn') || '',
     anciennete: isNaN(anc) ? 1 : Math.min(100, Math.max(0, anc)),
+    hsStruct,
   };
+}
+
+// Heures supplémentaires structurelles : horaire collectif ou contractuel
+// au-delà de 35 h, payé chaque mois sur une base lissée (heures hebdo au-delà
+// de 35 × 52/12). Majoration légale à défaut d'accord (C. trav. L3121-36) :
+// +25 % de la 36e à la 43e heure, +50 % dès la 44e. Ce sont des heures supp.
+// ordinaires : réduction salariale, déduction patronale et exonération d'impôt
+// leur s'appliquent (heures_sup.rs). Null à 35 h ou moins.
+function _hsStructurelles(etp) {
+  const hebdo = Math.round(35 * etp / 100 * 100) / 100;
+  if (!(hebdo > 35)) return null;
+  const r2 = v => Math.round(v * 100) / 100;
+  const sem25 = Math.min(hebdo - 35, 8);
+  const sem50 = Math.max(hebdo - 43, 0);
+  return { hebdo, h25: r2(sem25 * 52 / 12), h50: r2(sem50 * 52 / 12) };
 }
 
 // IDCC 0016 appliquée : convention figée au dernier calcul ET régime France privé.
@@ -4683,6 +4719,10 @@ function getRemHeures() {
   _remLines.forEach(l => {
     if (_estHeure(l.type)) h[HEURE_TYPES[l.type].champ] += parseFloat(l.amount) || 0;
   });
+  // Heures supp. structurelles : compteurs à part des heures ponctuelles.
+  const st = _params.hsStruct;
+  h.heures_struct_25 = st ? st.h25 : 0;
+  h.heures_struct_50 = st ? st.h50 : 0;
   return h;
 }
 
@@ -4733,7 +4773,7 @@ function getRemDisplayTotal(etp) {
   const e = parseFloat(etp ?? _params.etp) || 100;
   const extra = _remLines.reduce((s, l) =>
     _estHeure(l.type) ? s + _gainHeures(l.type, l.amount, e) : s, 0);
-  return getRemTotal() + extra;
+  return getRemTotal() + extra + _hsStructLignes(e).reduce((s, l) => s + _gainHeures(l.type, l.amount, e), 0);
 }
 
 // Spec d'absence envoyée au backend (snake_case, comme les champs de salarie).
@@ -4783,6 +4823,25 @@ function _remLineRow(id, saisie, val) {
 function _remLineGain(l, etp) {
   const v = _estHeure(l.type) ? _gainHeures(l.type, l.amount, etp) : parseFloat(l.amount) || 0;
   return v > 0 ? fmt(v) : '';
+}
+
+// Lignes des heures supp. structurelles (Paramètres > 35 h) : non modifiables,
+// elles suivent l'horaire hebdomadaire appliqué.
+function _hsStructLignes() {
+  const st = _params.hsStruct;
+  if (!st) return [];
+  return [['hs25', st.h25, '25'], ['hs50', st.h50, '50']]
+    .filter(([, h]) => h > 0)
+    .map(([type, amount, pct]) => ({ id: `hs-struct-${pct}`, type, amount, pct }));
+}
+function _hsStructHtml(etp) {
+  const st = _params.hsStruct;
+  return _hsStructLignes().map(l => `
+      <div class="rem-line rem-line-struct" title="Horaire de ${st.hebdo.toLocaleString('fr-FR')} h/semaine appliqué dans les Paramètres : (heures au-delà de 35) × 52/12 par mois — C. trav. L3121-36">
+        <div class="rem-line-saisie"><span class="rem-struct-lbl">Heures supp. structurelles ${l.pct} %</span></div>
+        <span class="rem-line-val">${fmt(_gainHeures(l.type, l.amount, etp))}</span>
+      </div>
+      <div class="rem-h-detail">${_remHeureDetail(l, etp)}</div>`).join('');
 }
 
 function _remLineHtml(l, opts, etp) {
@@ -4839,7 +4898,7 @@ function _jaugeRepartition() {
 function buildRemSection() {
   const etp  = _params.etp;
   const opts = getRemOptions(etp);
-  const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
+  const lines = _hsStructHtml(etp) + _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
   const addBtn = isFrance
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter un élément">+</button>`
@@ -4882,7 +4941,7 @@ function buildRemSection() {
         <td colspan="2"></td>
       </tr>
     </tbody></table>`;
-  const totalRow = (_remLines.length > 0 || _absence?.active) ? `<table class="ascii-tbl abs-embed rem-embed rem-embed-total">${_ABS_COLGROUP}<tbody>
+  const totalRow = (_remLines.length > 0 || _absence?.active || _params.hsStruct) ? `<table class="ascii-tbl abs-embed rem-embed rem-embed-total">${_ABS_COLGROUP}<tbody>
       <tr>
         <td colspan="3"><span class="rem-total-lbl">Total brut</span></td>
         <td class="r rem-total-val">${fmt(total)}</td>
@@ -4900,7 +4959,7 @@ function buildRemSection() {
 function buildRemSectionMobile() {
   const etp  = _params.etp;
   const opts = getRemOptions(etp);
-  const lines = _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
+  const lines = _hsStructHtml(etp) + _remLines.map(l => _remLineHtml(l, opts, etp)).join('');
   const isFrance = !lastBulletin || lastBulletin.salarie?.pays === 'france';
   const addBtn = isFrance
     ? `<button class="btn-add-rem" type="button" onclick="addRemLineResult()" title="Ajouter">+</button>`
@@ -4930,7 +4989,7 @@ function buildRemSectionMobile() {
     ${parseFloat(absInfo.ijss_brut) > 0 ? `<div class="rem-absence-line"><span style="flex:1">IJSS brutes (subrogation)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_IJSS')">− ${fmt(absInfo.ijss_brut)}${buildFormulaStar('ABS_IJSS')}</span></div>` : ''}
     ${parseFloat(absInfo.ajustement_net) > 0 ? `<div class="rem-absence-line"><span style="flex:1">Ajustement du net (garantie du net)</span><span class="c-red" style="cursor:pointer" onclick="showFormula('ABS_AJUST')">− ${fmt(absInfo.ajustement_net)}${buildFormulaStar('ABS_AJUST')}</span></div>` : ''}` : '') + cpLine;
   const total = lastBulletin ? parseFloat(lastBulletin.brut) : getRemDisplayTotal(etp);
-  const totalRow = (_remLines.length > 0 || _absence?.active) ? `
+  const totalRow = (_remLines.length > 0 || _absence?.active || _params.hsStruct) ? `
     <div class="rem-total-row" style="display:flex;margin-left:0">
       <span class="rem-total-lbl">Total brut</span>
       <span class="rem-total-val">${fmt(total)}</span>

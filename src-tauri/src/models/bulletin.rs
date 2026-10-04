@@ -270,6 +270,14 @@ pub struct Salarie {
     pub heures_comp_10: f64,
     #[serde(default)]
     pub heures_comp_25: f64,
+    /// Heures supplémentaires STRUCTURELLES mensualisées (horaire au-delà de 35 h :
+    /// heures hebdo au-delà de 35 × 52/12), distinctes des heures supp. ponctuelles
+    /// ci-dessus. Mêmes majorations (+25 % de la 36e à la 43e heure, +50 % au-delà,
+    /// C. trav. L3121-36) et mêmes exonérations.
+    #[serde(default)]
+    pub heures_struct_25: f64,
+    #[serde(default)]
+    pub heures_struct_50: f64,
     /// Salaire de base mensuel (hors primes/HS), sert à dériver le taux horaire
     /// = salaire_base / (151,67 × ETP/100). TEXT pour précision ; fallback salaire_brut si absent.
     #[serde(default)]
@@ -617,6 +625,11 @@ pub struct HeuresSupResult {
     pub h_supp_25: f64,
     pub h_supp_50: f64,
     #[serde(with = "rust_decimal::serde::str")] pub gain_hs: Decimal,
+    /// Heures supp. structurelles à +25 % et à +50 %, et leur gain brut (non
+    /// compris dans gain_hs).
+    pub h_struct_25: f64,
+    pub h_struct_50: f64,
+    #[serde(with = "rust_decimal::serde::str")] pub gain_hs_struct: Decimal,
     /// Heures complémentaires à +10 % et à +25 %.
     pub h_comp_10: f64,
     pub h_comp_25: f64,

@@ -66,6 +66,8 @@ fn salarie(base: &str, etp: f64) -> Salarie {
         heures_supp_50: 0.0,
         heures_comp_10: 0.0,
         heures_comp_25: 0.0,
+        heures_struct_25: 0.0,
+        heures_struct_50: 0.0,
         salaire_base: Some(base.into()),
         effectif: Some("moins20".into()),
         anciennete: None,
@@ -143,6 +145,34 @@ async fn sans_heures() {
     let b = generer_bulletin(salarie("3000.00", 100.0), &ctx, None);
     assert!(b.heures_sup.is_none());
     assert_eq!(b.brut, dec!(3000));
+
+    nettoyer(&path);
+}
+
+/// Heures supp. structurelles (39 h → 17,33 h/mois à +25 %) : suivies à part des
+/// heures ponctuelles, mais mêmes majorations et mêmes exonérations.
+#[tokio::test]
+async fn heures_structurelles_distinctes() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+
+    let mut s = salarie("2000.00", 100.0);
+    s.heures_struct_25 = 17.33;
+    s.heures_supp_25 = 2.0;
+    let b = generer_bulletin(s, &ctx, None);
+    let hs = b.heures_sup.expect("des heures supp. sont saisies");
+
+    let th = taux_horaire(dec!(2000), dec!(100));
+    let struct_attendu = (dec!(17.33) * th * dec!(1.25)).round_dp(2);
+    let ponct_attendu = (dec!(2) * th * dec!(1.25)).round_dp(2);
+    assert_eq!(hs.h_struct_25, 17.33);
+    assert_eq!(hs.h_supp_25, 2.0, "les heures ponctuelles ne sont pas mêlées aux structurelles");
+    assert_eq!(hs.gain_hs_struct, struct_attendu);
+    assert_eq!(hs.gain_hs, ponct_attendu);
+    assert_eq!(b.brut, dec!(2000) + struct_attendu + ponct_attendu);
+    // Exonérations : déduction patronale sur toutes les heures supp.
+    assert_eq!(hs.deduction_patronale, (dec!(19.33) * dec!(1.50)).round_dp(2));
+    assert!(hs.reduction_salariale > Decimal::ZERO);
 
     nettoyer(&path);
 }

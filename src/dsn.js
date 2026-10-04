@@ -1289,7 +1289,9 @@ export function buildDsn(b, opt = {}) {
   const hs = b.heures_sup || null;
   const gainHs = hs ? num(hs.gain_hs) + num(hs.gain_hc) : 0;
   const heuresHs = hs ? num(hs.h_supp_25) + num(hs.h_supp_50) + num(hs.h_comp_10) + num(hs.h_comp_25) : 0;
-  const salaireBase = +(brut - gainHs).toFixed(2);
+  const gainStruct = hs ? num(hs.gain_hs_struct) : 0;
+  const heuresStruct = hs ? num(hs.h_struct_25) + num(hs.h_struct_50) : 0;
+  const salaireBase = +(brut - gainHs - gainStruct).toFixed(2);
 
   const remunerations = [
     { t: '001', montant: brut, heures: null,
@@ -1299,7 +1301,9 @@ export function buildDsn(b, opt = {}) {
     { t: '010', montant: salaireBase, heures: null,
       sens: "Salaire de base : la rémunération habituelle hors compléments — généralement la première ligne du bulletin." },
     heuresHs > 0 ? { t: '017', montant: gainHs, heures: heuresHs,
-      sens: "Heures supplémentaires ou complémentaires aléatoires, majorations comprises. Les heures structurelles (inscrites au contrat) relèveraient du type 018." } : null,
+      sens: "Heures supplémentaires ou complémentaires aléatoires, majorations comprises. Les heures structurelles (inscrites au contrat) relèvent du type 018." } : null,
+    heuresStruct > 0 ? { t: '018', montant: gainStruct, heures: heuresStruct,
+      sens: "Heures supplémentaires structurelles : horaire au-delà de 35 h, mensualisé (heures hebdomadaires au-delà de 35 × 52/12), majorations comprises." } : null,
   ].filter(Boolean);
 
   remunerations.forEach(r => {

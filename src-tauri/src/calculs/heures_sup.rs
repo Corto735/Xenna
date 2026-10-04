@@ -1,6 +1,11 @@
 // Heures supplémentaires et complémentaires (France) — majoration + exonérations.
 //
 // Trois dispositifs, tous en vigueur depuis le 01/01/2019 (loi du 24/12/2018) :
+//   0. Heures supp. STRUCTURELLES : horaire collectif ou contractuel au-delà de
+//      35 h, mensualisé (heures hebdo au-delà de 35 × 52/12). Calculées par le
+//      front depuis l'horaire des Paramètres, elles restent des heures supp. :
+//      mêmes majorations, mêmes exonérations, mais suivies à part des heures
+//      ponctuelles (lignes, gain et décompte distincts).
 //   1. Majoration de la rémunération (Code du travail) : HS +25 % les 8 premières
 //      de la semaine, +50 % au-delà ; HC +10 % dans la limite du dixième des heures
 //      contractuelles, +25 % au-delà. Le seuil légal étant hebdomadaire, un bulletin
@@ -59,7 +64,10 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
     let h_supp_50 = salarie.heures_supp_50.max(0.0);
     let h_comp_10 = salarie.heures_comp_10.max(0.0);
     let h_comp_25 = salarie.heures_comp_25.max(0.0);
-    let heures_supp = h_supp_25 + h_supp_50;
+    let h_struct_25 = salarie.heures_struct_25.max(0.0);
+    let h_struct_50 = salarie.heures_struct_50.max(0.0);
+    // Toutes les heures supp. (structurelles comprises) pour la déduction patronale.
+    let heures_supp = h_supp_25 + h_supp_50 + h_struct_25 + h_struct_50;
     let heures_comp = h_comp_10 + h_comp_25;
     if heures_supp <= 0.0 && heures_comp <= 0.0 {
         return None;
@@ -86,8 +94,9 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
     let ligne = |h: f64, maj: Decimal| (dec_h(h) * taux_horaire * maj).round_dp(2);
     let gain_hs = ligne(h_supp_25, dec!(1.25)) + ligne(h_supp_50, dec!(1.50));
     let gain_hc = ligne(h_comp_10, dec!(1.10)) + ligne(h_comp_25, dec!(1.25));
+    let gain_hs_struct = ligne(h_struct_25, dec!(1.25)) + ligne(h_struct_50, dec!(1.50));
 
-    let gain_total = gain_hs + gain_hc;
+    let gain_total = gain_hs + gain_hs_struct + gain_hc;
 
     // Le régime d'exonération HS n'existe que depuis le 01/01/2019.
     let regime_actif = ctx.date_paie >= NaiveDate::from_ymd_opt(2019, 1, 1).unwrap();
@@ -145,7 +154,7 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
                     lignes.push(LigneCotisation {
                         code:        "DFP_HS".into(),
                         libelle:     ctx.libelle("DFP_HS", "Déduction forfaitaire patronale (heures supp.)"),
-                        base:        gain_hs,
+                        base:        gain_hs + gain_hs_struct,
                         taux_sal:    Decimal::ZERO,
                         montant_sal: Decimal::ZERO,
                         taux_pat:    Decimal::ZERO,
@@ -162,6 +171,7 @@ pub fn calculer(salarie: &Salarie, ctx: &ContextPaie) -> Option<HeuresSup> {
     let result = HeuresSupResult {
         taux_horaire,
         h_supp_25, h_supp_50, gain_hs,
+        h_struct_25, h_struct_50, gain_hs_struct,
         h_comp_10, h_comp_25, gain_hc,
         reduction_salariale,
         deduction_patronale,

@@ -57,6 +57,14 @@ pub enum Dessin {
         h: f32,
         gris: f32,
     },
+    /// Aplat en couleur (RVB, 0 à 1) — bandeaux et cadres colorés du bulletin.
+    Aplat {
+        x: f32,
+        y: f32,
+        l: f32,
+        h: f32,
+        rvb: [f32; 3],
+    },
     /// Filigrane : texte tourné et TRANSLUCIDE, tracé PAR-DESSUS le reste.
     ///
     /// Il ne pouvait pas passer derrière : les aplats des bandeaux de rubrique
@@ -170,6 +178,25 @@ pub fn rendre(pages: &[Vec<Dessin>], titre: &str, p: &Polices) -> Result<(Vec<u8
                         // Le remplissage courant reste actif pour l'opérateur
                         // suivant : on rend la main en noir, sinon le premier
                         // texte tracé après un pavé en hériterait le gris.
+                        ops.push(Op::SetFillColor { col: gris_en_couleur(0.0) });
+                    }
+                    Dessin::Aplat { x, y, l, h, rvb } => {
+                        let [r, g, b] = rvb.map(|c| c.clamp(0.0, 1.0));
+                        ops.push(Op::SetFillColor { col: Color::Rgb(Rgb { r, g, b, icc_profile: None }) });
+                        ops.push(Op::DrawPolygon {
+                            polygon: printpdf::Polygon {
+                                rings: vec![printpdf::PolygonRing {
+                                    points: vec![
+                                        point(*x, *y),
+                                        point(*x + *l, *y),
+                                        point(*x + *l, *y + *h),
+                                        point(*x, *y + *h),
+                                    ],
+                                }],
+                                mode: printpdf::PaintMode::Fill,
+                                winding_order: printpdf::WindingOrder::NonZero,
+                            },
+                        });
                         ops.push(Op::SetFillColor { col: gris_en_couleur(0.0) });
                     }
                     Dessin::Filigrane { x, y, texte, face, taille, angle, gris, alpha } => {

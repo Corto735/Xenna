@@ -75,6 +75,21 @@ pub async fn esat_minimum(
     Ok(esat::remuneration_minimale(ctx.smic_mensuel, etp.unwrap_or(100.0), date).to_string())
 }
 
+/// Plafond mensuel de la Sécurité sociale à la date de paie : le pied du
+/// bulletin PDF l'imprime (colonne « Plafond S.S. »).
+#[tauri::command]
+pub async fn plafond_ss(
+    state: tauri::State<'_, AppState>,
+    date_paie: String,
+) -> Result<String, String> {
+    let date = NaiveDate::parse_from_str(&date_paie, "%Y-%m-%d")
+        .map_err(|_| format!("Date invalide : '{date_paie}' (format attendu : YYYY-MM-DD)"))?;
+    let ctx = ContextPaie::charger(&state.db, date)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(ctx.pmss.to_string())
+}
+
 #[tauri::command]
 pub async fn simuler_annee(
     state: tauri::State<'_, AppState>,

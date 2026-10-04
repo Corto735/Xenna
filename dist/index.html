@@ -1149,6 +1149,44 @@
     }
     .empty-box p + p { margin-top: 0.9rem; }
 
+    /* ── Illustration d'accueil (bureau, avant le premier calcul) ──
+       hexega2.webp est TRANSPARENTE : son fond marine d'origine a été retiré
+       par dé-mélange (scripts/build-hexega.py), seuls restent les néons, et
+       c'est la page elle-même qui se voit au travers — aucun bord possible,
+       quelle que soit la couleur de fond. */
+    .accueil-heros {
+      width: 100%;
+      /* Jamais plus large que l'image elle-même : agrandie, elle se brouille. */
+      max-width: 1024px;
+      aspect-ratio: 1024 / 559;
+      margin: 2.5rem auto 0;
+      background: url('/hexega2.webp') center / contain no-repeat;
+      opacity: 0.92;
+      animation: heros-entree 1.4s ease-out both, heros-souffle 6s ease-in-out 1.4s infinite alternate;
+    }
+    /* Mobile : même image, réduite, sous [ CALCULER ], à la place du futur
+       bulletin. */
+    .accueil-heros--mobile {
+      margin: 1.2rem auto 0.5rem;
+    }
+    @keyframes heros-entree {
+      from { opacity: 0; transform: translateY(14px) scale(0.985); }
+      to   { opacity: 0.92; transform: none; }
+    }
+    /* Les néons respirent. Par l'opacité et non par un filtre de luminosité :
+       un filtre éclaircirait aussi le fond de l'image, qui se détacherait alors
+       en rectangle ; une opacité sur un fond de même couleur ne se voit pas. */
+    @keyframes heros-souffle {
+      from { opacity: 0.92; }
+      to   { opacity: 0.68; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .accueil-heros { animation: none; }
+    }
+    /* Modes d'affichage à fond clair ou monochrome : l'image n'a pas sa place. */
+    body.bw-mode .accueil-heros,
+    body.minitel-mode .accueil-heros { display: none; }
+
     /* ── Ligne récap ── */
     .summary-bar {
       display: flex;
@@ -1248,7 +1286,7 @@
     body.perso-ecoute-on [data-perso]:hover { outline: 1px dotted var(--gray); outline-offset: -2px; }
     [data-perso].perso-appui {
       background: linear-gradient(var(--dim), var(--dim)) left / 0% 100% no-repeat;
-      animation: perso-appui 2s linear forwards;
+      animation: perso-appui 1.5s linear forwards;
     }
     @keyframes perso-appui { to { background-size: 100% 100%; } }
     /* Tête « Rémunération » : libellé puis jauge de répartition du coût
@@ -1453,6 +1491,8 @@
     }
     #rem-result-d .rem-line-saisie { padding-left: 2.6rem; padding-right: 0.75rem; }
     #rem-result-d .rem-line-val { min-width: 0; padding-right: 1.95rem; }
+    /* Heures supp. structurelles : ligne dérivée des Paramètres, non modifiable. */
+    .rem-struct-lbl { flex: 1; font-size: 0.65rem; color: var(--fg); padding: 0.15rem 0.3rem; border: 1px dashed var(--border); }
     .rem-type-sel {
       flex: 1; background: var(--bg2); color: var(--fg);
       border: 1px solid var(--border); padding: 0.15rem 0.3rem; font-size: 0.65rem;
@@ -1609,7 +1649,7 @@
     .frise-sq--t2      { background: color-mix(in srgb, var(--yellow) 55%, transparent); }
     .frise-sq--ijss1   { background: var(--green); }
     .frise-sq--ijss2   { background: color-mix(in srgb, var(--green) 60%, transparent); }
-    .frise-sq--hors    { background: color-mix(in srgb, var(--gray) 32%, transparent); }
+    .frise-sq--hors    { background: transparent; border: 1px solid color-mix(in srgb, var(--gray) 45%, transparent); }
     .frise-sq--empty   { background: transparent; }
     /* Arrêt à cheval sur plusieurs mois : cases du mois de paie encadrées,
        cases des autres mois atténuées. */
@@ -3852,7 +3892,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-BIKII7pS.js"></script>
+  <script type="module" crossorigin src="/assets/index-CM6O7KYv.js"></script>
 </head>
 <body>
 
@@ -4470,6 +4510,8 @@
           <p>Saisissez un salaire et cliquez sur [ CALCULER ] pour générer le bulletin</p>
           <p>▶ Cliquez sur une ligne de cotisation pour afficher son explication historique et la référence légale</p>
         </div>
+        <!-- Illustration d'accueil : décorative, remplacée par le bulletin au premier calcul. -->
+        <div class="accueil-heros" aria-hidden="true"></div>
       </div>
     </div>
 
@@ -4958,6 +5000,8 @@
             En attente de saisie...
           </div>
         </div>
+        <!-- Illustration d'accueil, version réduite : remplacée par le bulletin au premier calcul. -->
+        <div class="accueil-heros accueil-heros--mobile" aria-hidden="true"></div>
       </div>
 
     </div>

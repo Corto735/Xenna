@@ -21,7 +21,7 @@ pub mod commands;
 
 #[cfg(feature = "desktop")]
 use commands::{
-    calculer_bulletin, conventions_ccn, esat_minimum, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
+    calculer_bulletin, conventions_ccn, esat_minimum, plafond_ss, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
     journal_baremes, simuler_annee, veille_baremes, veille_baremes_tous,
 };
 #[cfg(feature = "desktop")]
@@ -71,6 +71,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             calculer_bulletin,
             esat_minimum,
+            plafond_ss,
             simuler_annee,
             generer_contrat_pdf,
             generer_bulletin_pdf,

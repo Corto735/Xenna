@@ -67,6 +67,8 @@ fn salarie_base(pays: Pays, brut: &str) -> Salarie {
         heures_supp_50: 0.0,
         heures_comp_10: 0.0,
         heures_comp_25: 0.0,
+        heures_struct_25: 0.0,
+        heures_struct_50: 0.0,
         salaire_base: None,
         effectif: Some("moins20".into()),
         anciennete: None,
@@ -154,21 +156,23 @@ async fn allemagne_net_avant_impot() {
     nettoyer(&path);
 }
 
-/// France + heures supplémentaires : le net cible inclut l'effet des HS
-/// (majoration + réduction salariale), dérivées du brut sondé.
+/// France + heures supplémentaires : la cible fixe le salaire de base seul ; les
+/// HS, majorées sur ce salaire de base, s'ajoutent au net visé.
 #[tokio::test]
 async fn france_heures_sup() {
     let (pool, path) = base_test().await;
     let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
 
+    let cible = dec!(2600);
+    let sans_hs = resoudre_brut_pour_net(cible, &salarie_base(Pays::France, "1.00"), &ctx, None);
     let mut s = salarie_base(Pays::France, "1.00");
     s.heures_supp_25 = 8.0;
     s.heures_supp_50 = 2.0;
-    let cible = dec!(2600);
     let b = resoudre_brut_pour_net(cible, &s, &ctx, None);
 
-    assert!(proche(b.net_a_payer, cible), "net avec HS = {} ≠ {cible}", b.net_a_payer);
-    assert!(b.heures_sup.is_some(), "les HS doivent être calculées sur le brut reconstitué");
+    let hs = b.heures_sup.as_ref().expect("les HS doivent être calculées sur le brut reconstitué");
+    assert!(proche(b.brut, sans_hs.brut + hs.gain_hs), "brut avec HS = {} ≠ base {} + HS {}", b.brut, sans_hs.brut, hs.gain_hs);
+    assert!(b.net_a_payer > cible, "net avec HS = {} doit dépasser la cible {cible}", b.net_a_payer);
 
     nettoyer(&path);
 }
@@ -226,6 +230,34 @@ async fn france_absence_ne_change_pas_le_salaire_de_base() {
         avec_abs.net_a_payer <= cible,
         "avec absence, le net du mois ({}) doit être ≤ à la cible plein ({cible})", avec_abs.net_a_payer
     );
+
+    nettoyer(&path);
+}
+
+/// Primes et heures supp. hors inversion : la cible fixe le seul salaire de base ;
+/// les primes s'ajoutent telles quelles et les heures supp. sont majorées sur ce
+/// salaire de base (taux horaire = base ÷ 151,67).
+#[tokio::test]
+async fn france_primes_et_heures_supp_hors_inversion() {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date("2026-03-15")).await.unwrap();
+
+    let cible = dec!(1600);
+    let base_ref = resoudre_brut_pour_net(cible, &salarie_base(Pays::France, "1.00"), &ctx, None).brut;
+
+    // Ce qu'envoie le front en mode net : brut = net saisi + prime, base = net saisi.
+    let mut s = salarie_base(Pays::France, "1700");
+    s.salaire_base = Some("1600".into());
+    s.heures_supp_25 = 17.33;
+    let b = resoudre_brut_pour_net(cible, &s, &ctx, None);
+
+    assert_eq!(b.salarie.salaire_base.as_deref(), Some(base_ref.to_string().as_str()),
+        "le salaire de base ne dépend ni des primes ni des heures supp.");
+    let hs = b.heures_sup.as_ref().expect("heures supp. attendues");
+    assert_eq!(hs.taux_horaire, (base_ref / dec!(151.67)).round_dp(4));
+    assert!(proche(b.brut, base_ref + dec!(100) + hs.gain_hs),
+        "brut {} ≠ base {} + prime 100 + HS {}", b.brut, base_ref, hs.gain_hs);
+    assert!(b.net_a_payer > cible, "primes et heures supp. s'ajoutent au net visé");
 
     nettoyer(&path);
 }

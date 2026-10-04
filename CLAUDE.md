@@ -231,56 +231,58 @@ cotisations de la série 300) : ce serait un second mapping, pas une variante.
 
 Le bouton **⇩ BULLETIN DE PAIE PDF** siège à droite du bouton DSN, dans la barre
 `.dsn-actions` (`src/dsn.js`, paramètre `opt.actions` — dsn.js aligne, main.js
-possède le bouton). Il produit le bulletin au **modèle réglementaire**, plus une
-annexe détaillant ligne à ligne ce que ce modèle regroupe.
+possède le bouton). Il produit le bulletin **dans la présentation d'un bulletin
+réel de logiciel de paie** (Silae, relevé sur un bulletin de septembre 2026),
+plus une annexe détaillant ligne à ligne ce que la grille regroupe.
 
 Quatre règles à respecter en y touchant :
 
-1. **Le regroupement réglementaire est côté front** (`src/bulletin_pdf.js`), au
-   même titre et pour la même raison que la DSN : ce n'est pas un calcul mais
-   une traduction d'un bulletin déjà produit par Rust. Le back (`src-tauri/src/paie_pdf/`)
-   ne sait ni ce qu'est une cotisation ni ce qu'est un net social — il place une
-   grille sur une page A4. **Toutes les valeurs lui arrivent déjà
+1. **Le regroupement est côté front** (`src/bulletin_pdf.js`), au même titre et
+   pour la même raison que la DSN : ce n'est pas un calcul mais une traduction
+   d'un bulletin déjà produit par Rust. Le back (`src-tauri/src/paie_pdf/`) ne
+   sait ni ce qu'est une cotisation ni ce qu'est un net social — il place une
+   grille et son pied sur une page A4. **Toutes les valeurs lui arrivent déjà
    formatées** : il n'arrondit rien.
 
-   La grille suit la **disposition commune des logiciels de paie** (relevée sur
-   des bulletins Sage et Cegid) : *Désignation · Nombre · Base* puis deux groupes
-   titrés et séparés d'un filet vertical — **PART SALARIÉ** (*Taux · À payer ·
-   À déduire*) et **PART EMPLOYEUR** (*Taux · Montant*). Les gains vont dans
-   « à payer », retenues et cotisations dans « à déduire », sans signe : c'est la
-   colonne qui dit le sens. Une réduction (heures supp, allègement) s'y inscrit
-   en négatif, pour que chaque total reste la somme de sa colonne. Une ligne
-   d'heures se lit *nombre × base (taux horaire à 4 décimales) × taux = à payer*.
-   Les titres de colonne et de groupe viennent du front (`colonnes`, `groupes`),
-   les largeurs du back (`CHIFFRES_BULLETIN`, `CHIFFRES_ANNEXE`).
-2. **Deux modèles coexistent, la bascule se fait sur la DATE DE PAIE.** L'arrêté
-   du 25 février 2016 fixe libellés, ordre et regroupement ; l'arrêté du
-   31 janvier 2023 institue un modèle *rénové* dont l'arrêté du 11 août 2025 a
-   reporté l'obligation au **1er janvier 2027**. Jusqu'au 31/12/2026 le modèle
-   *adapté* (2016 + montant net social) reste utilisable. Le simulateur remonte à
-   2015 : la frontière est déclarée une seule fois, dans `MODELE_BASCULE`.
-   Ne pas la remplacer par « l'année en cours ».
-3. **Aucune valeur inventée, et les rubriques vides le disent.** L'employeur, le
-   SIRET, l'URSSAF, la convention collective et la classification sont TIRÉS AU
-   SORT via `_ctAleatoire()` — le simulateur ne les connaît pas. D'où le filigrane
-   SPÉCIMEN, le bandeau d'avertissement, et les rubriques réglementaires
-   imprimées vides suivies de la liste de ce qui manque (FNAL, versement
-   mobilité, taxe d'apprentissage…), exactement comme l'onglet « lacunes » de la
-   DSN. Une cotisation qu'aucun poste du gabarit ne reconnaît atterrit dans
-   « AUTRES COTISATIONS ET CONTRIBUTIONS » plutôt que de disparaître.
-4. **La fonction publique territoriale a ses propres lacunes et son propre
-   cartouche.** Un agent titulaire n'a pas de convention collective ; le modèle
-   du code du travail ne lui est pas applicable et le PDF le dit. Ne pas lui
-   servir les lacunes du privé.
-
-⚠️ **Réserve sur le modèle rénové.** L'annexe de l'arrêté du 31 janvier 2023 n'a
-pas pu être relevée sur Légifrance (texte rendu en JavaScript) ni sur le portail
-BOSS. La structure du modèle rénové codée dans `MODELE_RENOVE` — cotisations
-obligatoires / facultatives, regroupement des allègements, rubrique
-« remboursements et déductions diverses » — vient de sources secondaires
-concordantes (ADP, LégiSocial, Compta Online), pas du texte lui-même. Les
-libellés exacts restent donc **à confirmer sur l'annexe officielle** avant le
-1er janvier 2027. Le modèle adapté, lui, est celui de 2016, largement documenté.
+   Disposition reprise du bulletin réel : en-tête employeur (raison sociale,
+   adresse, Siret, Code Naf, Urssaf), blocs du salarié (matricule ; emploi et
+   classification ; entrée et ancienneté), convention collective, cadre
+   d'adresse bleu pâle pour l'enveloppe à fenêtre. Puis une **grille à hauteur
+   fixe** — *Éléments de paie · Base · Taux · À déduire · À payer · Charges
+   patronales* (base, taux, montant sous un seul titre), en-tête bleu marine,
+   filets verticaux jusqu'au pied — et un **pied fixe** : cumuls *Mensuel /
+   Annuel* (heures, heures supp., brut, plafond S.S., net imposable, charges
+   patronales, coût global, total versé, allègements), compteurs de congés N-1 /
+   N, encadré « Net payé », mention légale. Chiffres à la manière du logiciel :
+   point décimal, espace des milliers, taux en % à quatre décimales sans le
+   signe. Cotisations regroupées par risque (Santé, Retraite…) ; un groupe d'un
+   seul poste tient sur une ligne en gras (Famille, Assurance chômage, CSG) ;
+   des lignes du moteur de même assiette fusionnent (CEG avec la tranche 1,
+   régime local avec la maladie, AGS avec le chômage). Une grille trop longue
+   continue page suivante avec son en-tête ; le pied n'est imprimé que sur la
+   dernière page. Largeurs : `CHIFFRES_GRILLE`, `PIED_PROPORTIONS`,
+   `CHIFFRES_ANNEXE` (`mise_en_page.rs`). Le plafond S.S. vient de la commande
+   `plafond_ss` (Tauri et `POST /api/plafond_ss`).
+2. **La date de bascule des modèles réglementaires reste déclarée une seule
+   fois, dans `MODELE_BASCULE`** (modèle *adapté* jusqu'au 31/12/2026, *rénové*
+   obligatoire au 1er janvier 2027, arrêté du 11 août 2025). La grille ne
+   change plus de regroupement à cette date : l'annexe dit quel modèle
+   s'applique. ⚠️ Avant 2027, revoir le regroupement au regard de l'annexe de
+   l'arrêté du 31 janvier 2023, qui n'a pas pu être relevée sur Légifrance.
+3. **Aucune valeur inventée, et ce qui manque le dit.** L'employeur, le SIRET,
+   l'URSSAF, la classification et l'adresse du salarié sont TIRÉS AU SORT via
+   `_ctAleatoire()` — d'où le filigrane SPÉCIMEN et la note en bas de grille. La
+   convention collective imprimée est celle du CALCUL (IDCC 0016 ou « Néant —
+   régime légal »), et la date d'entrée est recalée sur l'ancienneté des
+   Paramètres. Ce qu'un mois isolé ignore reste vide : ligne « Annuel » des
+   cumuls, compteur de congés N-1 ; le compteur N est estimé (2,5 j ouvrables
+   par mois depuis le 1er juin). L'annexe en donne la liste, avec ce que le
+   simulateur ne modélise pas (FNAL, versement mobilité…). Une cotisation
+   qu'aucun groupe ne reconnaît atterrit sous « Autres contributions dues par
+   l'employeur » plutôt que de disparaître.
+4. **La fonction publique territoriale a son propre cartouche** (collectivité,
+   grade, statut au lieu de la convention collective) et l'annexe rappelle que
+   le modèle du code du travail ne lui est pas applicable.
 
 L'identité fictive est tirée **une fois par session** (`_bpIdent`) : deux PDF
 engendrés à la suite doivent sortir du même employeur, sinon le document change

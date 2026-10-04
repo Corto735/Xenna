@@ -170,7 +170,7 @@ fn quota_pour(chemin: &str) -> Option<(u32, Duration)> {
     }
     // Calculs : bon marché à l'unité, mais c'est le gros du trafic anonyme.
     if chemin.starts_with("/api/calculer_bulletin") || chemin.starts_with("/api/simuler_annee")
-        || chemin == "/api/esat_minimum"
+        || chemin == "/api/esat_minimum" || chemin == "/api/plafond_ss"
     {
         return Some((120, Duration::from_secs(60)));
     }
@@ -344,6 +344,26 @@ async fn handle_esat_minimum(
     ).to_string()))
 }
 
+#[derive(Deserialize)]
+struct PlafondReq {
+    #[serde(rename = "datePaie")]
+    date_paie: String,
+}
+
+/// Plafond mensuel de la Sécurité sociale à la date de paie (pied du bulletin PDF).
+async fn handle_plafond_ss(
+    State(pool): State<Db>,
+    Json(req): Json<PlafondReq>,
+) -> Result<impl IntoResponse, ApiError> {
+    let date = NaiveDate::parse_from_str(&req.date_paie, "%Y-%m-%d")
+        .map_err(|_| ApiError(format!("Date invalide : '{}'", req.date_paie)))?;
+    let ctx = ContextPaie::charger(&pool, date).await.map_err(|e| {
+        tracing::error!("ContextPaie::charger error: {:?}", e);
+        ApiError("Erreur interne du serveur".into())
+    })?;
+    Ok(Json(ctx.pmss.to_string()))
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -446,6 +466,7 @@ async fn main() {
     let app = Router::new()
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/esat_minimum", post(handle_esat_minimum))
+        .route("/api/plafond_ss", post(handle_plafond_ss))
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/veille_baremes", post(handle_veille))
         .route("/api/veille_baremes_tous", post(handle_veille_tous))

@@ -13,6 +13,11 @@
 // dans le bulletin final. Ainsi le salaire de base (brut reconstitué) ne bouge
 // pas quand on ajoute une absence — c'est le net du mois qui varie.
 //
+// Primes et heures supplémentaires sont AUSSI exclues de l'inversion : la cible
+// est le net du seul salaire de base. Les sondages tournent sans elles ; le
+// bulletin final ajoute les primes (salaire_brut − salaire_base reçus du front)
+// et les heures supp, majorées sur le salaire de base trouvé.
+//
 // Méthode : `generer_bulletin` est une fonction pure et synchrone du
 // (Salarie, &ContextPaie, absence) — le contexte est préchargé, aucune I/O.
 // On inverse donc net(brut) par dichotomie (~60 itérations en mémoire).
@@ -55,17 +60,40 @@ pub fn net_avant_impot(b: &Bulletin) -> Decimal {
     (b.brut - cotis_sociales_sal - avantages).round_dp(2)
 }
 
-/// Bulletin pour un brut sondé : `salaire_base` est remis à None pour que tout
-/// (taux horaire des heures supp compris) dérive du brut testé.
-fn bulletin_pour(
-    brut: Decimal,
+/// Primes et autres éléments en euros saisis à côté du net : le front envoie
+/// salaire_brut = net saisi + éléments, salaire_base = net saisi.
+fn elements_hors_base(salarie: &Salarie) -> Decimal {
+    salarie.salaire_base.as_deref()
+        .and_then(|b| b.parse::<Decimal>().ok())
+        .map(|base| (salarie.salaire_brut - base).max(Decimal::ZERO))
+        .unwrap_or(Decimal::ZERO)
+}
+
+/// Bulletin d'un salaire de base sondé, seul : ni primes, ni heures supp., ni absence.
+fn bulletin_pour(brut: Decimal, salarie: &Salarie, ctx: &ContextPaie) -> Bulletin {
+    let mut s = salarie.clone();
+    s.salaire_brut = brut;
+    s.salaire_base = None;
+    s.heures_supp_25 = 0.0;
+    s.heures_supp_50 = 0.0;
+    s.heures_comp_10 = 0.0;
+    s.heures_comp_25 = 0.0;
+    s.heures_struct_25 = 0.0;
+    s.heures_struct_50 = 0.0;
+    super::generer_bulletin(s, ctx, None)
+}
+
+/// Bulletin final : salaire de base trouvé, plus primes et heures supp. (taux
+/// horaire dérivé de ce salaire de base), plus l'absence éventuelle.
+fn bulletin_final(
+    base: Decimal,
     salarie: &Salarie,
     ctx: &ContextPaie,
     absence: Option<&AbsenceInput>,
 ) -> Bulletin {
     let mut s = salarie.clone();
-    s.salaire_brut = brut;
-    s.salaire_base = None;
+    s.salaire_brut = base + elements_hors_base(salarie);
+    s.salaire_base = Some(base.to_string());
     super::generer_bulletin(s, ctx, absence)
 }
 
@@ -88,8 +116,8 @@ pub fn resoudre_brut_pour_net(
     // = None dans tous les sondages), puis l'absence s'applique sur ce brut dans
     // le bulletin final — elle réduit alors le net du mois, salaire de base figé.
     let lo_initial = cible;
-    if (net_avant_impot(&bulletin_pour(lo_initial, salarie, ctx, None)) - cible).abs() <= tol {
-        return bulletin_pour(lo_initial, salarie, ctx, absence);
+    if (net_avant_impot(&bulletin_pour(lo_initial, salarie, ctx)) - cible).abs() <= tol {
+        return bulletin_final(lo_initial, salarie, ctx, absence);
     }
 
     // Borne haute : doubler jusqu'à dépasser la cible (garde-fou ×16, soit
@@ -97,7 +125,7 @@ pub fn resoudre_brut_pour_net(
     let mut lo = lo_initial;
     let mut hi = cible * dec!(2);
     for _ in 0..4 {
-        if net_avant_impot(&bulletin_pour(hi, salarie, ctx, None)) >= cible {
+        if net_avant_impot(&bulletin_pour(hi, salarie, ctx)) >= cible {
             break;
         }
         hi *= dec!(2);
@@ -109,12 +137,12 @@ pub fn resoudre_brut_pour_net(
             break;
         }
         let mid = ((lo + hi) / dec!(2)).round_dp(4);
-        if net_avant_impot(&bulletin_pour(mid, salarie, ctx, None)) < cible {
+        if net_avant_impot(&bulletin_pour(mid, salarie, ctx)) < cible {
             lo = mid;
         } else {
             hi = mid;
         }
     }
 
-    bulletin_pour(hi.round_dp(2), salarie, ctx, absence)
+    bulletin_final(hi.round_dp(2), salarie, ctx, absence)
 }
