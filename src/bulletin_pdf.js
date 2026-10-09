@@ -11,9 +11,8 @@
 //
 // ── Pourquoi côté front ? ────────────────────────────────────────────────────
 // Même raison que pour la DSN (cf. dsn.js) : ce n'est pas un calcul, c'est une
-// TRADUCTION d'un bulletin déjà produit. Deux données nécessaires ne vivent que
-// côté front — le prélèvement à la source (calculerPas) et la date du
-// formulaire.
+// TRADUCTION d'un bulletin déjà produit, prélèvement à la source compris (b.pas,
+// calculé par le back). Seule la date du formulaire ne vit que côté front.
 //
 // ── Les deux modèles réglementaires ──────────────────────────────────────────
 // L'arrêté du 25 février 2016 fixe les libellés, l'ordre et le regroupement des
@@ -27,7 +26,7 @@
 // pour qu'on puisse la lire. L'employeur, ses identifiants, l'adresse du salarié
 // et sa classification sont TIRÉS AU SORT — le simulateur ne les connaît pas.
 // D'où le filigrane SPÉCIMEN. Ce qu'un mois isolé ne peut pas savoir (cumuls
-// annuels, compteur de congés N-1, taux de PAS personnalisé) reste vide, et
+// annuels, compteur de congés N-1) reste vide, et
 // l'annexe le dit.
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -78,6 +77,26 @@ const GROUPES = [
     { codes: ['CSG_NON_DEDUCTIBLE', 'CRDS'], fusion: true },
   ] },
 ];
+
+/**
+ * Mêmes groupes, pour l'écran (vue « comme sur mon bulletin ») : chaque groupe
+ * avec les lignes du moteur qu'il rassemble, dans l'ordre réglementaire. Les
+ * cotisations qu'aucun groupe ne connaît vont dans le groupe `autres` plutôt
+ * que de disparaître. Un seul regroupement pour l'écran et le PDF.
+ * @returns {{ titre: string, cle: string, autres: boolean, lignes: object[] }[]}
+ */
+export function regrouperCotisations(cots) {
+  const connus = new Set();
+  GROUPES.forEach(g => g.postes.forEach(p => p.codes.forEach(c => connus.add(c))));
+  return GROUPES.map((g, i) => ({
+    titre: g.titre,
+    cle: 'g' + i,
+    autres: !!g.autres,
+    lignes: g.autres
+      ? cots.filter(c => !connus.has(c.code))
+      : g.postes.flatMap(p => cots.filter(c => p.codes.includes(c.code))),
+  })).filter(g => g.lignes.length);
+}
 
 /** Allègements patronaux : une seule ligne, montant en charges patronales. */
 const EXO_PATRONALES = ['REDUCTION_FILLON', 'DFP_HS'];
@@ -167,6 +186,20 @@ function _entree(datePaie, dateTiree, anc) {
  *   anciennete, ccn, versionLogiciel
  * }
  */
+/**
+ * Montant net social (mention obligatoire depuis le 1er juillet 2023, arrêté du
+ * 31 janvier 2023 modifiant celui du 25 février 2016) : revenus d'activité
+ * bruts diminués des cotisations et contributions sociales salariales
+ * obligatoires, CSG et CRDS comprises. C'est le montant que le salarié déclare
+ * pour la prime d'activité et le RSA. La part salariale de la complémentaire
+ * santé et de la prévoyance obligatoires s'en déduit aussi : le simulateur ne
+ * les modélise pas. Partagé avec l'écran (main.js) : un seul calcul.
+ */
+export function montantNetSocial(b) {
+  const totalSal = (b.cotisations || []).reduce((s, c) => s + _n(c.montant_sal), 0);
+  return _n(b.brut) - totalSal;
+}
+
 export function composerBulletinPdf(b, opt = {}) {
   const id       = opt.identite || {};
   const datePaie = opt.datePaie || '';
@@ -299,9 +332,7 @@ export function composerBulletinPdf(b, opt = {}) {
   vide();
 
   // ── Du net social au net payé ─────────────────────────────────────────────
-  // Montant net social : brut diminué des seules cotisations et contributions
-  // sociales obligatoires (le simulateur n'en calcule pas d'autres).
-  const netSocial = _n(b.brut) - totalSal;
+  const netSocial = montantNetSocial(b);
   const netAvantImpot = _n(b.net_a_payer);
   const netImposable = _n(b.net_imposable);
   const pasTotal = _n(pas.total);
@@ -329,8 +360,12 @@ export function composerBulletinPdf(b, opt = {}) {
 
   L.push({ libelle: 'Net à payer avant impôt sur le revenu', a_payer: _num(netAvantImpot), grand: true });
   L.push({ libelle: 'Impôt sur le revenu prélevé à la source - PAS',
-           base: _num(netImposable), taux: _num(_n(pas.taux_effectif) * 100, 4), a_deduire: _num(pasTotal) });
-  L.push({ libelle: 'Taux neutre (barème DGFiP)', note: true, centre: true });
+           base: _num(pas.assiette != null ? pas.assiette : netImposable), taux: _num(_n(pas.taux_effectif) * 100, 4), a_deduire: _num(pasTotal) });
+  // Comme sur un vrai bulletin, la sous-ligne dit la nature du taux appliqué.
+  L.push({ libelle: pas.origine === 'personnalise' ? 'Taux personnalisé'
+             : _n(pas.abattement) > 0 ? 'Taux non personnalisé, abatt. contrat court ' + _num(pas.abattement)
+             : 'Taux non personnalisé (grille par défaut)',
+           note: true, centre: true });
   L.push({ libelle: 'Net payé', a_payer: _num(netPaye), fort: true });
   vide();
   L.push({ libelle: 'Simulation Xenna Paie : employeur, identifiants et adresse fictifs. '
@@ -394,8 +429,12 @@ export function composerBulletinPdf(b, opt = {}) {
       'Cumuls annuels : un seul mois est simulé, le cumul depuis janvier n’est pas connu et la ligne '
       + '« Annuel » reste vide. Congés : le compteur N est estimé à 2,5 jours ouvrables par mois '
       + 'depuis le 1er juin ; le compteur N-1 n’est pas connu.',
-      'Prélèvement à la source : taux neutre du barème mensuel de la DGFiP (personne seule). Le taux '
-      + 'personnalisé transmis par l’administration n’est pas simulé.',
+      pas.origine === 'personnalise'
+        ? 'Prélèvement à la source : taux personnalisé saisi, appliqué à la totalité du net imposable '
+          + '(art. 204 H du code général des impôts).'
+        : 'Prélèvement à la source : taux par défaut de la grille mensuelle métropole (art. 204 H, III '
+          + 'du code général des impôts), appliqué à la totalité du net imposable. Aucun taux '
+          + 'personnalisé n’a été saisi.',
       fpt
         ? 'Fonction publique territoriale : le modèle réglementaire du bulletin (art. R. 3243-2 du code '
           + 'du travail) régit les salariés de droit privé ; sa présentation est reprise pour la seule '

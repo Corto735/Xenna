@@ -205,8 +205,9 @@ valeur retenue surlignée, plus la table CTP Urssaf), **lacunes**.
 Trois règles à respecter en y touchant :
 
 1. **Le module est côté front, et c'est délibéré.** La DSN n'est pas un calcul
-   mais une traduction d'un bulletin déjà produit par Rust. Deux données ne
-   vivent que côté front : le PAS (`calculerPas`) et la date du formulaire.
+   mais une traduction d'un bulletin déjà produit par Rust. Le PAS en fait
+   partie (`b.pas`, calculé par `calculs/pas.rs` sur la grille datée en base,
+   migration 0140) ; seule la date du formulaire ne vit que côté front.
 2. **Les tables de référence sont GÉNÉRÉES, pas retapées** (libellés de blocs et
    de rubriques, listes de valeurs autorisées, codes de cotisation). Ne pas les
    corriger à la main : revenir à la source (cahier technique NEODeS ; table CTP

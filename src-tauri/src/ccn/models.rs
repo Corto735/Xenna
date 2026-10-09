@@ -231,3 +231,15 @@ pub struct DossierCcn {
     pub themes:          Vec<Theme>,
     pub reglementations: Vec<Reglementation>,
 }
+
+/// Un coefficient classable (ccn_minima, palier d'embauche), pour le choix
+/// du classement dans les Paramètres.
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct Classification {
+    pub branche: String,
+    pub branche_libelle: String,
+    pub categorie: String,
+    pub coefficient: String,
+    pub emploi: Option<String>,
+    pub date_debut: String,
+}

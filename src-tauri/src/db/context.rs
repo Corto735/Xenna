@@ -58,6 +58,27 @@ pub struct ContextPaie {
     // la date. Permet de lire des montants ponctuels via plafond() sans requête
     // dédiée. Les codes absents retournent None.
     plafonds: HashMap<String, Decimal>,
+
+    // Grille de taux par défaut du prélèvement à la source (métropole) valide
+    // à la date, plages triées par borne croissante, et sa référence BOFiP.
+    // Vide avant 2019 : le PAS n'existait pas (migration 0140).
+    pub pas_grille: Vec<crate::models::TranchePas>,
+    pub pas_source: String,
+    // Les trois grilles (METROPOLE, GRM, GM) : zone → (plages, source).
+    pub pas_grilles: HashMap<String, (Vec<crate::models::TranchePas>, String)>,
+
+    // SMIC horaire en vigueur au 1er janvier de l'année de paie : seuil de
+    // validation des trimestres (150 h × SMIC, art. R351-9 CSS). None si absent.
+    pub smic_horaire_janvier: Option<Decimal>,
+
+    // Pour chaque cotisation dont le taux en vigueur succède à une période
+    // aux valeurs DIFFÉRENTES : date d'effet et anciens taux (sal, pat).
+    // Une période reconduite à l'identique n'est pas une évolution.
+    pub evolutions: HashMap<String, (String, Decimal, Decimal)>,
+
+    // Minima conventionnels en vigueur à la date (ccn_minima, migration 0146),
+    // tous paliers d'ancienneté. Vide avant la date d'effet de chaque grille.
+    pub ccn_minima: Vec<crate::models::MinimumCcn>,
 }
 
 impl ContextPaie {
@@ -154,6 +175,84 @@ impl ContextPaie {
             None => (None, None, None, None),
         };
 
+        // Grille PAS par défaut. Les bornes sont des TEXT entiers : on trie
+        // numériquement, pas lexicographiquement (« 10562 » < « 1404 »).
+        let pas_rows: Vec<(String, String, Option<String>, String, String)> = sqlx::query_as(
+            "SELECT zone, borne_min, borne_max, taux, source FROM pas_grille_defaut
+             WHERE date_debut <= ? AND (date_fin IS NULL OR date_fin > ?)
+             ORDER BY zone, CAST(borne_min AS REAL)",
+        )
+        .bind(&d).bind(&d)
+        .fetch_all(pool)
+        .await
+        .context("Erreur chargement grille PAS")?;
+        let mut pas_grilles: HashMap<String, (Vec<crate::models::TranchePas>, String)> = HashMap::new();
+        for (zone, min, max, tx, source) in pas_rows {
+            let e = pas_grilles.entry(zone).or_insert_with(|| (Vec::new(), source));
+            e.0.push(crate::models::TranchePas {
+                borne_min: min.parse().context("borne_min PAS invalide")?,
+                borne_max: max.map(|m| m.parse()).transpose().context("borne_max PAS invalide")?,
+                taux: tx.parse().context("taux PAS invalide")?,
+            });
+        }
+        let (pas_grille, pas_source) = pas_grilles.get("METROPOLE").cloned().unwrap_or_default();
+
+        // Période précédente contiguë (dates de fin exclusives, cf. 0136).
+        let evo_rows: Vec<(String, String, String, String, String, String)> = sqlx::query_as(
+            "SELECT c.code, cur.date_debut, cur.taux_salarial, cur.taux_patronal,
+                    prev.taux_salarial, prev.taux_patronal
+             FROM cotisation c
+             JOIN cotisation_taux cur  ON cur.cotisation_id = c.id
+                  AND cur.date_debut <= ? AND (cur.date_fin IS NULL OR cur.date_fin > ?)
+             JOIN cotisation_taux prev ON prev.cotisation_id = c.id AND prev.date_fin = cur.date_debut",
+        )
+        .bind(&d).bind(&d)
+        .fetch_all(pool)
+        .await
+        .context("Erreur chargement évolutions de taux")?;
+        let mut evolutions = HashMap::new();
+        for (code, depuis, cs, cp, ps, pp) in evo_rows {
+            let p = |v: &str| v.parse::<Decimal>().ok();
+            if let (Some(cs), Some(cp), Some(ps), Some(pp)) = (p(&cs), p(&cp), p(&ps), p(&pp)) {
+                if cs != ps || cp != pp {
+                    evolutions.insert(code, (depuis, ps, pp));
+                }
+            }
+        }
+
+        let janvier = format!("{}-01-01", &d[..4]);
+        let smic_janvier: Option<(String,)> = sqlx::query_as(
+            "SELECT valeur FROM plafond_reference
+             WHERE code = 'SMIC_HORAIRE' AND date_debut <= ? AND (date_fin IS NULL OR date_fin > ?)
+             ORDER BY date_debut DESC LIMIT 1",
+        )
+        .bind(&janvier).bind(&janvier)
+        .fetch_optional(pool)
+        .await
+        .context("Erreur chargement SMIC horaire au 1er janvier")?;
+        let smic_horaire_janvier = smic_janvier.and_then(|(v,)| v.parse().ok());
+
+        let minima_rows: Vec<(String, String, String, String, Option<String>, i64, String, String, String, String, String)> =
+            sqlx::query_as(
+                "SELECT idcc, branche, categorie, coefficient, emploi, anciennete_mois,
+                        unite, montant, heures_base, date_debut, source
+                 FROM ccn_minima
+                 WHERE date_debut <= ? AND (date_fin IS NULL OR date_fin > ?)
+                 ORDER BY idcc, branche, categorie, id",
+            )
+            .bind(&d).bind(&d)
+            .fetch_all(pool)
+            .await
+            .context("Erreur chargement minima conventionnels")?;
+        let mut ccn_minima = Vec::with_capacity(minima_rows.len());
+        for (idcc, branche, categorie, coefficient, emploi, anciennete_mois, unite, montant, heures, date_debut, source) in minima_rows {
+            ccn_minima.push(crate::models::MinimumCcn {
+                montant: montant.parse().with_context(|| format!("minimum {coefficient} invalide"))?,
+                heures_base: heures.parse().context("heures_base invalide")?,
+                idcc, branche, categorie, coefficient, emploi, anciennete_mois, unite, date_debut, source,
+            });
+        }
+
         // Parsé avant le littéral pour servir de repli à smic_mensuel_fillon.
         let smic_mensuel_val: Decimal = smic_str.parse().context("SMIC non parseable")?;
 
@@ -170,6 +269,12 @@ impl ContextPaie {
             fillon_seuil_smic,
             fillon_tmin,
             fillon_puissance,
+            pas_grille,
+            pas_source,
+            pas_grilles,
+            smic_horaire_janvier,
+            evolutions,
+            ccn_minima,
         })
     }
 

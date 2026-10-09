@@ -50,6 +50,35 @@ use super::in_bulletin::generer_bulletin_in;
 
 pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&AbsenceInput>) -> Bulletin {
     let mut bulletin = calculer_bulletin_pays(salarie, ctx, absence);
+    // Prélèvement à la source : France et fonction publique territoriale.
+    // Les autres régimes portent leur propre impôt dans leurs cotisations.
+    if matches!(bulletin.salarie.pays, Pays::France | Pays::FonctionPublique) {
+        bulletin.pas = super::pas::calculer(&bulletin.salarie, bulletin.net_imposable, ctx);
+    }
+    // Taux qui ont changé dans les douze mois : seulement si la ligne affiche
+    // bien le taux de la base (une ligne calculée — réduction générale,
+    // forfait — n'a pas de « taux de la période » à comparer).
+    let il_y_a_un_an = (ctx.date_paie - chrono::Months::new(12)).format("%Y-%m-%d").to_string();
+    for c in &bulletin.cotisations {
+        if let Some((depuis, ancien_sal, ancien_pat)) = ctx.evolutions.get(&c.code) {
+            if *depuis > il_y_a_un_an
+                && c.taux_sal == ctx.taux_sal(&c.code) && c.taux_pat == ctx.taux_pat(&c.code) {
+                bulletin.evolutions.push(crate::models::EvolutionTaux {
+                    code: c.code.clone(),
+                    depuis: depuis.clone(),
+                    ancien_sal: *ancien_sal,
+                    ancien_pat: *ancien_pat,
+                    nouveau_sal: c.taux_sal,
+                    nouveau_pat: c.taux_pat,
+                });
+            }
+        }
+    }
+    // Droits à la retraite du mois : régime général et Agirc-Arrco (privé).
+    if bulletin.salarie.pays == Pays::France {
+        bulletin.droits = super::droits::calculer(&bulletin, ctx);
+        bulletin.alertes = super::alertes::controler(&bulletin.salarie, ctx);
+    }
     // Histoire de chaque cotisation (crate::anecdotes), accolée à l'explication
     // derrière un séparateur que le front détache pour l'afficher à part.
     for ligne in &mut bulletin.cotisations {
@@ -256,7 +285,7 @@ fn calculer_bulletin_pays(salarie: Salarie, ctx: &ContextPaie, absence: Option<&
         heures_sup,
         conges: conges_res,
         frais_professionnels,
-        avantages_nature,
+        avantages_nature, pas: None, droits: None, alertes: Vec::new(), evolutions: Vec::new(),
         salarie,
     }
 }

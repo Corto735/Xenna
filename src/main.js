@@ -1,6 +1,8 @@
 import { trStatic, CAT_DICT, trCat, COUNTRY_DICT } from './lang.js';
 import { renderDsnPanel } from './dsn.js';
-import { composerBulletinPdf, modeleApplicable, nomFichierBulletin } from './bulletin_pdf.js';
+import { poserGlossaire, activerGlossaire, glossaireHtml } from './glossaire.js';
+import { tx, enClair } from './textes.js';
+import { composerBulletinPdf, modeleApplicable, nomFichierBulletin, montantNetSocial, regrouperCotisations } from './bulletin_pdf.js';
 import { demarrerLiens, delierDans, suspendreLiens } from './liens_loi.js';
 import pkg from '../package.json';
 import { amphInit, amphQuitter, amphVeille } from './amphipoolis.js';
@@ -68,7 +70,7 @@ window.openExternal = async function(url) {
 // ── État global ──────────────────────────────────────────────────────────────
 let lastBulletin = null;
 // Paramètres figés au dernier CALCULER — voir « Paramètres appliqués ».
-const PARAMS_DEFAUT = { statut: 'non_cadre', etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', anciennete: 1, hsStruct: null };
+const PARAMS_DEFAUT = { statut: 'non_cadre', etp: 100, hMois: 151.67, effectif: 'moins20', ccn: '', ccnClasse: '', anciennete: 1, tauxPas: null, pasZone: 'metropole', contratCourt: false, hsStruct: null };
 let _params = { ...PARAMS_DEFAUT };
 let _etpPrev = 100; // ETP de référence pour le recalcul brut proportionnel
 
@@ -262,6 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Arrivée par un lien partagé (#pays=…&brut=…) : on rejoue la simulation.
+  _remplirCasTypes();
   _restaurerDepuisLien();
 });
 
@@ -436,16 +439,44 @@ window.translateApp = async function(lang) {
     if (toFetch.length > 0) {
       // MyMemory API — gratuite, open, sans clé, ~1000 mots/jour
       // Utilisée uniquement pour les chaînes absentes du dictionnaire statique.
-      const CHUNK = 20;
-      for (let i = 0; i < toFetch.length; i += CHUNK) {
-        const chunk = toFetch.slice(i, i + CHUNK);
-        const joined = chunk.join('\n\n');
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(joined)}&langpair=fr|${lang}`;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const data = await r.json();
-        const translated = data.responseData.translatedText.split('\n\n');
-        chunk.forEach((orig, j) => cache.set(orig, translated[j] ?? orig));
+      // L'API refuse toute requête de plus de 500 caractères — et le dit en
+      // HTTP 200, son message d'erreur à la place de la traduction. On forme
+      // donc des paquets bornés en longueur ; un texte trop long à lui seul
+      // reste en français, et toute réponse en erreur est ignorée (le texte
+      // d'origine reste affiché, rien n'est mis en cache).
+      const MAX = 450, SEP = '\n\n';
+      const paquets = [];
+      let cur = [], lg = 0;
+      for (const t of toFetch) {
+        if (t.length > MAX) continue;
+        if (cur.length && lg + SEP.length + t.length > MAX) { paquets.push(cur); cur = []; lg = 0; }
+        cur.push(t); lg += (cur.length > 1 ? SEP.length : 0) + t.length;
+      }
+      if (cur.length) paquets.push(cur);
+      const ERREUR_API = /QUERY LENGTH LIMIT|MYMEMORY WARNING|INVALID LANGUAGE|PLEASE SELECT/i;
+      // Quota épuisé (429) ou réseau absent : on arrête d'interroger l'API,
+      // mais le dictionnaire statique et le cache s'appliquent quand même.
+      for (const chunk of paquets) {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk.join(SEP))}&langpair=fr|${lang}`;
+        let data;
+        try {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          data = await r.json();
+        } catch (e) {
+          console.warn('[traduction] MyMemory indisponible, repli sur le dictionnaire seul :', e);
+          break;
+        }
+        const texte = data?.responseData?.translatedText;
+        if (Number(data?.responseStatus) !== 200 || typeof texte !== 'string' || ERREUR_API.test(texte)) {
+          console.warn('[traduction] réponse MyMemory ignorée :', data?.responseStatus, texte);
+          continue;
+        }
+        const translated = texte.split(SEP);
+        // Un découpage qui ne retombe pas sur le nombre de textes envoyés
+        // décalerait toutes les traductions : on n'en garde aucune.
+        if (translated.length !== chunk.length) continue;
+        chunk.forEach((orig, j) => cache.set(orig, translated[j]));
       }
     }
 
@@ -873,9 +904,13 @@ window.setView = function (v) {
   if (v === 'contrat')    contratInit();
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
-  if (v === 'apropos')    { _humanInputLoad(); _veilleTableau(); }
+  if (v === 'apropos')    {
+    _humanInputLoad(); _veilleTableau();
+    const g = document.getElementById('apropos-glossaire');
+    if (g && !g.innerHTML) g.innerHTML = glossaireHtml();
+  }
   if (v === 'carnet')     _carnetLoad();
-  if (v === 'ccn')        ccnInit();
+  if (v === 'ccn')        { _chakrramVeille(); ccnInit(); }
   if (v === 'meliinda')   meliindaInit();
   // Amphipoolis relit le serveur toutes les quelques secondes : seulement
   // tant que la vue est affichée.
@@ -1424,47 +1459,35 @@ function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-// ── Barème PAS mensuel neutre (DGFIP — situation personne seule, 0 part) ────
-// Source : Bulletin Officiel des Finances Publiques (BOFIP), barème 2025.
-// Chaque taux s'applique UNIQUEMENT à la fraction de revenu dans la tranche.
-const PAS_TRANCHES = [
-  { min:     0, max:  1620, taux: 0.000 },
-  { min:  1620, max:  1683, taux: 0.005 },
-  { min:  1683, max:  1791, taux: 0.013 },
-  { min:  1791, max:  1911, taux: 0.021 },
-  { min:  1911, max:  2042, taux: 0.029 },
-  { min:  2042, max:  2151, taux: 0.035 },
-  { min:  2151, max:  2294, taux: 0.041 },
-  { min:  2294, max:  2714, taux: 0.053 },
-  { min:  2714, max:  3107, taux: 0.075 },
-  { min:  3107, max:  3539, taux: 0.099 },
-  { min:  3539, max:  3983, taux: 0.119 },
-  { min:  3983, max:  4648, taux: 0.138 },
-  { min:  4648, max:  5574, taux: 0.158 },
-  { min:  5574, max:  6974, taux: 0.179 },
-  { min:  6974, max:  8711, taux: 0.200 },
-  { min:  8711, max: 12091, taux: 0.240 },
-  { min: 12091, max: 16376, taux: 0.280 },
-  { min: 16376, max: 25706, taux: 0.330 },
-  { min: 25706, max: 55062, taux: 0.380 },
-  { min: 55062, max: Infinity, taux: 0.430 },
-];
+// ── Prélèvement à la source ──────────────────────────────────────────────────
+// Calculé par le back (calculs/pas.rs) sur la grille de taux par défaut datée
+// en base (migration 0140) ou sur le taux personnalisé saisi. Le front ne fait
+// que lire `b.pas` : taux UNIQUE appliqué à toute la base (art. 204 H CGI).
+// Absent hors France/FPT et avant 2019 → objet nul, `present: false`.
+function _pas(b) {
+  const p = b?.pas;
+  if (!p) return { present: false, total: 0, taux_effectif: 0 };
+  return {
+    present: true,
+    total: parseFloat(p.montant),
+    taux_effectif: parseFloat(p.taux),
+    base: parseFloat(p.base),
+    origine: p.origine,
+    grille: p.grille || [],
+    source: p.source || '',
+    zone: p.zone || 'METROPOLE',
+    abattement: parseFloat(p.abattement) || 0,
+    assiette: parseFloat(p.assiette ?? p.base),
+  };
+}
 
-function calculerPas(netImposable) {
-  const n = parseFloat(netImposable);
-  if (isNaN(n) || n <= 0) return { total: 0, taux_effectif: 0, details: [] };
-  let total = 0;
-  const details = [];
-  for (const t of PAS_TRANCHES) {
-    if (n <= t.min) break;
-    const upper  = t.max === Infinity ? n : Math.min(n, t.max);
-    const base   = +(upper - t.min).toFixed(2);
-    const montant = base * t.taux;
-    details.push({ min: t.min, max: t.max === Infinity ? null : t.max, taux: t.taux, base, montant: +montant.toFixed(2) });
-    total += montant;
-    if (t.max === Infinity || n <= t.max) break;
-  }
-  return { total: +total.toFixed(2), taux_effectif: n > 0 ? total / n : 0, details };
+// Le montant net social n'existe que sur un bulletin français (privé ou FPT).
+const _netSocialApplicable = b => ['france', 'fonction_publique'].includes(b?.salarie?.pays);
+
+// Plage de la grille où tombe la base : borne_min ≤ base < borne_max.
+function _pasPlage(grille, base) {
+  return grille.findIndex(t => base >= parseFloat(t.borne_min)
+    && (t.borne_max == null || base < parseFloat(t.borne_max)));
 }
 
 // ── Catégorie → classe CSS ────────────────────────────────────────────────────
@@ -1685,8 +1708,8 @@ function buildTotalFormulaContent(which, b) {
   const totalPatCot = cotMain.reduce((s, c) => s + n(c.montant_pat), 0);  // = ligne TOTAUX pat.
   const brut       = n(b.brut);
   const coutTotal  = n(b.cout_total_employeur);
-  const pasApplies = b.salarie?.pays === 'france' || b.salarie?.pays === 'fonction_publique';
-  const pas        = pasApplies ? calculerPas(b.net_imposable) : { total: 0, taux_effectif: 0 };
+  const pas        = _pas(b);
+  const pasApplies = pas.present;
   const ijssNet    = b.absence ? n(b.absence.ijss_net) : 0;
   const ijssImp    = b.absence ? n(b.absence.ijss_imposable) : 0;
   const csgCrds    = cots.filter(c => c.code === 'CSG_NON_DEDUCTIBLE' || c.code === 'CRDS')
@@ -1761,13 +1784,30 @@ function buildTotalFormulaContent(which, b) {
       <table class="fm-calc">${rows.join('')}</table>`;
   }
 
+  if (which === 'net_social') {
+    const netSocial = montantNetSocial(b);
+    return `
+      <div class="fm-generic">Montant net social  =  Salaire brut  −  Cotisations et contributions salariales obligatoires</div>
+      ${fmDecomp([{ label: 'Net social', sym: 'Brut  −  Cot. salariales (CSG/CRDS comprises)', num: `${fmt(brut)}  −  ${fmt(totalSal)}`, grp: fmt(netSocial) }])}
+      <div class="fm-base-note">C'est le montant à déclarer chaque trimestre pour la <strong>prime d'activité</strong>
+      et le <strong>RSA</strong> : inutile de le reconstituer, il est imprimé sur le bulletin depuis juillet 2023.
+      Il diffère du net à payer avant impôt${anNet > 0 ? ' (les avantages en nature y restent : ce sont des revenus)' : ''}${fraisNet > 0 ? ', ne comprend pas les frais professionnels remboursés' : ''}${ijssNet > 0 ? ' et ne comprend pas les IJSS reversées par subrogation' : ''}.
+      Sur un vrai bulletin, la part salariale de la mutuelle et de la prévoyance obligatoires s'en déduit aussi :
+      le simulateur ne les modélise pas.</div>
+      <table class="fm-calc">
+        <tr><td>Salaire brut</td><td class="fm-op">=</td><td class="fm-val c-base">${fmt(brut)}</td></tr>
+        <tr><td>Cotisations et contributions salariales</td><td class="fm-op">−</td><td class="fm-val c-sal">${fmt(totalSal)}</td></tr>
+        <tr class="fm-result fm-sep"><td>Montant net social</td><td class="fm-op">=</td><td class="fm-val c-alleg">${fmt(netSocial)}</td></tr>
+      </table>`;
+  }
+
   if (which === 'super_brut') {
     const opPat = totalPat < 0 ? '−' : '+';
     const frais = _fraisTotal(b);
     return `
       <div class="fm-generic">Coût total employeur  =  Salaire brut  +  Charges patronales (nettes des allègements)${frais > 0 ? '  +  Indemnités de repas' : ''}</div>
       ${fmDecomp([{ label: 'Coût employeur', sym: `Salaire brut  +  Charges patronales${frais > 0 ? '  +  Frais' : ''}`, num: `${fmt(brut)}  ${opPat}  ${fmt(Math.abs(totalPat))}${frais > 0 ? `  +  ${fmt(frais)}` : ''}`, grp: `${fmt(coutTotal)}` }])}
-      <div class="fm-base-note">Le « super brut » est le coût réel du salarié pour l'employeur : le brut versé
+      <div class="fm-base-note">Le coût total employeur (on dit parfois « super brut ») est le coût réel du salarié pour l'employeur : le brut versé
       plus l'ensemble des cotisations patronales, déduction faite des allègements (Fillon, aides…)${frais > 0 ? `,
       plus les indemnités de repas versées en net : hors brut et hors cotisations, elles restent une dépense de l'employeur` : ''}.</div>
       <table class="fm-calc">
@@ -2273,44 +2313,49 @@ function buildFormulaContent(c, type) {
     </table>`;
 }
 
-function buildPasFormulaContent(netImposable) {
-  const r = calculerPas(netImposable);
-  const rows = r.details.map(d => {
-    const minStr = d.min.toLocaleString('fr-FR') + ' €';
-    const maxStr = d.max === null ? '∞' : d.max.toLocaleString('fr-FR') + ' €';
-    const zero   = d.taux === 0;
-    return `
-      <tr class="${zero ? 'pas-zero' : ''}">
-        <td>${minStr} → ${maxStr}</td>
-        <td class="r">${fmt(d.base)}</td>
-        <td class="r ${zero ? 'c-dim' : ''}">${(d.taux * 100).toFixed(1).replace('.', ',')} %</td>
-        <td class="r ${zero ? 'c-dim' : 'c-purple'}">${zero ? '—' : fmt(d.montant)}</td>
+function buildPasFormulaContent(b) {
+  const r = _pas(b);
+  if (!r.present) return '';
+  const pct = t => (t * 100).toFixed(1).replace('.', ',') + ' %';
+  const ici = _pasPlage(r.grille, r.assiette);
+  const ZONES = { METROPOLE: 'métropole et hors de France', GRM: 'Guadeloupe, Martinique, La Réunion', GM: 'Guyane, Mayotte' };
+  const tauxDefaut = ici >= 0 ? parseFloat(r.grille[ici].taux) : 0;
+  const perso = r.origine === 'personnalise';
+  const rows = r.grille.map((t, i) => {
+    const min = parseFloat(t.borne_min).toLocaleString('fr-FR') + ' €';
+    const max = t.borne_max == null ? '∞' : parseFloat(t.borne_max).toLocaleString('fr-FR') + ' €';
+    const actif = i === ici;
+    return `<tr class="${actif ? 'pas-actif' : 'pas-zero'}">
+        <td>${min} → ${max}</td>
+        <td class="r ${actif ? 'c-purple' : 'c-dim'}">${pct(parseFloat(t.taux))}</td>
       </tr>`;
   }).join('');
+  const lien = r.source
+    ? `<a href="https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=${esc(r.source)}" target="_blank" rel="noopener">${esc(r.source)}</a>`
+    : 'BOFiP';
 
   return `
-    <div class="fm-generic">Calcul progressif tranche par tranche</div>
-    <div class="fm-base-note">Barème neutre mensuel DGFIP — situation : personne seule, 0 part (célibataire sans charge de famille).<br>
-    Chaque taux s'applique uniquement à la fraction de revenu dans la tranche,<br>
-    pas à la totalité du net imposable. Source : BOFIP — barème 2025.</div>
+    <div class="fm-generic">PAS  =  ${r.abattement > 0 ? '(Net imposable  −  Abattement contrat court)' : 'Net imposable'}  ×  Taux</div>
+    ${fmDecomp(r.abattement > 0
+      ? [{ label: 'Assiette', sym: 'Net imposable  −  Abattement', num: `${fmt(r.base)}  −  ${fmt(r.abattement)}`, grp: fmt(r.assiette) },
+         { label: 'PAS', sym: 'Assiette  ×  Taux', num: `${fmt(r.assiette)}  ×  ${pct(r.taux_effectif)}`, grp: fmt(r.total) }]
+      : [{ label: 'PAS', sym: 'Net imposable  ×  Taux', num: `${fmt(r.base)}  ×  ${pct(r.taux_effectif)}`, grp: fmt(r.total) }])}
+    <div class="fm-base-note">
+      ${perso
+        ? `Taux <strong>personnalisé</strong> saisi (celui de l'avis d'impôt, transmis à l'employeur par l'administration).
+           Sans lui, la grille par défaut aurait appliqué ${pct(tauxDefaut)}, soit ${fmt(Math.round(r.base * tauxDefaut * 100) / 100)}.`
+        : `Taux <strong>par défaut</strong> : faute de taux personnalisé transmis par l'administration, l'employeur
+           applique la grille ci-dessous, celle du domicile du salarié. Le taux de la plage où tombe l'assiette
+           s'applique à <strong>la totalité</strong> de l'assiette, ce n'est pas un calcul tranche par tranche.
+           Saisissez votre taux personnalisé dans les Paramètres pour retrouver votre bulletin.`}<br>
+      ${r.abattement > 0 && !perso ? `<br>Contrat court (CDD ou mission de deux mois au plus, deux premiers mois d'embauche) :
+        un abattement de ${fmt(r.abattement)} — la moitié du SMIC mensuel net imposable — est retiré de l'assiette ;
+        le taux se lit dans la grille sur l'assiette réduite et s'applique à elle.` : ''}<br>
+      Art. 204 H, III du CGI — grille ${ZONES[r.zone] || r.zone} en vigueur à la date de paie : ${lien}.
+    </div>
     <table class="pas-tbl">
-      <thead>
-        <tr>
-          <th>Tranche mensuelle</th>
-          <th class="r">Base imposée</th>
-          <th class="r">Taux</th>
-          <th class="r">Retenue</th>
-        </tr>
-      </thead>
+      <thead><tr><th>Net imposable mensuel</th><th class="r">Taux par défaut</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot>
-        <tr>
-          <td>Net imposable</td>
-          <td class="r c-gray">${fmt(netImposable)}</td>
-          <td class="r c-taux">${(r.taux_effectif * 100).toFixed(2)} %&nbsp;<span style="color:var(--dim-txt);font-size:0.7em">(taux effectif)</span></td>
-          <td class="r c-purple" style="font-weight:bold">${fmt(r.total)}</td>
-        </tr>
-      </tfoot>
     </table>`;
 }
 
@@ -2322,9 +2367,9 @@ window.showFormula = function(key) {
 
   if (entry.type === 'pas') {
     document.getElementById('fm-title').textContent = 'Prélèvement à la Source (PAS)';
-    document.getElementById('fm-badge').textContent = '── Détail par tranche — barème neutre mensuel DGFIP ─────────';
+    document.getElementById('fm-badge').textContent = '── Taux unique sur tout le net imposable — art. 204 H CGI ──';
     fmBody.className = 'fm-body fm-type-pas';
-    fmBody.innerHTML = buildPasFormulaContent(entry.netImposable);
+    fmBody.innerHTML = buildPasFormulaContent(lastBulletin);
     document.getElementById('fm-modal').classList.add('open');
     document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
     return;
@@ -2405,7 +2450,8 @@ window.showFormula = function(key) {
       charges_pat:   ['Charges patronales',            '── Cotisations patronales nettes ────────────', 'fm-type-pat'],
       net_imposable: ['Net imposable',                 '── Base du prélèvement à la source ──────────', 'fm-type-alleg'],
       net:           ['Net à payer',                   '── Ce que perçoit le salarié ────────────────', 'fm-type-alleg'],
-      super_brut:    ['Coût total employeur',          '── Super brut ───────────────────────────────', 'fm-type-pat'],
+      super_brut:    ['Coût total employeur',          '── Brut + charges patronales ────────────────', 'fm-type-pat'],
+      net_social:    ['Montant net social',            '── Prime d\'activité, RSA ───────────────────', 'fm-type-alleg'],
       perte_absence: ['Perte de salaire (absence)',    '── Effet de l\'absence sur le net ────────────', 'fm-type-sal'],
       cout_absence:  ['Coût employeur de l\'absence',  '── Période d\'arrêt — hors jours travaillés ──', 'fm-type-pat'],
     }[entry.which];
@@ -2439,6 +2485,15 @@ window.showFormula = function(key) {
   document.getElementById('fm-modal').classList.add('open');
   document.querySelectorAll(`[data-fmkey="${key}"]`).forEach(el => el.classList.add('visited'));
 };
+
+// Le vocabulaire des f(x) (assiette, plafonnée, tranche…) reçoit aussi ses bulles.
+{
+  const _showFormula = window.showFormula;
+  window.showFormula = function (key) {
+    _showFormula(key);
+    _glossaireBulletin(document.getElementById('fm-body'));
+  };
+}
 
 window.openCommentFillon = function() {
   document.getElementById('fm-title').textContent = '± 0,01 € · Note';
@@ -2494,6 +2549,56 @@ function _csgEnFin(b, lignes) {
   return [...lignes.filter(c => !csg(c)), ...lignes.filter(csg)];
 }
 
+// ── Vue des cotisations : détail ligne à ligne, ou comme sur le bulletin ────
+// Le salarié lit des cotisations regroupées par risque (Santé, Retraite,
+// Famille…, arrêté du 25 février 2016) ; le simulateur les détaille ligne à
+// ligne. La vue « bulletin » rétablit le pont : un groupe par risque, ses
+// totaux, une phrase sur ce qu'il finance, et ses lignes dépliables (avec leurs
+// f(x)). France et FPT seulement : les autres pays n'ont pas ce modèle.
+// Préférence mémorisée par navigateur, sans conséquence si le stockage manque.
+let _vueCot = (() => { try { return localStorage.getItem('xenna.vueCot') || 'detail'; } catch { return 'detail'; } })();
+
+// Ce que finance chaque groupe, en une phrase et sans chiffre.
+const GROUPE_EN_CLAIR = {
+  'Santé': "Assurance maladie, maternité, invalidité et décès : remboursement des soins, indemnités journalières en arrêt, pension d'invalidité, capital décès.",
+  'Accidents du travail & mal. professionnelles': "À la charge de l'employeur seul : couvre les accidents du travail et de trajet et les maladies professionnelles. Le taux dépend des risques de l'entreprise.",
+  'Retraite': "Ouvre vos droits à la retraite : régime de base de la Sécurité sociale (trimestres) et retraite complémentaire (points).",
+  'Famille': "Finance les prestations familiales. À la charge de l'employeur seul.",
+  'Assurance chômage': "Finance l'assurance chômage et l'AGS, qui garantit le paiement des salaires si l'employeur fait faillite.",
+  "Autres contributions dues par l'employeur": "Les autres lignes du bulletin, souvent à la charge de l'employeur seul.",
+  "CSG déduct. de l'impôt sur le revenu": "Contribution sociale généralisée : finance la Sécurité sociale sans ouvrir de droits. Cette part est retirée de votre revenu imposable.",
+  "CSG/CRDS non déduct. de l'impôt sur le revenu": "Part de CSG et CRDS (remboursement de la dette sociale) qui reste imposable : retenue sur votre salaire, elle entre pourtant dans le net imposable.",
+};
+
+const _vueCotDispo = b => ['france', 'fonction_publique'].includes(b?.salarie?.pays);
+
+window.basculerVueCot = function (vue) {
+  _vueCot = vue;
+  try { localStorage.setItem('xenna.vueCot', vue); } catch {}
+  if (lastBulletin) renderAll(lastBulletin);
+};
+
+// Déplie / replie les lignes d'un groupe (et referme leurs explications).
+window.toggleGroupeCot = function (cle, el) {
+  const ouvert = el.classList.toggle('open');
+  document.querySelectorAll(`#res-desktop tr.data-row.${cle}`).forEach(tr => { tr.style.display = ouvert ? '' : 'none'; });
+  if (!ouvert) document.querySelectorAll(`#res-desktop tr.expl-row.${cle}`).forEach(tr => { tr.style.display = 'none'; });
+};
+
+window.mobToggleGroupe = function (cle, el) {
+  const box = document.getElementById('mob-grp-' + cle);
+  if (!box) return;
+  const ouvert = box.style.display === 'none';
+  box.style.display = ouvert ? '' : 'none';
+  el.querySelector('.rot-arrow')?.classList.toggle('open', ouvert);
+};
+
+function _vueCotBascule(b) {
+  if (!_vueCotDispo(b)) return '';
+  const btn = (v, lbl, titre) => `<button type="button" class="vc-btn${_vueCot === v ? ' on' : ''}" title="${titre}" onclick="basculerVueCot('${v}')">${lbl}</button>`;
+  return `<span class="vc-bascule">${btn('bulletin', 'COMME SUR MON BULLETIN', 'Regroupées par risque, comme sur un bulletin de paie')}${btn('detail', 'DÉTAIL', 'Chaque cotisation sur sa ligne')}</span>`;
+}
+
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
@@ -2501,14 +2606,14 @@ function renderDesktop(b) {
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const pas      = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
+  const pas      = _pas(b);
   // IJSS NETTES réintégrées au net à payer (subrogation : la CPAM précompte
   // CSG/CRDS, l'employeur reverse le net) — déjà incluses dans net_a_payer côté
   // backend ; affichées ici à titre informatif.
   const ijssNet = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
   if (ijssNet > 0) _fmStore['ABS_IJSS_REINT'] = { type: 'absence', which: 'reintegration', a: b.absence };
   const netPayer = parseFloat(b.net_a_payer) - pas.total;
-  if (!skipPas) _fmStore['PAS'] = { type: 'pas', netImposable: parseFloat(b.net_imposable) };
+  if (pas.present) _fmStore['PAS'] = { type: 'pas' };
 
   // Section IJSS réintégrées — bas de bulletin, avant les allègements.
   const ijssReintSection = ijssNet > 0 ? `
@@ -2540,7 +2645,7 @@ function renderDesktop(b) {
 
   // Panneaux f(x) des totaux (transparence des agrégats). Recalculés depuis
   // lastBulletin au clic — on n'enregistre que le type et l'identifiant.
-  ['brut', 'cot_sal', 'cot_pat', 'charges_pat', 'net_imposable', 'net', 'super_brut'].forEach(w => {
+  ['brut', 'cot_sal', 'cot_pat', 'charges_pat', 'net_imposable', 'net', 'super_brut', 'net_social'].forEach(w => {
     _fmStore['TOT_' + w.toUpperCase()] = { type: 'total', which: w };
   });
 
@@ -2574,7 +2679,7 @@ function renderDesktop(b) {
             <span>Dont HS/HC exonérées d'impôt</span>
             <span style="color:var(--green)">base PAS − ${fmt(b.heures_sup.exo_fiscale)}</span>
           </div>` : ''}
-          ${!skipPas ? `<div class="sb-ded-row">
+          ${pas.present ? `<div class="sb-ded-row">
             <span>PAS${tauxEffOuVide(pas.taux_effectif)}</span>
             <span class="fm-val" style="color:var(--purple);cursor:pointer" onclick="showFormula('PAS')">${estZero(pas.total) ? '' : `− ${fmt(pas.total)}${buildFormulaStar('PAS')}`}</span>
           </div>` : ''}
@@ -2587,13 +2692,17 @@ function renderDesktop(b) {
       <div class="sb-cell">
         <div class="sb-lbl">▸ NET À PAYER</div>
         <div class="sb-val c-green" style="cursor:pointer" onclick="showFormula('TOT_NET')">${fmt(netPayer)}${buildFormulaStar('TOT_NET')}</div>
+        ${_netSocialApplicable(b) ? `<div class="sb-ded-row sb-net-social" title="À déclarer pour la prime d'activité et le RSA">
+          <span>Montant net social</span>
+          <span class="fm-val" style="cursor:pointer" onclick="showFormula('TOT_NET_SOCIAL')">${fmt(montantNetSocial(b))}${buildFormulaStar('TOT_NET_SOCIAL')}</span>
+        </div>` : ''}
       </div>
       <div class="sb-cell">
         <div class="sb-lbl">▸ CHARGES PAT.</div>
         <div class="sb-val c-orange" style="cursor:pointer" onclick="showFormula('TOT_CHARGES_PAT')">${fmt(totalPat)}${buildFormulaStar('TOT_CHARGES_PAT')}</div>
       </div>
       <div class="sb-cell">
-        <div class="sb-lbl">▸ SUPER BRUT</div>
+        <div class="sb-lbl">▸ COÛT TOTAL EMPLOYEUR</div>
         <div class="sb-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(parseFloat(b.brut) + totalPat + _fraisTotal(b))}${buildFormulaStar('TOT_SUPER_BRUT')}</div>
       </div>
     </div>`;
@@ -2628,7 +2737,7 @@ function renderDesktop(b) {
           <td>
             <span class="expand-icon">▶</span>
             <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
-            <span class="trad-skip">${c.libelle}</span>${c.perso === 'ajout' ? ` <button class="perso-retirer" title="Retirer cette cotisation" onclick="event.stopPropagation();persoRetirer('${c.code}')">×</button>` : ''}
+            <span class="trad-skip">${c.libelle}</span>${_badgeEvolution(b, c)}${c.perso === 'ajout' ? ` <button class="perso-retirer" title="Retirer cette cotisation" onclick="event.stopPropagation();persoRetirer('${c.code}')">×</button>` : ''}
           </td>
           <td class="r${_persoCls(c, 'base')}" data-perso="${c.code}|base">${montantOuVide(c.base)}</td>
           <td class="r${_persoCls(c, 'taux_sal')}" data-perso="${c.code}|taux_sal">${pctOuVide(c.taux_sal, parseFloat(c.taux_sal) > 0 ? '− ' : '')}</td>
@@ -2639,6 +2748,7 @@ function renderDesktop(b) {
         <tr class="expl-row" id="expl-${idx}" style="display:none">
           <td colspan="6">
             <div class="expl-box">
+              ${_enClairHtml(c)}
               <div class="expl-txt trad-skip">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
               ${c.loi_ref ? `<div class="expl-ref trad-skip">§ ${esc(c.loi_ref)}</div>` : ""}
             </div>
@@ -2667,12 +2777,36 @@ function renderDesktop(b) {
       </tr>
     </thead>`;
 
+  // Vue « comme sur mon bulletin » : un en-tête par groupe, ses lignes repliées
+  // dessous. Les index de lignes restent uniques (toggleExpl, f(x)).
+  const groupesHtml = () => {
+    let offset = 0;
+    return regrouperCotisations(cotAll).map(g => {
+      const sal = g.lignes.reduce((t, c) => t + parseFloat(c.montant_sal), 0);
+      const pat = g.lignes.reduce((t, c) => t + parseFloat(c.montant_pat), 0);
+      const titre = g.autres ? 'Autres cotisations et contributions' : g.titre;
+      const clair = GROUPE_EN_CLAIR[g.titre] || '';
+      const rows = buildRows(g.lignes, offset)
+        .replace(/class="data-row"/g, `class="data-row grp-ligne ${g.cle}" style="display:none"`)
+        .replace(/class="expl-row"/g, `class="expl-row ${g.cle}"`);
+      offset += g.lignes.length;
+      return `<tr class="grp-tete" onclick="toggleGroupeCot('${g.cle}', this)">
+          <td colspan="3"><span class="expand-icon">▶</span> <strong>${esc(titre)}</strong>
+            ${clair ? `<span class="grp-clair">${esc(clair)}</span>` : ''}</td>
+          <td class="r c-sal">${estZero(sal) ? '' : `− ${fmt(sal)}`}</td>
+          <td></td>
+          <td class="r c-pat">${estZero(pat) ? '' : `− ${fmt(pat)}`}</td>
+        </tr>${rows}`;
+    }).join('');
+  };
+  const vueGroupee = _vueCotDispo(b) && _vueCot === 'bulletin';
+
   const tableAll = `
-    <div class="tbl-section-head sh-perso"><span><span class="sh-fl">-&gt;</span> COTISATIONS <span class="sh-fl">&lt;-</span></span>${_persoControles()}</div>
+    <div class="tbl-section-head sh-perso"><span><span class="sh-fl">-&gt;</span> COTISATIONS <span class="sh-fl">&lt;-</span></span>${_vueCotBascule(b)}${_persoControles()}</div>
     <table class="ascii-tbl">
       ${thead}
       <tbody>
-        ${buildRows(cotAll, 0)}
+        ${vueGroupee ? groupesHtml() : buildRows(cotAll, 0)}
         ${_persoLigneAjout(b)}
         <tr class="tbl-total">
           <td colspan="3">TOTAUX</td>
@@ -2723,6 +2857,7 @@ function renderDesktop(b) {
             <tr class="expl-row" id="expl-${idx}" style="display:none">
               <td colspan="6">
                 <div class="expl-box">
+                  ${_enClairHtml(c)}
                   <div class="expl-txt">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
                   ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
                 </div>
@@ -2741,13 +2876,119 @@ function renderDesktop(b) {
   // Répartition du coût employeur pour la jauge de la tête « Rémunération ».
   // L'impôt retenu à la source à l'étranger (IS suisse, IRPEF net du bonus)
   // rejoint le PAS : c'est de l'impôt, pas une cotisation.
+  // La CSG et la CRDS se détachent des cotisations : elles n'ouvrent aucun droit.
+  // Les charges patronales sont nettes des allègements et exonérations.
   const impot = pas.total + isChAmt + itIrpefAmt + itBonusAmt;
-  _repartition = { net: netPayer, sal: totalSal - isChAmt - itIrpefAmt - itBonusAmt, pas: impot, pat: totalPat };
+  const estCsg = c => c.categorie === 'CSG/CRDS' || ['CSG_DEDUCTIBLE', 'CSG_NON_DEDUCTIBLE', 'CRDS'].includes(c.code);
+  const csgCrds = cots.filter(estCsg).reduce((s, c) => s + parseFloat(c.montant_sal), 0);
+  _repartition = { net: netPayer, sal: totalSal - isChAmt - itIrpefAmt - itBonusAmt - csgCrds, csg: csgCrds, pas: impot, pat: totalPat };
 
-  el.innerHTML = simBanner + summaryBar
+  el.innerHTML = simBanner + buildAlertes(b) + summaryBar
+    + buildDroits(b)
     + `<div id="rem-result-d">${buildRemSection()}</div>`
     + `<div class="tbl-wrap">${tableAll}${ijssReintSection}${fraisSection}${tableAlleg}</div>`
     + buildDsnSection(b, 'd', pas);
+}
+
+// Phrase à valeurs dans la langue d'affichage (src/textes.js), protégée du
+// repli MyMemory : elle est déjà traduite, la retraduire depuis le « français »
+// la massacrerait.
+const _tx = (cle, vars) => `<span class="trad-skip">${tx(cle, _currentLang, vars)}</span>`;
+// « En clair » d'une ligne de cotisation, avant l'explication technique.
+// Seulement pour les codes qui en ont une (France, FPT) ; déjà traduit.
+function _enClairHtml(c, cls = 'expl-clair') {
+  const t = enClair(c.code, _currentLang);
+  return t ? `<div class="${cls} trad-skip"><strong>${esc(enClair('titre', _currentLang))}</strong> — ${esc(t)}</div>` : '';
+}
+
+// Libellé fixe d'un panneau qui se redessine seul (comparateurs) : la passe de
+// traduction de translateApp ne repasse pas sur lui, il lit donc le
+// dictionnaire statique lui-même.
+const _ts = fr => { const t = trStatic(fr, _currentLang); return t === undefined ? fr : t; };
+
+// ── Pastille « nouveau taux » (b.evolutions, calculs/bulletin.rs) ───────────
+// Une ligne dont le taux a changé dans les douze mois porte une pastille :
+// date d'effet, ancien et nouveau taux. C'est ce que le salarié remarque d'un
+// mois à l'autre sans savoir pourquoi.
+function _badgeEvolution(b, c) {
+  const e = (b.evolutions || []).find(x => x.code === c.code);
+  if (!e) return '';
+  const pct = v => (parseFloat(v) * 100).toFixed(2).replace(/\.?0+$/, '').replace('.', ',') + ' %';
+  const L = _currentLang, parts = [];
+  if (e.ancien_sal !== e.nouveau_sal) parts.push(tx('ev.sal', L, { a: pct(e.ancien_sal), b: pct(e.nouveau_sal) }));
+  if (e.ancien_pat !== e.nouveau_pat) parts.push(tx('ev.pat', L, { a: pct(e.ancien_pat), b: pct(e.nouveau_pat) }));
+  const txt = tx('ev.titre', L, { date: formatDate(e.depuis), details: parts.join(', ') });
+  return ` <span class="badge-evo trad-skip" title="${esc(txt)}" aria-label="${esc(txt)}">${esc(tx('ev.badge', L, { date: formatDate(e.depuis) }))}</span>`;
+}
+
+// Blocs pédagogiques repliés par défaut ; le choix du visiteur (ouvrir,
+// refermer) survit aux recalculs et vaut pour le bureau comme le mobile.
+const _plis = { alertes: false, droits: false };
+window.plisBascule = (k, el) => { _plis[k] = el.open; };
+const _pli = k => `${_plis[k] ? ' open' : ''} ontoggle="plisBascule('${k}', this)"`;
+
+// ── Points de vigilance (b.alertes, calculs/alertes.rs) ──────────────────────
+function buildAlertes(b) {
+  const a = b.alertes || [];
+  // Minimum conventionnel : contrôlé par le back (codes ccn_*) quand le
+  // classement est choisi dans Paramètres ; sinon, renvoi vers la grille
+  // recopiée du texte. La garantie annuelle ne se juge que sur l'année.
+  const L = _currentLang;
+  const ccn = b.salarie?.convention_idcc === '0016' && !a.some(x => x.code.startsWith('ccn_')) ? `<div class="alerte alerte-info">
+      <div class="alerte-titre">ℹ ${_tx('al.ccn.titre')}</div>
+      <div class="alerte-txt">${_tx('al.ccn.texte')} <button type="button" class="alerte-lien trad-skip" onclick="setView('ccn')">${esc(tx('al.ccn.lien', L))}</button></div>
+    </div>` : '';
+  if (!a.length && !ccn) return '';
+  // Le back envoie code + valeurs : la phrase se compose dans la langue
+  // d'affichage ; son texte français reste le repli d'un code inconnu.
+  const cle = { smic: 'al.smic', temps_partiel: 'al.partiel', ccn_sous_minimum: 'al.ccn_bas',
+    ccn_sous_smic: 'al.ccn_smic', ccn_conforme: 'al.ccn_ok', ccn_inconnu: 'al.ccn_inconnu' };
+  const phrase = (x, quoi) => {
+    const k = cle[x.code];
+    if (!k) return esc(quoi === 'titre' ? x.titre : x.texte);
+    const vals = Object.fromEntries(Object.entries(x.valeurs || {}).map(([n, v]) => [n, esc(v)]));
+    return tx(`${k}.${quoi}`, L, vals);
+  };
+  const n = a.length + (ccn ? 1 : 0);
+  const grave = a.some(x => x.niveau === 'alerte');
+  return `<details class="alertes-det"${_pli('alertes')}>
+      <summary><span class="sh-fl">-&gt;</span> <span class="trad-skip">${esc(_ts('POINTS DE VIGILANCE'))}</span> <span class="sh-fl">&lt;-</span>
+        <span class="cc-resume${grave ? ' al-grave' : ''}">${grave ? '⚠' : 'ℹ'} ${n}</span></summary>
+      <div class="alertes">${a.map(x => `<div class="alerte alerte-${esc(x.niveau)}">
+      <div class="alerte-titre trad-skip">${x.niveau === 'alerte' ? '⚠' : 'ℹ'} ${phrase(x, 'titre')}</div>
+      <div class="alerte-txt"><span class="trad-skip">${phrase(x, 'texte')}</span> <span class="alerte-src trad-skip">§ ${esc(x.source)}</span></div>
+    </div>`).join('')}${ccn}</div>
+    </details>`;
+}
+
+// ── Ce que ce mois vous ouvre comme droits ───────────────────────────────────
+// Ce que les cotisations rapportent, en quatre lignes. Tout vient de
+// b.droits (calculs/droits.rs, paramètres datés en base) ; le front ne fait
+// qu'écrire les phrases. France, secteur privé, depuis 2019.
+function buildDroits(b) {
+  const d = b.droits;
+  if (!d) return '';
+  const n = v => parseFloat(v) || 0;
+  const pts = v => n(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const c = d.cpf;   // compte personnel de formation (droits.rs, migration 0147)
+  const L = _currentLang;
+  const lignes = [
+    tx('dr.l.trim', L, { n: d.trimestres_an }),
+    tx('dr.l.compte', L, { montant: fmt(d.salaire_porte_au_compte),
+      plafond: n(d.salaire_porte_au_compte) < n(d.assiette_trimestres) ? tx('dr.l.plafond', L) : '' }),
+    tx('dr.l.points', L, { pts: pts(d.points), rente: fmt(d.rente_annuelle) }),
+    ...(c ? [tx('dr.l.cpf', L, { mois: fmt(c.mois), annuel: fmt(c.annuel), plafond: fmt(c.plafond),
+      motif: c.regime === 'esat' ? tx('dr.l.esat', L) : c.regime === 'handicap' ? tx('dr.l.handicap', L)
+           : c.prorata ? tx('dr.l.prorata', L) : '' })] : []),
+  ];
+  return `<details class="droits"${_pli('droits')}>
+      <summary><span class="sh-fl">-&gt;</span> CE QUE CE MOIS VOUS OUVRE COMME DROITS <span class="sh-fl">&lt;-</span>
+        <span class="cc-resume">${_tx('dr.resume', { pts: pts(d.points) })}</span></summary>
+      <div class="dr-body">
+        <ul class="dr-liste trad-skip">${lignes.map(l => `<li>${l}</li>`).join('')}</ul>
+        <div class="dr-note">${_tx('dr.l.note')}</div>
+      </div>
+    </details>`;
 }
 
 // ── Bas de bulletin : extrait de DSN et bulletin PDF ────────────────────────
@@ -2764,7 +3005,7 @@ function renderDesktop(b) {
 // bouton PDF garde sa place dans une barre à lui : c'est la même ligne pour le
 // lecteur, pas la même origine dans le code.
 //
-// Le PAS passe en paramètre parce qu'il est calculé ici, pas par le back.
+// Le PAS passe en paramètre déjà lu dans b.pas (_pas), comme pour la barre récap.
 function buildDsnSection(b, id, pas) {
   const pays = b.salarie?.pays;
   const pdfBtn = (pays === 'france' || pays === 'fonction_publique')
@@ -2783,6 +3024,9 @@ function buildDsnSection(b, id, pas) {
     datePaie:        getDatePaie(),
     pasTotal:        pas?.total ?? 0,
     pasTaux:         pas?.taux_effectif ?? 0,
+    pasPerso:        pas?.origine === 'personnalise',
+    pasZone:         pas?.zone || 'METROPOLE',
+    pasAssiette:     pas?.assiette,
     versionLogiciel: pkg.version,
     actions:         pdfBtn,
   }) + `<div class="bp-etat" id="bp-etat-${id}"></div>`;
@@ -2874,7 +3118,7 @@ window.bpGenererPdf = async function (id) {
     const pmss = await api('plafond_ss', { datePaie }).catch(() => null);
     const doc = composerBulletinPdf(b, {
       datePaie,
-      pas:             calculerPas(b.net_imposable),
+      pas:             _pas(b),
       identite:        bpIdentite(),
       remBase:         _remBase,
       remLignes:       _remLines,
@@ -2939,6 +3183,7 @@ function buildMobCotRow(c, id, montantHtml, valCls, type, idx = 0) {
     ? `<pre class="fm-fillon">${esc(c.explication)}</pre>`
     : `<div class="fm-type-${type}">${buildFormulaContent(c, type)}</div>`;
   const whyHtml = `
+    ${_enClairHtml(c, 'mob-exp-clair')}
     <div class="mob-exp-txt">${esc(c.explication)}</div>
     ${buildHistoire(c, 'mob-histoire')}
     ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
@@ -2968,7 +3213,7 @@ function renderMobile(b) {
   const nom = document.getElementById("m-nom")?.value || document.getElementById("d-nom")?.value || "";
   const prn = document.getElementById("m-prenom")?.value || document.getElementById("d-prenom")?.value || "";
   const cots = b.cotisations;
-  ['cot_sal', 'cot_pat', 'net_imposable', 'net', 'super_brut'].forEach(w => {
+  ['cot_sal', 'cot_pat', 'net_imposable', 'net', 'super_brut', 'net_social'].forEach(w => {
     _fmStore['TOT_' + w.toUpperCase()] = { type: 'total', which: w };
   });
 
@@ -2976,7 +3221,7 @@ function renderMobile(b) {
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
-  const pas       = skipPas ? { total: 0, taux_effectif: 0 } : calculerPas(b.net_imposable);
+  const pas       = _pas(b);
   // IJSS NETTES réintégrées au net à payer (subrogation : CSG/CRDS précomptées
   // par la CPAM) — déjà incluses dans net_a_payer côté backend ; informatif.
   const ijssNet   = b.absence && parseFloat(b.absence.ijss_net) > 0 ? parseFloat(b.absence.ijss_net) : 0;
@@ -3009,7 +3254,7 @@ function renderMobile(b) {
   const totalAlleg      = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_pat), 0); // négatif
   const totalAllegSalMob = cotAllegMob.reduce((s, c) => s + parseFloat(c.montant_sal), 0); // négatif
 
-  const cotLines = cotAllMob.map((c, i) => {
+  const ligneMob = (c, i) => {
     const hasSal   = parseFloat(c.montant_sal) > 0;
     const hasPat   = parseFloat(c.montant_pat) > 0;
     const expandId = `${c.code}_u`;
@@ -3021,6 +3266,7 @@ function renderMobile(b) {
       ? (isFillon ? `<pre class="fm-fillon">${esc(c.explication)}</pre>` : `<div class="fm-type-pat">${buildFormulaContent(c, 'pat')}</div>`)
       : '';
     const whyHtml = `
+      ${_enClairHtml(c, 'mob-exp-clair')}
       <div class="mob-exp-txt">${esc(c.explication)}</div>
       ${buildHistoire(c, 'mob-histoire')}
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
@@ -3034,7 +3280,7 @@ function renderMobile(b) {
     return `
       <div class="${stripeCls}">
         <div class="mob-row">
-          <span class="mob-lbl mob-cot-lbl" onclick="mobToggle('${expandId}','why')">${esc(c.libelle)}</span>
+          <span class="mob-lbl mob-cot-lbl" onclick="mobToggle('${expandId}','why')">${esc(c.libelle)}${_badgeEvolution(b, c)}</span>
           <span style="display:flex;flex-direction:column;align-items:flex-end;gap:0.1rem">${amtsSal}${amtsPat}</span>
         </div>
         <div class="mob-expand" id="mob-expand-${expandId}" style="display:none">
@@ -3043,7 +3289,27 @@ function renderMobile(b) {
           ${patFormula ? `<div id="mob-expand-${expandId}-pat" style="display:none">${patFormula}</div>` : ''}
         </div>
       </div>`;
-  }).join('');
+  };
+  // Vue « comme sur mon bulletin » : un en-tête par risque, ses lignes repliées.
+  const cotLines = (_vueCotDispo(b) && _vueCot === 'bulletin')
+    ? regrouperCotisations(cotAllMob).map(g => {
+        const sal = g.lignes.reduce((t, c) => t + parseFloat(c.montant_sal), 0);
+        const pat = g.lignes.reduce((t, c) => t + parseFloat(c.montant_pat), 0);
+        const titre = g.autres ? 'Autres cotisations et contributions' : g.titre;
+        const clair = GROUPE_EN_CLAIR[g.titre] || '';
+        return `<div class="mob-grp-tete" onclick="mobToggleGroupe('${g.cle}', this)">
+            <div class="mob-row">
+              <span class="mob-lbl"><span class="rot-arrow">▶</span> <strong>${esc(titre)}</strong></span>
+              <span style="display:flex;flex-direction:column;align-items:flex-end;gap:0.1rem">
+                <span class="mob-val" style="color:var(--sal)">${estZero(sal) ? '&nbsp;' : `− ${fmt(sal)}`}</span>
+                <span class="mob-val c-orange">${estZero(pat) ? '&nbsp;' : `− ${fmt(pat)}`}</span>
+              </span>
+            </div>
+            ${clair ? `<div class="mob-grp-clair">${esc(clair)}</div>` : ''}
+          </div>
+          <div class="mob-grp-lignes" id="mob-grp-${g.cle}" style="display:none">${g.lignes.map(ligneMob).join('')}</div>`;
+      }).join('')
+    : cotAllMob.map(ligneMob).join('');
 
   const cotAllegLines = cotAllegMob
     .map((c, i) => {
@@ -3068,12 +3334,16 @@ function renderMobile(b) {
       </div>
       ${_ccnBanner(b, 'mob-ccn')}
       <div class="veille-baremes" hidden></div>
+      ${buildAlertes(b)}
+
+      ${buildDroits(b)}
 
       <!-- Rémunération -->
       <div id="rem-result-m">${buildRemSectionMobile()}</div>
 
       <!-- Cotisations unifiées (salariales + patronales sur une ligne) -->
       <div class="mob-row section"><span class="mob-lbl">── COTISATIONS ──</span><span style="display:flex;gap:0.75rem"><span class="mob-badge mob-badge-sal">Sal.</span><span class="mob-badge mob-badge-pat">Pat.</span></span></div>
+      ${_vueCotDispo(b) ? `<div class="mob-vc">${_vueCotBascule(b)}</div>` : ''}
       ${cotLines}
       <div class="mob-row subtot">
         <span class="mob-lbl">TOTAL cotisations salariales</span>
@@ -3095,6 +3365,12 @@ function renderMobile(b) {
         ${isChCot.loi_ref ? `<div class="mob-exp-loi">§ ${esc(isChCot.loi_ref)}</div>` : ''}
       </div>` : ''}
 
+      <!-- Montant net social (France / FPT) -->
+      ${_netSocialApplicable(b) ? `<div class="mob-row net-row">
+        <span class="mob-lbl">MONTANT NET SOCIAL</span>
+        <span class="mob-val c-green" style="cursor:pointer" onclick="showFormula('TOT_NET_SOCIAL')">${fmt(montantNetSocial(b))}${buildFormulaStar('TOT_NET_SOCIAL')}</span>
+      </div>` : ''}
+
       <!-- Net imposable (France / FPT) -->
       ${!skipPas ? `<div class="mob-row net-row">
         <span class="mob-lbl">NET IMPOSABLE</span>
@@ -3106,12 +3382,12 @@ function renderMobile(b) {
       </div>` : ''}
 
       <!-- PAS (France / FPT) -->
-      ${!skipPas ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
-        <span class="mob-lbl">Prélèvement à la source${tauxEffOuVide(pas.taux_effectif)} <span id="pas-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
+      ${pas.present ? `<div class="mob-row pas-row" style="cursor:pointer" onclick="togglePasDetail('pas-detail-mob')">
+        <span class="mob-lbl"><span>Prélèvement à la source</span>${tauxEffOuVide(pas.taux_effectif)} <span id="pas-detail-mob-arrow" class="rot-arrow" style="font-size:0.65em">▶</span></span>
         <span class="mob-val c-purple">${montantOuVide(pas.total, '− ')}</span>
       </div>
       <div id="pas-detail-mob" class="fm-type-pas" style="display:none;padding:0.7rem 1rem 0.6rem">
-        ${buildPasFormulaContent(parseFloat(b.net_imposable))}
+        ${buildPasFormulaContent(b)}
       </div>` : ''}
 
       <!-- IRPEF italienne -->
@@ -3163,9 +3439,9 @@ function renderMobile(b) {
         <span class="mob-val c-alleg">− ${fmt(Math.abs(totalAlleg))}</span>
       </div>` : ''}` : ""}
 
-      <!-- Super brut -->
+      <!-- Coût total employeur -->
       <div class="mob-row superbrut">
-        <span class="mob-lbl">SUPER BRUT (coût employeur)</span>
+        <span class="mob-lbl">COÛT TOTAL EMPLOYEUR</span>
         <span class="mob-val c-eblue" style="cursor:pointer" onclick="showFormula('TOT_SUPER_BRUT')">${fmt(superBrut)}${buildFormulaStar('TOT_SUPER_BRUT')}</span>
       </div>
 
@@ -3446,11 +3722,21 @@ function _persoEditer(cell) {
   }, true);
 }
 
+// Bulles de vocabulaire sur le bulletin (français seulement, cf. glossaire.js ;
+// pas en mode dactylo, qui réécrit le texte lettre à lettre).
+function _glossaireBulletin(...zones) {
+  if (_currentLang !== 'fr' || _dactyloMode) return;
+  activerGlossaire();
+  (zones.length ? zones : ['res-desktop', 'res-mobile'])
+    .forEach(id => poserGlossaire(typeof id === 'string' ? document.getElementById(id) : id));
+}
+
 function renderAll(b) {
   DEVISE = b.devise || "EUR";
   extractAidePosteDetail(b);
   renderDesktop(b);
   renderMobile(b);
+  _glossaireBulletin();
   _afficherVeille(b);
   if (_dactyloMode) {
     typewriterDesktop(b).then(() => applyDyslexiaColors());
@@ -3612,6 +3898,87 @@ async function _veilleTableau() {
     </table></div>${journalHtml}`;
 }
 
+// ── Le Chakrram — veille réglementaire et législative ────────────────────────
+// Mêmes données que le tableau d'« À propos » (veille_baremes_tous +
+// journal_baremes), rangées autrement : une fiche par régime — année intégrée,
+// dernière évolution des taux, lacunes, et son propre journal daté et sourcé,
+// spécificités (Alsace-Moselle, ESAT, IDCC 0016) comprises. Régimes en retard
+// d'abord, puis à jour ; un champ filtre par nom de pays.
+let _chakrramVeilleCharge = false;
+
+async function _chakrramVeille() {
+  const el = document.getElementById('chakrram-veille');
+  if (!el || _chakrramVeilleCharge) return;
+  el.innerHTML = '<div class="ckv-vide">Chargement…</div>';
+  let liste, journal = [];
+  try { liste = await api('veille_baremes_tous', {}); }
+  catch (e) {
+    console.warn('[veille_baremes_tous] indisponible :', e);
+    el.innerHTML = `<div class="ckv-vide">Veille indisponible. ${esc(e.message || String(e))}</div>`;
+    return;
+  }
+  try { journal = await api('journal_baremes', {}); }
+  catch (e) { console.warn('[journal_baremes] indisponible :', e); }
+  _chakrramVeilleCharge = true;
+
+  // « À jour » s'entend de l'année du relevé, comme dans le tableau d'« À propos ».
+  const audit = liste[0]?.audit_du || '';
+  const annee = parseInt(audit.slice(0, 4), 10);
+  const ok = v => v.integre_jusqu_a >= annee;
+  const nomPays = p => VEILLE_NOMS[p] || p;
+  const aJour = liste.filter(ok).sort((a, b) => nomPays(a.pays).localeCompare(nomPays(b.pays), 'fr'));
+  const enRetard = liste.filter(v => !ok(v))
+    .sort((a, b) => a.integre_jusqu_a - b.integre_jusqu_a);
+  const domaine = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+
+  const entree = m => `<li><span class="vj-date">${formatDate(m.date)}</span>
+      ${m.specificite ? `<span class="ckv-tag">${esc(VEILLE_SPECIFICITES[m.specificite] || m.specificite)}</span>` : ''}${m.taux ? '' : '<span class="ckv-tag">info</span>'}${esc(m.objet)}
+      <span class="vj-src">${m.sources.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(domaine(u))}</a>`).join(' · ')}</span></li>`;
+
+  const fiche = v => {
+    const bon = ok(v);
+    const entrees = journal.filter(m => m.pays === v.pays);
+    return `<div class="ckv-fiche${bon ? '' : ' ko'}" data-nom="${esc(nomPays(v.pays).toLowerCase())}">
+      <div class="ckv-tete">
+        <span class="ckv-nom">${esc(nomPays(v.pays))}</span>
+        <span class="ckv-annee">${bon ? '✓' : '⚠'} intégré jusqu'en ${v.integre_jusqu_a}</span>
+      </div>
+      <div class="ckv-maj">Dernière évolution des taux : ${v.derniere_maj ? formatDate(v.derniere_maj) : 'aucune journalisée'}</div>
+      ${bon ? '' : `<ul class="ckv-lacunes">${v.lacunes.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`}
+      ${entrees.length ? `<details>
+        <summary>Journal — ${entrees.length} mise${entrees.length > 1 ? 's' : ''} à jour</summary>
+        <ul class="veille-journal">${entrees.map(entree).join('')}</ul>
+      </details>` : ''}
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div class="ccn-warn">
+      Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge les
+      dernières valeurs connues. Chaque fiche dit la dernière année dont tous les
+      barèmes du régime sont intégrés, ce qui manque au-delà, et le journal daté et
+      sourcé de ce qui a été intégré. Relevé du ${formatDate(audit)}.
+    </div>
+    <div class="ckv-resume">
+      <div class="ckv-stat"><b>${liste.length}</b>régimes suivis</div>
+      <div class="ckv-stat ok"><b>${aJour.length}</b>à jour (${annee})</div>
+      <div class="ckv-stat ko"><b>${enRetard.length}</b>à compléter</div>
+      <div class="ckv-stat"><b>${journal.length}</b>entrées au journal</div>
+    </div>
+    <div class="ckv-outils">
+      <input type="search" class="ckv-filtre" id="ckv-filtre" placeholder="Filtrer par pays…" aria-label="Filtrer par pays">
+    </div>
+    ${enRetard.length ? `<div class="ckv-grp">À compléter — du plus ancien au plus récent</div>
+    <div class="ckv-grille">${enRetard.map(fiche).join('')}</div>` : ''}
+    <div class="ckv-grp">À jour</div>
+    <div class="ckv-grille">${aJour.map(fiche).join('')}</div>`;
+
+  document.getElementById('ckv-filtre').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    el.querySelectorAll('.ckv-fiche').forEach(f => { f.hidden = !!q && !f.dataset.nom.includes(q); });
+  });
+}
+
 // ── Affichage d'erreur de saisie (avant l'appel API) ─────────────────────────
 // Utilisé pour les validations côté JS — évite d'envoyer des args invalides à
 // Rust, ce qui provoque des erreurs opaques de désérialisation dans Tauri.
@@ -3763,6 +4130,17 @@ async function calculate(source) {
         esat: isESAT && !isEA && !paysEtranger && !isFPT,
         // Convention collective (France privé) et indemnités de repas IDCC 0016.
         convention_idcc: (!paysEtranger && !isFPT && _params.ccn) || null,
+        // Classement conventionnel : contrôle du minimum de la grille (alertes.rs).
+        ...(() => {
+          const [ccn_branche, ccn_categorie, ccn_coefficient] =
+            (!paysEtranger && !isFPT && _params.ccnClasse) ? _params.ccnClasse.split('|') : [];
+          return { ccn_branche: ccn_branche || null, ccn_categorie: ccn_categorie || null,
+                   ccn_coefficient: ccn_coefficient || null };
+        })(),
+        // Taux PAS personnalisé : France et FPT (le back ignore ailleurs).
+        taux_pas: paysEtranger ? null : _params.tauxPas,
+        pas_zone: paysEtranger ? null : _params.pasZone,
+        contrat_court: !paysEtranger && _params.contratCourt,
         indemnites_repas: (!paysEtranger && !isFPT) ? getIndemnitesRepas() : null,
         // Avantages en nature (France privé) : ajoutés au brut, retenus sur le net.
         avantages_nature: (!paysEtranger && !isFPT) ? getAvantagesNature() : [],
@@ -3844,10 +4222,10 @@ async function calculate(source) {
 
 // Paramètres repris tels quels du formulaire bureau, dans l'ordre de relecture :
 // une case à cocher précède les listes qu'elle dévoile (IS → canton, Kirchensteuer → Land).
-const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'ccn', 'be-region',
+const LIEN_CHAMPS = ['statut', 'alsace-moselle', 'ea', 'ea-tranche', 'esat', 'ccn', 'ccn-classe', 'be-region',
   'ca-province', 'us-state', 'emirati-national', 'inde-regime', 'steuerklasse',
   'kinderlos', 'kirchenmitglied', 'land', 'assujetti-is', 'canton', 'tarif-is',
-  'effectif', 'anciennete'];
+  'effectif', 'anciennete', 'taux-pas', 'pas-zone', 'contrat-court'];
 // Le bureau ne sert pas de lien partageable : on renvoie vers le site public.
 const LIEN_BASE_BUREAU = 'https://www.payetonbulletin.fr/';
 // Types d'éléments de rémunération admis à la relecture (le reste est ignoré).
@@ -3990,7 +4368,7 @@ function _restaurerDepuisLien() {
   // ne doit pas être reproratisé. Un lien antérieur au drapeau `ap` appliquait
   // toujours ses paramètres : on coche si l'un d'eux y figure.
   const ap = q.has('ap') ? q.get('ap') === '1'
-    : ['statut', 'etp', 'effectif', 'anciennete', 'ccn'].some(k => q.has(k));
+    : ['statut', 'etp', 'effectif', 'anciennete', 'ccn', 'ccn-classe'].some(k => q.has(k));
   ['d', 'm'].forEach(p => { const c = document.getElementById(`${p}-apply-brut-chk`); if (c) c.checked = false; });
   const etp = parseFloat(q.get('etp'));
   document.getElementById('d-etp').value = Number.isFinite(etp) && etp > 0 && etp <= 200 ? etp : 100;
@@ -4020,12 +4398,55 @@ function _restaurerDepuisLien() {
 
   // Les handlers rejoués ont pu programmer un recalcul différé : un seul suffit.
   clearTimeout(_recalcTimer);
-  calculate('desktop');
+  _dernierCalcul = calculate('desktop');
   return true;
 }
 
 // Un lien collé dans l'onglet déjà ouvert ne recharge pas la page.
 window.addEventListener('hashchange', _restaurerDepuisLien);
+
+// ── Cas types ────────────────────────────────────────────────────────────────
+// Situations prêtes à l'emploi, pour montrer (ou se faire montrer) un point
+// précis du bulletin en un clic. Chacune est un lien partageable comme un
+// autre — date figée pour rester reproductible —, plus éventuellement une
+// action une fois le bulletin calculé (ouvrir le comparateur, une vue…).
+// Les montants du SMIC sont ceux de la base à la date indiquée.
+let _dernierCalcul = null;
+const CAS_TYPES = [
+  { cle: 'smic', lbl: 'Payé au SMIC, temps plein',
+    lien: 'brut=1823.03&date=2026-05-31' },
+  { cle: 'median', lbl: 'Salaire courant (3 200 €), non-cadre',
+    lien: 'brut=3200&date=2026-05-31' },
+  { cle: 'cadre', lbl: 'Cadre au-dessus du plafond (6 000 €)',
+    lien: 'brut=6000&date=2026-05-31&statut=cadre&ap=1' },
+  { cle: 'partiel', lbl: 'Mi-temps (17 h 30) à 1 000 €',
+    lien: 'brut=1000&date=2026-05-31&etp=50&ap=1' },
+  { cle: 'hs', lbl: 'Heures supplémentaires (8 h à 25 %)',
+    lien: 'brut=2500&date=2026-05-31&rem=hs25:8' },
+  { cle: 'maladie', lbl: 'Arrêt maladie de 10 jours (5 ans d\'ancienneté)',
+    lien: 'brut=2500&date=2026-05-31&anciennete=5&ap=1&abs=maladie,2026-05-11,2026-05-20,heures,ouvres' },
+  { cle: 'pas', lbl: 'Taux de PAS personnalisé (7,4 %)',
+    lien: 'brut=3200&date=2026-05-31&taux-pas=7.4&ap=1' },
+];
+
+window.casType = async function (cle) {
+  const c = CAS_TYPES.find(x => x.cle === cle);
+  if (!c) return;
+  history.replaceState(null, '', '#' + c.lien);
+  _restaurerDepuisLien();
+  try { await _dernierCalcul; } catch { return; }
+  if (c.apres) await c.apres();
+  document.getElementById(document.body.classList.contains('is-mobile') ? 'res-mobile' : 'res-desktop')
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function _remplirCasTypes() {
+  ['d', 'm'].forEach(p => {
+    const sel = document.getElementById(`${p}-cas-type`);
+    if (!sel || sel.options.length > 1) return;
+    CAS_TYPES.forEach(c => sel.add(new Option(c.lbl, c.cle)));
+  });
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // VUE ANNUELLE
@@ -4643,9 +5064,23 @@ function _paramsSaisis() {
     hMois:      parseFloat(val('h-mois')) || 151.67,
     effectif:   val('effectif') || 'moins20',
     ccn:        val('ccn') || '',
+    // « branche|categorie|coefficient » (table ccn_minima) ; vide = non classé.
+    ccnClasse:  val('ccn') === '0016' ? (val('ccn-classe') || '') : '',
     anciennete: isNaN(anc) ? 1 : Math.min(100, Math.max(0, anc)),
+    // Taux PAS personnalisé, saisi en % ; vide = grille par défaut (null).
+    tauxPas:    _tauxPasSaisi(val('taux-pas')),
+    pasZone:    ['grm', 'gm'].includes(val('pas-zone')) ? val('pas-zone') : 'metropole',
+    contratCourt: !!document.getElementById('d-contrat-court')?.checked,
     hsStruct,
   };
+}
+
+// « 7,4 » ou « 7.4 » → "0.0740" (fraction, chaîne : le back la lit en Decimal).
+// Arrondi au millième de point : un float brut enverrait 0.07400000000000001.
+function _tauxPasSaisi(v) {
+  const pct = parseFloat(String(v ?? '').replace(',', '.'));
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) return null;
+  return (Math.round(pct * 1000) / 100000).toFixed(5);
 }
 
 // Heures supplémentaires structurelles : horaire collectif ou contractuel
@@ -4877,22 +5312,50 @@ function _remLineHtml(l, opts, etp) {
 // employeur, aux couleurs des totaux du bandeau récap. Vide avant tout calcul
 // ou si le bulletin affiché n'a pas été rendu par renderDesktop.
 let _repartition = null;
-function _jaugeRepartition() {
+function _partsRepartition() {
   const r = _repartition;
-  if (!r || !lastBulletin) return '';
+  if (!r || !lastBulletin) return null;
   const parts = [
     ['net', 'Net à payer',            r.net, 'var(--green)'],
-    ['sal', 'Cotisations salariales', r.sal, 'var(--sal)'],
+    ['sal', 'Cotisations salariales', r.sal, 'var(--yellow)'],
+    ['csg', 'CSG et CRDS',            r.csg, 'var(--pink)'],
     ['pas', 'Impôt à la source',      r.pas, 'var(--purple)'],
-    ['pat', 'Charges patronales',     r.pat, 'var(--orange)'],
+    ['pat', 'Charges patronales, exonérations déduites', r.pat, 'var(--orange)'],
   ].map(([k, lbl, v, c]) => [k, lbl, Math.max(0, v), c]).filter(p => p[2] > 0);
   const total = parts.reduce((s, p) => s + p[2], 0);
-  if (total <= 0) return '';
+  if (total <= 0) return null;
   const pct = v => (v / total * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  return { parts, pct };
+}
+
+// Mobile : pas de survol sur un écran tactile, la jauge devient un bouton qui
+// déplie la légende chiffrée (_jaugeLegende) sous la tête de section.
+let _jaugeOuverte = false;
+window.jaugeBascule = function () {
+  _jaugeOuverte = !_jaugeOuverte;
+  document.querySelectorAll('.jauge-leg').forEach(el => { el.hidden = !_jaugeOuverte; });
+  document.querySelectorAll('.jauge-rep[aria-expanded]').forEach(el => el.setAttribute('aria-expanded', _jaugeOuverte));
+};
+
+function _jaugeRepartition(cliquable = false) {
+  const R = _partsRepartition();
+  if (!R) return '';
+  const { parts, pct } = R;
   const segs = parts.map(([k, lbl, v, c]) =>
     `<span class="jauge-seg" style="flex-grow:${v};background:${c}" title="${lbl} : ${fmt(v)} (${pct(v)} %)"></span>`).join('');
   const resume = parts.map(([, lbl, v]) => `${lbl} ${pct(v)} %`).join(', ');
-  return `<span class="jauge-rep" role="img" aria-label="Répartition du coût employeur : ${resume}">${segs}</span>`;
+  return cliquable
+    ? `<button type="button" class="jauge-rep jauge-btn" onclick="jaugeBascule()" aria-expanded="${_jaugeOuverte}" aria-label="Répartition du coût employeur : ${resume}">${segs}</button>`
+    : `<span class="jauge-rep" role="img" aria-label="Répartition du coût employeur : ${resume}">${segs}</span>`;
+}
+
+function _jaugeLegende() {
+  const R = _partsRepartition();
+  if (!R) return '';
+  const { parts, pct } = R;
+  const lignes = parts.map(([, lbl, v, c]) =>
+    `<div class="jauge-leg-l"><span class="jauge-leg-c" style="background:${c}"></span><span class="jauge-leg-lbl">${lbl}</span><span class="jauge-leg-v">${fmt(v)} <span class="jauge-leg-p">${pct(v)} %</span></span></div>`).join('');
+  return `<div class="jauge-leg"${_jaugeOuverte ? '' : ' hidden'}>${lignes}</div>`;
 }
 
 function buildRemSection() {
@@ -4995,7 +5458,8 @@ function buildRemSectionMobile() {
       <span class="rem-total-val">${fmt(total)}</span>
     </div>` : '';
   return `
-    <div class="mob-row section"><span class="mob-lbl">── RÉMUNÉRATION ──</span></div>
+    <div class="mob-row section mob-rem-head"><span class="mob-lbl">── RÉMUNÉRATION ──</span>${_jaugeRepartition(true)}</div>
+    ${_jaugeLegende()}
     <div class="rem-section" style="padding:0.3rem 0.9rem 0.4rem">
       <div class="rem-base-row">
         ${addBtn}
@@ -5142,6 +5606,7 @@ window._triggerRecalculate = _triggerRecalculate;
 // Synchronise un paramètre entre les deux formulaires (desktop ↔ mobile).
 // Gère les checkboxes ET les selects (canton, tarif-is).
 window.syncParam = function(paramName, value) {
+  if (paramName === 'ccn-classe' && !_ccnClasses) _ccnClasseAttente = value;
   ['d', 'm'].forEach(prefix => {
     const el = document.getElementById(`${prefix}-${paramName}`);
     if (!el) return;
@@ -5152,7 +5617,34 @@ window.syncParam = function(paramName, value) {
       if (el.value !== value) el.value = value;
     }
   });
+  if (paramName === 'ccn') _majClasseCcn(value);
 };
+
+// ── Classement conventionnel (IDCC 0016) ─────────────────────────────────────
+// Liste des coefficients dont le minimum est en base (ccn_minima), chargée au
+// premier choix de la convention. Une valeur posée avant l'arrivée de la liste
+// (lien partagé) attend dans _ccnClasseAttente.
+let _ccnClasses = null, _ccnClasseAttente = '';
+async function _majClasseCcn(idcc) {
+  const actif = idcc === '0016';
+  ['d', 'm'].forEach(p => { const r = document.getElementById(`${p}-ccn-classe-row`); if (r) r.hidden = !actif; });
+  if (!actif || _ccnClasses) return;
+  try { _ccnClasses = await api('classifications_ccn', { idcc: '0016' }); }
+  catch { _ccnClasses = []; }
+  const groupes = new Map();
+  for (const c of _ccnClasses) {
+    const g = `${c.branche_libelle} — ${(CCN_CATEGORIES.find(k => k[0] === c.categorie) || [, c.categorie])[1]}`;
+    if (!groupes.has(g)) groupes.set(g, []);
+    const emploi = c.emploi && c.emploi !== c.coefficient ? ` · ${c.emploi.split(' ; ')[0]}` : '';
+    groupes.get(g).push(`<option value="${esc(`${c.branche}|${c.categorie}|${c.coefficient}`)}">${esc(c.coefficient + emploi)}</option>`);
+  }
+  const html = '<option value="">— non précisé —</option>'
+    + [...groupes].map(([g, o]) => `<optgroup label="${esc(g)}">${o.join('')}</optgroup>`).join('');
+  ['d', 'm'].forEach(p => {
+    const el = document.getElementById(`${p}-ccn-classe`);
+    if (el) { el.innerHTML = html; el.value = _ccnClasseAttente; }
+  });
+}
 
 // ── Absence maladie ordinaire ─────────────────────────────────────────────────
 
@@ -5863,7 +6355,7 @@ function herculeInit() {
   const cots = b.cotisations;
   const brut = parseFloat(b.brut);
   const net  = parseFloat(b.net_a_payer);
-  const pas  = calculerPas(parseFloat(b.net_imposable)).total;
+  const pas  = _pas(b).total;
 
   // ── Agrégation par code ───────────────────────────────────────────────────
   const SS   = ['SS_MALADIE','SS_VIEILLESSE_PLAF','SS_VIEILLESSE_DEPLAF','FAMILLE','AT_MP','ALSACE_MOSELLE_MALADIE'];

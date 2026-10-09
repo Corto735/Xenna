@@ -36,7 +36,7 @@ pub fn generer_bulletin_cn(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         cout_total_employeur: (brut + total_pat).round_dp(2),
         devise: "CNY".into(),
         absence: None,
-        heures_sup: None, conges: None, frais_professionnels: Vec::new(), avantages_nature: Vec::new(),
+        heures_sup: None, conges: None, frais_professionnels: Vec::new(), avantages_nature: Vec::new(), pas: None, droits: None, alertes: Vec::new(), evolutions: Vec::new(),
         salarie,
     }
 }

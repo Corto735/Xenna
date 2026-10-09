@@ -292,6 +292,29 @@ pub struct Salarie {
     /// IDCC 0016 (plus favorable). Défaut : 1 an (régime légal).
     #[serde(default)]
     pub anciennete: Option<i64>,
+    /// Taux de prélèvement à la source personnalisé, en fraction (0.074 = 7,4 %),
+    /// tel que transmis par l'administration (avis d'impôt, impots.gouv). None :
+    /// taux par défaut de la grille (art. 204 H, III du CGI). France et FPT.
+    #[serde(default, with = "rust_decimal::serde::str_option")]
+    pub taux_pas: Option<Decimal>,
+    /// Domicile fiscal pour la grille de taux par défaut : "metropole" (défaut,
+    /// métropole ou hors de France), "grm" (Guadeloupe, La Réunion, Martinique),
+    /// "gm" (Guyane, Mayotte).
+    #[serde(default)]
+    pub pas_zone: Option<String>,
+    /// Contrat court (CDD ou mission ≤ 2 mois, deux premiers mois d'embauche) :
+    /// abattement d'un demi-SMIC sur l'assiette du PAS au taux par défaut.
+    #[serde(default)]
+    pub contrat_court: bool,
+    /// Classement conventionnel (IDCC 0016 seulement) : branche ("marchandises",
+    /// "voyageurs"…), catégorie ("ouvriers"…) et coefficient tels qu'en table
+    /// ccn_minima (0146). Les trois ensemble, sinon pas de contrôle du minimum.
+    #[serde(default)]
+    pub ccn_branche: Option<String>,
+    #[serde(default)]
+    pub ccn_categorie: Option<String>,
+    #[serde(default)]
+    pub ccn_coefficient: Option<String>,
 }
 
 fn etp_default() -> f64 { 100.0 }
@@ -613,6 +636,144 @@ pub struct Bulletin {
     /// `net_a_payer`. Vide sinon. France uniquement.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub avantages_nature: Vec<LigneAvantage>,
+    /// Prélèvement à la source, retenu sur `net_a_payer` (qui reste le net
+    /// AVANT impôt). Absent du JSON hors France et FPT, et avant 2019.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pas: Option<PasResult>,
+    /// Droits à la retraite ouverts par ce mois (voir crate::calculs::droits).
+    /// France (secteur privé) seulement, depuis 2019.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub droits: Option<DroitsResult>,
+    /// Points de vigilance détectés sur le bulletin (crate::calculs::alertes).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alertes: Vec<Alerte>,
+    /// Lignes dont le taux a changé dans les douze mois précédant la paie.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evolutions: Vec<EvolutionTaux>,
+}
+
+/// Changement de taux d'une cotisation : période en vigueur et précédente.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvolutionTaux {
+    pub code: String,
+    /// Date d'effet du taux actuel (AAAA-MM-JJ).
+    pub depuis: String,
+    #[serde(with = "rust_decimal::serde::str")] pub ancien_sal: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub ancien_pat: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub nouveau_sal: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub nouveau_pat: Decimal,
+}
+
+/// Point de vigilance : une règle que le bulletin semble ne pas respecter
+/// (« alerte ») ou qu'il faut avoir en tête (« info »).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Alerte {
+    /// Identifiant stable ("smic", "temps_partiel") : le front compose la
+    /// phrase dans la langue d'affichage à partir de `valeurs` (src/textes.js).
+    pub code: String,
+    /// Valeurs déjà formatées à la française, nommées comme dans les gabarits.
+    #[serde(default)]
+    pub valeurs: std::collections::BTreeMap<String, String>,
+    /// "alerte" | "info".
+    pub niveau: String,
+    pub titre: String,
+    pub texte: String,
+    /// Texte de référence (article de code).
+    pub source: String,
+}
+
+/// Ce que le mois ouvre comme droits à la retraite. Tout est lu sur le
+/// bulletin (bases des lignes) et dans la base (paramètres datés).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DroitsResult {
+    /// Salaire porté au compte du régime de base (assiette vieillesse plafonnée).
+    #[serde(with = "rust_decimal::serde::str")] pub salaire_porte_au_compte: Decimal,
+    /// Assiette vieillesse déplafonnée : ce qui compte pour les trimestres.
+    #[serde(with = "rust_decimal::serde::str")] pub assiette_trimestres: Decimal,
+    /// 150 h × SMIC horaire au 1er janvier.
+    #[serde(with = "rust_decimal::serde::str")] pub seuil_trimestre: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub smic_horaire_janvier: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub heures_trimestre: Decimal,
+    /// Trimestres que ce salaire validerait sur douze mois identiques (≤ 4).
+    pub trimestres_an: u8,
+    /// Ce mois représente combien de « seuils » (ex. 1,75).
+    #[serde(with = "rust_decimal::serde::str")] pub part_trimestre_mois: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub assiette_t1: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub assiette_t2: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub taux_points_t1: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub taux_points_t2: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub prix_achat_point: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub valeur_point: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub points: Decimal,
+    /// Points × valeur de service : rente annuelle brute qu'ils rapporteraient.
+    #[serde(with = "rust_decimal::serde::str")] pub rente_annuelle: Decimal,
+    /// Compte personnel de formation : alimentation qu'ouvre ce temps de travail.
+    pub cpf: Option<CpfResult>,
+}
+
+/// Alimentation du CPF (calculs/droits.rs, migration 0147).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpfResult {
+    /// "general" (500 €) | "handicap" (entreprise adaptée, 800 €) | "esat" (800 €).
+    pub regime: String,
+    /// Alimentation d'une année à ce temps de travail.
+    #[serde(with = "rust_decimal::serde::str")] pub annuel: Decimal,
+    /// Douzième de l'alimentation annuelle, arrondi au centime supérieur.
+    #[serde(with = "rust_decimal::serde::str")] pub mois: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub plafond: Decimal,
+    /// Montant majoré (800 €) de l'année, que le salarié non qualifié peut viser.
+    #[serde(with = "rust_decimal::serde::str")] pub majore: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub plafond_majore: Decimal,
+    /// Vrai sous le mi-temps : alimentation au prorata du temps de travail.
+    pub prorata: bool,
+}
+
+/// Prélèvement à la source (voir crate::calculs::pas).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PasResult {
+    /// Base mensuelle de prélèvement (= net imposable du bulletin).
+    #[serde(with = "rust_decimal::serde::str")] pub base:    Decimal,
+    /// Abattement « contrats courts » retranché de la base (0 sinon).
+    #[serde(with = "rust_decimal::serde::str")] pub abattement: Decimal,
+    /// Assiette effectivement taxée : base − abattement.
+    #[serde(with = "rust_decimal::serde::str")] pub assiette: Decimal,
+    /// Grille appliquée : "METROPOLE", "GRM" ou "GM".
+    pub zone: String,
+    /// Taux appliqué à la TOTALITÉ de la base.
+    #[serde(with = "rust_decimal::serde::str")] pub taux:    Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub montant: Decimal,
+    /// "personnalise" (taux saisi) ou "defaut" (grille).
+    pub origine: String,
+    /// Grille par défaut en vigueur à la date de paie, pour l'affichage —
+    /// même quand un taux personnalisé est saisi (comparaison).
+    pub grille: Vec<TranchePas>,
+    /// Référence BOFiP de la grille.
+    pub source: String,
+}
+
+/// Un palier de minimum conventionnel (table ccn_minima, migration 0146).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinimumCcn {
+    pub idcc: String,
+    pub branche: String,
+    pub categorie: String,
+    pub coefficient: String,
+    pub emploi: Option<String>,
+    pub anciennete_mois: i64,
+    /// "horaire" (taux de l'heure) | "mensuel" (montant pour heures_base).
+    pub unite: String,
+    #[serde(with = "rust_decimal::serde::str")] pub montant: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub heures_base: Decimal,
+    pub date_debut: String,
+    pub source: String,
+}
+
+/// Une plage de la grille de taux par défaut : borne_min ≤ base < borne_max.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranchePas {
+    #[serde(with = "rust_decimal::serde::str")] pub borne_min: Decimal,
+    #[serde(with = "rust_decimal::serde::str_option")] pub borne_max: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str")] pub taux: Decimal,
 }
 
 /// Résultat du calcul des heures supplémentaires/complémentaires (gains majorés

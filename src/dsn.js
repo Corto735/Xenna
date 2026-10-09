@@ -9,9 +9,9 @@
 //
 // ── Pourquoi côté front ? ────────────────────────────────────────────────────
 // La DSN n'est pas un calcul : c'est une TRADUCTION du bulletin déjà calculé
-// par le back Rust. Or deux données nécessaires ne vivent que côté front : le
-// prélèvement à la source (calculé par calculerPas(), cf. main.js) et la date
-// de paie du formulaire. Le module se contente donc de relire un Bulletin.
+// par le back Rust, prélèvement à la source compris (b.pas, calculs/pas.rs).
+// Seule la date de paie du formulaire ne vit que côté front. Le module se
+// contente donc de relire un Bulletin.
 //
 // ── Ce que ce module N'EST PAS ───────────────────────────────────────────────
 // Le fichier produit n'est PAS déposable sur net-entreprises : il est marqué
@@ -1032,7 +1032,7 @@ function smicDepuisFillon(cotFillon) {
  * Fabrique l'extrait de DSN mensuelle correspondant à un bulletin France.
  *
  * @param {object} b   Bulletin renvoyé par le back (`calculer_bulletin`).
- * @param {object} opt { datePaie ISO, pasTotal, pasTaux, versionLogiciel }
+ * @param {object} opt { datePaie ISO, pasTotal, pasTaux, pasPerso, versionLogiciel }
  * @returns {{blocs:Array, lacunes:Array<string>, raw:string, nbRub:number}}
  */
 export function buildDsn(b, opt = {}) {
@@ -1066,6 +1066,11 @@ export function buildDsn(b, opt = {}) {
   const crds       = cot('CRDS') ? num(cot('CRDS').montant_sal) : 0;
   const pasTotal   = num(opt.pasTotal);
   const pasTaux    = num(opt.pasTaux);
+  const pasPerso   = !!opt.pasPerso;
+  // Barème du domicile (13 métropole, 23 Guadeloupe-Réunion-Martinique, 33
+  // Guyane-Mayotte) et assiette réellement taxée (après abattement contrat court).
+  const pasZone    = opt.pasZone || 'METROPOLE';
+  const pasAssiette = opt.pasAssiette != null ? num(opt.pasAssiette) : null;
   // Montant net versé = RNF − CSG non déductible − CRDS. Le PAS ne s'en déduit
   // PAS (S21.G00.50.004) : c'est un piège classique de la rubrique.
   const netVerse   = +(netImpo - csgNd - crds).toFixed(2);
@@ -1280,9 +1285,14 @@ export function buildDsn(b, opt = {}) {
     ['003', '1', "Numéro de versement dans le mois."],
     ['004', mtDsn(netVerse), "Montant net versé = RNF − CSG non déductible − CRDS. Piège classique : le prélèvement à la source ne s'en déduit PAS."],
     ['006', txDsn(pasTaux), "Taux de prélèvement à la source appliqué."],
-    ['007', '13', "Type de taux : barème mensuel métropole, c'est-à-dire la grille de taux par défaut — le cas de l'employeur à qui la DGFiP n'a transmis aucun taux personnalisé. Le code 01 signalerait un taux transmis par la DGFiP.", true],
+    pasPerso
+      ? ['007', '01', "Type de taux : taux transmis par la DGFiP (le taux personnalisé saisi). En DSN réelle, il s'accompagne de l'identifiant du taux (S21.G00.50.008) reçu dans le compte rendu métier, que le simulateur ne connaît pas.", true]
+      : ['007', { METROPOLE: '13', GRM: '23', GM: '33' }[pasZone] || '13',
+         "Type de taux : barème mensuel du domicile du salarié (13 métropole, 23 Guadeloupe-Réunion-Martinique, 33 Guyane-Mayotte), c'est-à-dire la grille de taux par défaut — le cas de l'employeur à qui la DGFiP n'a transmis aucun taux personnalisé. Le code 01 signalerait un taux transmis par la DGFiP.", true],
     ['009', mtDsn(pasTotal), "Montant du prélèvement à la source retenu."],
-    ['013', mtDsn(netImpo), "Montant effectivement soumis au PAS. Toujours renseigné, même égal à la RNF."],
+    ['013', mtDsn(pasAssiette ?? netImpo), pasAssiette != null && pasAssiette < netImpo - 0.004
+      ? "Montant effectivement soumis au PAS : la rémunération nette fiscale diminuée de l'abattement « contrats courts »."
+      : "Montant effectivement soumis au PAS. Toujours renseigné, même égal à la RNF."],
   ]);
 
   // ── Rémunérations ──────────────────────────────────────────────────────────
@@ -1484,7 +1494,7 @@ const _dsnRaw = new Map();
  * de deux mille lignes de tableau, inutile de les poser dans le DOM tant que
  * personne ne les regarde.
  * @param {object} b   Bulletin France.
- * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, versionLogiciel }
+ * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, pasPerso, versionLogiciel }
  */
 function contenuDsn(b, opt = {}) {
   const id = opt.id || 'd';
@@ -1598,7 +1608,7 @@ const _dsnCtx = new Map();
  * possède ces boutons-là. Le seul service rendu ici est la barre qui les aligne.
  *
  * @param {object} b   Bulletin France.
- * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, versionLogiciel, actions }
+ * @param {object} opt { id:'d'|'m', datePaie, pasTotal, pasTaux, pasPerso, versionLogiciel, actions }
  */
 export function renderDsnPanel(b, opt = {}) {
   const id = opt.id || 'd';

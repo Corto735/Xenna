@@ -48,7 +48,7 @@ pub fn bulletin_non_couvert(
         cout_total_employeur: brut,
         devise: devise.into(),
         absence: None,
-        heures_sup: None, conges: None, frais_professionnels: Vec::new(), avantages_nature: Vec::new(),
+        heures_sup: None, conges: None, frais_professionnels: Vec::new(), avantages_nature: Vec::new(), pas: None, droits: None, alertes: Vec::new(), evolutions: Vec::new(),
         salarie,
     }
 }

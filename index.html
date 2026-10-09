@@ -123,11 +123,22 @@
       --font-mono: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     }
 
+    /* OpenDyslexic (SIL OFL 1.1, public/fonts/OpenDyslexic-OFL.txt), servie par
+       l'application : l'ancien lien jsdelivr renvoyait 404 et la CSP interdit
+       de toute façon les fontes d'un CDN tiers — le mode dyslexie tombait en
+       silence sur une fonte de repli. La variante Mono n'est publiée qu'en
+       sources : on prend l'OpenDyslexic standard. */
     @font-face {
-      font-family: 'OpenDyslexicMono';
-      src: url('https://cdn.jsdelivr.net/npm/opendyslexic/fonts/OpenDyslexicMono-Regular.woff2') format('woff2'),
-           url('https://cdn.jsdelivr.net/npm/opendyslexic/fonts/OpenDyslexicMono-Regular.otf') format('opentype');
+      font-family: 'OpenDyslexic';
+      src: url('/fonts/OpenDyslexic-Regular.woff2') format('woff2');
       font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'OpenDyslexic';
+      src: url('/fonts/OpenDyslexic-Bold.woff2') format('woff2');
+      font-weight: bold;
       font-style: normal;
       font-display: swap;
     }
@@ -603,7 +614,7 @@
 
     /* ── Mode dyslexie ──────────────────────────────────────────────────── */
     body.dyslexia-mode,
-    body.dyslexia-mode * { font-family: 'OpenDyslexicMono', 'Fira Code', monospace !important; }
+    body.dyslexia-mode * { font-family: 'OpenDyslexic', 'Fira Code', monospace !important; }
     body.dyslexia-mode { letter-spacing: 0.07em; line-height: 1.7; word-spacing: 0.14em; }
 
     /* ── Thème haute visibilité (malvoyants) ────────────────────────────── */
@@ -1211,6 +1222,67 @@
     .sb-ded-row span:first-child { color: var(--muted-txt); }
     .sb-ded-row span:last-child  { font-variant-numeric: tabular-nums; font-weight: bold; white-space: nowrap; }
     .sb-ded-row .fm-val { position: relative; }
+    /* « En clair » : la phrase pour qui n'est pas du métier, avant la technique */
+    /* Dans .expl-box (flex : explication | référence), la phrase prend toute
+       la largeur au-dessus des deux colonnes. */
+    .expl-box { flex-wrap: wrap; }
+    .expl-box > .expl-clair { flex: 0 0 100%; margin-bottom: 0; }
+    .expl-clair, .mob-exp-clair { font-size: 0.72rem; line-height: 1.55; color: var(--white);
+                      border-left: 2px solid var(--green); padding: 0.15rem 0 0.15rem 0.6rem; margin-bottom: 0.45rem; }
+    .expl-clair strong, .mob-exp-clair strong { color: var(--green); font-weight: normal; letter-spacing: 0.06em; }
+    /* ── Glossaire : terme souligné, bulle unique positionnée en JS ── */
+    dfn.glo         { font-style: inherit; text-decoration: underline dotted var(--muted-txt); text-underline-offset: 0.18em;
+                      cursor: help; }
+    dfn.glo:focus   { outline: 1px dashed var(--blue); outline-offset: 1px; }
+    .glo-bulle      { position: absolute; z-index: 1000; background: var(--bg3); color: var(--text); border: 1px solid var(--blue);
+                      padding: 0.55rem 0.7rem; font-size: 0.68rem; line-height: 1.5; letter-spacing: 0.02em;
+                      box-shadow: 0 4px 14px rgba(0,0,0,0.5); pointer-events: none; text-transform: none; font-weight: normal; }
+    .glo-bulle strong { color: var(--blue); }
+    .glo-liste      { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.5rem 1.2rem;
+                      font-size: 0.68rem; line-height: 1.55; margin: 0 0 1.75rem; }
+    .glo-liste dt   { color: var(--white); }
+    .glo-liste dd   { margin: 0.1rem 0 0; color: var(--muted-txt); }
+    /* Cas types (sous le bouton de lien) */
+    .cas-types      { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.8rem; font-size: 0.6rem;
+                      letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim-txt); }
+    .cas-types select { font-family: inherit; font-size: 0.66rem; letter-spacing: 0.02em; text-transform: none;
+                      background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 0.35rem 0.4rem; }
+    /* Pastille « nouveau taux » */
+    .badge-evo      { display: inline-block; font-size: 0.56rem; letter-spacing: 0.06em; color: var(--blue);
+                      border: 1px solid var(--blue); padding: 0 0.3rem; margin-left: 0.35rem; vertical-align: middle;
+                      white-space: nowrap; cursor: help; text-transform: uppercase; }
+    /* ── Points de vigilance ── */
+    .alertes        { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.6rem 0; }
+    .alerte         { border-left: 3px solid var(--yellow); background: var(--bg2); padding: 0.5rem 0.8rem; font-size: 0.68rem; line-height: 1.5; }
+    .alerte-alerte  { border-left-color: var(--red); }
+    .alerte-titre   { color: var(--white); font-weight: bold; letter-spacing: 0.03em; }
+    .alerte-alerte .alerte-titre { color: var(--red); }
+    .alerte-txt     { color: var(--text); }
+    .alerte-src     { color: var(--dim-txt); white-space: nowrap; }
+    .alerte-lien    { font-family: inherit; font-size: inherit; background: none; border: none; color: var(--blue); cursor: pointer; padding: 0; text-decoration: underline; }
+    /* ── Points de vigilance (repliables) ── */
+    .alertes-det         { border: 1px solid var(--border); background: var(--bg2); margin: 0.6rem 0; }
+    .alertes-det summary { cursor: pointer; padding: 0.55rem 0.9rem; font-size: 0.66rem; letter-spacing: 0.12em;
+                           color: var(--gray-txt); list-style: none; display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: baseline; }
+    .alertes-det summary::-webkit-details-marker { display: none; }
+    .alertes-det summary::before { content: '▶'; font-size: 0.7em; transition: transform 0.15s; }
+    .alertes-det[open] summary::before { transform: rotate(90deg); }
+    .alertes-det .alertes { margin: 0; padding: 0 0.9rem 0.8rem; }
+    .alertes-det .al-grave { color: var(--yellow); }
+    /* ── Droits ouverts par le mois ── */
+    .droits         { border: 1px solid var(--border); background: var(--bg2); margin: 0 0 0.9rem; }
+    .droits summary { cursor: pointer; padding: 0.55rem 0.9rem; font-size: 0.66rem; letter-spacing: 0.12em;
+                      color: var(--gray-txt); list-style: none; display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: baseline; }
+    .droits summary::-webkit-details-marker { display: none; }
+    .droits summary::before { content: '▶'; font-size: 0.7em; transition: transform 0.15s; }
+    .droits[open] summary::before { transform: rotate(90deg); }
+    .dr-body        { padding: 0.1rem 0.9rem 0.7rem; font-size: 0.72rem; }
+    .dr-liste       { margin: 0 0 0.35rem; padding-left: 1.1rem; color: var(--text); line-height: 1.6; }
+    .dr-note        { color: var(--dim-txt); font-size: 0.9em; }
+    .cc-resume        { letter-spacing: 0.02em; color: var(--muted-txt); font-size: 0.95em; }
+    /* Montant net social, sous le net à payer : secondaire mais obligatoire. */
+    .sb-net-social { margin-top: 0.35rem; padding-top: 0.25rem; border-top: 1px dashed var(--border); }
+    .sb-net-social span:last-child { color: var(--green); }
     .sb-ded-total {
       display: flex;
       justify-content: space-between;
@@ -1288,6 +1360,22 @@
     @keyframes perso-appui { to { background-size: 100% 100%; } }
     /* Tête « Rémunération » : libellé puis jauge de répartition du coût
        employeur, jusqu'à la marge droite. */
+    /* Bascule détail / comme sur mon bulletin + en-têtes de groupe */
+    .vc-bascule { display: inline-flex; border: 1px solid var(--border); margin-left: auto; }
+    .vc-btn { font-family: inherit; font-size: 0.58rem; letter-spacing: 0.1em; padding: 0.25rem 0.6rem;
+              background: transparent; color: var(--muted-txt); border: none; cursor: pointer; }
+    .vc-btn.on { background: var(--blue); color: var(--bg); }
+    tr.grp-tete { cursor: pointer; background: var(--bg2); }
+    tr.grp-tete td { border-top: 1px solid var(--border); }
+    tr.grp-tete .expand-icon { display: inline-block; transition: transform 0.15s; }
+    tr.grp-tete.open .expand-icon { transform: rotate(90deg); }
+    tr.grp-tete .grp-clair { display: block; font-size: 0.82em; color: var(--muted-txt); margin: 0.15rem 0 0 1.2rem; line-height: 1.4; }
+    tr.grp-ligne td:first-child { padding-left: 1.6rem; }
+    .mob-vc { display: flex; padding: 0.4rem 0.9rem; }
+    .mob-vc .vc-bascule { margin-left: 0; }
+    .mob-grp-tete { cursor: pointer; background: var(--bg2); border-top: 1px solid var(--border); }
+    .mob-grp-clair { font-size: 0.62rem; color: var(--muted-txt); line-height: 1.4; padding: 0 0.9rem 0.45rem 1.9rem; }
+    .mob-grp-lignes { padding-left: 0.8rem; border-left: 2px solid var(--border); }
     .tbl-section-head.sh-rem { display: flex; align-items: center; gap: 0.75rem; }
     .tbl-section-head.sh-rem > span:first-child { flex-shrink: 0; }
     .jauge-rep {
@@ -1296,6 +1384,16 @@
     }
     .jauge-seg { flex-basis: 0; min-width: 2px; cursor: help; }
     .jauge-seg:hover { filter: brightness(1.35); }
+    .jauge-btn { padding: 0; border: none; cursor: pointer; height: 10px; background: transparent; }
+    .jauge-btn .jauge-seg { height: 4px; align-self: center; cursor: pointer; }
+    .jauge-btn:focus-visible { outline: 1px dotted var(--white); outline-offset: 2px; }
+    .jauge-leg { padding: 0.35rem 0.9rem 0.45rem; border-bottom: 1px solid var(--border); font-size: 0.68rem; background: var(--bg2); }
+    .jauge-leg[hidden] { display: none; }
+    .jauge-leg-l { display: flex; align-items: center; gap: 0.5rem; padding: 0.12rem 0; }
+    .jauge-leg-c { width: 0.7rem; height: 0.7rem; border-radius: 2px; flex-shrink: 0; }
+    .jauge-leg-lbl { flex: 1; color: var(--text); }
+    .jauge-leg-v { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text); }
+    .jauge-leg-p { color: var(--muted-txt); display: inline-block; min-width: 3.2rem; text-align: right; }
     /* ── Extrait DSN (bas de bulletin) ────────────────────────── */
     /* Uniquement des var() : les thèmes N&B, minitel et dyslexie
        redéfinissent les variables, la section suit sans règle dédiée. */
@@ -1864,6 +1962,8 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
+    .mob-rem-head { align-items: center; gap: 0.75rem; }
+    .mob-rem-head .mob-lbl { flex: 0 0 auto; }
     .mob-row.subtot {
       background: var(--bg2);
       font-weight: bold;
@@ -2428,6 +2528,8 @@
     .pas-tbl td:not(:first-child) { text-align: right; }
     .pas-tbl td:first-child { color: var(--muted-txt); width: 46%; }
     .pas-tbl tr.pas-zero td { color: var(--dim-txt); }
+    .fm-base-note a { color: var(--blue); }
+    .pas-tbl tr.pas-actif td { color: var(--text); font-weight: bold; background: var(--bg3); }
     .pas-tbl tfoot tr td {
       border-top: 1px solid var(--border);
       padding-top: 0.45rem;
@@ -2595,6 +2697,37 @@
     .ccn-table tbody tr:nth-child(even) td { background: var(--bg2); }
     .ccn-table th.num, .ccn-table td.num   { text-align: right; }
     .ccn-table td:first-child { color: var(--white); }
+    /* Veille réglementaire du Chakrram : une fiche par régime, en grille. */
+    .ckv-sec          { margin-top: 0.5rem; border-top: none; padding-top: 0; }
+    .ckv              { margin-bottom: 1rem; }
+    .ckv-resume       { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.9rem; }
+    .ckv-stat         { border: 1px solid var(--border); background: var(--bg2); padding: 0.55rem 0.8rem;
+                        font-size: 0.6rem; color: var(--muted-txt); letter-spacing: 0.06em; flex: 1; min-width: 9rem; }
+    .ckv-stat b       { display: block; font-size: 1rem; font-weight: normal; color: var(--white); }
+    .ckv-stat.ok b    { color: var(--green); }
+    .ckv-stat.ko b    { color: var(--yellow); }
+    .ckv-outils       { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.9rem; }
+    .ckv-filtre       { flex: 1; min-width: 12rem; font-family: inherit; font-size: 0.68rem; background: var(--bg);
+                        color: var(--text); border: 1px solid var(--border); padding: 0.45rem 0.6rem; border-radius: 2px; }
+    .ckv-filtre:focus { outline: none; border-color: var(--blue); }
+    .ckv-grp          { font-size: 0.56rem; color: var(--dim-txt); letter-spacing: 0.16em; text-transform: uppercase;
+                        margin: 1.1rem 0 0.5rem; }
+    .ckv-grille       { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.6rem; }
+    .ckv-fiche        { border: 1px solid var(--border); border-left: 2px solid var(--green); background: var(--bg2);
+                        padding: 0.7rem 0.85rem; font-size: 0.64rem; line-height: 1.55; min-width: 0; }
+    .ckv-fiche.ko     { border-left-color: var(--yellow); }
+    .ckv-tete         { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
+    .ckv-nom          { color: var(--white); font-size: 0.72rem; letter-spacing: 0.03em; }
+    .ckv-annee        { white-space: nowrap; color: var(--green); font-size: 0.6rem; letter-spacing: 0.06em; }
+    .ckv-fiche.ko .ckv-annee { color: var(--yellow); }
+    .ckv-maj          { color: var(--muted-txt); font-size: 0.6rem; margin-top: 0.2rem; }
+    .ckv-lacunes      { margin: 0.45rem 0 0; padding-left: 1rem; color: var(--yellow); }
+    .ckv-fiche details { margin-top: 0.5rem; }
+    .ckv-fiche summary { cursor: pointer; color: var(--muted-txt); font-size: 0.6rem; letter-spacing: 0.06em; }
+    .ckv-fiche .veille-journal { font-size: 0.62rem; margin-top: 0.3rem; }
+    .ckv-tag          { color: var(--blue); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 0.3rem; }
+    .ckv-vide         { color: var(--muted-txt); font-size: 0.64rem; padding: 0.6rem 0; }
+
     .ccn-bareme-note  { font-size: 0.58rem; color: var(--dim-txt); letter-spacing: 0.03em;
                         line-height: 1.5; margin-top: 0.4rem; }
 
@@ -4472,6 +4605,23 @@
             <input type="number" id="d-anciennete" value="1" min="0" max="100" step="1" onchange="syncParam('anciennete', this.value)" />
             <span class="duree-unit">ans</span>
           </div>
+          <div class="duree-row">
+            <label title="Taux de prélèvement à la source personnalisé, celui de votre avis d'impôt ou de votre espace impots.gouv (repris sur votre bulletin). Vide : taux par défaut de la grille (art. 204 H CGI)">Taux PAS</label>
+            <input type="number" id="d-taux-pas" value="" min="0" max="100" step="0.1" placeholder="défaut" onchange="syncParam('taux-pas', this.value)" />
+            <span class="duree-unit">%</span>
+          </div>
+          <div class="duree-row">
+            <label title="Grille de taux par défaut selon la résidence principale du salarié (art. 204 H, III-1 CGI). Sans effet si un taux personnalisé est saisi.">Domicile fiscal</label>
+            <select id="d-pas-zone" onchange="syncParam('pas-zone', this.value)" class="etp-sel" style="flex:1">
+              <option value="metropole">Métropole ou hors de France</option>
+              <option value="grm">Guadeloupe, Martinique, La Réunion</option>
+              <option value="gm">Guyane, Mayotte</option>
+            </select>
+          </div>
+          <div class="duree-row">
+            <label title="CDD ou contrat de mission dont le terme initial n'excède pas deux mois, dans les deux premiers mois d'embauche : abattement d'un demi-SMIC sur l'assiette du PAS au taux par défaut (art. 204 H, III-1-d CGI).">Contrat court (≤ 2 mois)</label>
+            <input type="checkbox" id="d-contrat-court" onchange="syncParam('contrat-court', this.checked)" />
+          </div>
           <div class="param-group-title">Entreprise</div>
           <div class="duree-row">
             <label title="Détermine la déduction forfaitaire patronale sur les heures supplémentaires">Effectif</label>
@@ -4488,6 +4638,12 @@
               <option value="0016">IDCC 0016</option>
             </select>
           </div>
+          <div class="duree-row" id="d-ccn-classe-row" hidden title="Branche, catégorie et coefficient du salarié : le bulletin compare alors le salaire de base au minimum de la grille, ancienneté comprise">
+            <label>Classement</label>
+            <select id="d-ccn-classe" onchange="syncParam('ccn-classe', this.value)" class="etp-sel" style="flex:1">
+              <option value="">— non précisé —</option>
+            </select>
+          </div>
           <label class="chk-apply-brut">
             <input type="checkbox" id="d-apply-brut-chk" onchange="onApplyBrutChk('d')" />
             <span>APPLIQUER</span>
@@ -4496,6 +4652,11 @@
 
         <button class="btn-calc" id="d-calc">[ CALCULER ]</button>
           <button class="btn-lien" id="d-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
+          <label class="cas-types">Cas types
+            <select id="d-cas-type" onchange="casType(this.value); this.value=''">
+              <option value="">— choisir un exemple —</option>
+            </select>
+          </label>
       </div>
     </div>
 
@@ -4962,6 +5123,23 @@
               <input type="number" id="m-anciennete" value="1" min="0" max="100" step="1" onchange="syncParam('anciennete', this.value)" />
               <span class="duree-unit">ans</span>
             </div>
+            <div class="duree-row">
+              <label title="Taux de prélèvement à la source personnalisé, celui de votre avis d'impôt ou de votre espace impots.gouv (repris sur votre bulletin). Vide : taux par défaut de la grille (art. 204 H CGI)">Taux PAS</label>
+              <input type="number" id="m-taux-pas" value="" min="0" max="100" step="0.1" placeholder="défaut" onchange="syncParam('taux-pas', this.value)" />
+              <span class="duree-unit">%</span>
+            </div>
+            <div class="duree-row">
+              <label title="Grille de taux par défaut selon la résidence principale du salarié (art. 204 H, III-1 CGI). Sans effet si un taux personnalisé est saisi.">Domicile fiscal</label>
+              <select id="m-pas-zone" onchange="syncParam('pas-zone', this.value)" class="etp-sel" style="flex:1">
+                <option value="metropole">Métropole ou hors de France</option>
+                <option value="grm">Guadeloupe, Martinique, La Réunion</option>
+                <option value="gm">Guyane, Mayotte</option>
+              </select>
+            </div>
+            <div class="duree-row">
+              <label title="CDD ou contrat de mission dont le terme initial n'excède pas deux mois, dans les deux premiers mois d'embauche : abattement d'un demi-SMIC sur l'assiette du PAS au taux par défaut (art. 204 H, III-1-d CGI).">Contrat court (≤ 2 mois)</label>
+              <input type="checkbox" id="m-contrat-court" onchange="syncParam('contrat-court', this.checked)" />
+            </div>
             <div class="param-group-title">Entreprise</div>
             <div class="duree-row">
               <label title="Détermine la déduction forfaitaire patronale sur les heures supplémentaires">Effectif</label>
@@ -4978,6 +5156,12 @@
                 <option value="0016">IDCC 0016</option>
               </select>
             </div>
+            <div class="duree-row" id="m-ccn-classe-row" hidden title="Branche, catégorie et coefficient du salarié : le bulletin compare alors le salaire de base au minimum de la grille, ancienneté comprise">
+              <label>Classement</label>
+              <select id="m-ccn-classe" onchange="syncParam('ccn-classe', this.value)" class="etp-sel" style="flex:1">
+                <option value="">— non précisé —</option>
+              </select>
+            </div>
             <label class="chk-apply-brut" style="grid-column:1/-1">
               <input type="checkbox" id="m-apply-brut-chk" onchange="onApplyBrutChk('m')" />
               <span>APPLIQUER</span>
@@ -4986,6 +5170,11 @@
 
           <button class="btn-calc" id="m-calc">[ CALCULER ]</button>
           <button class="btn-lien" id="m-lien" type="button" hidden onclick="copierLien(this)" title="Le lien contient la saisie (sans nom ni prénom) ; il ne transite par aucun serveur.">⧉ copier le lien de cette simulation</button>
+          <label class="cas-types">Cas types
+            <select id="m-cas-type" onchange="casType(this.value); this.value=''">
+              <option value="">— choisir un exemple —</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -5137,6 +5326,10 @@
       · <strong>Le moteur est une bibliothèque pure</strong> : aucune dépendance à Tauri ni à Axum.
         Il peut tourner en CLI, en WASM, sur mobile — sans modification.
     </div>
+
+    <!-- ── Glossaire (src/glossaire.js) ── -->
+    <div class="sect-label">LE VOCABULAIRE DU BULLETIN</div>
+    <div id="apropos-glossaire"></div>
 
     <!-- ── Fraîcheur des barèmes (veille.rs) ── -->
     <div class="sect-label">FRAÎCHEUR DES BARÈMES, PAYS PAR PAYS</div>
@@ -5357,11 +5550,17 @@
     <div class="about-head">
       <div class="about-title">LE CHAKRRAM<sup class="ccn-idcc">IDCC</sup></div>
       <div class="about-sub">
-        Conventions collectives — grilles de salaires minimaux et maintien
-        de salaire en cas d'absence maladie, recopiés du texte.
+        Veille réglementaire et législative — fraîcheur des barèmes, pays par
+        pays — et conventions collectives, recopiées du texte.
       </div>
     </div>
 
+    <!-- ── Veille réglementaire (veille.rs) : mêmes données que « À propos »,
+         rangées en fiches par régime ── -->
+    <div class="ccn-sec-lbl ckv-sec">Veille réglementaire et législative</div>
+    <div id="chakrram-veille" class="ckv"></div>
+
+    <div class="ccn-sec-lbl">Conventions collectives</div>
     <div id="ccn-body"></div>
   </div>
 

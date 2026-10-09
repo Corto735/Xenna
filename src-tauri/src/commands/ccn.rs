@@ -8,8 +8,8 @@
 // Contenu éditorial : aucune de ces données n'entre dans un bulletin.
 
 use crate::{
-    ccn::routes::{charger_conventions, charger_dossier, idcc_valide},
-    ccn::models::{ConventionResume, DossierCcn},
+    ccn::routes::{charger_classifications, charger_conventions, charger_dossier, idcc_valide},
+    ccn::models::{Classification, ConventionResume, DossierCcn},
     AppState,
 };
 
@@ -36,4 +36,18 @@ pub async fn conventions_ccn(
     charger_conventions(&state.db)
         .await
         .map_err(|e| format!("Lecture des conventions impossible : {e}"))
+}
+
+#[tauri::command]
+pub async fn classifications_ccn(
+    state: tauri::State<'_, AppState>,
+    idcc: Option<String>,
+) -> Result<Vec<Classification>, String> {
+    let idcc = idcc.unwrap_or_else(|| "0016".to_string());
+    if !idcc_valide(&idcc) {
+        return Err(format!("Code IDCC invalide : '{idcc}'"));
+    }
+    charger_classifications(&state.db, &idcc)
+        .await
+        .map_err(|e| format!("Lecture des classifications impossible : {e}"))
 }

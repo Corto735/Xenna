@@ -76,6 +76,96 @@ pub enum Specificite {
 /// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
+        date: "2026-10-09",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Droits ouverts par le mois : alimentation du compte personnel de formation ajoutée — 500 € par an au moins à mi-temps (plafond 5 000 €), prorata en deçà, 800 € (plafond 8 000 €) en ESAT et pour le travailleur handicapé d'entreprise adaptée, mention des 800 € du salarié non qualifié ; un mois en vaut le douzième, arrondi au centime supérieur. Montants inchangés depuis 2019",
+        taux: false,
+        sources: &[
+            "https://www.service-public.gouv.fr/particuliers/vosdroits/F10705",
+            "https://www.centre-inffo.fr/site-droit-formation/actualites-droit/alimentation-du-cpf-publication-du-decret",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-09",
+        pays: Pays::France,
+        specificite: Some(Specificite::Idcc0016),
+        objet: "Minimum conventionnel contrôlé sur le bulletin : avec un classement choisi dans Paramètres (branche, catégorie, coefficient), le salaire de base est comparé au taux ou au salaire garanti du coefficient, palier d'ancienneté et temps de travail compris (marchandises, voyageurs, déménagement, logistique, sanitaire — grilles déjà relevées au Chakrram, sans valeur nouvelle). Garanties annuelles et majorations DC du déménagement hors champ",
+        taux: false,
+        sources: &[
+            "https://www.legifrance.gouv.fr/conv_coll/id/KALITEXT000049067154/?idConteneur=KALICONT000005635624",
+            "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000053788378",
+            "https://www.legifrance.gouv.fr/conv_coll/id/KALITEXT000051927426",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::France,
+        specificite: None,
+        objet: "SMIC 10,48 € / 1 589,47 € corrigé : applicable dès le 1er octobre 2021 (arrêté du 27/09/2021, revalorisation automatique de 2,2 %) et non au 1er août ; les paies d'août et septembre 2021 retrouvent 10,25 € / 1 554,58 €, réduction générale comprise",
+        taux: true,
+        sources: &[
+            "https://www.editions-tissot.fr/actualite/droit-du-travail/smic-au-1er-octobre-2021-une-hausse-mecanique",
+            "https://www.lafinancepourtous.com/2021/09/17/revalorisation-automatique-du-smic-au-1er-octobre-2021-22/",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Prélèvement à la source : grilles de taux par défaut d'outre-mer ajoutées (Guadeloupe, La Réunion, Martinique ; Guyane, Mayotte), 2019 à 2026, choisies selon le domicile fiscal ; abattement « contrats courts » (CDD ou mission ≤ 2 mois, moitié du SMIC mensuel net imposable : de 624 € en 2019 à 766 € au 01/06/2026) retranché de l'assiette avant lecture de la grille. Vaut aussi pour la FPT",
+        taux: false,
+        sources: &[
+            "https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20260706",
+            "https://bofip.impots.gouv.fr/bofip/11252-PGP.html/identifiant=BOI-IR-PAS-20-20-30-10-20230626",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::France,
+        specificite: None,
+        objet: "SMIC 11,88 € / 1 801,80 € corrigé : applicable dès le 1er novembre 2024 (décret n° 2024-951 du 23/10/2024) et non au 1er décembre ; vaut aussi pour la réduction générale de novembre 2024, la revalorisation n'étant pas neutralisée en 2024",
+        taux: true,
+        sources: &[
+            "https://www.info.gouv.fr/actualite/revalorisation-du-smic-au-1er-novembre-2024",
+            "https://www.editions-tissot.fr/actualite/droit-du-travail/reduction-generale-des-cotisations-patronales-comment-prendre-en-compte-la-hausse-du-smic-au-1er-novembre-2024",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Ajout des droits à la retraite ouverts par le mois : points Agirc-Arrco (prix d'achat du point 2019 à 2026, de 17,0571 € à 20,1877 € ; valeur de service de 1,2588 € à 1,4386 € ; taux de calcul des points 6,20 % / 17 %) et trimestres (150 h × SMIC horaire du 1er janvier, art. R351-9 CSS). Ajout d'alertes de cohérence : salaire de base sous le SMIC (L3231-2), temps partiel sous 24 h (L3123-27)",
+        taux: false,
+        sources: &[
+            "https://www.agirc-arrco.fr/storage/2024/10/Compilation_valeurs_de_point_novembre_2025.pdf",
+            "https://www.legisocial.fr/reperes-sociaux/point-retraite-complementaire-arrco-agirc-2026.html",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::FonctionPublique,
+        specificite: None,
+        objet: "Prélèvement à la source corrigé comme pour le privé : taux unique de la grille par défaut sur la totalité du net imposable (art. 204 H, III CGI), grilles 2019 à 2026 datées, taux personnalisé saisissable",
+        taux: true,
+        sources: &[
+            "https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20260407",
+        ],
+    },
+    MiseAJour {
+        date: "2026-10-08",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Prélèvement à la source corrigé : le taux de la grille par défaut s'applique désormais à la totalité du net imposable (art. 204 H, III CGI) et non plus tranche par tranche, ce qui sous-estimait la retenue ; grilles métropole 2019 à 2026 mises en base et datées (2024 prolongée jusqu'au 30/04/2025, 2025 jusqu'au 30/04/2026, 2026 à compter du 01/05/2026) ; aucun PAS avant 2019 ; taux personnalisé saisissable. Vaut aussi pour la fonction publique territoriale",
+        taux: true,
+        sources: &[
+            "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049641730",
+            "https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20260407",
+            "https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20250410",
+            "https://bofip.impots.gouv.fr/bofip/11255-PGP.html/identifiant=BOI-BAREME-000037-20240228",
+        ],
+    },
+    MiseAJour {
         date: "2026-10-03",
         pays: Pays::Espagne,
         specificite: None,

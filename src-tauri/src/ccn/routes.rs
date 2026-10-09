@@ -16,7 +16,7 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 
 use super::models::{
-    Activite, Branche, Convention, ConventionResume, DossierCcn, DossierGrilles, Grille, Indemnites,
+    Activite, Branche, Classification, Convention, ConventionResume, DossierCcn, DossierGrilles, Grille, Indemnites,
     Maintien,
     Reglementation, ReglementationAdmin, ReglementationInput, Theme,
 };
@@ -226,6 +226,30 @@ pub async fn charger_grilles(
         maintien,
         indemnites,
     }))
+}
+
+/// Coefficients dont le minimum est structuré (ccn_minima), grille la plus
+/// récente de chacun, dans l'ordre des branches puis des catégories.
+pub async fn charger_classifications(
+    pool: &SqlitePool,
+    idcc: &str,
+) -> Result<Vec<Classification>, sqlx::Error> {
+    sqlx::query_as::<_, Classification>(
+        "SELECT m.branche, b.libelle AS branche_libelle, m.categorie, m.coefficient, m.emploi,
+                m.date_debut
+           FROM ccn_minima m
+           JOIN ccn_branches b ON b.idcc = m.idcc AND b.code = m.branche
+          WHERE m.idcc = ? AND m.anciennete_mois = 0
+            AND m.date_debut = (SELECT MAX(date_debut) FROM ccn_minima x
+                                 WHERE x.idcc = m.idcc AND x.branche = m.branche
+                                   AND x.categorie = m.categorie AND x.coefficient = m.coefficient)
+          ORDER BY b.ordre,
+                   CASE m.categorie WHEN 'ouvriers' THEN 1 WHEN 'employes' THEN 2 WHEN 'tam' THEN 3 ELSE 4 END,
+                   m.id",
+    )
+    .bind(idcc)
+    .fetch_all(pool)
+    .await
 }
 
 /// Un IDCC est un code court numérique. Partagé par le web et le bureau.
@@ -653,6 +677,16 @@ pub fn ccn_router() -> Router<Db> {
         .route("/api/dossier_ccn", post(dossier_post))
         .route("/api/grilles_ccn", post(grilles_post))
         .route("/api/conventions_ccn", post(conventions_post))
+        .route("/api/classifications_ccn", post(classifications_post))
+}
+
+async fn classifications_post(
+    State(pool): State<Db>,
+    Json(req): Json<DossierReq>,
+) -> Result<Json<Vec<Classification>>, CcnError> {
+    let idcc = req.idcc.unwrap_or_else(|| "0016".to_string());
+    valider_idcc(&idcc)?;
+    Ok(Json(charger_classifications(&pool, &idcc).await?))
 }
 
 /// Routes d'écriture, à monter sous le préfixe admin (qui reste le
