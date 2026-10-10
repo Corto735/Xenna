@@ -69,7 +69,7 @@ export const TEXTES = {
   ],
 
   // ── Pastille « nouveau taux »
-  'ev.badge': ['nouveau taux · {date}', 'new rate · {date}', 'neuer Satz · {date}', 'nieuw tarief · {date}', 'nuova aliquota · {date}', 'nuevo tipo · {date}'],
+  'ev.badge': ['new : {date}', 'new: {date}', 'new: {date}', 'new: {date}', 'new: {date}', 'new: {date}'],
   'ev.titre': ['Taux modifié le {date} : {details}', 'Rate changed on {date}: {details}', 'Satz geändert am {date}: {details}', 'Tarief gewijzigd op {date}: {details}', 'Aliquota modificata il {date}: {details}', 'Tipo modificado el {date}: {details}'],
   'ev.sal': ['part salarié {a} → {b}', 'employee share {a} → {b}', 'Arbeitnehmeranteil {a} → {b}', 'werknemersaandeel {a} → {b}', 'quota dipendente {a} → {b}', 'parte del trabajador {a} → {b}'],
   'ev.pat': ['part patronale {a} → {b}', 'employer share {a} → {b}', 'Arbeitgeberanteil {a} → {b}', 'werkgeversaandeel {a} → {b}', 'quota datore {a} → {b}', 'parte de la empresa {a} → {b}'],

@@ -2543,6 +2543,10 @@ function _ccnBanner(b, cls) {
 // Bulletin français (privé ou FPT) : CSG déductible, CSG non déductible et
 // CRDS en fin de cotisations, comme sur un bulletin réel. Ordre relatif
 // conservé de part et d'autre.
+// Lignes CSG/CRDS : leur part salariale s'affiche en rose, comme leur segment
+// dans la jauge de la tête « Rémunération ».
+const _estCsg = c => c.categorie === 'CSG/CRDS' || ['CSG_DEDUCTIBLE', 'CSG_NON_DEDUCTIBLE', 'CRDS'].includes(c.code);
+
 function _csgEnFin(b, lignes) {
   if (!['france', 'fonction_publique'].includes(b.salarie?.pays)) return lignes;
   const csg = c => c.categorie === 'CSG/CRDS';
@@ -2720,7 +2724,7 @@ function renderDesktop(b) {
     return list.map((c, i) => {
       const idx    = offset + i;
       const catCls = CAT_CLASS[c.categorie] || "cat-ss";
-      const salCls = parseFloat(c.montant_sal) > 0 ? "c-sal" : "c-dim";
+      const salCls = parseFloat(c.montant_sal) > 0 ? (_estCsg(c) ? "c-csg" : "c-sal") : "c-dim";
       const patCls = parseFloat(c.montant_pat) > 0 ? "c-pat" : "c-dim";
 
       const keySal = `${c.code}_sal`;
@@ -2749,8 +2753,7 @@ function renderDesktop(b) {
           <td colspan="6">
             <div class="expl-box">
               ${_enClairHtml(c)}
-              <div class="expl-txt trad-skip">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
-              ${c.loi_ref ? `<div class="expl-ref trad-skip">§ ${esc(c.loi_ref)}</div>` : ""}
+              <div class="expl-txt trad-skip">▸ ${esc(c.explication)}${buildHistoire(c)}${c.loi_ref ? `<div class="expl-ref trad-skip">§ ${esc(c.loi_ref)}</div>` : ""}</div>
             </div>
           </td>
         </tr>`;
@@ -2841,8 +2844,11 @@ function renderDesktop(b) {
           const taux    = Math.abs(parseFloat(isSalSide ? c.taux_sal : c.taux_pat));
           const keyAlleg = `${c.code}_alleg`;
           _fmStore[keyAlleg] = { c, type: 'alleg' };
-          const cellMontant = `<td class="r c-alleg" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">${estZero(montant) ? '' : `− ${fmt(montant)}${buildFormulaStar(keyAlleg)}`}</td>`;
-          const cellTaux = `<td class="r c-alleg">${pctOuVide(taux)}</td>`;
+          // Réduction Fillon en bleu comme le super brut : elle allège le coût
+          // employeur, pas le net à payer (vert).
+          const allegCls = c.code === 'REDUCTION_FILLON' ? 'c-eblue' : 'c-alleg';
+          const cellMontant = `<td class="r ${allegCls}" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">${estZero(montant) ? '' : `− ${fmt(montant)}${buildFormulaStar(keyAlleg)}`}</td>`;
+          const cellTaux = `<td class="r ${allegCls}">${pctOuVide(taux)}</td>`;
           return `
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>
@@ -2858,8 +2864,7 @@ function renderDesktop(b) {
               <td colspan="6">
                 <div class="expl-box">
                   ${_enClairHtml(c)}
-                  <div class="expl-txt">▸ ${esc(c.explication)}${buildHistoire(c)}</div>
-                  ${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}
+                  <div class="expl-txt">▸ ${esc(c.explication)}${buildHistoire(c)}${c.loi_ref ? `<div class="expl-ref">§ ${esc(c.loi_ref)}</div>` : ""}</div>
                 </div>
               </td>
             </tr>`;
@@ -2868,7 +2873,7 @@ function renderDesktop(b) {
           <td colspan="3">TOTAL ALLÈGEMENTS & EXONÉRATIONS</td>
           <td class="r c-alleg">${totalAllegSal < 0 ? '+ ' + fmt(Math.abs(totalAllegSal)) : ''}</td>
           <td></td>
-          <td class="r c-alleg">${totalAllegPat < 0 ? '− ' + fmt(Math.abs(totalAllegPat)) : ''}</td>
+          <td class="r c-eblue">${totalAllegPat < 0 ? '− ' + fmt(Math.abs(totalAllegPat)) : ''}</td>
         </tr>
       </tbody>
     </table>`;
@@ -2879,8 +2884,7 @@ function renderDesktop(b) {
   // La CSG et la CRDS se détachent des cotisations : elles n'ouvrent aucun droit.
   // Les charges patronales sont nettes des allègements et exonérations.
   const impot = pas.total + isChAmt + itIrpefAmt + itBonusAmt;
-  const estCsg = c => c.categorie === 'CSG/CRDS' || ['CSG_DEDUCTIBLE', 'CSG_NON_DEDUCTIBLE', 'CRDS'].includes(c.code);
-  const csgCrds = cots.filter(estCsg).reduce((s, c) => s + parseFloat(c.montant_sal), 0);
+  const csgCrds = cots.filter(_estCsg).reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   _repartition = { net: netPayer, sal: totalSal - isChAmt - itIrpefAmt - itBonusAmt - csgCrds, csg: csgCrds, pas: impot, pat: totalPat };
 
   el.innerHTML = simBanner + buildAlertes(b) + summaryBar
@@ -3272,7 +3276,7 @@ function renderMobile(b) {
       ${c.loi_ref ? `<div class="mob-exp-loi">§ ${esc(c.loi_ref)}</div>` : ''}`;
     const stripeCls = `mob-stripe-sal-${i % 2 === 0 ? 'a' : 'b'}`;
     const amtsSal = hasSal
-      ? `<span class="mob-val mob-cot-amt" style="color:var(--sal)" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
+      ? `<span class="mob-val mob-cot-amt" style="color:var(${_estCsg(c) ? '--pink' : '--sal'})" onclick="mobToggle('${expandId}','sal')">− ${fmt(c.montant_sal)}</span>`
       : '<span class="mob-val">&nbsp;</span>'; // vide, mais garde sa ligne
     const amtsPat = hasPat
       ? `<span class="mob-val c-orange mob-cot-amt" onclick="mobToggle('${expandId}','pat')">− ${fmt(c.montant_pat)}</span>`
@@ -3317,7 +3321,8 @@ function renderMobile(b) {
       const isSalSide = Math.abs(parseFloat(c.montant_sal)) > 0;
       const montant = Math.abs(parseFloat(isSalSide ? c.montant_sal : c.montant_pat));
       const mHtml = estZero(montant) ? '' : `${isSalSide ? '+' : '−'} ${fmt(montant)}`;
-      return buildMobCotRow(c, `${c.code}_alleg`, mHtml, 'c-alleg', isSalSide ? 'sal' : 'alleg', i);
+      const allegCls = c.code === 'REDUCTION_FILLON' ? 'c-eblue' : 'c-alleg'; // Fillon : coût employeur (bleu)
+      return buildMobCotRow(c, `${c.code}_alleg`, mHtml, allegCls, isSalSide ? 'sal' : 'alleg', i);
     })
     .join('');
 
@@ -3436,7 +3441,7 @@ function renderMobile(b) {
       </div>` : ''}
       ${totalAlleg < 0 ? `<div class="mob-row subtot">
         <span class="mob-lbl">TOTAL allègements patronaux</span>
-        <span class="mob-val c-alleg">− ${fmt(Math.abs(totalAlleg))}</span>
+        <span class="mob-val c-eblue">− ${fmt(Math.abs(totalAlleg))}</span>
       </div>` : ''}` : ""}
 
       <!-- Coût total employeur -->
