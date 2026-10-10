@@ -2848,7 +2848,7 @@ function renderDesktop(b) {
           // employeur, pas le net à payer (vert).
           const allegCls = c.code === 'REDUCTION_FILLON' ? 'c-eblue' : 'c-alleg';
           const cellMontant = `<td class="r ${allegCls}" onclick="event.stopPropagation();showFormula('${keyAlleg}')" style="cursor:pointer">${estZero(montant) ? '' : `− ${fmt(montant)}${buildFormulaStar(keyAlleg)}`}</td>`;
-          const cellTaux = `<td class="r ${allegCls}">${pctOuVide(taux)}</td>`;
+          const cellTaux = `<td class="r${c.code === 'REDUCTION_FILLON' ? '' : ' c-alleg'}">${pctOuVide(taux)}</td>`;
           return `
             <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
               <td>

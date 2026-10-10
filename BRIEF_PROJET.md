@@ -487,9 +487,8 @@ se mesurer à ce principe.
   **reconstruite à chaque déploiement** par les migrations. Les données
   applicatives (forum, scores de quizz, profils) ne survivent donc pas à un
   redéploiement.
-- La fonte du mode Minitel est chargée depuis `cdn.jsdelivr.net`, alors que la
-  CSP n'autorise `font-src` que sur `'self'` et `fonts.gstatic.com` : elle est
-  probablement bloquée en production.
+- Toutes les fontes sont auto-hébergées (Roboto via @fontsource, OpenDyslexic,
+  Minitel) : la CSP limite `font-src` à `'self'`, aucun appel à Google Fonts.
 
 ---
 

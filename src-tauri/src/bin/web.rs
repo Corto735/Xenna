@@ -240,8 +240,8 @@ async fn security_headers(req: Request, next: Next) -> Response {
         // worker-src 'self' blob: — requis par le widget Altcha (Web Worker)
         HeaderValue::from_static(
             "default-src 'self'; \
-             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
-             font-src 'self' https://fonts.gstatic.com; \
+             style-src 'self' 'unsafe-inline'; \
+             font-src 'self'; \
              script-src 'self' 'unsafe-inline'; \
              worker-src 'self' blob:; \
              connect-src 'self' https://api.mymemory.translated.net; \
