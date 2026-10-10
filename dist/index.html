@@ -1814,6 +1814,7 @@
       margin-left: 0; vertical-align: baseline;
     }
     .ascii-tbl td.c-sal  { color: var(--sal);     }
+    .ascii-tbl td.c-csg  { color: var(--pink);    }
     .ascii-tbl td.c-pat  { color: var(--orange); }
     .ascii-tbl td.c-dim  { color: var(--dim-txt);    }
     .ascii-tbl tr.tbl-total td {
@@ -1859,14 +1860,17 @@
       line-height: 1.6;
     }
     .histoire-tag { font-size: 0.6rem; letter-spacing: 0.1em; color: var(--blue); font-weight: bold; }
+    /* Référence légale : sous l'anecdote, dans le fil du texte (plus de colonne
+       à droite, qui débordait sur petit écran). */
     .expl-ref  {
       font-size: 0.65rem;
       color: var(--muted-txt);
       border: 1px solid var(--dim);
       padding: 0.25rem 0.5rem;
-      flex-shrink: 0;
-      white-space: nowrap;
-      align-self: flex-start;
+      display: inline-block;
+      max-width: 100%;
+      margin-top: 0.6rem;
+      overflow-wrap: anywhere;
     }
 
     /* Articles et textes cités → Légifrance (src/liens_loi.js). Discrets : la
@@ -1895,6 +1899,7 @@
 
     /* Montants allègements (vert — économie employeur) */
     .ascii-tbl td.c-alleg { color: #4ade80; }
+    .ascii-tbl td.c-eblue { color: var(--electric-blue); }
     .mob-val.c-alleg      { color: #4ade80; }
 
     /* ══════════════════════════════
@@ -2073,7 +2078,9 @@
       border: 1px solid #f9a8d4;
       padding: 0.18rem 0.5rem;
       display: inline-block;
+      max-width: 100%;
       margin-top: 0.15rem;
+      overflow-wrap: anywhere;
     }
 
     /* formule dans le panneau how — reprend le style fm-calc */
@@ -4022,7 +4029,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-DMmUu2YF.js"></script>
+  <script type="module" crossorigin src="/assets/index-CFVBub_b.js"></script>
 </head>
 <body>
 
