@@ -1216,11 +1216,16 @@
        c'est la page elle-même qui se voit au travers — aucun bord possible,
        quelle que soit la couleur de fond. */
     .accueil-heros {
-      width: 100%;
-      /* Jamais plus large que l'image elle-même : agrandie, elle se brouille. */
-      max-width: 1024px;
+      /* Bureau : aux deux tiers de l'image (1024 × 2/3), posée en bas à
+         droite de la fenêtre, à l'écart des onglets latéraux ; jamais sur
+         la colonne de saisie (≈ 290 px à gauche). */
+      position: fixed;
+      right: 3rem;
+      bottom: 1.5rem;
+      width: 683px;
+      max-width: calc(100vw - 340px);
       aspect-ratio: 1024 / 559;
-      margin: 2.5rem auto 0;
+      pointer-events: none;
       background: url('/hexega2.webp') center / contain no-repeat;
       opacity: 0.92;
       /* Aucune animation d'arrivée : l'image est là dès le chargement. */
@@ -1229,6 +1234,9 @@
     /* Mobile : même image, réduite, sous [ CALCULER ], à la place du futur
        bulletin. */
     .accueil-heros--mobile {
+      position: static;
+      width: 100%;
+      max-width: 1024px;
       margin: 1.2rem auto 0.5rem;
     }
     /* Les néons respirent. Par l'opacité et non par un filtre de luminosité :
@@ -1329,6 +1337,7 @@
     .dr-body        { padding: 0.1rem 0.9rem 0.7rem; font-size: 0.72rem; }
     .dr-liste       { margin: 0 0 0.35rem; padding-left: 1.1rem; color: var(--text); line-height: 1.6; }
     .dr-note        { color: var(--dim-txt); font-size: 0.9em; }
+    .dr-groupe      { margin: 0.45rem 0 0.1rem; color: var(--dim-txt); font-size: 0.85em; letter-spacing: 0.08em; text-transform: uppercase; }
     .cc-resume        { letter-spacing: 0.02em; color: var(--muted-txt); font-size: 0.95em; }
     /* Montant net social, sous le net à payer : secondaire mais obligatoire. */
     .sb-net-social { margin-top: 0.35rem; padding-top: 0.25rem; border-top: 1px dashed var(--border); }
@@ -1429,13 +1438,36 @@
     .tbl-section-head.sh-rem { display: flex; align-items: center; gap: 0.75rem; }
     .tbl-section-head.sh-rem > span:first-child { flex-shrink: 0; }
     .jauge-rep {
-      flex: 1; display: flex; height: 4px; min-width: 4rem;
-      border-radius: 2px; overflow: hidden; background: var(--border);
+      flex: 1; position: relative; display: flex; align-items: flex-end;
+      height: 22px; padding-bottom: 4px; min-width: 4rem;
+    }
+    .jauge-barre {
+      flex: 1; display: flex; height: 4px;
+      border-radius: 2px 0 0 2px; overflow: hidden; background: var(--border);
     }
     .jauge-seg { flex-basis: 0; min-width: 2px; cursor: help; }
     .jauge-seg:hover { filter: brightness(1.35); }
-    .jauge-btn { padding: 0; border: none; cursor: pointer; height: 10px; background: transparent; }
-    .jauge-btn .jauge-seg { height: 4px; align-self: center; cursor: pointer; }
+    /* Repères net / brut / super brut : petites lignes verticales qui
+       dépassent la barre, aux frontières des segments. */
+    .jauge-tick {
+      position: absolute; top: 10px; bottom: 0; width: 2px;
+      transform: translateX(-50%); cursor: help; border-radius: 1px;
+    }
+    /* Super brut : le trait FERME la barre (bout droit carré, pas d'arrondi
+       qui dépasserait derrière lui). */
+    .jauge-tick-fin { left: auto !important; right: 0; transform: none; }
+    /* Nom du repère, en petit, calé à gauche du trait, au-dessus de la barre. */
+    .jauge-lbl {
+      position: absolute; top: 0; font-size: 0.55rem; line-height: 1;
+      letter-spacing: 0.04em; text-transform: none; white-space: nowrap; pointer-events: none;
+    }
+    .jauge-btn { padding: 0; border: none; cursor: pointer; background: transparent; }
+    /* Mobile : barre courte, « Brut » passe sous la barre pour ne pas
+       chevaucher « Super brut ». */
+    .jauge-btn { height: 32px; padding-bottom: 14px; }
+    .jauge-btn .jauge-tick { top: 10px; bottom: 10px; }
+    .jauge-btn .jauge-lbl-brut { top: auto; bottom: 0; }
+    .jauge-btn .jauge-seg { cursor: pointer; }
     .jauge-btn:focus-visible { outline: 1px dotted var(--white); outline-offset: 2px; }
     .jauge-leg { padding: 0.35rem 0.9rem 0.45rem; border-bottom: 1px solid var(--border); font-size: 0.68rem; background: var(--bg2); }
     .jauge-leg[hidden] { display: none; }
@@ -4079,7 +4111,7 @@
     .bn-reconst b { color: var(--blue); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
-  <script type="module" crossorigin src="/assets/index-SeBjUx73.js"></script>
+  <script type="module" crossorigin src="/assets/index-DISHzOAI.js"></script>
 </head>
 <body>
 

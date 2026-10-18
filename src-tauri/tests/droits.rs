@@ -171,3 +171,71 @@ async fn cpf_majore() {
     let c = cpf(|s| s.entreprise_adaptee = true).await;
     assert_eq!((c.regime.as_str(), c.annuel, c.plafond), ("handicap", dec!(800), dec!(8000)));
 }
+
+// ── Sécurité sociale, chômage, congés payés (migration 0148) ─────────────────
+
+async fn droits_de(maj: impl FnOnce(&mut Salarie), brut: &str, date_paie: &str)
+    -> xenna_paie_lib::models::DroitsResult {
+    let (pool, path) = base_test().await;
+    let ctx = ContextPaie::charger(&pool, date(date_paie)).await.unwrap();
+    let mut s = salarie_base(Pays::France, brut);
+    maj(&mut s);
+    let d = generer_bulletin(s, &ctx, None).droits.expect("droits attendus");
+    nettoyer(&path);
+    d
+}
+
+/// 3 200 € en juin 2026 (SMIC revalorisé au 1er juin : 1 867,02 €, 12,31 €/h) :
+/// salaire retenu plafonné à 1,4 × 1 867,02 = 2 613,83 ; SJB = 2 613,83 × 3
+/// ÷ 91,25 = 85,93 ; IJ = 50 % = 42,97 €. Seuil des 6 mois : 1 015 × 12,31
+/// = 12 494,65 €.
+#[tokio::test]
+async fn ss_ij_plafonnee() {
+    let s = droits_de(|_| {}, "3200", "2026-06-30").await.ss.expect("IJ attendues");
+    assert_eq!((s.ij_jour, s.plafonne, s.ouvre), (dec!(42.97), true, true));
+    assert_eq!(s.salaire_requis_6mois, dec!(12494.65));
+    assert_eq!(s.heures_mois, dec!(151.67));
+}
+
+/// 20 % de 151,67 h = 30,33 h : 91 h en 3 mois (< 150), 3 000 € en 6 mois
+/// (< 12 494,65) : ce rythme n'ouvre pas les IJ.
+#[tokio::test]
+async fn ss_rythme_insuffisant() {
+    let s = droits_de(|s| s.etp = 20.0, "500", "2026-06-30").await.ss.unwrap();
+    assert!(!s.ouvre);
+}
+
+/// SJR = 3 200 × 12 ÷ 365 = 105,21 ; max(40,4 % × 105,21 + 13,18 = 55,68 ;
+/// 57 % × 105,21 = 59,97) = 59,97 €, sous 75 % du SJR (78,91). Juin : 30 jours
+/// × 0,75 = 22,5 jours d'allocation ; 910 h ÷ 151,67 h → 6 mois.
+#[tokio::test]
+async fn chomage_are() {
+    let c = droits_de(|_| {}, "3200", "2026-06-30").await.chomage.expect("chômage attendu");
+    assert_eq!((c.sjr, c.are_jour, c.are_mois), (dec!(105.21), Some(dec!(59.97)), Some(dec!(1799.10))));
+    assert_eq!((c.jours_mois, c.jours_indemnises, c.mois_pour_ouvrir), (30, dec!(22.50), 6));
+    assert!(!c.degressive);
+}
+
+/// 6 000 € : 57 % × 197,26 = 112,44 € > 92,57 € → dégressif au 7e mois.
+#[tokio::test]
+async fn chomage_degressif() {
+    let c = droits_de(|_| {}, "6000", "2026-06-30").await.chomage.unwrap();
+    assert_eq!(c.are_jour, Some(dec!(112.44)));
+    assert!(c.degressive);
+}
+
+/// Barème de l'ARE relevé depuis le 1er juillet 2025 seulement : avant, la
+/// durée est donnée, le montant non. ESAT : pas d'assurance chômage.
+#[tokio::test]
+async fn chomage_lacunes() {
+    let c = droits_de(|_| {}, "3200", "2025-06-30").await.chomage.unwrap();
+    assert_eq!(c.are_jour, None);
+    assert!(droits_de(|s| s.esat = true, "1200", "2026-06-30").await.chomage.is_none());
+}
+
+/// Mois plein : 2,5 jours ouvrables ; dixième = brut ÷ 10.
+#[tokio::test]
+async fn conges_mois_plein() {
+    let c = droits_de(|_| {}, "3200", "2026-06-30").await.conges.unwrap();
+    assert_eq!((c.jours, c.dixieme, c.reduit_absence), (dec!(2.5), dec!(320.00), false));
+}

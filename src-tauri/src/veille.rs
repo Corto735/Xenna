@@ -76,6 +76,17 @@ pub enum Specificite {
 /// barèmes y ajoute une ligne dans le même commit (voir `CLAUDE.md`).
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
+        date: "2026-10-18",
+        pays: Pays::France,
+        specificite: None,
+        objet: "Droits ouverts par le mois : Sécurité sociale (indemnités journalières maladie — ouverture à 150 h sur 3 mois ou 1 015 SMIC horaires sur 6 mois, 50 % du salaire journalier plafonné à 1,4 SMIC ; AT/MP sans condition), assurance chômage (910 h ou 130 jours sur 24 mois, durée × 0,75, ARE : 40,4 % du SJR + 13,18 € ou 57 %, minimum 32,13 €, plafond 75 %, dégressivité au-delà de 92,57 €, barème non revalorisé au 1er juillet 2026 ; montant non affiché avant le 1er juillet 2025, faute de barème relevé) et congés payés (2,5 jours ouvrables par mois, 2 pour un arrêt maladie depuis le 24 avril 2024, dixième du brut)",
+        taux: false,
+        sources: &[
+            "https://www.unedic.org/actualites/allocations-dassurance-chomage-pas-de-revalorisation-au-1er-juillet-2026",
+            "https://s3.eusc-de-east-1.amazonaws.eu/unedic-eks-prod-cms/2026/07/15/unedic_parametres_utiles_juillet2026-vf_uid_6a5757953d941.pdf",
+        ],
+    },
+    MiseAJour {
         date: "2026-10-09",
         pays: Pays::France,
         specificite: None,

@@ -2966,30 +2966,56 @@ function buildAlertes(b) {
 }
 
 // ── Ce que ce mois vous ouvre comme droits ───────────────────────────────────
-// Ce que les cotisations rapportent, en quatre lignes. Tout vient de
-// b.droits (calculs/droits.rs, paramètres datés en base) ; le front ne fait
-// qu'écrire les phrases. France, secteur privé, depuis 2019.
+// Ce que les cotisations rapportent, par risque : retraite, Sécurité sociale,
+// chômage, congés payés, formation. Tout vient de b.droits (calculs/droits.rs,
+// paramètres datés en base) ; le front ne fait qu'écrire les phrases. France,
+// secteur privé, depuis 2019.
 function buildDroits(b) {
   const d = b.droits;
   if (!d) return '';
   const n = v => parseFloat(v) || 0;
   const pts = v => n(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const c = d.cpf;   // compte personnel de formation (droits.rs, migration 0147)
+  const nb = v => n(v).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   const L = _currentLang;
-  const lignes = [
-    tx('dr.l.trim', L, { n: d.trimestres_an }),
-    tx('dr.l.compte', L, { montant: fmt(d.salaire_porte_au_compte),
-      plafond: n(d.salaire_porte_au_compte) < n(d.assiette_trimestres) ? tx('dr.l.plafond', L) : '' }),
-    tx('dr.l.points', L, { pts: pts(d.points), rente: fmt(d.rente_annuelle) }),
-    ...(c ? [tx('dr.l.cpf', L, { mois: fmt(c.mois), annuel: fmt(c.annuel), plafond: fmt(c.plafond),
-      motif: c.regime === 'esat' ? tx('dr.l.esat', L) : c.regime === 'handicap' ? tx('dr.l.handicap', L)
-           : c.prorata ? tx('dr.l.prorata', L) : '' })] : []),
-  ];
+  const c = d.cpf;      // compte personnel de formation (migration 0147)
+  const ss = d.ss, ch = d.chomage, cp = d.conges;   // migration 0148
+  const groupes = [
+    ['dr.g.retraite', [
+      tx('dr.l.trim', L, { n: d.trimestres_an }),
+      tx('dr.l.compte', L, { montant: fmt(d.salaire_porte_au_compte),
+        plafond: n(d.salaire_porte_au_compte) < n(d.assiette_trimestres) ? tx('dr.l.plafond', L) : '' }),
+      tx('dr.l.points', L, { pts: pts(d.points), rente: fmt(d.rente_annuelle) }),
+    ]],
+    ['dr.g.ss', ss ? [
+      tx('dr.l.ss.ij', L, { ij: fmt(ss.ij_jour),
+        plafond: ss.plafonne ? tx('dr.l.ss.plafond', L, { coeff: nb(ss.coeff_plafond) }) : '' }),
+      tx(ss.ouvre ? 'dr.l.ss.ouvre' : 'dr.l.ss.ferme', L, { h: nb(ss.heures_mois), seuil: fmt(ss.salaire_requis_6mois) }),
+      tx('dr.l.ss.at', L),
+      tx('dr.l.ss.soins', L),
+    ] : []],
+    ['dr.g.chomage', ch ? [
+      tx('dr.l.ch.aff', L, { h: nb(ch.heures_mois), req: nb(ch.heures_requises), jours: ch.jours_requis, mois: ch.mois_pour_ouvrir }),
+      tx('dr.l.ch.duree', L, { j: nb(ch.jours_indemnises), n: ch.jours_mois, coeff: nb(ch.coeff_duree) }),
+      ch.are_jour != null
+        ? tx('dr.l.ch.are', L, { jour: fmt(ch.are_jour), mois: fmt(ch.are_mois), degr: ch.degressive ? tx('dr.l.ch.degr', L) : '' })
+        : tx('dr.l.ch.nd', L),
+    ] : []],
+    ['dr.g.cp', cp ? [
+      tx('dr.l.cp', L, { j: nb(cp.jours), reduit: cp.reduit_absence ? tx('dr.l.cp.reduit', L) : '' }),
+      tx('dr.l.cp.dixieme', L, { montant: fmt(cp.dixieme) }),
+    ] : []],
+    ['dr.g.formation', c ? [
+      tx('dr.l.cpf', L, { mois: fmt(c.mois), annuel: fmt(c.annuel), plafond: fmt(c.plafond),
+        motif: c.regime === 'esat' ? tx('dr.l.esat', L) : c.regime === 'handicap' ? tx('dr.l.handicap', L)
+             : c.prorata ? tx('dr.l.prorata', L) : '' }),
+    ] : []],
+  ].filter(([, l]) => l.length);
   return `<details class="droits"${_pli('droits')}>
       <summary><span class="sh-fl">-&gt;</span> CE QUE CE MOIS VOUS OUVRE COMME DROITS <span class="sh-fl">&lt;-</span>
         <span class="cc-resume">${_tx('dr.resume', { pts: pts(d.points) })}</span></summary>
-      <div class="dr-body">
-        <ul class="dr-liste trad-skip">${lignes.map(l => `<li>${l}</li>`).join('')}</ul>
+      <div class="dr-body trad-skip">
+        ${groupes.map(([g, l]) => `<div class="dr-groupe">${esc(tx(g, L))}</div>
+        <ul class="dr-liste">${l.map(x => `<li>${x}</li>`).join('')}</ul>`).join('')}
         <div class="dr-note">${_tx('dr.l.note')}</div>
       </div>
     </details>`;
@@ -5348,10 +5374,28 @@ function _jaugeRepartition(cliquable = false) {
   const { parts, pct } = R;
   const segs = parts.map(([k, lbl, v, c]) =>
     `<span class="jauge-seg" style="flex-grow:${v};background:${c}" title="${lbl} : ${fmt(v)} (${pct(v)} %)"></span>`).join('');
+  // Repères verticaux aux frontières des segments : le net s'arrête après le
+  // vert, le brut après les retenues du salarié (cotisations, CSG/CRDS, PAS),
+  // le super brut au bout de la barre. Position lue sur la barre elle-même ;
+  // le montant affiché est celui du bulletin.
+  const total = parts.reduce((t, p) => t + p[2], 0);
+  const cumul = keys => parts.filter(p => keys.includes(p[0])).reduce((t, p) => t + p[2], 0) / total * 100;
+  const b = lastBulletin;
+  // Chaque repère porte son nom en petit, calé à gauche du trait.
+  const reperes = [
+    ['jg.net',   cumul(['net']),                      _repartition.net,                   'var(--green)'],
+    ['jg.brut',  cumul(['net', 'sal', 'csg', 'pas']), parseFloat(b.brut),                 'var(--yellow)'],
+    ['jg.super', 100,                                 parseFloat(b.cout_total_employeur), 'var(--blue)'],
+  ].map(([cle, x, v, c]) => {
+    const lbl = esc(tx(cle, _currentLang));
+    return `<span class="jauge-tick${x >= 100 ? ' jauge-tick-fin' : ''}" style="left:${x.toFixed(2)}%;background:${c}" title="${lbl} : ${fmt(v)}"></span>`
+      + `<span class="jauge-lbl jauge-lbl-${cle.slice(3)} trad-skip" style="right:calc(${(100 - x).toFixed(2)}% + 3px);color:${c}" aria-hidden="true">${lbl}</span>`;
+  }).join('');
   const resume = parts.map(([, lbl, v]) => `${lbl} ${pct(v)} %`).join(', ');
+  const barre = `<span class="jauge-barre">${segs}</span>${reperes}`;
   return cliquable
-    ? `<button type="button" class="jauge-rep jauge-btn" onclick="jaugeBascule()" aria-expanded="${_jaugeOuverte}" aria-label="Répartition du coût employeur : ${resume}">${segs}</button>`
-    : `<span class="jauge-rep" role="img" aria-label="Répartition du coût employeur : ${resume}">${segs}</span>`;
+    ? `<button type="button" class="jauge-rep jauge-btn" onclick="jaugeBascule()" aria-expanded="${_jaugeOuverte}" aria-label="Répartition du coût employeur : ${resume}">${barre}</button>`
+    : `<span class="jauge-rep" role="img" aria-label="Répartition du coût employeur : ${resume}">${barre}</span>`;
 }
 
 function _jaugeLegende() {

@@ -709,6 +709,67 @@ pub struct DroitsResult {
     #[serde(with = "rust_decimal::serde::str")] pub rente_annuelle: Decimal,
     /// Compte personnel de formation : alimentation qu'ouvre ce temps de travail.
     pub cpf: Option<CpfResult>,
+    /// Sécurité sociale : ouverture et montant des indemnités journalières.
+    #[serde(default)]
+    pub ss: Option<SsDroits>,
+    /// Assurance chômage : affiliation, durée et montant de l'ARE.
+    #[serde(default)]
+    pub chomage: Option<ChomageDroits>,
+    /// Congés payés acquis sur le mois.
+    #[serde(default)]
+    pub conges: Option<CongesDroits>,
+}
+
+/// Indemnités journalières maladie qu'ouvre ce rythme de travail (art. R313-3
+/// et R323-4 CSS, migration 0148).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SsDroits {
+    /// Heures du mois : durée légale × quotité + heures supplémentaires.
+    #[serde(with = "rust_decimal::serde::str")] pub heures_mois: Decimal,
+    /// 150 h sur 3 mois, soit le tiers par mois.
+    #[serde(with = "rust_decimal::serde::str")] pub heures_requises_3mois: Decimal,
+    /// 1 015 × SMIC horaire sur 6 mois.
+    #[serde(with = "rust_decimal::serde::str")] pub salaire_requis_6mois: Decimal,
+    /// Vrai si trois mois à ce rythme (ou six à ce salaire) ouvrent les IJ.
+    pub ouvre: bool,
+    /// IJ maladie brute par jour, au salaire de ce mois.
+    #[serde(with = "rust_decimal::serde::str")] pub ij_jour: Decimal,
+    /// Vrai si le salaire dépasse le plafond (1,4 ou 1,8 SMIC).
+    pub plafonne: bool,
+    #[serde(with = "rust_decimal::serde::str")] pub coeff_plafond: Decimal,
+}
+
+/// Assurance chômage (règlement Unédic, migration 0148).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChomageDroits {
+    #[serde(with = "rust_decimal::serde::str")] pub heures_mois: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub heures_requises: Decimal,
+    pub jours_requis: i64,
+    /// Mois à ce rythme pour réunir les 910 h.
+    pub mois_pour_ouvrir: i64,
+    /// Jours calendaires du mois et jours d'allocation qu'ils représentent.
+    pub jours_mois: i64,
+    #[serde(with = "rust_decimal::serde::str")] pub coeff_duree: Decimal,
+    #[serde(with = "rust_decimal::serde::str")] pub jours_indemnises: Decimal,
+    /// Salaire journalier de référence : assiette du mois × 12 ÷ 365.
+    #[serde(with = "rust_decimal::serde::str")] pub sjr: Decimal,
+    /// Allocation journalière brute ; absente faute de barème relevé à la date.
+    #[serde(with = "rust_decimal::serde::str_option")] pub are_jour: Option<Decimal>,
+    /// Allocation d'un mois (mensualisée sur 30 jours).
+    #[serde(with = "rust_decimal::serde::str_option")] pub are_mois: Option<Decimal>,
+    /// Vrai si l'allocation dépasse le seuil de dégressivité (moins de 55 ans).
+    pub degressive: bool,
+}
+
+/// Congés payés acquis sur le mois (art. L3141-3 et L3141-5-1 C. trav.).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CongesDroits {
+    /// Jours ouvrables acquis ce mois.
+    #[serde(with = "rust_decimal::serde::str")] pub jours: Decimal,
+    /// Vrai si une absence du mois a réduit l'acquisition (maladie : 2 j au lieu de 2,5).
+    pub reduit_absence: bool,
+    /// Méthode du dixième : brut du mois ÷ 10, plancher de l'indemnité.
+    #[serde(with = "rust_decimal::serde::str")] pub dixieme: Decimal,
 }
 
 /// Alimentation du CPF (calculs/droits.rs, migration 0147).
