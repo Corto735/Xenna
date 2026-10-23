@@ -599,7 +599,7 @@
 
     /* Pastilles de catégorie : la couleur ne distingue plus rien en monochrome,
        les crochets du libellé suffisent. */
-    body.bw-mode .cat-ss,   body.bw-mode .cat-csg, body.bw-mode .cat-ret,
+    body.bw-mode .cat-ss,   body.bw-mode .cat-csg, body.bw-mode .cat-imp, body.bw-mode .cat-ret,
     body.bw-mode .cat-prev, body.bw-mode .cat-cho, body.bw-mode .cat-alleg,
     body.bw-mode .cat-acc { color: #000000; }
 
@@ -919,7 +919,7 @@
     body.minitel-mode .warn-box strong,
     body.minitel-mode .chk-apply-brut span,
     body.minitel-mode .absence-preview .retenue-val,
-    body.minitel-mode .cat-ss,   body.minitel-mode .cat-csg, body.minitel-mode .cat-ret,
+    body.minitel-mode .cat-ss,   body.minitel-mode .cat-csg, body.minitel-mode .cat-imp, body.minitel-mode .cat-ret,
     body.minitel-mode .cat-prev, body.minitel-mode .cat-cho, body.minitel-mode .cat-alleg,
     body.minitel-mode .cat-acc,
     body.minitel-mode a { color: var(--mnt-fg) !important; }
@@ -1973,7 +1973,8 @@
     /* badges catégorie */
     .cat { font-size: 0.62rem; font-weight: bold; margin-right: 0.35rem; }
     .cat-ss    { color: #60a5fa; }
-    .cat-csg   { color: #c084fc; }
+    .cat-csg   { color: var(--pink); }
+    .cat-imp   { color: #c084fc; }
     .cat-ret   { color: #34d399; }
     .cat-prev  { color: #fbbf24; }
     .cat-cho   { color: #fb7185; }

@@ -1519,16 +1519,16 @@ const CAT_CLASS = {
   "Fine rapporto":              "cat-prev",
   "Allegement":                 "cat-alleg",
   "Bonus IRPEF":                "cat-alleg",
-  "Imposta":                    "cat-csg",
-  "Imposta regionale":          "cat-csg",
+  "Imposta":                    "cat-imp",
+  "Imposta regionale":          "cat-imp",
   // Canada / Québec
   "Retraite fédérale":          "cat-ret",
   "Retraite Québec":            "cat-ret",
   "Chômage fédéral":            "cat-cho",
   "Parentalité Québec":         "cat-ss",
   "Santé Québec":               "cat-ss",
-  "Impôt fédéral":              "cat-csg",
-  "Impôt provincial":           "cat-csg",
+  "Impôt fédéral":              "cat-imp",
+  "Impôt provincial":           "cat-imp",
   "Autres":                     "cat-prev",
 };
 
