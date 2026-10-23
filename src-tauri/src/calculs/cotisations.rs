@@ -352,6 +352,37 @@ pub fn fillon_coeff(smic: Decimal, brut: Decimal, ctx: &ContextPaie) -> Decimal 
     }
 }
 
+/// Nombre écrit dans un texte d'explication, à la manière de la langue affichée :
+/// « 1 867,10 » (espace insécable) en français, « 1,867.10 » en anglais, « 1.867,10 » ailleurs.
+/// `dp` : décimales fixes (montants en euros) ; sinon les zéros inutiles sont ôtés.
+fn nombre_txt(d: Decimal, dp: Option<u32>, lang: &str) -> String {
+    let s = match dp {
+        Some(n) => format!("{:.*}", n as usize, d.round_dp(n)),
+        None    => d.normalize().to_string(),
+    };
+    let (ent, frac) = s.split_once('.').map_or((s.as_str(), None), |(e, f)| (e, Some(f)));
+    let (signe, chiffres) = ent.strip_prefix('-').map_or(("", ent), |r| ("-", r));
+    let (sep_mil, sep_dec) = match lang {
+        "en" => (",", "."),
+        "fr" => ("\u{a0}", ","),
+        _    => (".", ","),
+    };
+    let mut groupes = Vec::new();
+    let mut fin = chiffres.len();
+    while fin > 3 {
+        groupes.push(&chiffres[fin - 3..fin]);
+        fin -= 3;
+    }
+    groupes.push(&chiffres[..fin]);
+    groupes.reverse();
+    let mut out = format!("{signe}{}", groupes.join(sep_mil));
+    if let Some(f) = frac {
+        out.push_str(sep_dec);
+        out.push_str(f);
+    }
+    out
+}
+
 /// Réduction générale des cotisations patronales (loi Fillon, CSS art. L241-13).
 /// Retourne None si le salaire dépasse le seuil ou si les paramètres Fillon
 /// ne sont pas en base pour cette date.
@@ -381,10 +412,14 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, absence_ratio: Decimal, ctx
     let montant   = (brut * coeff).round_dp(2);
     let seuil_eur = (seuil * smic).round_dp(2);
 
+    // Nombres du texte à la manière de la langue affichée (pas le point décimal de Rust).
+    let num = |d: Decimal| nombre_txt(d, None, &ctx.lang);
+    let eur = |d: Decimal| nombre_txt(d, Some(2), &ctx.lang);
+
     let etp_info = if (etp_pct - 100.0).abs() > 0.1 {
         ctx.expl("REDUCTION_FILLON_ETP", "\n⚠ Temps partiel {etp} % — SMIC proratisé : {smic} € (§670 BOSS)")
             .replace("{etp}", &format!("{:.0}", etp_pct))
-            .replace("{smic}", &smic.to_string())
+            .replace("{smic}", &eur(smic))
     } else {
         String::new()
     };
@@ -393,8 +428,8 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, absence_ratio: Decimal, ctx
     let abs_info = if absence_ratio < Decimal::ONE {
         ctx.expl("REDUCTION_FILLON_ABSENCE",
             "\n⚠ Absence : SMIC corrigé au prorata de la rémunération (× {ratio}) → {smic} € (CSS art. D241-7 IV)")
-            .replace("{ratio}", &absence_ratio.round_dp(4).to_string())
-            .replace("{smic}", &smic.to_string())
+            .replace("{ratio}", &num(absence_ratio.round_dp(4)))
+            .replace("{smic}", &eur(smic))
     } else {
         String::new()
     };
@@ -405,9 +440,10 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, absence_ratio: Decimal, ctx
     // revalorisation du SMIC au 1er juin) ; hors 2026 on ne cite que les articles.
     let annee = ctx.date_paie.format("%Y").to_string();
     let ref_smic = if annee == "2026" {
-        "\nRéf. : décret n°2026-509 du 12/06/2026 (JO 14/06/2026) — CSS art. L241-13 et D241-7."
+        ctx.expl("REDUCTION_FILLON_REF_2026",
+            "\n\nRéf. : décret n°2026-509 du 12/06/2026 (JO 14/06/2026)\nCSS art. L241-13 et D241-7.")
     } else {
-        "\nRéf. : CSS art. L241-13 et D241-7."
+        ctx.expl("REDUCTION_FILLON_REF", "\n\nRéf. : CSS art. L241-13 et D241-7.")
     };
 
     // Gabarit traduit (ou français natif), puis substitution des placeholders.
@@ -425,65 +461,60 @@ pub fn reduction_fillon(brut: Decimal, etp_pct: f64, absence_ratio: Decimal, ctx
             Formule : C = Tmin + (Tdelta × D^P)\n\
             D = (1/2) × (seuil × SMIC mensuel / Salaire brut − 1)\n\
             \n\
-            Paramètres : Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Seuil={seuil}×SMIC\n\
+            Paramètres :\n  Tmin   = {tmin}\n  Tdelta = {tdelta}\n  Tmax   = {tmax}\n  P      = {p}\n  Seuil  = {seuil} × SMIC\n\
             \n\
-            D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-              = {inner_disp}\n\
+            D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
             \n\
-            C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-              = {coeff}\n\
+            C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
             \n\
-            ── Réduction mensuelle ─────────────────────────────\n\
-            Réduction = Salaire brut × C\n\
-                      = {brut} × {coeff}\n\
-                      = {montant} €\n\
-            ────────────────────────────────────────────────────\n\
+            ▸ Réduction mensuelle\n\
+            Réduction = Salaire brut × C\n          = {brut} × {coeff}\n          = {montant} €\n\
             \n\
             S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}{abs_info}\n\
-            Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}\n\
+            \n\
+            Smic au 01/01/{annee} retenu : {smic} €.\n\
+            Valeur gelée toute l'année : la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}\n\
+            \n\
             Loi Fillon du 17/01/2003 : allègement des charges patronales sur les bas salaires.")
             .replace("{etp_info}", &etp_info)
             .replace("{abs_info}", &abs_info)
-            .replace("{ref_smic}", ref_smic)
+            .replace("{ref_smic}", &ref_smic)
             .replace("{annee}", &annee)
-            .replace("{inner_disp}", &inner_disp.to_string())
-            .replace("{seuil_eur}", &seuil_eur.to_string())
-            .replace("{tmin}", &tmin.to_string())
-            .replace("{tdelta}", &tdelta.to_string())
-            .replace("{tmax}", &tmax.to_string())
-            .replace("{seuil}", &seuil.to_string())
-            .replace("{smic}", &smic.to_string())
-            .replace("{brut}", &brut.to_string())
-            .replace("{coeff}", &coeff.to_string())
-            .replace("{montant}", &montant.to_string())
-            .replace("{p}", &p.to_string())
+            .replace("{inner_disp}", &num(inner_disp))
+            .replace("{seuil_eur}", &eur(seuil_eur))
+            .replace("{tmin}", &num(tmin))
+            .replace("{tdelta}", &num(tdelta))
+            .replace("{tmax}", &num(tmax))
+            .replace("{seuil}", &num(seuil))
+            .replace("{smic}", &eur(smic))
+            .replace("{brut}", &eur(brut))
+            .replace("{coeff}", &num(coeff))
+            .replace("{montant}", &eur(montant))
+            .replace("{p}", &num(p))
     } else {
         ctx.expl("REDUCTION_FILLON_LINEAIRE",
             "[ Calcul mensuel — ancienne formule linéaire 2015-2018 ]\n\
             \n\
-            Formule : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n\
-              = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
-              = {coeff}\n\
+            Formule : C = (Tmax / 0,6) × (seuil × SMIC / brut − 1)\n            = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n            = {coeff}\n\
             \n\
-            ── Réduction mensuelle ─────────────────────────────\n\
-            Réduction = Salaire brut × C\n\
-                      = {brut} × {coeff}\n\
-                      = {montant} €\n\
-            ────────────────────────────────────────────────────\n\
+            ▸ Réduction mensuelle\n\
+            Réduction = Salaire brut × C\n          = {brut} × {coeff}\n          = {montant} €\n\
             \n\
             S'annule à {seuil} × SMIC = {seuil_eur} €/mois.{etp_info}{abs_info}\n\
-            Smic au 01/01/{annee} retenu : {smic} € — valeur gelée toute l'année, la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}")
+            \n\
+            Smic au 01/01/{annee} retenu : {smic} €.\n\
+            Valeur gelée toute l'année : la revalorisation du SMIC en cours d'année n'est pas répercutée sur la réduction générale.{ref_smic}")
             .replace("{etp_info}", &etp_info)
             .replace("{abs_info}", &abs_info)
-            .replace("{ref_smic}", ref_smic)
+            .replace("{ref_smic}", &ref_smic)
             .replace("{annee}", &annee)
-            .replace("{seuil_eur}", &seuil_eur.to_string())
-            .replace("{tmax}", &tmax.to_string())
-            .replace("{seuil}", &seuil.to_string())
-            .replace("{smic}", &smic.to_string())
-            .replace("{brut}", &brut.to_string())
-            .replace("{coeff}", &coeff.to_string())
-            .replace("{montant}", &montant.to_string())
+            .replace("{seuil_eur}", &eur(seuil_eur))
+            .replace("{tmax}", &num(tmax))
+            .replace("{seuil}", &num(seuil))
+            .replace("{smic}", &eur(smic))
+            .replace("{brut}", &eur(brut))
+            .replace("{coeff}", &num(coeff))
+            .replace("{montant}", &eur(montant))
     };
 
     Some(LigneCotisation {
@@ -617,4 +648,20 @@ pub fn retraite_complementaire(brut: Decimal, statut: &Statut, etp_pct: f64, ctx
     }
 
     lignes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nombre_txt_suit_la_langue() {
+        assert_eq!(nombre_txt(dec!(1867.1), Some(2), "fr"), "1\u{a0}867,10");
+        assert_eq!(nombre_txt(dec!(1867.1), Some(2), "en"), "1,867.10");
+        assert_eq!(nombre_txt(dec!(1867.1), Some(2), "de"), "1.867,10");
+        assert_eq!(nombre_txt(dec!(0.31940), None, "fr"), "0,3194");
+        assert_eq!(nombre_txt(dec!(1.6), None, "en"), "1.6");
+        assert_eq!(nombre_txt(dec!(-1234567.5), Some(2), "fr"), "-1\u{a0}234\u{a0}567,50");
+        assert_eq!(nombre_txt(dec!(999), Some(2), "fr"), "999,00");
+    }
 }

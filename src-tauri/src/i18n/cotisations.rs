@@ -640,180 +640,183 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
         // ── Réduction Fillon — gabarits dynamiques ────────────────────────────
         // Placeholders : {tmin} {tdelta} {tmax} {p} {seuil} {smic} {brut}
         //                {inner_disp} {coeff} {montant} {seuil_eur} {etp_info}
+        //                {abs_info} {annee} {ref_smic}
         "REDUCTION_FILLON_PUISSANCE" => match lang {
             "en" => "[ Monthly calculation — CSS art. L241-13 ]\n\
                 \n\
                 Formula: C = Tmin + (Tdelta × D^P)\n\
                 D = (1/2) × (threshold × monthly SMIC / gross salary − 1)\n\
                 \n\
-                Parameters: Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Threshold={seuil}×SMIC\n\
+                Parameters:\n  Tmin      = {tmin}\n  Tdelta    = {tdelta}\n  Tmax      = {tmax}\n  P         = {p}\n  Threshold = {seuil} × SMIC\n\
                 \n\
-                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {inner_disp}\n\
+                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
                 \n\
-                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-                  = {coeff}\n\
+                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
                 \n\
-                ── Monthly reduction ───────────────────────────────\n\
-                Reduction = gross salary × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Monthly reduction\n\
+                Reduction = gross salary × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Vanishes at {seuil} × SMIC = {seuil_eur} €/month.{etp_info}\n\
+                Vanishes at {seuil} × SMIC = {seuil_eur} €/month.{etp_info}{abs_info}\n\
+                \n\
+                SMIC at 01/01/{annee} used: {smic} €.\n\
+                Frozen for the whole year: a mid-year SMIC increase is not passed on to the general reduction.{ref_smic}\n\
+                \n\
                 Fillon Act of 17/01/2003: relief on employer contributions for low wages.",
             "de" => "[ Monatliche Berechnung — CSS Art. L241-13 ]\n\
                 \n\
                 Formel: C = Tmin + (Tdelta × D^P)\n\
                 D = (1/2) × (Schwelle × monatlicher SMIC / Bruttogehalt − 1)\n\
                 \n\
-                Parameter: Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Schwelle={seuil}×SMIC\n\
+                Parameter:\n  Tmin     = {tmin}\n  Tdelta   = {tdelta}\n  Tmax     = {tmax}\n  P        = {p}\n  Schwelle = {seuil} × SMIC\n\
                 \n\
-                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {inner_disp}\n\
+                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
                 \n\
-                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-                  = {coeff}\n\
+                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
                 \n\
-                ── Monatliche Senkung ──────────────────────────────\n\
-                Senkung = Bruttogehalt × C\n\
-                        = {brut} × {coeff}\n\
-                        = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Monatliche Senkung\n\
+                Senkung = Bruttogehalt × C\n        = {brut} × {coeff}\n        = {montant} €\n\
                 \n\
-                Entfällt bei {seuil} × SMIC = {seuil_eur} €/Monat.{etp_info}\n\
+                Entfällt bei {seuil} × SMIC = {seuil_eur} €/Monat.{etp_info}{abs_info}\n\
+                \n\
+                Zugrunde gelegter SMIC zum 01.01.{annee}: {smic} €.\n\
+                Für das ganze Jahr eingefroren: eine Anhebung des SMIC im Laufe des Jahres wird nicht auf die allgemeine Senkung übertragen.{ref_smic}\n\
+                \n\
                 Fillon-Gesetz vom 17.01.2003: Entlastung der Arbeitgeberbeiträge bei niedrigen Löhnen.",
             "nl" => "[ Maandelijkse berekening — CSS art. L241-13 ]\n\
                 \n\
                 Formule: C = Tmin + (Tdelta × D^P)\n\
                 D = (1/2) × (drempel × maandelijkse SMIC / brutoloon − 1)\n\
                 \n\
-                Parameters: Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Drempel={seuil}×SMIC\n\
+                Parameters:\n  Tmin    = {tmin}\n  Tdelta  = {tdelta}\n  Tmax    = {tmax}\n  P       = {p}\n  Drempel = {seuil} × SMIC\n\
                 \n\
-                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {inner_disp}\n\
+                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
                 \n\
-                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-                  = {coeff}\n\
+                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
                 \n\
-                ── Maandelijkse vermindering ───────────────────────\n\
-                Vermindering = brutoloon × C\n\
-                             = {brut} × {coeff}\n\
-                             = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Maandelijkse vermindering\n\
+                Vermindering = brutoloon × C\n             = {brut} × {coeff}\n             = {montant} €\n\
                 \n\
-                Vervalt bij {seuil} × SMIC = {seuil_eur} €/maand.{etp_info}\n\
+                Vervalt bij {seuil} × SMIC = {seuil_eur} €/maand.{etp_info}{abs_info}\n\
+                \n\
+                Gehanteerde SMIC per 01/01/{annee}: {smic} €.\n\
+                Het hele jaar bevroren: een verhoging van de SMIC in de loop van het jaar wordt niet doorgerekend in de algemene vermindering.{ref_smic}\n\
+                \n\
                 Fillon-wet van 17/01/2003: vermindering van werkgeverslasten op lage lonen.",
             "it" => "[ Calcolo mensile — CSS art. L241-13 ]\n\
                 \n\
                 Formula: C = Tmin + (Tdelta × D^P)\n\
                 D = (1/2) × (soglia × SMIC mensile / retribuzione lorda − 1)\n\
                 \n\
-                Parametri: Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Soglia={seuil}×SMIC\n\
+                Parametri:\n  Tmin   = {tmin}\n  Tdelta = {tdelta}\n  Tmax   = {tmax}\n  P      = {p}\n  Soglia = {seuil} × SMIC\n\
                 \n\
-                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {inner_disp}\n\
+                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
                 \n\
-                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-                  = {coeff}\n\
+                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
                 \n\
-                ── Riduzione mensile ───────────────────────────────\n\
-                Riduzione = retribuzione lorda × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Riduzione mensile\n\
+                Riduzione = retribuzione lorda × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Si annulla a {seuil} × SMIC = {seuil_eur} €/mese.{etp_info}\n\
+                Si annulla a {seuil} × SMIC = {seuil_eur} €/mese.{etp_info}{abs_info}\n\
+                \n\
+                SMIC al 01/01/{annee} considerato: {smic} €.\n\
+                Bloccato per tutto l'anno: la rivalutazione dello SMIC in corso d'anno non si riflette sulla riduzione generale.{ref_smic}\n\
+                \n\
                 Legge Fillon del 17/01/2003: alleggerimento degli oneri datoriali sui bassi salari.",
             "es" => "[ Cálculo mensual — CSS art. L241-13 ]\n\
                 \n\
                 Fórmula: C = Tmin + (Tdelta × D^P)\n\
                 D = (1/2) × (umbral × SMIC mensual / salario bruto − 1)\n\
                 \n\
-                Parámetros: Tmin={tmin}  Tdelta={tdelta}  Tmax={tmax}  P={p}  Umbral={seuil}×SMIC\n\
+                Parámetros:\n  Tmin   = {tmin}\n  Tdelta = {tdelta}\n  Tmax   = {tmax}\n  P      = {p}\n  Umbral = {seuil} × SMIC\n\
                 \n\
-                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {inner_disp}\n\
+                D = (1/2) × ({seuil} × {smic} / {brut} − 1)\n  = {inner_disp}\n\
                 \n\
-                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n\
-                  = {coeff}\n\
+                C = {tmin} + ({tdelta} × {inner_disp}^{p})\n  = {coeff}\n\
                 \n\
-                ── Reducción mensual ───────────────────────────────\n\
-                Reducción = salario bruto × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Reducción mensual\n\
+                Reducción = salario bruto × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Se anula en {seuil} × SMIC = {seuil_eur} €/mes.{etp_info}\n\
+                Se anula en {seuil} × SMIC = {seuil_eur} €/mes.{etp_info}{abs_info}\n\
+                \n\
+                SMIC a 01/01/{annee} aplicado: {smic} €.\n\
+                Congelado todo el año: la revalorización del SMIC en curso de año no se traslada a la reducción general.{ref_smic}\n\
+                \n\
                 Ley Fillon del 17/01/2003: alivio de las cargas patronales sobre los salarios bajos.",
             _ => return None,
         },
         "REDUCTION_FILLON_LINEAIRE" => match lang {
             "en" => "[ Monthly calculation — old linear formula 2015-2018 ]\n\
                 \n\
-                Formula: C = (Tmax / 0.6) × (threshold × SMIC / gross − 1)\n\
-                  = ({tmax} / 0.6) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {coeff}\n\
+                Formula: C = (Tmax / 0.6) × (threshold × SMIC / gross − 1)\n           = ({tmax} / 0.6) × ({seuil} × {smic} / {brut} − 1)\n           = {coeff}\n\
                 \n\
-                ── Monthly reduction ───────────────────────────────\n\
-                Reduction = gross salary × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Monthly reduction\n\
+                Reduction = gross salary × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Vanishes at {seuil} × SMIC = {seuil_eur} €/month.{etp_info}",
+                Vanishes at {seuil} × SMIC = {seuil_eur} €/month.{etp_info}{abs_info}\n\
+                \n\
+                SMIC at 01/01/{annee} used: {smic} €.\n\
+                Frozen for the whole year: a mid-year SMIC increase is not passed on to the general reduction.{ref_smic}",
             "de" => "[ Monatliche Berechnung — alte lineare Formel 2015-2018 ]\n\
                 \n\
-                Formel: C = (Tmax / 0,6) × (Schwelle × SMIC / Brutto − 1)\n\
-                  = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {coeff}\n\
+                Formel: C = (Tmax / 0,6) × (Schwelle × SMIC / Brutto − 1)\n          = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n          = {coeff}\n\
                 \n\
-                ── Monatliche Senkung ──────────────────────────────\n\
-                Senkung = Bruttogehalt × C\n\
-                        = {brut} × {coeff}\n\
-                        = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Monatliche Senkung\n\
+                Senkung = Bruttogehalt × C\n        = {brut} × {coeff}\n        = {montant} €\n\
                 \n\
-                Entfällt bei {seuil} × SMIC = {seuil_eur} €/Monat.{etp_info}",
+                Entfällt bei {seuil} × SMIC = {seuil_eur} €/Monat.{etp_info}{abs_info}\n\
+                \n\
+                Zugrunde gelegter SMIC zum 01.01.{annee}: {smic} €.\n\
+                Für das ganze Jahr eingefroren: eine Anhebung des SMIC im Laufe des Jahres wird nicht auf die allgemeine Senkung übertragen.{ref_smic}",
             "nl" => "[ Maandelijkse berekening — oude lineaire formule 2015-2018 ]\n\
                 \n\
-                Formule: C = (Tmax / 0,6) × (drempel × SMIC / bruto − 1)\n\
-                  = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {coeff}\n\
+                Formule: C = (Tmax / 0,6) × (drempel × SMIC / bruto − 1)\n           = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n           = {coeff}\n\
                 \n\
-                ── Maandelijkse vermindering ───────────────────────\n\
-                Vermindering = brutoloon × C\n\
-                             = {brut} × {coeff}\n\
-                             = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Maandelijkse vermindering\n\
+                Vermindering = brutoloon × C\n             = {brut} × {coeff}\n             = {montant} €\n\
                 \n\
-                Vervalt bij {seuil} × SMIC = {seuil_eur} €/maand.{etp_info}",
+                Vervalt bij {seuil} × SMIC = {seuil_eur} €/maand.{etp_info}{abs_info}\n\
+                \n\
+                Gehanteerde SMIC per 01/01/{annee}: {smic} €.\n\
+                Het hele jaar bevroren: een verhoging van de SMIC in de loop van het jaar wordt niet doorgerekend in de algemene vermindering.{ref_smic}",
             "it" => "[ Calcolo mensile — vecchia formula lineare 2015-2018 ]\n\
                 \n\
-                Formula: C = (Tmax / 0,6) × (soglia × SMIC / lordo − 1)\n\
-                  = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {coeff}\n\
+                Formula: C = (Tmax / 0,6) × (soglia × SMIC / lordo − 1)\n           = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n           = {coeff}\n\
                 \n\
-                ── Riduzione mensile ───────────────────────────────\n\
-                Riduzione = retribuzione lorda × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Riduzione mensile\n\
+                Riduzione = retribuzione lorda × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Si annulla a {seuil} × SMIC = {seuil_eur} €/mese.{etp_info}",
+                Si annulla a {seuil} × SMIC = {seuil_eur} €/mese.{etp_info}{abs_info}\n\
+                \n\
+                SMIC al 01/01/{annee} considerato: {smic} €.\n\
+                Bloccato per tutto l'anno: la rivalutazione dello SMIC in corso d'anno non si riflette sulla riduzione generale.{ref_smic}",
             "es" => "[ Cálculo mensual — antigua fórmula lineal 2015-2018 ]\n\
                 \n\
-                Fórmula: C = (Tmax / 0,6) × (umbral × SMIC / bruto − 1)\n\
-                  = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n\
-                  = {coeff}\n\
+                Fórmula: C = (Tmax / 0,6) × (umbral × SMIC / bruto − 1)\n           = ({tmax} / 0,6) × ({seuil} × {smic} / {brut} − 1)\n           = {coeff}\n\
                 \n\
-                ── Reducción mensual ───────────────────────────────\n\
-                Reducción = salario bruto × C\n\
-                          = {brut} × {coeff}\n\
-                          = {montant} €\n\
-                ────────────────────────────────────────────────────\n\
+                ▸ Reducción mensual\n\
+                Reducción = salario bruto × C\n          = {brut} × {coeff}\n          = {montant} €\n\
                 \n\
-                Se anula en {seuil} × SMIC = {seuil_eur} €/mes.{etp_info}",
+                Se anula en {seuil} × SMIC = {seuil_eur} €/mes.{etp_info}{abs_info}\n\
+                \n\
+                SMIC a 01/01/{annee} aplicado: {smic} €.\n\
+                Congelado todo el año: la revalorización del SMIC en curso de año no se traslada a la reducción general.{ref_smic}",
+            _ => return None,
+        },
+        // Références de la réduction Fillon (chaîne {ref_smic}) — sans placeholder
+        "REDUCTION_FILLON_REF_2026" => match lang {
+            "en" => "\n\nRef.: decree no. 2026-509 of 12/06/2026 (OJ 14/06/2026)\nCSS art. L241-13 and D241-7.",
+            "de" => "\n\nRef.: Dekret Nr. 2026-509 vom 12.06.2026 (JO 14.06.2026)\nCSS Art. L241-13 und D241-7.",
+            "nl" => "\n\nRef.: decreet nr. 2026-509 van 12/06/2026 (JO 14/06/2026)\nCSS art. L241-13 en D241-7.",
+            "it" => "\n\nRif.: decreto n. 2026-509 del 12/06/2026 (JO 14/06/2026)\nCSS art. L241-13 e D241-7.",
+            "es" => "\n\nRef.: decreto n.º 2026-509 de 12/06/2026 (JO 14/06/2026)\nCSS art. L241-13 y D241-7.",
+            _ => return None,
+        },
+        "REDUCTION_FILLON_REF" => match lang {
+            "en" => "\n\nRef.: CSS art. L241-13 and D241-7.",
+            "de" => "\n\nRef.: CSS Art. L241-13 und D241-7.",
+            "nl" => "\n\nRef.: CSS art. L241-13 en D241-7.",
+            "it" => "\n\nRif.: CSS art. L241-13 e D241-7.",
+            "es" => "\n\nRef.: CSS art. L241-13 y D241-7.",
             _ => return None,
         },
         // Fragment temps partiel — placeholders {etp} {smic}

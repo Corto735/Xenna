@@ -49,6 +49,7 @@ cargo clippy                          # Lint Rust code
 cargo test --test fiabilite          # filet de sécurité multi-pays + golden France
 cargo test --test golden             # chaque ligne de chaque régime figée au centime (référence externe)
 cargo test --test i18n               # couverture des 6 langues (libellés, explications, réfs légales)
+cargo test --test gabarits_i18n      # chaque traduction porte les mêmes {placeholders} que le gabarit français
 cargo test --test contrat_pdf        # moteur de composition du contrat de travail
 cargo test --test bulletin_pdf       # moteur de composition du bulletin de paie
 ```
