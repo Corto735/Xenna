@@ -606,7 +606,6 @@
     /* Titres de rubrique et libellés dorés */
     body.bw-mode .tbl-section-head,
     body.bw-mode .rem-total-lbl,
-    body.bw-mode .warn-box strong,
     body.bw-mode .chk-apply-brut span,
     body.bw-mode .absence-preview .retenue-val { color: #000000; }
     body.bw-mode .chk-apply-brut input[type="checkbox"] { accent-color: #000000; }
@@ -930,7 +929,6 @@
     body.minitel-mode .tbl-section-head,
     body.minitel-mode .mob-row.section .mob-lbl,
     body.minitel-mode .rem-total-lbl,
-    body.minitel-mode .warn-box strong,
     body.minitel-mode .chk-apply-brut span,
     body.minitel-mode .absence-preview .retenue-val,
     body.minitel-mode .cat-ss,   body.minitel-mode .cat-csg, body.minitel-mode .cat-imp, body.minitel-mode .cat-ret,
@@ -2297,23 +2295,6 @@
     .veille-baremes.is-lacune ul { margin: 0.2rem 0 0.2rem 1.1rem; padding: 0; }
     .veille-baremes.is-lacune .vb-releve { color: var(--muted-txt); }
 
-    /* Même relevé, tous régimes — page « À propos » */
-    .veille-tous { margin-bottom: 1.75rem; }
-    .veille-tous .vt-intro { font-size: 0.7rem; color: var(--muted-txt); line-height: 1.6; margin-bottom: 0.6rem; }
-    .veille-tous .vt-scroll { overflow-x: auto; }
-    .veille-tableau { border-collapse: collapse; width: 100%; font-size: 0.68rem; }
-    .veille-tableau th {
-      text-align: left; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--gray-txt); border-bottom: 1px solid var(--border); padding: 0.3rem 0.5rem;
-    }
-    .veille-tableau td { padding: 0.28rem 0.5rem; border-bottom: 1px solid var(--dim); vertical-align: top; }
-    .veille-tableau .vt-pays  { white-space: nowrap; color: var(--text); }
-    .veille-tableau .vt-annee { white-space: nowrap; }
-    .veille-tableau .vt-ok .vt-annee { color: var(--green); }
-    .veille-tableau .vt-lacune .vt-annee,
-    .veille-tableau .vt-lacune .vt-lacunes { color: var(--yellow); }
-    .veille-tableau .vt-ok .vt-lacunes { color: var(--muted-txt); }
-    .veille-tableau .vt-maj { white-space: nowrap; color: var(--muted-txt); }
     .veille-journal { list-style: none; margin: 0; padding: 0; font-size: 0.68rem; line-height: 1.55; }
     .veille-journal li { padding: 0.3rem 0; border-bottom: 1px solid var(--dim); }
     .veille-journal .vj-date { color: var(--green); white-space: nowrap; margin-right: 0.4rem; }
@@ -3941,27 +3922,6 @@
     .hi-vitesse input { flex: 1; max-width: 12rem; accent-color: var(--green); }
     .hi-vitesse b { color: var(--green); min-width: 2.6rem; }
 
-    /* ── Grille stack technique ── */
-    .stack-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
-      gap: 0.65rem;
-      margin-bottom: 1.75rem;
-    }
-    .stack-card {
-      border: 1px solid var(--border);
-      background: var(--bg3);
-      padding: 0.85rem 1rem;
-    }
-    .stack-name    { font-size: 0.9rem; font-weight: bold; color: var(--blue); letter-spacing: 0.05em; }
-    .stack-version { font-size: 0.62rem; color: var(--muted-txt); margin: 0.08rem 0 0.55rem; letter-spacing: 0.03em; }
-    .stack-why     { font-size: 0.6rem; font-weight: bold; color: var(--yellow); text-transform: uppercase;
-                     letter-spacing: 0.08em; margin-bottom: 0.3rem; }
-    .stack-why::before { content: '· '; }
-    .stack-body    { font-size: 0.71rem; color: var(--gray-txt); line-height: 1.65; }
-    .stack-body strong { color: var(--text); }
-    .stack-body code   { color: var(--orange); font-family: inherit; }
-
     /* ── Principes ── */
     .principles {
       border-left: 2px solid var(--blue);
@@ -3973,44 +3933,6 @@
       margin-bottom: 1.75rem;
     }
     .principles strong { color: var(--text); }
-
-    /* ── Encadré GPL ── */
-    .gpl-box {
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--green);
-      background: var(--bg3);
-      padding: 1rem 1.1rem;
-      font-size: 0.72rem;
-      color: var(--gray-txt);
-      line-height: 1.9;
-      margin-bottom: 1.75rem;
-    }
-    .gpl-box strong { color: var(--text); }
-    .gpl-box em { color: var(--green); font-style: normal; font-weight: bold; }
-    .gpl-libertes {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.3rem 1.5rem;
-      margin: 0.65rem 0 0.85rem;
-      font-size: 0.69rem;
-      color: var(--muted-txt);
-    }
-    .gpl-libertes span::before { content: '✓ '; color: var(--green); }
-    @media (max-width: 480px) { .gpl-libertes { grid-template-columns: 1fr; } }
-
-    /* ── Encadré "attention" (danger/note) ── */
-    .warn-box {
-      border: 1px solid var(--dim);
-      border-left: 3px solid var(--yellow);
-      background: var(--bg3);
-      padding: 0.75rem 1rem;
-      font-size: 0.7rem;
-      color: var(--muted-txt);
-      line-height: 1.8;
-      margin-top: 0.65rem;
-      margin-bottom: 1.75rem;
-    }
-    .warn-box strong { color: #ffd700; }
 
     /* ── Crédit IA — toujours visible ── */
     .ai-credit {
@@ -5318,9 +5240,8 @@
     <div class="about-head">
       <div class="about-title">XENNA PAIE</div>
       <div class="about-sub">
-        Un simulateur de bulletin de paie français — pédagogique et open source.<br>
-        Chaque cotisation est expliquée, datée, et rattachée à son texte de loi.<br>
-        Transparent. Citoyen. Vérifiable.
+        Un simulateur de bulletin de paie, pédagogique et open source.<br>
+        Chaque cotisation est expliquée, datée et rattachée à son texte.
       </div>
     </div>
 
@@ -5328,228 +5249,43 @@
     <div class="sect-label">HUMAN INPUT :</div>
     <div id="apropos-human-input" class="human-input"></div>
 
-    <!-- ── Stack technique ── -->
-    <div class="sect-label">COMMENT C'EST CONSTRUIT</div>
-    <div class="stack-grid">
-
-      <div class="stack-card">
-        <div class="stack-name">Rust</div>
-        <div class="stack-version">Langage système · édition 2021</div>
-        <div class="stack-why">Fiable par construction</div>
-        <div class="stack-body">
-          Rust rend <strong>impossible la compilation de toute une classe de bugs</strong> :
-          pointeurs nuls, accès mémoire hors-limites, conflits d'accès concurrents.
-          Pas de ramasse-miettes = zéro pause aléatoire.
-          Un bulletin complet se calcule en quelques microsecondes.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">rust_decimal</div>
-        <div class="stack-version">Arithmétique décimale exacte</div>
-        <div class="stack-why">Les centimes comptent</div>
-        <div class="stack-body">
-          En virgule flottante IEEE 754, <code>0.1 + 0.2 ≠ 0.3</code>.
-          Sur des cotisations à quatre décimales, ces erreurs s'accumulent ligne après ligne.<br>
-          <strong>Tous les montants sont en <code>Decimal</code> exact.</strong>
-          Les taux sont stockés en texte en base — jamais convertis en nombre flottant.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">SQLite</div>
-        <div class="stack-version">Base embarquée · migrations versionnées</div>
-        <div class="stack-why">La base voyage avec l'app</div>
-        <div class="stack-body">
-          Aucun serveur à installer. Les taux, SMIC et plafonds sont versionnés par date :
-          <strong>chaque simulation est reproductible depuis 2015</strong>.
-          Des triggers empêchent les chevauchements de périodes à l'écriture.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Tauri 2</div>
-        <div class="stack-version">Application desktop · macOS / Windows / Linux</div>
-        <div class="stack-why">5 MB au lieu de 200 MB</div>
-        <div class="stack-body">
-          Electron embarque un navigateur complet dans chaque app.
-          Tauri utilise <strong>la WebView native du système d'exploitation</strong>.<br>
-          Le même moteur Rust alimente l'app desktop et le site web — zéro code dupliqué.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Axum</div>
-        <div class="stack-version">Serveur HTTP · déploiement Railway</div>
-        <div class="stack-why">Le moteur ignore qu'il est sur le web</div>
-        <div class="stack-body">
-          Le moteur de calcul est une <strong>bibliothèque pure</strong> sans dépendance au transport.
-          Axum est juste un adaptateur : il prend une requête HTTP, appelle la lib, retourne le JSON.<br>
-          <code>POST /api/calculer_bulletin</code> — déjà disponible.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Vanilla JS</div>
-        <div class="stack-version">ES Modules · Vite · zéro framework UI</div>
-        <div class="stack-why">L'intelligence est dans le backend</div>
-        <div class="stack-body">
-          Le JavaScript n'est que de la présentation — pas de React, pas de Vue.
-          <strong>Bundle &lt; 15 KB.</strong> Lisible par n'importe quel développeur.
-          Pas de breaking change de framework à gérer dans dix ans.
-        </div>
-      </div>
-
+    <!-- ── En bref ── -->
+    <div class="sect-label">EN BREF</div>
+    <div class="principles">
+      · <strong>Tous les taux sont datés</strong> : SMIC, plafonds et cotisations sont en base,
+        chargés selon la date du bulletin.<br>
+      · <strong>Chaque ligne cite son texte</strong> : loi, décret, accord.<br>
+      · <strong>44 régimes</strong> : France, fonction publique territoriale et 42 pays, pour comparer.<br>
+      · <strong>Aucune donnée personnelle conservée</strong> : ni NIR, ni donnée de santé.
     </div>
 
-    <!-- ── Principes ── -->
-    <div class="sect-label">PRINCIPES</div>
+    <!-- ── Construction ── -->
+    <div class="sect-label">COMMENT C'EST CONSTRUIT</div>
     <div class="principles">
-      · <strong>Zéro constante hardcodée</strong> : tous les taux, plafonds et paramètres Fillon
-        sont en base de données, chargés selon la date de simulation.<br>
-      · <strong>Chaque cotisation cite son texte</strong> : ANI, LFSS, décret —
-        avec les partenaires sociaux signataires quand ils existent.<br>
-      · <strong>Fillon annualisé avec régularisation mensuelle</strong> —
-        conforme à la méthode légale de régularisation progressive.<br>
-      · <strong>Le moteur est une bibliothèque pure</strong> : aucune dépendance à Tauri ni à Axum.
-        Il peut tourner en CLI, en WASM, sur mobile — sans modification.
+      Moteur de calcul en <strong>Rust</strong>, en décimales exactes : pas d'erreur d'arrondi
+      au centime. Barèmes dans une base <strong>SQLite</strong>. Le même moteur sert le site web
+      et l'application de bureau. Interface en JavaScript simple, sans framework.
     </div>
 
     <!-- ── Glossaire (src/glossaire.js) ── -->
     <div class="sect-label">LE VOCABULAIRE DU BULLETIN</div>
     <div id="apropos-glossaire"></div>
 
-    <!-- ── Fraîcheur des barèmes (veille.rs) ── -->
-    <div class="sect-label">FRAÎCHEUR DES BARÈMES, PAYS PAR PAYS</div>
-    <div id="apropos-veille" class="veille-tous"></div>
-
-    <!-- ── Évolutions ── -->
-    <div class="sect-label">CE QUE CE PROJET PEUT DEVENIR</div>
-    <div class="stack-grid">
-
-      <div class="stack-card">
-        <div class="stack-name">API publique</div>
-        <div class="stack-version">POST /api/calculer_bulletin — déjà actif</div>
-        <div class="stack-why">Interopérabilité</div>
-        <div class="stack-body">
-          Le moteur est déjà exposé via HTTP. La prochaine étape : documentation publique,
-          versioning sémantique, SDKs.<br>
-          N'importe quel <strong>SIRH, outil RH ou script</strong> pourrait calculer un bulletin
-          sans embarquer son propre moteur — en appelant simplement une route.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Codes DSN</div>
-        <div class="stack-version">Nomenclature NEODES · déjà en base</div>
-        <div class="stack-why">Interopérabilité déclarative</div>
-        <div class="stack-body">
-          Chaque cotisation est déjà associée à son <strong>code S21.G00</strong>.
-          La prochaine étape : générer un bloc DSN valide depuis un bulletin simulé,
-          pour une intégration directe dans les outils de déclaration sociale.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Tests de non-régression</div>
-        <div class="stack-version">Zéro suite de tests automatisés aujourd'hui</div>
-        <div class="stack-why">Fiabilité</div>
-        <div class="stack-body">
-          Chaque évolution de SMIC, de taux AGIRC-ARRCO ou de barème Fillon
-          doit être testée sur des <strong>bulletins de référence connus</strong>.
-          L'objectif : valider chaque migration de taux par comparaison avec des bulletins réels.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Cas complexes</div>
-        <div class="stack-version">Aujourd'hui : CDI temps plein, entrée 1er du mois</div>
-        <div class="stack-why">Robustesse</div>
-        <div class="stack-body">
-          Temps partiel, <strong>entrées/sorties en cours de mois</strong>, absences non rémunérées,
-          congé maternité, CDD, mois atypiques.<br>
-          Chaque cas exige une règle de prorata et un traitement Fillon spécifique.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Conventions collectives</div>
-        <div class="stack-version">Aujourd'hui : droit commun + Alsace-Moselle</div>
-        <div class="stack-why">Adaptabilité</div>
-        <div class="stack-body">
-          Chaque CCN peut imposer des taux de prévoyance, de mutuelle ou des cotisations propres.
-          <strong>L'architecture base de données est prête</strong> à accueillir des jeux de taux
-          par convention — la structure est là, les données restent à alimenter.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">Données personnelles</div>
-        <div class="stack-version">Aujourd'hui : aucune donnée nominative stockée</div>
-        <div class="stack-why">Sécurité</div>
-        <div class="stack-body">
-          Xenna ne connaît que Prénom, Nom, Brut — jamais de NIR, jamais de données de santé.
-          Un futur module nominatif exigerait <strong>authentification, chiffrement au repos</strong>
-          et conformité RGPD complète.
-        </div>
-      </div>
-
-    </div>
-
     <!-- ── Licence GPL-3.0 ── -->
-    <div class="sect-label">LICENCE GPL-3.0 — LE CODE QUI SE PROPAGE</div>
-    <div class="gpl-box">
-      <div style="margin-bottom:0.7rem">
-        La GPL (General Public License v3) est une licence <em>copyleft</em> — l'inverse du copyright.
-        Au lieu de restreindre l'usage, elle <strong>impose le partage</strong>.
-      </div>
-
-      <div style="font-size:0.67rem;font-weight:bold;color:var(--text);letter-spacing:0.06em;margin-bottom:0.3rem">
-        LES 4 LIBERTÉS GARANTIES
-      </div>
-      <div class="gpl-libertes">
-        <span>Utiliser pour n'importe quel usage</span>
-        <span>Étudier le code source librement</span>
-        <span>Redistribuer des copies</span>
-        <span>Modifier et redistribuer les modifications</span>
-      </div>
-
-      <div style="margin-bottom:0.7rem">
-        <strong>La clause virale.</strong> Si tu intègres du code GPL dans ton projet
-        et que tu distribues le résultat, <em>ton projet entier doit aussi devenir GPL</em>.
-        C'est ce qu'on appelle la "contamination" — ou plus précisément, le copyleft fort.
-      </div>
-
-      <div style="margin-bottom:0.7rem">
-        <strong>Ce que ça protège.</strong> Quiconque distribue une version modifiée
-        doit en publier le code source sous GPL-3.0.
-        Le partage est une condition d'entrée — pas une option.
-      </div>
-
-      <div>
-        <strong>Ce que ça permet.</strong> Tout gestionnaire de paie peut lire le code,
-        comprendre chaque calcul, adapter le moteur à sa convention collective,
-        le faire tourner en local. La connaissance est libre.
-        La seule contrepartie : ne pas la fermer derrière une porte en sortant.
-      </div>
-    </div>
-
-    <div class="warn-box">
-      <strong>// En pratique</strong><br>
-      Utiliser Xenna Paie pour apprendre, tester, comprendre — libre et sans contrainte.
-      Intégrer le code dans un logiciel distribué à des tiers déclenche les obligations GPL-3.0.
+    <div class="sect-label">LICENCE GPL-3.0</div>
+    <div class="principles">
+      Le code est <strong>libre</strong> : chacun peut l'utiliser, le lire, le modifier et le
+      redistribuer. Une seule condition : qui distribue une version modifiée en publie
+      le code, sous la même licence.
     </div>
 
     <!-- ── Projet communautaire ── -->
     <div class="sect-label">UN PROJET QUI PEUT DEVENIR COMMUNAUTAIRE</div>
     <div class="principles">
-      Le moteur de calcul est libre et <strong>le restera</strong>.
-      Tenir à jour les barèmes de dizaines de régimes, relire les textes, vérifier
-      chaque taux : c'est un travail qui gagne à être partagé.
-      Xenna pourrait devenir <strong>un commun</strong>, porté par celles et ceux qui font
-      la paie au quotidien : signaler un taux faux ou périmé, proposer une convention
-      collective, relire une explication, traduire, ou contribuer directement au code.
-      Le soutien sur Tipeee aide à couvrir l'hébergement.
+      Tenir à jour les barèmes et vérifier chaque taux gagne à être partagé.
+      Chacun peut aider : signaler un taux faux, proposer une convention collective,
+      relire une explication, traduire, contribuer au code.
+      Le soutien sur Tipeee couvre l'hébergement.
     </div>
     <button class="ap-soutien" type="button" onclick="openExternal('https://fr.tipeee.com/xenna-paye')">
       <span class="mc-blason ap-soutien-blason" aria-hidden="true">
@@ -5559,56 +5295,6 @@
       </span>
       <span class="ap-soutien-legende">♥ &nbsp;Soutenir Xenna sur Tipeee — fr.tipeee.com/xenna-paye</span>
     </button>
-
-    <div class="sect-label">LES GRANDES FAMILLES DE LICENCES</div>
-    <div class="stack-grid">
-
-      <div class="stack-card">
-        <div class="stack-name">MIT · Apache 2.0</div>
-        <div class="stack-version">Permissif — liberté totale</div>
-        <div class="stack-why">Usage</div>
-        <div class="stack-body">
-          Fais ce que tu veux : utilise, modifie, revends, ferme le code.
-          La seule obligation est de conserver la mention de copyright d'origine.<br>
-          <strong>Exemples :</strong> React, VS Code, Kubernetes, Swift.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">LGPL</div>
-        <div class="stack-version">Copyleft faible — bibliothèques</div>
-        <div class="stack-why">Usage</div>
-        <div class="stack-body">
-          Conçu pour les bibliothèques : tu peux l'utiliser dans un logiciel propriétaire
-          via liaison dynamique sans ouvrir ton propre code.<br>
-          <strong>Exemples :</strong> Qt, FFmpeg, GNU libc.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">AGPL-3.0</div>
-        <div class="stack-version">Copyleft réseau — SaaS inclus</div>
-        <div class="stack-why">Usage</div>
-        <div class="stack-body">
-          Extension de la GPL : si tu <strong>offres le logiciel comme service en ligne</strong>,
-          tu dois quand même publier ton code source. Ferme la porte de l'hébergement cloud opaque.<br>
-          <strong>Exemples :</strong> Nextcloud, Mastodon.
-        </div>
-      </div>
-
-      <div class="stack-card">
-        <div class="stack-name">BSL · SSPL</div>
-        <div class="stack-version">Source visible, commercialisation restreinte</div>
-        <div class="stack-why">Usage</div>
-        <div class="stack-body">
-          Le code est lisible mais la commercialisation est restreinte pendant N années,
-          après quoi il bascule en open source.<br>
-          La SSPL couvre même les couches d'infrastructure qui hébergent le logiciel.<br>
-          <strong>Exemples :</strong> MariaDB, HashiCorp Vault, MongoDB v4+.
-        </div>
-      </div>
-
-    </div>
 
   </div>
 
@@ -5624,8 +5310,7 @@
       </div>
     </div>
 
-    <!-- ── Veille réglementaire (veille.rs) : mêmes données que « À propos »,
-         rangées en fiches par régime ── -->
+    <!-- ── Veille réglementaire (veille.rs), en fiches par régime ── -->
     <div class="ccn-sec-lbl ckv-sec">Veille réglementaire et législative</div>
     <div id="chakrram-veille" class="ckv"></div>
 

@@ -729,7 +729,7 @@ pub const JOURNAL: &[MiseAJour] = &[
     },
 ];
 
-/// Le journal complet (tableau « À propos » du front).
+/// Le journal complet (veille du Chakrram, côté front).
 pub fn journal() -> &'static [MiseAJour] {
     JOURNAL
 }

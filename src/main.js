@@ -885,7 +885,7 @@ window.setView = function (v) {
   if (v === 'gaabrielle') gaabInit();
   if (v === 'hercule')    herculeInit();
   if (v === 'apropos')    {
-    _humanInputLoad(); _veilleTableau();
+    _humanInputLoad();
     const g = document.getElementById('apropos-glossaire');
     if (g && !g.innerHTML) g.innerHTML = glossaireHtml();
   }
@@ -3772,7 +3772,7 @@ async function _afficherVeille(b) {
     _veilleCache.set(pays, api('veille_baremes', { pays })
       .catch(e => { _veilleCache.delete(pays); throw e; }));
   }
-  // Le journal (même source que la page « À propos ») donne l'objet de la
+  // Le journal (même source que la veille du Chakrram) donne l'objet de la
   // dernière modification ; son échec ne prive que de l'objet, pas de la date.
   if (!_journalCache) {
     _journalCache = api('journal_baremes', {})
@@ -3837,7 +3837,7 @@ window.vbDeplier = function(btn) {
   btn.title = ouvert ? "Replier l'intitulé" : "Afficher tout l'intitulé";
 };
 
-// Même relevé, tous régimes à la fois : tableau de la page « À propos ».
+// Noms des régimes pour la veille du Chakrram.
 // Les clés sont celles de l'enum `Pays` (snake_case) ; un régime sans nom ici
 // s'affiche sous sa clé plutôt que de disparaître.
 const VEILLE_NOMS = {
@@ -3859,59 +3859,9 @@ const VEILLE_NOMS = {
 };
 // Spécificités journalisées à part (enum `Specificite` de veille.rs).
 const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle', esat: 'ESAT', idcc0016: 'IDCC 0016' };
-let _veilleTousCharge = false;
-
-async function _veilleTableau() {
-  const el = document.getElementById('apropos-veille');
-  if (!el || _veilleTousCharge) return;
-  let liste, journal = [];
-  try { liste = await api('veille_baremes_tous', {}); }
-  catch (e) { console.warn('[veille_baremes_tous] indisponible :', e); return; }
-  try { journal = await api('journal_baremes', {}); }
-  catch (e) { console.warn('[journal_baremes] indisponible :', e); }
-  _veilleTousCharge = true;
-
-  // « À jour » s'entend de l'année du relevé, comme dans tests/fiabilite.rs.
-  // Les régimes en retard d'abord, du plus ancien au plus récent.
-  const audit = liste[0]?.audit_du || '';
-  const annee = parseInt(audit.slice(0, 4), 10);
-  const aJour = liste.filter(v => v.integre_jusqu_a >= annee);
-  const enRetard = liste.filter(v => v.integre_jusqu_a < annee)
-    .sort((a, b) => a.integre_jusqu_a - b.integre_jusqu_a);
-  const nom = v => esc(VEILLE_NOMS[v.pays] || v.pays);
-  const ligne = v => {
-    const ok = v.integre_jusqu_a >= annee;
-    return `<tr class="${ok ? 'vt-ok' : 'vt-lacune'}">
-      <td class="vt-pays">${nom(v)}</td>
-      <td class="vt-annee">${ok ? '✓' : '⚠'} ${v.integre_jusqu_a}</td>
-      <td class="vt-lacunes">${ok ? '—' : v.lacunes.map(esc).join('<br>')}</td>
-      <td class="vt-maj">${v.derniere_maj ? formatDate(v.derniere_maj) : '—'}</td>
-    </tr>`;
-  };
-  // Journal : ce qui a été intégré, quand, et d'après quelle source.
-  const domaine = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
-  const entree = m => `<li><span class="vj-date">${formatDate(m.date)}</span>
-      <span class="vj-pays">${nom(m)}${m.specificite ? ' · ' + esc(VEILLE_SPECIFICITES[m.specificite] || m.specificite) : ''}</span> — ${esc(m.objet)}
-      <span class="vj-src">${m.sources.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(domaine(u))}</a>`).join(' · ')}</span></li>`;
-  const journalHtml = journal.length ? `
-    <div class="vt-intro" style="margin-top:1rem">Journal des mises à jour — chaque valeur intégrée, datée et sourcée :</div>
-    <ul class="veille-journal">${journal.map(entree).join('')}</ul>` : '';
-  el.innerHTML = `
-    <div class="vt-intro">
-      Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge les
-      dernières valeurs connues. Ce tableau dit, régime par régime, la dernière année
-      dont tous les barèmes sont intégrés — ${aJour.length} à jour sur ${liste.length}.
-      Relevé du ${formatDate(audit)}.
-    </div>
-    <div class="vt-scroll"><table class="veille-tableau">
-      <thead><tr><th>Régime</th><th>Intégré jusqu'en</th><th>Ce qui manque au-delà</th><th>Dernière évolution des taux</th></tr></thead>
-      <tbody>${enRetard.map(ligne).join('')}${aJour.map(ligne).join('')}</tbody>
-    </table></div>${journalHtml}`;
-}
 
 // ── Le Chakrram — veille réglementaire et législative ────────────────────────
-// Mêmes données que le tableau d'« À propos » (veille_baremes_tous +
-// journal_baremes), rangées autrement : une fiche par régime — année intégrée,
+// Données de veille_baremes_tous + journal_baremes, une fiche par régime — année intégrée,
 // dernière évolution des taux, lacunes, et son propre journal daté et sourcé,
 // spécificités (Alsace-Moselle, ESAT, IDCC 0016) comprises. Régimes en retard
 // d'abord, puis à jour ; un champ filtre par nom de pays.
@@ -3932,7 +3882,7 @@ async function _chakrramVeille() {
   catch (e) { console.warn('[journal_baremes] indisponible :', e); }
   _chakrramVeilleCharge = true;
 
-  // « À jour » s'entend de l'année du relevé, comme dans le tableau d'« À propos ».
+  // « À jour » s'entend de l'année du relevé, comme dans tests/fiabilite.rs.
   const audit = liste[0]?.audit_du || '';
   const annee = parseInt(audit.slice(0, 4), 10);
   const ok = v => v.integre_jusqu_a >= annee;
