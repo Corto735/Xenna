@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeFmModal(); });
 
-  // Tirage unique à l'arrivée — héros + genre initial (H : 49 %, F : 51 %)
+  // Tirage unique à l'arrivée — héros + sexe initial (H : 49 %, F : 51 %)
   window._heroH = Math.random() < 0.015 ? { prenom: 'Jean-Noël', nom: 'Favari' } : _heroRandom(HEROS_H);
   window._heroF = _heroRandom(HEROS_F);
 
@@ -149,27 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
   _noms.F = { prenom: window._heroF.prenom, nom: window._heroF.nom };
 
   if (Math.random() < 0.51) {
-    // Préselection F — écart tiré une fois, mémorisé pour toute la session
-    _ecartActif = _drawEcartPct();
-    _ecartTire  = true;
-    _genre      = 'F';
+    _genre = 'F';
     _applyNoms('F');
-    const _e0 = _ecartActif / 100;
-    const _a0 = Math.abs(_ecartActif);
-    const _b0 = Math.abs(Math.round(_e0 / (1 + _e0) * 100));
-    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-      if (_ecartActif < 0) {
-        el.dataset.textFh = `// −${_a0} % · écart salarial F/H`;
-        el.dataset.textHf = `// +${_b0} % · écart salarial H/F`;
-      } else if (_ecartActif > 0) {
-        el.dataset.textFh = `// +${_a0} % · avantage F/H`;
-        el.dataset.textHf = `// −${_b0} % · avantage F/H`;
-      } else {
-        el.dataset.textFh = `// ± 0 % · parité salariale`;
-        el.dataset.textHf = `// ± 0 % · parité salariale`;
-      }
-    });
-    _syncToggleUI('F', false);
+    _syncToggleUI('F');
   } else {
     _applyNoms('H');
     _syncToggleUI('H');
@@ -192,8 +174,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
-  // Les hints sont initialisés au premier basculement (pays inconnu à l'init)
 
   // Détection automatique mobile / bureau — breakpoint identique au media query CSS
   const mq = window.matchMedia("(max-width: 680px)");
@@ -4794,9 +4774,6 @@ window.onTogglePays = function(pays, checked) {
     const fr = document.getElementById(`${p}-france`);
     if (fr) fr.checked = aucunActif;
   });
-
-  // Nouveau pays → prochain basculement H/F tire depuis le bon pool
-  _ecartTire = false;
 };
 
 // Entreprise adaptée (aide au poste) : régime France privé.
@@ -6175,12 +6152,10 @@ document.getElementById("d-calc").addEventListener("click", () => calculate("des
 document.getElementById("m-calc").addEventListener("click", () => calculate("mobile"));
 document.getElementById("a-calc").addEventListener("click", calculerAnnee);
 
-// ── Toggle H / F — écart salarial moyen ──────────────────────────────────────
+// ── Toggle H / F ─────────────────────────────────────────────────────────────
 //
-// Easter egg pédagogique : basculer sur F applique −X % sur le brut (X tiré aléatoirement
-// parmi 11–17 %, pondéré autour de 14–15 %), reflet de l'écart salarial F/H constaté.
+// Bascule le couple prénom/nom affiché ; le salaire n'est jamais touché.
 // Les noms par défaut sont des héros de fantasy d'auteurs européens.
-// Dès qu'un nom est saisi manuellement, le toggle n'a plus d'effet.
 
 const HEROS_H = [
   { prenom: 'Geralt',   nom: 'de Riv' },          // Sapkowski (polonais)
@@ -6207,74 +6182,6 @@ const HEROS_F = [
   { prenom: 'Rikke',    nom: 'la Nord' },           // Abercrombie (britannique)
   { prenom: 'Tanaquil', nom: 'la Magicienne' },     // Tanith Lee (britannique)
 ];
-
-// Pools par pays — valeurs signées en % : négatif = F gagne moins, positif = F gagne plus
-// Sources : INSEE Focus 377 (FR 2024), OFS LSE (CH 2024), STATEC/Eurostat (LU 2024),
-//           ISTAT SES 2022 / Eurostat 2023 (IT), Statistique Canada EPA 2024 (CA/QC)
-const ECART_POOLS = {
-  france:     [-4, -9, -13, -17, -22],
-  suisse:     [-8, -10, -12, -14, -16],
-  luxembourg: [+1, +1,  +1,   0,  -1],
-  italie:     [-2, -4,  -4,  -6],
-  espagne:    [-6, -10, -13, -16, -19],
-  portugal:   [-8, -11, -13, -15],
-  belgique:   [-6, -9, -11, -13, -15],
-  allemagne:  [-14, -16, -18, -20, -22],
-  canada:     [-6, -10, -12, -14, -17],
-  quebec:     [-6, -10, -12, -14, -17],
-  angleterre: [-7, -12, -15, -18, -21],
-  japon:      [-20, -23, -25, -27, -30],
-  chine:      [-10, -14, -18, -22, -25],
-  paysbas:    [-6, -10, -13, -15, -18],
-  australie:  [-8, -11, -13, -15, -18],
-  nouvellezelande: [-6, -9, -11, -13, -16],
-  pologne:    [-3, -5, -7, -9, -12],
-  coree:      [-15, -20, -25, -28, -31],
-  andorre:    [-5, -8, -10, -12, -15],
-  monaco:     [-6, -9, -11, -13, -16],
-  danemark:   [-3, -6, -8, -10, -13],
-  finlande:   [-4, -7, -9, -11, -14],
-  suede:      [-5, -8, -10, -12, -14],
-  estonie:    [-12, -16, -20, -23, -27],
-  lettonie:   [-9, -13, -17, -20, -24],
-  lituanie:   [-7, -10, -13, -15, -18],
-  autriche:   [-12, -16, -19, -22, -25],
-  tchequie:   [-12, -15, -18, -21, -24],
-  slovaquie:  [-8, -11, -14, -16, -19],
-  hongrie:    [-10, -13, -16, -18, -21],
-  slovenie:   [-3, -5, -7, -9, -12],
-  grece:      [-6, -9, -11, -13, -16],
-  chypre:     [-8, -11, -14, -17, -20],
-  malte:      [-7, -10, -12, -14, -17],
-  croatie:    [-6, -9, -11, -13, -16],
-  // Eurostat gender pay gap (forme non ajustée) : IE ≈ 10 %, RO ≈ 4 % (un des plus bas UE), BG ≈ 13 %.
-  irlande:    [-6, -9, -11, -13, -16],
-  roumanie:   [-3, -5, -7, -9, -12],
-  bulgarie:   [-6, -10, -13, -16, -19],
-  // Écart de rémunération H/F (formes non ajustées) : US ≈ 17 %, MX ≈ 14 %,
-  // BR ≈ 21 %, AE ≈ variable, IN ≈ 20 % (écarts déclarés, sources OIT/OCDE).
-  etatsunis:  [-8, -12, -15, -18, -21],
-  mexique:    [-6, -10, -13, -15, -18],
-  bresil:     [-8, -12, -16, -19, -22],
-  emirats:    [-10, -14, -18, -22, -26],
-  inde:       [-10, -15, -20, -24, -28],
-};
-
-function _getActivePays() {
-  for (const p of ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde']) {
-    if (document.getElementById('d-' + p)?.checked) return p;
-    if (document.getElementById('m-' + p)?.checked) return p;
-  }
-  return 'france';
-}
-
-function _drawEcartPct() {
-  const pool = ECART_POOLS[_getActivePays()];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-let _ecartActif = 0;    // mémorise l'écart appliqué H→F pour le retour F→H
-let _ecartTire  = false; // tirage unique pour toute la session
 
 let _genre = 'H';
 
@@ -6304,7 +6211,7 @@ function _captureNoms(genre, prefix) {
   _noms[genre] = { prenom, nom };
 }
 
-function _syncToggleUI(genre, showHint = false) {
+function _syncToggleUI(genre) {
   const onH = genre === 'H';
   ['d-hf', 'm-hf'].forEach(id => {
     const el = document.getElementById(id);
@@ -6313,12 +6220,6 @@ function _syncToggleUI(genre, showHint = false) {
     el.classList.toggle('is-f', !onH);
     el.setAttribute('aria-checked', onH ? 'false' : 'true');
   });
-  if (showHint) {
-    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-      el.textContent = onH ? el.dataset.textHf : el.dataset.textFh;
-      el.style.display = 'inline';
-    });
-  }
 }
 
 window.toggleGenre = function() { window.setGenre(_genre === 'H' ? 'F' : 'H'); };
@@ -6331,47 +6232,8 @@ window.setGenre = function(genre) {
   _captureNoms(_genre);
   _applyNoms(genre);
 
-  const simuleEcart = !!document.getElementById('d-ecart-actif')?.checked
-                   || !!document.getElementById('m-ecart-actif')?.checked;
-
-  if (simuleEcart) {
-    // Premier passage (quel que soit le sens) : tirage unique dans le pool du pays actif
-    if (!_ecartTire) { _ecartActif = _drawEcartPct(); _ecartTire = true; }
-    const e = _ecartActif / 100;
-    const facteur = genre === 'F' ? (1 + e) : (1 / (1 + e));
-
-    const abs = Math.abs(_ecartActif);
-    const absHF = Math.abs(Math.round(e / (1 + e) * 100));
-    document.querySelectorAll('.genre-ecart-hint').forEach(el => {
-      if (_ecartActif < 0) {
-        el.dataset.textFh = `// −${abs} % · écart salarial F/H`;
-        el.dataset.textHf = `// +${absHF} % · écart salarial H/F`;
-      } else if (_ecartActif > 0) {
-        el.dataset.textFh = `// +${abs} % · avantage F/H`;
-        el.dataset.textHf = `// −${absHF} % · avantage F/H`;
-      } else {
-        el.dataset.textFh = `// ± 0 % · parité salariale`;
-        el.dataset.textHf = `// ± 0 % · parité salariale`;
-      }
-    });
-
-    ['d-brut', 'm-brut'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = Math.round(parseFloat(el.value) * facteur);
-    });
-  }
-
   _genre = genre;
-  _syncToggleUI(genre, simuleEcart);
-};
-
-window.onToggleEcartActif = function(checked) {
-  if (checked) {
-    _syncToggleUI(_genre, true);
-  } else {
-    _ecartTire = false; // prochain recochage → nouveau tirage dans le pool
-    document.querySelectorAll('.genre-ecart-hint').forEach(el => { el.style.display = 'none'; });
-  }
+  _syncToggleUI(genre);
 };
 
 // ── Annuel — disponible uniquement pour un bulletin France secteur privé ──────
