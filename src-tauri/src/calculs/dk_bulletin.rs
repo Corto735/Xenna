@@ -19,34 +19,33 @@ pub fn generer_bulletin_dk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = ctx.date_paie.year();
 
-    // Paramètres par année : personfradrag, kommuneskat moyen, seuil topskat (après AM-bidrag).
-    // bundskat 12,01 % stable ; AM-bidrag 8 % lu en base ; ATP forfait.
-    // 2026 (réforme) : l'ancien topskat 15 % est scindé en mellemskat 7,5 % (> 641 200 DKK),
-    // topskat 7,5 % (> 845 543) et toptopskat 5 % (> 2 592 700), sur le revenu après AM-bidrag.
-    let (personfradrag_an, kommune, topskat_seuil_an) = match annee {
-        2024 => (dec!(49700), dec!(0.25067), dec!(588900)),
-        2025 => (dec!(51600), dec!(0.251),   dec!(611800)),
-        2026 => (dec!(54100), dec!(0.25049), dec!(641200)), // seuil = entrée mellemskat
-        _ => return super::pays_non_couvert::bulletin_non_couvert(
+    // Paramètres en base (migration 0153), 2024 à 2026 : personfradrag, kommuneskat
+    // moyen, bundskat, ATP temps plein (A-sats, ≥ 117 h/mois : 1/3 salarié, 2/3
+    // employeur) et déductions liées à l'emploi, qui ne réduisent que l'assiette de
+    // l'impôt communal (beskæftigelsesfradrag ; jobfradrag dès 2025). Impôt d'État
+    // DK_ETAT en taux cumulés : topskat 15 % (≤ 2025) ; mellem-, top- et
+    // toptopskat 7,5 / 7,5 / 5 % (2026), sur le revenu après AM-bidrag.
+    let p = |c: &str| ctx.plafond(c);
+    let (Some(personfradrag_an), Some(kommune), Some(bundskat), Some(atp_mensuel),
+         Some(besk_taux), Some(besk_max), Some(etat)) = (
+        p("DK_PERSONFRADRAG"), p("DK_KOMMUNESKAT"), p("DK_BUNDSKAT"), p("DK_ATP"),
+        p("DK_BESK_TAUX"), p("DK_BESK_MAX"), ctx.bareme("DK_ETAT"),
+    ) else {
+        return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "DKK", "DK",
-            "Danemark : données disponibles pour 2024-2026.", ctx),
+            "Danemark : données disponibles pour 2024-2026.", ctx);
     };
+    let topskat_seuil_an = etat.first().and_then(|t| t.borne_sup).unwrap_or(Decimal::MAX);
     let personfradrag_m = personfradrag_an / dec!(12);
     let topskat_seuil_m = topskat_seuil_an / dec!(12);
-    // ATP temps plein (A-sats, ≥ 117 h/mois) : 1/3 salarié, 2/3 employeur.
-    let atp_mensuel     = if annee >= 2026 { dec!(99.00) } else { dec!(94.65) };
-    // Déductions liées à l'emploi, sur le revenu du travail annuel, qui ne
-    // réduisent que l'assiette de l'impôt communal (ligningsmæssige fradrag) :
-    // beskæftigelsesfradrag (taux, plafond) et jobfradrag (taux, seuil, plafond).
-    let (besk_taux, besk_max, job_seuil, job_max) = match annee {
-        2024 => (dec!(0.1065), dec!(45100), None, Decimal::ZERO),
-        2025 => (dec!(0.1230), dec!(55600), Some(dec!(224500)), dec!(2900)),
-        _    => (dec!(0.1275), dec!(63300), Some(dec!(235200)), dec!(3100)),
+    let job = match (p("DK_JOB_SEUIL"), p("DK_JOB_TAUX"), p("DK_JOB_MAX")) {
+        (Some(s), Some(t), Some(m)) => Some((s, t, m)),
+        _ => None,
     };
     let travail_an  = brut * dec!(12);
     let besk_an     = (travail_an * besk_taux).min(besk_max);
-    let job_an      = job_seuil
-        .map(|s| ((travail_an - s).max(Decimal::ZERO) * dec!(0.045)).min(job_max))
+    let job_an      = job
+        .map(|(s, t, m)| ((travail_an - s).max(Decimal::ZERO) * t).min(m))
         .unwrap_or(Decimal::ZERO);
     let fradrag_m   = ((besk_an + job_an) / dec!(12)).round_dp(2);
 
@@ -87,15 +86,12 @@ pub fn generer_bulletin_dk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // Bundskat sur le revenu personnel ; kommuneskat sur le revenu imposable,
     // diminué en plus des déductions liées à l'emploi.
     let taxable_kommune = (taxable - fradrag_m).max(Decimal::ZERO);
-    let impot_base = taxable * dec!(0.1201) + taxable_kommune * kommune;
-    // Tranches d'État : topskat unique 15 % (≤ 2025) ou mellem/top/toptop (2026+).
-    let topskat = if annee >= 2026 {
-        (apres_am - dec!(641200) / dec!(12)).max(Decimal::ZERO) * dec!(0.075)   // mellemskat
-        + (apres_am - dec!(845543) / dec!(12)).max(Decimal::ZERO) * dec!(0.075) // topskat
-        + (apres_am - dec!(2592700) / dec!(12)).max(Decimal::ZERO) * dec!(0.05) // toptopskat
-    } else {
-        (apres_am - topskat_seuil_m).max(Decimal::ZERO) * dec!(0.15)
-    };
+    let impot_base = taxable * bundskat + taxable_kommune * kommune;
+    // Tranches d'État : à chaque seuil, le supplément de taux s'applique à la part
+    // du revenu mensuel qui le dépasse (seuil annuel ÷ 12).
+    let topskat: Decimal = etat.windows(2)
+        .filter_map(|w| w[0].borne_sup.map(|b| (apres_am - b / dec!(12)).max(Decimal::ZERO) * (w[1].taux - w[0].taux)))
+        .sum();
     let impot = (impot_base + topskat).round_dp(2);
     let taux_imp = if brut > Decimal::ZERO { (impot / brut).round_dp(4) } else { Decimal::ZERO };
     cotisations.push(LigneCotisation {
@@ -114,7 +110,7 @@ pub fn generer_bulletin_dk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
             .replace("{km}", &format!("{:.3}", kommune * dec!(100)))
             .replace("{pf}", &format!("{:.0}", personfradrag_m))
             .replace("{fr}", &format!("{:.2}", fradrag_m))
-            .replace("{tranches}", &if annee >= 2026 {
+            .replace("{tranches}", &if etat.len() > 2 {
                 "mellemskat 7,5 % > 641 200 · topskat 7,5 % > 845 543 · toptopskat 5 % > 2 592 700 DKK".to_string()
             } else {
                 format!("topskat 15 % > {:.0} DKK", topskat_seuil_an)

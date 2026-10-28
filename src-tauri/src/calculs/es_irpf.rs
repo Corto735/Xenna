@@ -22,62 +22,33 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-/// Barème de retenue (tabla 2 de l'algorithme).
-fn escala(base: Decimal) -> Decimal {
-    let tranches = [
-        (dec!(12450), dec!(0.19)),
-        (dec!(20200), dec!(0.24)),
-        (dec!(35200), dec!(0.30)),
-        (dec!(60000), dec!(0.37)),
-        (dec!(300000), dec!(0.45)),
-        (Decimal::MAX, dec!(0.47)),
-    ];
-    let mut cuota = Decimal::ZERO;
-    let mut bas = Decimal::ZERO;
-    for (haut, taux) in tranches {
-        if base <= bas { break; }
-        cuota += (base.min(haut) - bas) * taux;
-        bas = haut;
-    }
-    cuota
-}
-
-/// Réduction pour obtention de revenus du travail (art. 20 LIRPF).
-fn reduccion(rnt: Decimal) -> Decimal {
-    let r = if rnt <= dec!(14852) {
-        dec!(7302)
-    } else if rnt <= dec!(17673.52) {
-        dec!(7302) - dec!(1.75) * (rnt - dec!(14852))
-    } else if rnt < dec!(19747.50) {
-        dec!(2364.34) - dec!(1.14) * (rnt - dec!(17673.52))
-    } else {
-        Decimal::ZERO
-    };
-    r.round_dp(2)
-}
+// Barème de retenue (tabla 2, ES_IRPF_ESCALA), réduction pour revenus du
+// travail (art. 20 LIRPF, ES_IRPF_REDUCCION) et paramètres scalaires : en base
+// (migration 0151), pour 2025 et 2026.
 
 /// Ligne de retenue IRPF, ou None avant 2025 (algorithme non intégré).
 /// `cotisations_mensuelles` = total des cotisations salariales du mois.
 pub fn irpf(brut: Decimal, cotisations_mensuelles: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
+    // Algorithme intégré pour 2025 et 2026 : avant, rien en base, pas de ligne.
+    ctx.bareme("ES_IRPF_ESCALA")?;
     let annee = ctx.date_paie.year();
-    if annee < 2025 {
-        return None;
-    }
+    let escala = |b: Decimal| ctx.bareme_progressif("ES_IRPF_ESCALA", b).unwrap_or(Decimal::ZERO);
+    let p = |code: &str| ctx.plafond(code);
     let retrib = brut * dec!(12);
     let cotis = cotisations_mensuelles * dec!(12);
     let rnt = (retrib - cotis).max(Decimal::ZERO);
-    let otros = dec!(2000).min(rnt);
-    let red = reduccion(rnt);
+    let otros = p("ES_IRPF_OTROS")?.min(rnt);
+    let red = ctx.bareme_lineaire("ES_IRPF_REDUCCION", rnt)?.round_dp(2);
     let base = (rnt - otros - red).max(Decimal::ZERO);
-    let minimo = dec!(5550);
-    let limite_exento = dec!(15876);
+    let minimo = p("ES_IRPF_MINIMO")?;
+    let limite_exento = p("ES_IRPF_LIMITE")?;
 
     let cuota = if retrib <= limite_exento {
         Decimal::ZERO
     } else {
         let c = (escala(base) - escala(minimo)).max(Decimal::ZERO);
-        if retrib <= dec!(35200) {
-            c.min((retrib - limite_exento) * dec!(0.43))
+        if retrib <= p("ES_IRPF_PLAFOND_SEUIL")? {
+            c.min((retrib - limite_exento) * p("ES_IRPF_PLAFOND_TAUX")?)
         } else {
             c
         }

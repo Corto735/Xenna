@@ -109,13 +109,26 @@ async fn temps_partiel_court() {
     assert_eq!(t, vec!["Temps partiel sous la durée minimale".to_string()]);
 }
 
-/// ESAT : pas de contrat de travail, pas de contrôle SMIC ; étranger : rien.
+/// ESAT : pas de contrat de travail, pas de contrôle SMIC ; étranger : aucun
+/// contrôle français, seulement les lignes sans montant (900 CHF : sous le
+/// seuil d'entrée de la LPP).
 #[tokio::test]
 async fn hors_champ() {
     let mut s = salarie_base(Pays::France, "900");
     s.esat = true;
     assert!(!alertes(s, "2026-06-30").await.iter().any(|x| x.contains("SMIC")));
-    assert!(alertes(salarie_base(Pays::Suisse, "900"), "2026-06-30").await.is_empty());
+    assert_eq!(alertes(salarie_base(Pays::Suisse, "900"), "2026-06-30").await,
+               vec!["Cotisations sans montant à ce salaire".to_string()]);
+    assert!(alertes(salarie_base(Pays::Suisse, "6000"), "2026-06-30").await.is_empty());
+}
+
+/// Japon sous le seuil d'affiliation (88 000 ¥) : l'alerte nomme les quatre
+/// lignes à taux sans montant ; au-dessus, plus rien.
+#[tokio::test]
+async fn japon_sous_le_seuil() {
+    assert_eq!(alertes(salarie_base(Pays::Japon, "50000"), "2026-06-30").await,
+               vec!["Cotisations sans montant à ce salaire".to_string()]);
+    assert!(alertes(salarie_base(Pays::Japon, "350000"), "2026-06-30").await.is_empty());
 }
 
 /// Exactement le SMIC mensuel officiel de juin 2026 (1 867,02 €, et non

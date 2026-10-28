@@ -241,7 +241,42 @@ export const TEXTES = {
     'Nessuna tabella per il coefficiente {coef} alla data di paga (le tabelle riprese risalgono solo all’ultimo accordo): nessuna verifica.',
     'Ninguna tabla para el coeficiente {coef} en la fecha de pago (las tablas copiadas solo remontan a su última modificación): sin comprobación.',
   ],
+  'al.sans_montant.titre': ['Cotisations sans montant à ce salaire', 'Contributions with no amount at this pay', 'Beiträge ohne Betrag bei diesem Lohn', 'Bijdragen zonder bedrag bij dit loon', 'Contributi senza importo a questa retribuzione', 'Cotizaciones sin importe con este salario'],
+  'al.sans_montant.texte': [
+    "Ces lignes ont un taux mais leur assiette est nulle à ce salaire (seuil d'affiliation, plancher ou exonération ; l'explication de chaque ligne en donne la règle) : {lignes}.",
+    'These lines have a rate but their base is zero at this pay (coverage threshold, floor or exemption; each line’s explanation gives the rule): {lignes}.',
+    'Diese Zeilen haben einen Satz, aber ihre Bemessungsgrundlage ist bei diesem Lohn null (Versicherungsschwelle, Untergrenze oder Befreiung; die Erläuterung jeder Zeile nennt die Regel): {lignes}.',
+    'Deze lijnen hebben een tarief, maar hun grondslag is nul bij dit loon (aansluitingsdrempel, ondergrens of vrijstelling; de toelichting van elke lijn geeft de regel): {lignes}.',
+    'Queste righe hanno un’aliquota ma la loro base è nulla a questa retribuzione (soglia di iscrizione, minimo o esenzione; la spiegazione di ogni riga ne indica la regola): {lignes}.',
+    'Estas líneas tienen un tipo, pero su base es nula con este salario (umbral de afiliación, mínimo o exención; la explicación de cada línea indica la regla): {lignes}.',
+  ],
   'al.ccn.lien': ['Voir la grille dans le Chakrram ›', 'See the scale in the Chakrram ›', 'Tabelle im Chakrram ansehen ›', 'Bekijk de schaal in het Chakrram ›', 'Vedi la tabella nel Chakrram ›', 'Ver la tabla en el Chakrram ›'],
+
+  // ── Conversion du montant saisi au changement de pays (main.js, _majDeviseSaisie)
+  'cv.note': [
+    '≈ {montant} {devise} convertis · cours BCE du {date}',
+    '≈ {montant} {devise} converted · ECB rate of {date}',
+    '≈ {montant} {devise} umgerechnet · EZB-Kurs vom {date}',
+    '≈ {montant} {devise} omgerekend · ECB-koers van {date}',
+    '≈ {montant} {devise} convertiti · tasso BCE del {date}',
+    '≈ {montant} {devise} convertidos · tipo del BCE del {date}',
+  ],
+  'cv.indispo': [
+    'Cours de change indisponible : montant laissé tel quel, à saisir en {devise}.',
+    'Exchange rate unavailable: amount left as is, enter it in {devise}.',
+    'Wechselkurs nicht verfügbar: Betrag unverändert, bitte in {devise} eingeben.',
+    'Wisselkoers niet beschikbaar: bedrag ongewijzigd, vul het in {devise} in.',
+    'Tasso di cambio non disponibile: importo lasciato invariato, da inserire in {devise}.',
+    'Tipo de cambio no disponible: importe sin cambios, introdúzcalo en {devise}.',
+  ],
+  'cv.manque': [
+    'Pas de cours pour {manque} : montant laissé tel quel, à saisir en {devise}.',
+    'No rate for {manque}: amount left as is, enter it in {devise}.',
+    'Kein Kurs für {manque}: Betrag unverändert, bitte in {devise} eingeben.',
+    'Geen koers voor {manque}: bedrag ongewijzigd, vul het in {devise} in.',
+    'Nessun tasso per {manque}: importo lasciato invariato, da inserire in {devise}.',
+    'Sin tipo de cambio para {manque}: importe sin cambios, introdúzcalo en {devise}.',
+  ],
 };
 
 /**

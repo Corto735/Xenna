@@ -1,7 +1,7 @@
 // Cotisations sociales fédérales américaines (FICA) + SDI Californie.
 //
-// Taux lus en base (cotisation_taux) ; plafonds de salaire (wage base) codés en
-// dur par année (match annee), comme les plafonds canadiens (MGA).
+// Taux lus en base (cotisation_taux) ; plafonds de salaire (wage base) aussi
+// (plafond_reference, migration 0152).
 //
 // Sources : 26 U.S.C. §3101 (part salariale FICA), §3111 (part patronale),
 // §3301 (FUTA) ; Social Security wage base annuelle (SSA) ; California
@@ -13,19 +13,16 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-/// Plafonds annuels (wage base) par année → mensualisés au besoin.
+/// Plafonds annuels (wage base) → mensualisés au besoin.
 /// (SS wage base, seuil Additional Medicare, FUTA wage base).
-fn plafonds_annuels(annee: i32) -> (Decimal, Decimal, Decimal) {
-    match annee {
-        2026        => (dec!(184500), dec!(200000), dec!(7000)), // SSA, fiche COLA 2026
-        2025        => (dec!(176100), dec!(200000), dec!(7000)),
-        _           => (dec!(168600), dec!(200000), dec!(7000)), // 2024 (repli)
-    }
+fn plafonds_annuels(ctx: &ContextPaie) -> (Decimal, Decimal, Decimal) {
+    let p = |c: &str| ctx.plafond(c).unwrap_or(Decimal::ZERO);
+    (p("US_SS_BASE"), p("US_MEDICARE_SEUIL"), p("US_FUTA_BASE"))
 }
 
 /// Social Security (OASDI) : 6,2 % salarié + 6,2 % patronal, plafonné.
 pub fn us_social_security(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let (ss_base_an, _, _) = plafonds_annuels(ctx.date_paie.year());
+    let (ss_base_an, _, _) = plafonds_annuels(ctx);
     let plafond_mensuel = (ss_base_an / dec!(12)).round_dp(2);
     let base = brut.min(plafond_mensuel);
     let ts = ctx.taux_sal("US_SS");
@@ -74,7 +71,7 @@ pub fn us_medicare(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 /// Additional Medicare : 0,9 % salarié sur la fraction > seuil (200 000 $/an).
 /// None si la rémunération mensuelle est sous le seuil.
 pub fn us_additional_medicare(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
-    let (_, seuil_an, _) = plafonds_annuels(ctx.date_paie.year());
+    let (_, seuil_an, _) = plafonds_annuels(ctx);
     let seuil_mensuel = (seuil_an / dec!(12)).round_dp(2);
     if brut <= seuil_mensuel {
         return None;
@@ -102,7 +99,7 @@ pub fn us_additional_medicare(brut: Decimal, ctx: &ContextPaie) -> Option<LigneC
 
 /// FUTA : chômage fédéral, 0,6 % effectif employeur sur les 7 000 $/an.
 pub fn us_futa(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let (_, _, futa_base_an) = plafonds_annuels(ctx.date_paie.year());
+    let (_, _, futa_base_an) = plafonds_annuels(ctx);
     let plafond_mensuel = (futa_base_an / dec!(12)).round_dp(2);
     let base = brut.min(plafond_mensuel);
     let tp = ctx.taux_pat("US_FUTA");

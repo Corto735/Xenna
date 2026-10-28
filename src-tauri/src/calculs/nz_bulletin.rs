@@ -15,58 +15,8 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-fn tax_from_bands(revenu: Decimal, bands: &[(Decimal, Decimal)], top: Decimal) -> Decimal {
-    let mut tax = Decimal::ZERO;
-    let mut prev = Decimal::ZERO;
-    for &(upper, rate) in bands {
-        if revenu > upper {
-            tax += (upper - prev) * rate;
-            prev = upper;
-        } else {
-            tax += (revenu - prev).max(Decimal::ZERO) * rate;
-            return tax;
-        }
-    }
-    tax + (revenu - prev).max(Decimal::ZERO) * top
-}
-
-/// Barème PAYE annuel par exercice (désigné par son année de fin). `None` = non couvert.
-fn paye_annuel(revenu: Decimal, annee: i32) -> Option<Decimal> {
-    let (bands, top): (&[(Decimal, Decimal)], Decimal) = match annee {
-        // FY2014-15 → 2020-21 : 4 tranches, sans 39 %.
-        2015..=2021 => (&[(dec!(14000), dec!(0.105)), (dec!(48000), dec!(0.175)),
-                          (dec!(70000), dec!(0.30))], dec!(0.33)),
-        // FY2021-22 → 2023-24 : ajout 39 % au-delà de 180 000.
-        2022..=2024 => (&[(dec!(14000), dec!(0.105)), (dec!(48000), dec!(0.175)),
-                          (dec!(70000), dec!(0.30)), (dec!(180000), dec!(0.33))], dec!(0.39)),
-        // FY2024-25 → 2026-27 : seuils relevés (réforme 31 juil. 2024), inchangés
-        // en 2026-27 (IRD).
-        2025..=2027 => (&[(dec!(15600), dec!(0.105)), (dec!(53500), dec!(0.175)),
-                          (dec!(78100), dec!(0.30)), (dec!(180000), dec!(0.33))], dec!(0.39)),
-        _ => return None,
-    };
-    Some(tax_from_bands(revenu, bands, top))
-}
-
-/// ACC earner's levy : (taux, plafond annuel de gains soumis) par exercice
-/// (désigné par son année de fin : 2026 = 01/04/2025-31/03/2026).
-fn acc_params(annee: i32) -> (Decimal, Decimal) {
-    match annee {
-        2015        => (dec!(0.0145), dec!(118191)),
-        2016        => (dec!(0.0145), dec!(120070)),
-        2017        => (dec!(0.0139), dec!(122063)),
-        2018        => (dec!(0.0139), dec!(124053)),
-        2019        => (dec!(0.0139), dec!(126286)),
-        2020        => (dec!(0.0139), dec!(128470)),
-        2021        => (dec!(0.0139), dec!(130911)),
-        2022        => (dec!(0.0139), dec!(130911)),
-        2023        => (dec!(0.0146), dec!(136544)),
-        2024        => (dec!(0.0153), dec!(139384)),
-        2025        => (dec!(0.0160), dec!(142283)),
-        2026        => (dec!(0.0167), dec!(152790)),
-        _           => (dec!(0.0175), dec!(156641)), // 2026-27 (IRD, dès le 01/04/2026)
-    }
-}
+// Barème PAYE (NZ_PAYE), taux et plafond de l'ACC earner's levy (NZ_ACC_TAUX,
+// NZ_ACC_PLAFOND) en base, par exercice (migration 0153).
 
 pub fn generer_bulletin_nz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
@@ -74,7 +24,11 @@ pub fn generer_bulletin_nz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let annee = if ctx.date_paie.month() >= 4 { ctx.date_paie.year() + 1 } else { ctx.date_paie.year() };
     let rev_ann = brut * dec!(12);
 
-    let Some(paye_an) = paye_annuel(rev_ann, annee) else {
+    let (Some(paye_an), Some(acc_taux), Some(acc_cap)) = (
+        ctx.bareme_progressif("NZ_PAYE", rev_ann),
+        ctx.plafond("NZ_ACC_TAUX"),
+        ctx.plafond("NZ_ACC_PLAFOND"),
+    ) else {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "NZD", "NZ",
             "Nouvelle-Zélande : données disponibles pour les années fiscales 2014-15 à 2026-27.", ctx);
@@ -102,7 +56,6 @@ pub fn generer_bulletin_nz(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     };
 
     // ACC earner's levy (taux + plafond datés)
-    let (acc_taux, acc_cap) = acc_params(annee);
     let plafond_acc_mens = acc_cap / dec!(12);
     let base_acc = brut.min(plafond_acc_mens);
     let acc_mens = (base_acc * acc_taux).round_dp(2);

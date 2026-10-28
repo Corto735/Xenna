@@ -1,7 +1,7 @@
 // ── Cotisations Japon — 社会保険 (régime général, 協会けんぽ Tokyo) ────────────
 //
 // Périmètre : salarié secteur privé, Tokyo, ≥ 40 ans (taux 2024 à 2026 en base).
-// Taux lus depuis ContextPaie (DB). Plafonds hardcodés par année.
+// Taux, grilles de rémunération standard et seuil d'affiliation lus en base.
 //
 // Sources :
 //   健康保険法 ; 厚生年金保険法 ; 雇用保険法 ; 労働者災害補償保険法
@@ -12,71 +12,36 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-fn plafond_kenpo(annee: i32) -> Decimal {
-    match annee {
-        _ => dec!(1390000), // ¥1 390 000/mois — grade 50 (2024+)
-    }
-}
-
-fn plafond_kosei(annee: i32) -> Decimal {
-    match annee {
-        _ => dec!(650000), // ¥650 000/mois — grade 32 (2024+)
-    }
-}
-
 // ── 標準報酬月額 — rémunération mensuelle standard ──────────────────────────────
 //
 // Maladie, dépendance, soutien à l'enfance et pension ne se calculent pas sur le
 // salaire réel mais sur la rémunération mensuelle standard du palier où il
-// tombe (健康保険法 art. 40 ; 厚生年金保険法 art. 20). Pension : 32 paliers de
-// 88 000 à 650 000 ¥ ; maladie : 50 paliers de 58 000 à 1 390 000 ¥ (les
-// paliers 4 à 35 de la maladie coïncident avec ceux de la pension).
-// (borne haute exclue du palier, rémunération standard)
-const PALIERS_KOSEI: [(u32, u32); 31] = [
-    (93_000, 88_000), (101_000, 98_000), (107_000, 104_000), (114_000, 110_000),
-    (122_000, 118_000), (130_000, 126_000), (138_000, 134_000), (146_000, 142_000),
-    (155_000, 150_000), (165_000, 160_000), (175_000, 170_000), (185_000, 180_000),
-    (195_000, 190_000), (210_000, 200_000), (230_000, 220_000), (250_000, 240_000),
-    (270_000, 260_000), (290_000, 280_000), (310_000, 300_000), (330_000, 320_000),
-    (350_000, 340_000), (370_000, 360_000), (395_000, 380_000), (425_000, 410_000),
-    (455_000, 440_000), (485_000, 470_000), (515_000, 500_000), (545_000, 530_000),
-    (575_000, 560_000), (605_000, 590_000), (635_000, 620_000),
-];
-const PALIERS_KENPO_HAUTS: [(u32, u32); 15] = [
-    (665_000, 650_000), (695_000, 680_000), (730_000, 710_000), (770_000, 750_000),
-    (810_000, 790_000), (855_000, 830_000), (905_000, 880_000), (955_000, 930_000),
-    (1_005_000, 980_000), (1_055_000, 1_030_000), (1_115_000, 1_090_000),
-    (1_175_000, 1_150_000), (1_235_000, 1_210_000), (1_295_000, 1_270_000),
-    (1_355_000, 1_330_000),
-];
+// tombe (健康保険法 art. 40 ; 厚生年金保険法 art. 20). Les grilles sont en base
+// (bareme_tranche, migration 0150) : JP_HYOJUN_KOSEI, 32 paliers de 88 000 à
+// 650 000 ¥ ; JP_HYOJUN_KENPO, paliers 4 à 50 de la maladie, de 88 000 à
+// 1 390 000 ¥ (les paliers 1 à 3 ne servent pas, sous le seuil d'affiliation).
+//
+// Seuil d'affiliation du temps partiel : JP_SEUIL_AFFILIATION (88 000 ¥ par
+// mois, 被用者保険の適用要件). En deçà, aucune cotisation maladie ni pension —
+// sans quoi le palier minimal dépasserait le salaire.
 
-fn palier(brut: Decimal, paliers: &[(u32, u32)], dernier: u32) -> Decimal {
-    paliers.iter()
-        .find(|(borne, _)| brut < Decimal::from(*borne))
-        .map(|(_, std)| Decimal::from(*std))
-        .unwrap_or(Decimal::from(dernier))
+/// Rémunération standard d'une grille, nulle sous le seuil d'affiliation.
+/// Grille ou seuil absents à la date : zéro (jp_bulletin déclare alors le
+/// régime non couvert avant d'en arriver là).
+fn hyojun(brut: Decimal, grille: &str, ctx: &ContextPaie) -> Decimal {
+    match ctx.plafond("JP_SEUIL_AFFILIATION") {
+        Some(seuil) if brut >= seuil => ctx.bareme_palier(grille, brut).unwrap_or(Decimal::ZERO),
+        _ => Decimal::ZERO,
+    }
 }
 
-/// Seuil d'affiliation du salarié à temps partiel : 88 000 ¥ par mois
-/// (被用者保険の適用要件). En deçà, Xenna ne retient aucune cotisation maladie
-/// ni pension — sans quoi le palier minimal dépasserait le salaire.
-const SEUIL_AFFILIATION: Decimal = dec!(88000);
-
-/// Rémunération standard de la pension (厚生年金), nulle sous le seuil.
-fn hyojun_kosei(brut: Decimal) -> Decimal {
-    if brut < SEUIL_AFFILIATION { return Decimal::ZERO; }
-    palier(brut, &PALIERS_KOSEI, 650_000)
+/// Plafond d'une grille : rémunération standard du dernier palier.
+fn plafond(grille: &str, ctx: &ContextPaie) -> Decimal {
+    ctx.bareme(grille).and_then(|t| t.last()).map(|t| t.fixe).unwrap_or(Decimal::ZERO)
 }
 
-/// Rémunération standard de la maladie (健康保険), aussi base de la dépendance
-/// et du soutien à l'enfance ; nulle sous le seuil d'affiliation (les paliers
-/// 1 à 3, de 58 000 à 78 000 ¥, ne servent donc pas).
-fn hyojun_kenpo(brut: Decimal) -> Decimal {
-    if brut < SEUIL_AFFILIATION { return Decimal::ZERO; }
-    if brut < dec!(93000) { return dec!(88000); }
-    if brut < dec!(635000) { return hyojun_kosei(brut); }
-    palier(brut, &PALIERS_KENPO_HAUTS, 1_390_000)
-}
+fn hyojun_kenpo(brut: Decimal, ctx: &ContextPaie) -> Decimal { hyojun(brut, "JP_HYOJUN_KENPO", ctx) }
+fn hyojun_kosei(brut: Decimal, ctx: &ContextPaie) -> Decimal { hyojun(brut, "JP_HYOJUN_KOSEI", ctx) }
 
 /// Part retenue sur le salaire : arrondi à l'entier, 0,50 ¥ et moins tronqués
 /// (通知 : 50銭以下切り捨て、50銭超切り上げ).
@@ -88,8 +53,8 @@ fn arrondi_salarie(x: Decimal) -> Decimal {
 
 pub fn jp_kenpo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee   = ctx.date_paie.year();
-    let plafond = plafond_kenpo(annee);
-    let base    = hyojun_kenpo(brut);
+    let plafond = plafond("JP_HYOJUN_KENPO", ctx);
+    let base    = hyojun_kenpo(brut, ctx);
     let ts      = ctx.taux_sal("JP_KENPO"); // 0,0499
     let tp      = ctx.taux_pat("JP_KENPO");
 
@@ -134,7 +99,7 @@ pub fn jp_kodomo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     if ts == Decimal::ZERO && tp == Decimal::ZERO {
         return None;
     }
-    let base = hyojun_kenpo(brut);
+    let base = hyojun_kenpo(brut, ctx);
     Some(LigneCotisation {
         code:        "JP_KODOMO".into(),
         libelle:     ctx.libelle("JP_KODOMO", "子ども・子育て支援金 — Contribution enfance et parentalité"),
@@ -164,8 +129,8 @@ pub fn jp_kodomo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
 
 pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee   = ctx.date_paie.year();
-    let plafond = plafond_kenpo(annee); // même plafond que 健康保険
-    let base    = hyojun_kenpo(brut);
+    let plafond = plafond("JP_HYOJUN_KENPO", ctx); // même plafond que 健康保険
+    let base    = hyojun_kenpo(brut, ctx);
     let ts      = ctx.taux_sal("JP_KAIGO"); // 0,008
     let tp      = ctx.taux_pat("JP_KAIGO");
 
@@ -199,9 +164,8 @@ pub fn jp_kaigo(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // ── 厚生年金保険 — Retraite salariés ─────────────────────────────────────────
 
 pub fn jp_kosei(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let annee   = ctx.date_paie.year();
-    let plafond = plafond_kosei(annee);
-    let base    = hyojun_kosei(brut);
+    let plafond = plafond("JP_HYOJUN_KOSEI", ctx);
+    let base    = hyojun_kosei(brut, ctx);
     let ts      = ctx.taux_sal("JP_KOSEI"); // 0,0915
     let tp      = ctx.taux_pat("JP_KOSEI");
 

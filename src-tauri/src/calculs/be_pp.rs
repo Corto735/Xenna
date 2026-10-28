@@ -22,91 +22,39 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-// ── Forfait frais professionnels (30 % du brut, plafonné) ────────────────────
-
-fn forfait_fp(brut_annuel: Decimal, annee: i32) -> Decimal {
-    let cap = match annee {
-        i32::MIN..=2019 => dec!(4720),
-        2020             => dec!(5100),
-        2021             => dec!(5500),
-        2022             => dec!(5750),
-        2023 | 2024      => dec!(5940),
-        2025             => dec!(5930),
-        _                => dec!(6070), // 2026
-    };
-    (brut_annuel * dec!(0.30)).min(cap)
-}
-
-// ── Exonération de base (quotient exempté / belastingvrije som) ───────────────
-
-fn exoneration(annee: i32) -> Decimal {
-    match annee {
-        i32::MIN..=2015 => dec!(7090),
-        2016 | 2017      => dec!(7130),
-        2018             => dec!(7270),
-        2019             => dec!(8860),
-        2020             => dec!(8990),
-        2021             => dec!(9050),
-        2022             => dec!(9270),
-        2023             => dec!(10160),
-        2024             => dec!(10570),
-        2025             => dec!(10910),
-        _                => dec!(11180), // revenus 2026 (EI 2027)
-    }
-}
-
-// ── Barème IPP fédéral (annuel, sur revenu imposable net) ────────────────────
+// ── Paramètres (migration 0152) ───────────────────────────────────────────────
 //
-// 4 tranches (25 / 40 / 45 / 50 %) + quotient exempté.
-// Les seuils A/B/C sont indexés annuellement.
+// Forfait de frais professionnels BE_FP_TAUX du brut, plafonné à BE_FP_PLAFOND ;
+// quotité exemptée BE_EXONERATION ; barème IPP BE_IPP (25 / 40 / 45 / 50 %,
+// seuils indexés chaque année) ; coefficients régionaux appliqués au PP
+// fédéral : Wallonie, additionnels (BE_FACTEUR_WALLONIE) ; Flandres, réduction
+// flamande (BE_FACTEUR_FLANDRE) ; Bruxelles, aucun (1).
 
-fn ipp_annuel(revenu_net: Decimal, annee: i32) -> Decimal {
-    let (a, b, c) = match annee {
-        i32::MIN..=2016 => (dec!(11070), dec!(12720), dec!(21190)),
-        2017             => (dec!(11070), dec!(12720), dec!(21190)),
-        2018             => (dec!(12990), dec!(21170), dec!(38830)),
-        2019             => (dec!(13250), dec!(23390), dec!(40453)),
-        2020             => (dec!(13540), dec!(23900), dec!(41360)),
-        2021             => (dec!(13540), dec!(23900), dec!(41360)),
-        2022             => (dec!(13870), dec!(24800), dec!(42370)),
-        2023             => (dec!(15200), dec!(26830), dec!(46440)),
-        2024             => (dec!(15820), dec!(27920), dec!(48320)),
-        2025             => (dec!(16320), dec!(28800), dec!(49840)), // revenus 2025 (EI 2026)
-        _                => (dec!(16720), dec!(29510), dec!(51070)), // revenus 2026 (EI 2027)
-    };
+/// Le régime est-il couvert à la date de paie ? (be_bulletin)
+pub fn couvert(ctx: &ContextPaie) -> bool {
+    ctx.bareme("BE_IPP").is_some()
+        && ["BE_FP_TAUX", "BE_FP_PLAFOND", "BE_EXONERATION", "BE_FACTEUR_WALLONIE", "BE_FACTEUR_FLANDRE"]
+            .iter().all(|c| ctx.plafond(c).is_some())
+}
 
+fn forfait_fp(brut_annuel: Decimal, ctx: &ContextPaie) -> Decimal {
+    let p = |c: &str| ctx.plafond(c).unwrap_or(Decimal::ZERO);
+    (brut_annuel * p("BE_FP_TAUX")).min(p("BE_FP_PLAFOND"))
+}
+
+fn ipp_annuel(revenu_net: Decimal, ctx: &ContextPaie) -> Decimal {
     if revenu_net <= Decimal::ZERO {
         return Decimal::ZERO;
     }
-    if revenu_net <= a {
-        revenu_net * dec!(0.25)
-    } else if revenu_net <= b {
-        a * dec!(0.25) + (revenu_net - a) * dec!(0.40)
-    } else if revenu_net <= c {
-        a * dec!(0.25) + (b - a) * dec!(0.40) + (revenu_net - b) * dec!(0.45)
-    } else {
-        a * dec!(0.25) + (b - a) * dec!(0.40) + (c - b) * dec!(0.45) + (revenu_net - c) * dec!(0.50)
-    }
+    ctx.bareme_progressif("BE_IPP", revenu_net).unwrap_or(Decimal::ZERO)
 }
 
-// ── Coefficient régional ──────────────────────────────────────────────────────
-//
-// Appliqué sur le PP fédéral calculé (après exonération).
-// Flandres : réduction flamande (Vlaamse korting) → coefficient < 1
-//   ≤2022 : ~5,5 % (≈ 0,945) — 2023+ : ~5,47 % (≈ 0,9453)
-//   Source : circulaires SPF Finances — tables PP/BV Vlaanderen
-// Wallonie : additionnels régionaux ~9 % → coefficient = 1,09 (stable depuis 2015)
-// Bruxelles : pas d'additionnel → coefficient = 1
-
-fn facteur_regional(region: &str, annee: i32) -> Decimal {
+fn facteur_regional(region: &str, ctx: &ContextPaie) -> Decimal {
     match region {
-        "wallonie" => dec!(1.09),
-        "flandre"  => match annee {
-            i32::MIN..=2022 => dec!(0.945),  // Vlaamse korting ~5,5 %
-            _               => dec!(0.9453), // 2023+ ~5,47 %
-        },
-        _ => dec!(1.00), // bruxelles ou inconnu
-    }
+        "wallonie" => ctx.plafond("BE_FACTEUR_WALLONIE"),
+        "flandre"  => ctx.plafond("BE_FACTEUR_FLANDRE"),
+        _ => None, // bruxelles ou inconnu
+    }.unwrap_or(Decimal::ONE)
 }
 
 // ── Précompte professionnel mensuel ──────────────────────────────────────────
@@ -117,13 +65,13 @@ pub fn precompte_professionnel(brut: Decimal, region: &str, ctx: &ContextPaie) -
     // annexe III AR/CIR 92), annualisée.
     let onss_sal   = (brut * ctx.taux_sal("BE_ONSS_SAL")).round_dp(2);
     let brut_a     = (brut - onss_sal) * dec!(12);
-    let fp         = forfait_fp(brut_a, annee);
+    let fp         = forfait_fp(brut_a, ctx);
     let revenu_net = (brut_a - fp).max(Decimal::ZERO);
-    let exo        = exoneration(annee);
+    let exo        = ctx.plafond("BE_EXONERATION").unwrap_or(Decimal::ZERO);
 
     // IPP brute = IPP(revenu_net) - IPP(exonération)
-    let ipp_brute = (ipp_annuel(revenu_net, annee) - ipp_annuel(exo, annee)).max(Decimal::ZERO);
-    let facteur   = facteur_regional(region, annee);
+    let ipp_brute = (ipp_annuel(revenu_net, ctx) - ipp_annuel(exo, ctx)).max(Decimal::ZERO);
+    let facteur   = facteur_regional(region, ctx);
     let pp_annuel = ipp_brute * facteur;
     let pp_mensuel = (pp_annuel / dec!(12)).round_dp(2);
 

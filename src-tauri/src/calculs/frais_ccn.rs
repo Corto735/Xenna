@@ -3,7 +3,7 @@
 //
 // Un remboursement de frais professionnels n'est pas un salaire : il est exclu
 // de l'assiette des cotisations et de la CSG dans la limite des forfaits de
-// l'arrêté du 20/12/2002 (CSS art. L242-1), et exonéré d'impôt sur le revenu
+// l'arrêté du 4/09/2025, celui du 20/12/2002 avant le 7/09/2025 (CSS art. L242-1), et exonéré d'impôt sur le revenu
 // (CGI art. 81, 1°). Il se paie donc en bas de bulletin, après le net : il ne
 // touche ni le brut, ni les cotisations, ni le net imposable, seulement le net
 // à payer. Les montants conventionnels intégrés restent sous la limite du
@@ -59,7 +59,7 @@ pub fn lignes_frais(salarie: &Salarie, ctx: &ContextPaie) -> Vec<LigneFrais> {
                 due pour : {condition} ({article} du protocole du 30/04/1974). {n} × {u} € = \
                 {montant} €. C'est un remboursement de frais professionnels, pas un salaire : \
                 exclu des cotisations et de la CSG dans la limite des forfaits de l'arrêté du \
-                20/12/2002, exonéré d'impôt sur le revenu (CGI art. 81, 1°). Il est versé en net, \
+                4/09/2025 (du 20/12/2002 avant le 7/09/2025), exonéré d'impôt sur le revenu (CGI art. 81, 1°). Il est versé en net, \
                 après le net à payer du salaire, sans toucher au net imposable."),
             None => ctx.expl("IDCC16_FRAIS_SANS_BAREME",
                 "Indemnité forfaitaire de la convention des transports routiers (IDCC 0016), \
@@ -80,7 +80,7 @@ pub fn lignes_frais(salarie: &Salarie, ctx: &ContextPaie) -> Vec<LigneFrais> {
             montant_unitaire: unitaire,
             montant,
             explication,
-            loi_ref: Some(ctx.loi_ref("Convention du 21/12/1950 (IDCC 0016), protocole du 30/04/1974, annexe I — Arrêté du 20/12/2002")),
+            loi_ref: Some(ctx.loi_ref("Convention du 21/12/1950 (IDCC 0016), protocole du 30/04/1974, annexe I — Arrêté du 4/09/2025 (auparavant du 20/12/2002)")),
         })
     }).collect()
 }

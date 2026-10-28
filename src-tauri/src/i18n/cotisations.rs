@@ -1001,31 +1001,31 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
             "en" => "Flat-rate allowance of the road transport collective agreement (IDCC 0016), \
                 due for: {condition} ({article} of the protocol of 30/04/1974). {n} × {u} € = \
                 {montant} €. It is a reimbursement of business expenses, not a wage: excluded from \
-                contributions and CSG within the flat-rate limits of the order of 20/12/2002, exempt \
+                contributions and CSG within the flat-rate limits of the order of 4/09/2025 (of 20/12/2002 before 7/09/2025), exempt \
                 from income tax (CGI art. 81, 1°). It is paid net, after the net pay of the salary, \
                 without affecting taxable net pay.",
             "de" => "Pauschale Zulage des Tarifvertrags Straßentransport (IDCC 0016), geschuldet für: \
                 {condition} ({article} des Protokolls vom 30.04.1974). {n} × {u} € = {montant} €. \
                 Es ist eine Erstattung beruflicher Kosten, kein Lohn: beitrags- und CSG-frei im \
-                Rahmen der Pauschalen des Erlasses vom 20.12.2002, einkommensteuerfrei (CGI Art. 81, \
+                Rahmen der Pauschalen des Erlasses vom 4.09.2025 (vor dem 7.09.2025: vom 20.12.2002), einkommensteuerfrei (CGI Art. 81, \
                 1°). Sie wird netto nach dem Nettolohn gezahlt, ohne das steuerpflichtige Netto zu \
                 berühren.",
             "nl" => "Forfaitaire vergoeding uit de cao wegvervoer (IDCC 0016), verschuldigd voor: \
                 {condition} ({article} van het protocol van 30/04/1974). {n} × {u} € = {montant} €. \
                 Het is een terugbetaling van beroepskosten, geen loon: vrij van bijdragen en CSG \
-                binnen de forfaits van het besluit van 20/12/2002, vrij van inkomstenbelasting (CGI \
+                binnen de forfaits van het besluit van 4/09/2025 (vóór 7/09/2025: van 20/12/2002), vrij van inkomstenbelasting (CGI \
                 art. 81, 1°). Ze wordt netto betaald, na het nettoloon, zonder het belastbare netto \
                 te raken.",
             "it" => "Indennità forfettaria del contratto collettivo dei trasporti su strada (IDCC 0016), \
                 dovuta per: {condition} ({article} del protocollo del 30/04/1974). {n} × {u} € = \
                 {montant} €. È un rimborso di spese professionali, non una retribuzione: esente da \
-                contributi e CSG entro i forfait del decreto del 20/12/2002, esente da imposta sul \
+                contributi e CSG entro i forfait del decreto del 4/09/2025 (prima del 7/09/2025: del 20/12/2002), esente da imposta sul \
                 reddito (CGI art. 81, 1°). È versata al netto, dopo il netto in busta, senza toccare \
                 il netto imponibile.",
             "es" => "Dieta a tanto alzado del convenio colectivo del transporte por carretera (IDCC \
                 0016), debida por: {condition} ({article} del protocolo del 30/04/1974). {n} × {u} € = \
                 {montant} €. Es un reembolso de gastos profesionales, no un salario: exento de \
-                cotizaciones y CSG dentro de los límites de la orden del 20/12/2002, exento del \
+                cotizaciones y CSG dentro de los límites de la orden del 4/09/2025 (antes del 7/09/2025: del 20/12/2002), exento del \
                 impuesto sobre la renta (CGI art. 81, 1°). Se abona en neto, tras el neto del \
                 salario, sin afectar al neto imponible.",
             _ => return None,
@@ -1345,9 +1345,9 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 years as in the private sector\n\
                 • Target replacement rate: 75 % after 41 years and 3 quarters (2016)\n\
                 • No funding: pay-as-you-go scheme\n\n\
-                Phase-in 2011-2020 (decree no. 2011-291):\n\
+                Phase-in 2011-2020 (Decree 2010-1749, last amended by Decree 2014-1531):\n\
                 2015: 9.54 % — 2016: 9.94 % — 2017: 10.29 % — 2018: 10.56 % — 2019: 10.83 % — 2020+: 11.10 %\n\
-                Employer (local authority) rate: 30.65 % until 2024, then raised by 3 points a year \
+                Employer (local authority) rate: 30.65 % from 2017 to 2023, 31.65 % in 2024 (Decree 2024-49), then raised by 3 points a year \
                 (Decree 2025-86): 34.65 % in 2025, 37.65 % in 2026, 40.65 % in 2027, 43.65 % in 2028 (vs ≈ 16 % total in the private \
                 sector)\n\n\
                 Applied rates: employee {ts_pct} % — employer {tp_pct} %.",
@@ -1361,9 +1361,9 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 im Privatsektor\n\
                 • Ziel-Ersatzquote: 75 % nach 41 Jahren und 3 Quartalen (2016)\n\
                 • Keine Kapitaldeckung: Umlagesystem\n\n\
-                Stufenweiser Anstieg 2011-2020 (Dekret Nr. 2011-291):\n\
+                Stufenweiser Anstieg 2011-2020 (Dekret Nr. 2010-1749, zuletzt geändert durch Dekret Nr. 2014-1531):\n\
                 2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
-                Satz der Körperschaft: 30,65 % bis 2024, dann jährlich um 3 Punkte angehoben (Dekret 2025-86): 34,65 % 2025, 37,65 % 2026, 40,65 % 2027, 43,65 % 2028 (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
+                Satz der Körperschaft: 30,65 % von 2017 bis 2023, 31,65 % 2024 (Dekret 2024-49), dann jährlich um 3 Punkte angehoben (Dekret 2025-86): 34,65 % 2025, 37,65 % 2026, 40,65 % 2027, 43,65 % 2028 (vs. ≈ 16 % gesamt im Privatsektor)\n\n\
                 Angewandte Sätze: Bediensteter {ts_pct} % — Körperschaft {tp_pct} %.",
             "nl" => "De CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) is het verplichte pensioenstelsel van de vastbenoemde ambtenaren van de \
@@ -1375,9 +1375,9 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 jaar zoals in de privé\n\
                 • Beoogde vervangingsratio: 75 % na 41 jaar en 3 kwartalen (2016)\n\
                 • Geen kapitalisatie: repartitiestelsel\n\n\
-                Geleidelijke stijging 2011-2020 (decreet nr. 2011-291):\n\
+                Geleidelijke stijging 2011-2020 (decreet nr. 2010-1749, laatst gewijzigd bij decreet nr. 2014-1531):\n\
                 2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
-                Tarief bestuur: 30,65 % tot en met 2024, daarna jaarlijks met 3 punten verhoogd (decreet 2025-86): 34,65 % in 2025, 37,65 % in 2026, 40,65 % in 2027, 43,65 % in 2028 (vs ≈ 16 % totaal in de privé)\n\n\
+                Tarief bestuur: 30,65 % van 2017 tot 2023, 31,65 % in 2024 (decreet 2024-49), daarna jaarlijks met 3 punten verhoogd (decreet 2025-86): 34,65 % in 2025, 37,65 % in 2026, 40,65 % in 2027, 43,65 % in 2028 (vs ≈ 16 % totaal in de privé)\n\n\
                 Toegepaste tarieven: ambtenaar {ts_pct} % — bestuur {tp_pct} %.",
             "it" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) è il regime pensionistico obbligatorio dei funzionari territoriali di \
@@ -1389,9 +1389,9 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 anni migliori come nel privato\n\
                 • Tasso di sostituzione obiettivo: 75 % dopo 41 anni e 3 trimestri (2016)\n\
                 • Nessuna capitalizzazione: sistema a ripartizione\n\n\
-                Aumento graduale 2011-2020 (decreto n. 2011-291):\n\
+                Aumento graduale 2011-2020 (decreto n. 2010-1749, modificato da ultimo dal decreto n. 2014-1531):\n\
                 2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
-                Aliquota ente: 30,65 % fino al 2024, poi aumentata di 3 punti l'anno (decreto 2025-86): 34,65 % nel 2025, 37,65 % nel 2026, 40,65 % nel 2027, 43,65 % nel 2028 (vs ≈ 16 % totale nel privato)\n\n\
+                Aliquota ente: 30,65 % dal 2017 al 2023, 31,65 % nel 2024 (decreto 2024-49), poi aumentata di 3 punti l'anno (decreto 2025-86): 34,65 % nel 2025, 37,65 % nel 2026, 40,65 % nel 2027, 43,65 % nel 2028 (vs ≈ 16 % totale nel privato)\n\n\
                 Aliquote applicate: agente {ts_pct} % — ente {tp_pct} %.",
             "es" => "La CNRACL (Caisse Nationale de Retraite des Agents des Collectivités \
                 Locales) es el régimen obligatorio de jubilación de los funcionarios territoriales \
@@ -1403,9 +1403,9 @@ pub fn t_explication(key: &str, lang: &str) -> Option<&'static str> {
                 25 mejores años como en el privado\n\
                 • Tasa de sustitución objetivo: 75 % tras 41 años y 3 trimestres (2016)\n\
                 • Sin capitalización: sistema de reparto\n\n\
-                Subida progresiva 2011-2020 (decreto n.º 2011-291):\n\
+                Subida progresiva 2011-2020 (decreto n.º 2010-1749, modificado por última vez por el decreto n.º 2014-1531):\n\
                 2015: 9,54 % — 2016: 9,94 % — 2017: 10,29 % — 2018: 10,56 % — 2019: 10,83 % — 2020+: 11,10 %\n\
-                Tipo de la entidad: 30,65 % hasta 2024, luego elevado 3 puntos al año (decreto 2025-86): 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028 (vs ≈ 16 % total en el privado)\n\n\
+                Tipo de la entidad: 30,65 % de 2017 a 2023, 31,65 % en 2024 (decreto 2024-49), luego elevado 3 puntos al año (decreto 2025-86): 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028 (vs ≈ 16 % total en el privado)\n\n\
                 Tipos aplicados: agente {ts_pct} % — entidad {tp_pct} %.",
             _ => return None,
         },

@@ -43,7 +43,7 @@ pub fn generer_bulletin_nl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let annee = ctx.date_paie.year();
 
     // Année non encore sourcée → lacune honnête : pas de calcul, message explicite.
-    let Some(params) = nl_parametres(annee) else {
+    let Some(params) = nl_parametres(ctx) else {
         let ligne = LigneCotisation {
             code: "NL_NON_COUVERT".into(),
             libelle: ctx.libelle("NL_NON_COUVERT", "Pays-Bas — données indisponibles pour cette année"),

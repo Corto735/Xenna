@@ -8,6 +8,12 @@ pub fn generer_bulletin_be(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut   = salarie.salaire_brut;
     let region = salarie.region_be.as_deref().unwrap_or("bruxelles");
 
+    // Paramètres du précompte datés en base (migration 0152) depuis 2015.
+    if !super::be_pp::couvert(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "EUR", "BE", "Belgique : barèmes intégrés à partir de 2015.", ctx);
+    }
+
     let mut cotisations = vec![
         onss_salarial(brut, ctx),
         onss_patronal(brut, ctx),

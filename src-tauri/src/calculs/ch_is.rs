@@ -77,11 +77,11 @@ const TARIF_LABELS: &[(&str, &str)] = &[
 ];
 
 /// Calcule l'impôt à la source (IS) pour un salarié soumis à la retenue à la source
-/// en Suisse selon le barème cantonal ORIS 2025.
+/// en Suisse selon le barème cantonal OIS 2025.
 ///
 /// # Arguments
 /// * `canton`          — code à 2 lettres du canton de travail (ex. "GE", "ZH")
-/// * `tarif`           — code tarif ORIS (A0, A1, A2, B0, B1, B2, C0, C1, C2, H0, H1, H2)
+/// * `tarif`           — code tarif OIS (A0, A1, A2, B0, B1, B2, C0, C1, C2, H0, H1, H2)
 /// * `salaire_mensuel` — salaire brut mensuel en CHF
 ///
 /// Retourne `None` si le taux résultant est nul (salaire sous le seuil d'imposition).
@@ -131,13 +131,13 @@ pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal, ctx: &Co
     let explication = ctx.expl("CH_IS",
         "L'impôt à la source (IS, Quellensteuer) est prélevé directement sur le salaire des \
         travailleurs étrangers sans permis d'établissement (C) résidant en Suisse, ainsi que des \
-        frontaliers et des non-résidents (art. 83-90a LIFD). Il se substitue à la déclaration \
+        frontaliers et des non-résidents (art. 83-101 LIFD). Il se substitue à la déclaration \
         fiscale ordinaire pour les revenus inférieurs à CHF 120 000/an (seuil de rectification \
         facultative, selon le canton).\
         \n\n\
         [ Paramètres retenus ]\n\
         Canton de travail : {canton} — {libelle_canton}\n\
-        Tarif ORIS : {tarif} — {tarif_label}\n\
+        Tarif OIS : {tarif} — {tarif_label}\n\
         Salaire mensuel brut : CHF {sal}\n\
         Seuil de barème retenu : CHF {seuil}\n\
         Taux A0 de base (tarif barème) : {taux_a0} %\n\
@@ -148,7 +148,7 @@ pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal, ctx: &Co
         La retenue est calculée mois par mois sur le salaire brut du mois considéré. \
         En cas de revenus irréguliers (primes, 13e mois, heures supplémentaires), \
         les cantons peuvent prévoir des règles de lissage. \
-        Depuis la réforme RAS (ORIS du 12/11/2014, RS 642.118.2), un barème unique \
+        Depuis la réforme RAS (OIS de 2018, RS 642.118.2), un barème unique \
         par tarif s'applique à l'ensemble du territoire cantonal.")
         .replace("{canton}", canton)
         .replace("{libelle_canton}", libelle_canton)
@@ -170,6 +170,6 @@ pub fn calculer_is(canton: &str, tarif: &str, salaire_mensuel: Decimal, ctx: &Co
         montant_pat: Decimal::ZERO,
         categorie:   "Impôt à la source".into(),
         explication,
-        loi_ref: Some(ctx.loi_ref("Art. 83-90a LIFD (RS 642.11) — ORIS (RS 642.118.2)")),
+        loi_ref: Some(ctx.loi_ref("Art. 83-101 LIFD (RS 642.11) — OIS (RS 642.118.2)")),
     })
 }

@@ -153,6 +153,31 @@ Rates, ceilings (SMIC, PMSS), and employer organisations are stored in SQLite wi
 - **PMSS / SMIC** — historical ceiling values stored per date in the DB; always fetch from `ContextPaie`, never hardcode
 - **Cotisations** are split between salariale (employee) and patronale (employer); both appear on the bulletin
 
+## Barèmes par tranches en base — `bareme_tranche`
+
+Les taux vivent en base depuis le début ; les **barèmes** (paliers, tranches
+d'impôt, déductions par tranche) étaient écrits en dur (`match annee`). La table
+`bareme_tranche` (migration 0150) les date comme les taux : une ligne par
+tranche (`code`, `date_debut`, `date_fin` exclusive, `rang`, `borne_sup` NULL =
+sans limite, `taux`, `fixe`, `source`). `ContextPaie` charge celles de la date ;
+trois lectures :
+- `bareme_palier(code, x)` : `fixe` de la première tranche où `x < borne_sup` ;
+- `bareme_lineaire(code, x)` : `x × taux + fixe` de la première tranche où `x ≤ borne_sup` ;
+- `bareme_progressif(code, x)` : somme des parts de x dans chaque tranche × taux.
+Les paramètres scalaires (seuils, minimums, taux uniques) vont dans `plafond_reference`.
+
+Migrer un pays : relever un instantané (`tests/instantane_bareme.rs`, ignoré :
+`INSTANTANE_PAYS=<pays> INSTANTANE_OUT=… cargo test --test instantane_bareme -- --ignored`),
+verser les valeurs À L'IDENTIQUE avec leur date et leur source, reprendre
+l'instantané et comparer : zéro écart sur les années couvertes. Avant la première
+date en base, le régime se déclare non couvert (`pays_non_couvert`) plutôt que
+de prolonger un barème. Migrés : Japon (pilote), Royaume-Uni, Allemagne,
+Italie, Espagne (lot 1), Belgique, États-Unis, Canada et Québec, Portugal (lot 2),
+Australie, Nouvelle-Zélande, Pologne, Danemark, Pays-Bas (lot 3). Restent les
+plafonds de COTISATIONS de CA, QC, DE (déjà en base mais non lus), CH, IT, LU. Ce qui ne s'écrit pas en tranches sans perte reste
+une formule dans le code, ses paramètres en base (tarif §32a allemand,
+détraction italienne). Tests : `cargo test --test baremes`.
+
 ## Veille des barèmes — fraîcheur par pays
 
 Au-delà de ses barèmes, un calculateur ne lève aucune erreur : il prolonge sa
@@ -176,11 +201,18 @@ dernière modification en base ne prouve pas qu'un taux stable a été revérifi
 Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
 `fiabilite.rs` exige qu'un pays en retard sur l'année du relevé déclare ses lacunes.
 
-## Devise de saisie — conversion au changement de pays
+## Pays côté front — table `PAYS`, devise de saisie
+
+`PAYS` (`src/main.js`, en tête) est la SEULE déclaration des régimes côté front :
+`id` (suffixe des cases `d-`/`m-`, clé des liens partagés), `back` (valeur de
+`pays` pour le moteur), `nom`, `devise` (absente = euro), `extra` (derrière
+« + autres pays »). `TOUS_PAYS`, `PAYS_EXTRA`, `VEILLE_NOMS`, `DEVISE_SAISIE`,
+`_estEtranger`, `_paysCoche` en sont déduits. Ajouter un pays côté front = une
+ligne dans `PAYS` + ses deux cases dans `index.html` ; ne JAMAIS recréer de liste
+à la main ni de variable `isX` par pays.
 
 Chaque régime calcule dans SA devise : le montant du formulaire suit donc le pays.
-`DEVISE_SAISIE` (`src/main.js`) est la seule table pays → devise du front (absent
-= euro) ; elle doit coïncider avec la devise que le back pose sur le bulletin. La
+La devise de `PAYS` doit coïncider avec celle que le back pose sur le bulletin. La
 Bulgarie dépend de la date : lev pour une paie 2025, euro dès 2026.
 
 Au changement de pays, `_majDeviseSaisie` reconvertit le montant D'ORIGINE (et les
@@ -285,11 +317,16 @@ Quatre règles à respecter en y touchant :
    `CHIFFRES_ANNEXE` (`mise_en_page.rs`). Le plafond S.S. vient de la commande
    `plafond_ss` (Tauri et `POST /api/plafond_ss`).
 2. **La date de bascule des modèles réglementaires reste déclarée une seule
-   fois, dans `MODELE_BASCULE`** (modèle *adapté* jusqu'au 31/12/2026, *rénové*
-   obligatoire au 1er janvier 2027, arrêté du 11 août 2025). La grille ne
-   change plus de regroupement à cette date : l'annexe dit quel modèle
-   s'applique. ⚠️ Avant 2027, revoir le regroupement au regard de l'annexe de
-   l'arrêté du 31 janvier 2023, qui n'a pas pu être relevée sur Légifrance.
+   fois, dans `MODELE_BASCULE`** (modèle *adapté* jusqu'au 31/12/2026, modèle
+   *définitif* seul autorisé au 1er janvier 2027 : article 1 de l'arrêté du
+   25 février 2016 dans sa rédaction de l'arrêté du 31 janvier 2023, obligation
+   reportée par les arrêtés du 25 juin 2024 et du 11 août 2025). **La grille suit
+   la date de paie** (`groupesPour`) : `GROUPES_ADAPTE` (présentation Silae)
+   avant, `GROUPES_RENOVE` (libellés du texte, AT/MP sous Santé) à partir de la
+   bascule ; l'écran (« comme sur mon bulletin ») et le PDF lisent la même. La
+   prévoyance cadre 1,50 % y va en « Cotisations statutaires ou prévues par la
+   convention collective » (choix de l'utilisateur). La fonction publique garde
+   la grille adaptée.
 3. **Aucune valeur inventée, et ce qui manque le dit.** L'employeur, le SIRET,
    l'URSSAF, la classification et l'adresse du salarié sont TIRÉS AU SORT via
    `_ctAleatoire()` — d'où le filigrane SPÉCIMEN et la note en bas de grille. La

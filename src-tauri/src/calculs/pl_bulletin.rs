@@ -9,7 +9,6 @@
 // Taux ZUS lus en base (cotisation_taux). Plafond, santé et PIT calculés ici.
 // Sources : Ustawa o systemie ubezpieczeń społecznych ; Ustawa o PIT ; NFZ.
 
-use chrono::Datelike;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
@@ -25,28 +24,21 @@ struct PlParams {
     sante_taux:    Decimal,
 }
 
-fn pl_params(annee: i32) -> Option<PlParams> {
-    // Depuis 2023 : structure PIT stable (12 % / 32 %, seuil 120 000, montant réducteur
-    // 3 600, KUP 3 000) et składka zdrowotna 9 % non déductible. Seul le plafond annuel
-    // ZUS (« 30-krotność ») change chaque année. ZUS salarial constant depuis 2012.
-    // 2022 : réforme « Polski Ład 2.0 » → 12 %/32 %, seuil 120 000, kwota wolna 30 000 pour
-    // toute l'année 2022 (santé non déductible depuis 2022). Même structure que 2023+.
-    let plafond_30x = match annee {
-        2022 => dec!(177660),
-        2023 => dec!(208050),
-        2024 => dec!(234720),
-        2025 => dec!(260190),
-        2026 => dec!(282600),
-        _ => return None,
-    };
+/// Paramètres en base (migration 0153) : plafond annuel « 30-krotność »
+/// (PL_PLAFOND_30X, relevé de 2022 à 2026) et structure du PIT, stable depuis la
+/// réforme Polski Ład 2.0 de 2022 (12 % / 32 %, seuil 120 000, montant réducteur
+/// 3 600, KUP 3 000, santé 9 % non déductible). ZUS salarial constant depuis 2012.
+/// None si un paramètre manque à la date : régime non couvert.
+fn pl_params(ctx: &ContextPaie) -> Option<PlParams> {
+    let p = |c: &str| ctx.plafond(c);
     Some(PlParams {
-        plafond_30x_annuel: plafond_30x,
-        kup_annuel:   dec!(3000),
-        kwota_relief: dec!(3600),
-        pit_seuil:    dec!(120000),
-        pit_t1:       dec!(0.12),
-        pit_t2:       dec!(0.32),
-        sante_taux:   dec!(0.09),
+        plafond_30x_annuel: p("PL_PLAFOND_30X")?,
+        kup_annuel:   p("PL_KUP")?,
+        kwota_relief: p("PL_KWOTA_RELIEF")?,
+        pit_seuil:    p("PL_PIT_SEUIL")?,
+        pit_t1:       p("PL_PIT_T1")?,
+        pit_t2:       p("PL_PIT_T2")?,
+        sante_taux:   p("PL_SANTE_TAUX")?,
     })
 }
 
@@ -75,12 +67,11 @@ fn ligne(code: &str, libelle: &str, categorie: &str, base: Decimal, ctx: &Contex
 
 pub fn generer_bulletin_pl(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
-    let annee = ctx.date_paie.year();
 
-    let Some(p) = pl_params(annee) else {
+    let Some(p) = pl_params(ctx) else {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "PLN", "PL",
-            "Pologne : données disponibles pour 2025.", ctx);
+            "Pologne : barèmes intégrés de 2022 à 2026.", ctx);
     };
 
     // Plafond mensuel emerytalne + rentowe (annualisation du 30-krotność).

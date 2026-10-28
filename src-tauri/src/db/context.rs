@@ -16,6 +16,15 @@ use sqlx::SqlitePool;
 
 /// Snapshot de tous les paramètres de paie valides à une date donnée.
 /// Chargé une fois en base, puis le calcul est purement synchrone.
+/// Une tranche d'un barème : jusqu'à `borne_sup` (None = sans limite), un taux
+/// et un montant fixe dont l'usage dépend de la lecture (cf. ContextPaie).
+#[derive(Debug, Clone)]
+pub struct Tranche {
+    pub borne_sup: Option<Decimal>,
+    pub taux: Decimal,
+    pub fixe: Decimal,
+}
+
 pub struct ContextPaie {
     pub date_paie: NaiveDate,
     pub pmss: Decimal,
@@ -79,6 +88,10 @@ pub struct ContextPaie {
     // Minima conventionnels en vigueur à la date (ccn_minima, migration 0146),
     // tous paliers d'ancienneté. Vide avant la date d'effet de chaque grille.
     pub ccn_minima: Vec<crate::models::MinimumCcn>,
+    /// Barèmes par tranches valides à la date (table bareme_tranche), par code,
+    /// tranches dans l'ordre de leur rang. Lus par bareme_palier / _lineaire /
+    /// _progressif ; un code absent vaut « barème non couvert à cette date ».
+    pub baremes: HashMap<String, Vec<Tranche>>,
 }
 
 impl ContextPaie {
@@ -253,6 +266,27 @@ impl ContextPaie {
             });
         }
 
+        // Barèmes par tranches valides à la date (migration 0150).
+        let tranche_rows: Vec<(String, Option<String>, String, String)> = sqlx::query_as(
+            "SELECT code, borne_sup, taux, fixe FROM bareme_tranche
+             WHERE date_debut <= ? AND (date_fin IS NULL OR date_fin > ?)
+             ORDER BY code, rang",
+        )
+        .bind(&d).bind(&d)
+        .fetch_all(pool)
+        .await
+        .context("Erreur chargement barèmes")?;
+        let mut baremes: HashMap<String, Vec<Tranche>> = HashMap::new();
+        for (code, borne, taux, fixe) in tranche_rows {
+            let tranche = Tranche {
+                borne_sup: borne.map(|b| b.parse()).transpose()
+                    .with_context(|| format!("borne invalide pour {code}"))?,
+                taux: taux.parse().with_context(|| format!("taux de tranche invalide pour {code}"))?,
+                fixe: fixe.parse().with_context(|| format!("fixe de tranche invalide pour {code}"))?,
+            };
+            baremes.entry(code).or_default().push(tranche);
+        }
+
         // Parsé avant le littéral pour servir de repli à smic_mensuel_fillon.
         let smic_mensuel_val: Decimal = smic_str.parse().context("SMIC non parseable")?;
 
@@ -275,6 +309,7 @@ impl ContextPaie {
             smic_horaire_janvier,
             evolutions,
             ccn_minima,
+            baremes,
         })
     }
 
@@ -293,6 +328,45 @@ impl ContextPaie {
     /// ou None si le code n'existe pas pour cette date (paramètre non applicable).
     pub fn plafond(&self, code: &str) -> Option<Decimal> {
         self.plafonds.get(code).copied()
+    }
+
+    /// Tranches du barème `code` à la date, ou None s'il n'est pas couvert.
+    pub fn bareme(&self, code: &str) -> Option<&[Tranche]> {
+        self.baremes.get(code).map(Vec::as_slice)
+    }
+
+    /// Barème à paliers : `fixe` de la première tranche où x < borne_sup
+    /// (borne exclue, comme les grilles de rémunération standard).
+    pub fn bareme_palier(&self, code: &str, x: Decimal) -> Option<Decimal> {
+        self.bareme(code)?.iter()
+            .find(|t| t.borne_sup.map_or(true, |b| x < b))
+            .map(|t| t.fixe)
+    }
+
+    /// Barème linéaire par tranche : x × taux + fixe de la première tranche
+    /// où x ≤ borne_sup (borne incluse).
+    pub fn bareme_lineaire(&self, code: &str, x: Decimal) -> Option<Decimal> {
+        self.bareme(code)?.iter()
+            .find(|t| t.borne_sup.map_or(true, |b| x <= b))
+            .map(|t| x * t.taux + t.fixe)
+    }
+
+    /// Barème progressif : chaque part de x comprise dans une tranche est
+    /// taxée au taux de la tranche, et les parts s'additionnent.
+    pub fn bareme_progressif(&self, code: &str, x: Decimal) -> Option<Decimal> {
+        let mut total = Decimal::ZERO;
+        let mut bas = Decimal::ZERO;
+        for t in self.bareme(code)? {
+            let haut = t.borne_sup.map_or(x, |b| x.min(b));
+            if haut > bas {
+                total += (haut - bas) * t.taux;
+            }
+            match t.borne_sup {
+                Some(b) if x > b => bas = b,
+                _ => break,
+            }
+        }
+        Some(total)
     }
 
     // ── Traduction des libellés / explications de cotisation ──────────────────

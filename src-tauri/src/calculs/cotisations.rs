@@ -107,7 +107,7 @@ pub fn famille(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             s'appliquait sous un seuil de rémunération (1,6 puis 3,5 puis 3,3 SMIC) ; il est \
             supprimé depuis 2026, l'allègement passant par la réduction générale. \
             Politique nataliste française datant de l'entre-deux-guerres, institutionnalisée en 1945."),
-        loi_ref: Some(ctx.loi_ref("Décret 2015-390 du 3/04/2015 — CSS art. L241-6")),
+        loi_ref: Some(ctx.loi_ref("CSS art. L241-6 et D241-3-1")),
     }
 }
 

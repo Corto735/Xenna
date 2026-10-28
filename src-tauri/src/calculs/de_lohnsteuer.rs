@@ -4,37 +4,54 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-// ── Grundfreibetrag annuel (EStG §32a) ────────────────────────────────────────
+// ── Paramètres datés (plafond_reference, migration 0151) ──────────────────────
+//
+// Grundfreibetrag (§32a), Entlastungsbetrag (§24b), Arbeitnehmer-Pauschbetrag
+// (§9a), part retraite de la Vorsorgepauschale (§39b Abs. 4), Freigrenze de la
+// Soli (§3 SolZG), fins des zones 1 et 2 du tarif et, de 2023 à 2026, ses
+// coefficients exacts. La formule du §32a reste ici ; ses paramètres sont en base.
 
-fn grundfreibetrag(annee: i32) -> Decimal {
-    match annee {
-        i32::MIN..=2015 => dec!(8472),
-        2016            => dec!(8652),
-        2017            => dec!(8820),
-        2018            => dec!(9000),
-        2019            => dec!(9168),
-        2020            => dec!(9408),
-        2021            => dec!(9744),
-        2022            => dec!(10347),
-        2023            => dec!(10908),
-        2024            => dec!(11784), // relevé rétroactivement (loi du 23/12/2024)
-        2025            => dec!(12096),
-        _               => dec!(12348), // 2026 — §32a EStG en vigueur
+/// Coefficients du tarif exact du §32a al. 1 : coef. zone 1, coef. zone 2,
+/// constante zone 2, abattements des tranches à 42 % et 45 %.
+struct Exact { a1: Decimal, a2: Decimal, c2: Decimal, k42: Decimal, k45: Decimal }
+
+struct Params {
+    gbf: Decimal,
+    entlastung: Decimal,
+    an_pausch: Decimal,
+    vorsorge_rv: Decimal,
+    soli_frei: Decimal,
+    z1: Decimal,
+    z2: Decimal,
+    exact: Option<Exact>,
+    /// Plancher de la Vorsorgepauschale supprimé et part chômage ajoutée (2026).
+    regime_2026: bool,
+}
+
+impl Params {
+    fn charger(ctx: &ContextPaie) -> Option<Params> {
+        let p = |code: &str| ctx.plafond(code);
+        let exact = match (p("DE_ESTG_A1"), p("DE_ESTG_A2"), p("DE_ESTG_C2"), p("DE_ESTG_K42"), p("DE_ESTG_K45")) {
+            (Some(a1), Some(a2), Some(c2), Some(k42), Some(k45)) => Some(Exact { a1, a2, c2, k42, k45 }),
+            _ => None,
+        };
+        Some(Params {
+            gbf: p("DE_GRUNDFREIBETRAG")?,
+            entlastung: p("DE_ENTLASTUNG")?,
+            an_pausch: p("DE_AN_PAUSCH")?,
+            vorsorge_rv: p("DE_VORSORGE_RV")?,
+            soli_frei: p("DE_SOLI_FREIGRENZE")?,
+            z1: p("DE_ESTG_Z1")?,
+            z2: p("DE_ESTG_Z2")?,
+            exact,
+            regime_2026: ctx.date_paie.year() >= 2026,
+        })
     }
 }
 
-// ── Entlastungsbetrag für Alleinerziehende (Steuerklasse II) ─────────────────
-
-fn entlastungsbetrag(annee: i32) -> Decimal {
-    // EStG §24b — revalorisation annuelle
-    match annee {
-        i32::MIN..=2019 => dec!(1908),
-        2020 | 2021     => dec!(4008), // doublement temporaire COVID
-        2022            => dec!(4008),
-        2023            => dec!(4260),
-        2024            => dec!(4260),
-        _               => dec!(4260), // 2025-2026 : stable
-    }
+/// Le régime est-il couvert à la date de paie ? (de_bulletin)
+pub fn couvert(ctx: &ContextPaie) -> bool {
+    Params::charger(ctx).is_some()
 }
 
 // ── Barème Einkommensteuer / Lohnsteuer (EStG §32a) ──────────────────────────
@@ -47,63 +64,44 @@ fn entlastungsbetrag(annee: i32) -> Decimal {
 //   Zone 4 : > 277 825 € → 0,45·x − 19 470,38
 // Le tarif s'applique au revenu imposable (zvE), pas au brut.
 
+/// Début de la tranche à 45 % (Reichensteuer), stable sur la période couverte.
+const Z3: Decimal = dec!(277825);
+
 /// Tarif exact du §32a al. 1 EStG sur le revenu imposable `x` (arrondi à l'euro
-/// inférieur), 2023-2026 : (Grundfreibetrag, fin zone 1, fin zone 2,
-/// coef. zone 1, coef. zone 2, constante zone 2, abattement 42 %, abattement 45 %).
+/// inférieur), quand ses coefficients sont en base (2023-2026).
 /// Sources : gesetze-im-internet.de (VZ 2026), buzer.de (VZ 2024), EStH 2025.
-fn tarif_32a_exact(x: Decimal, annee: i32) -> Option<Decimal> {
-    let (gbf, z1, z2, a1, a2, c2, k42, k45) = match annee {
-        2023 => (dec!(10908), dec!(15999), dec!(62809), dec!(979.18), dec!(192.59), dec!(966.53),  dec!(9972.98),  dec!(18307.73)),
-        2024 => (dec!(11784), dec!(17005), dec!(66760), dec!(954.80), dec!(181.19), dec!(991.21),  dec!(10636.31), dec!(18971.06)),
-        2025 => (dec!(12096), dec!(17443), dec!(68480), dec!(932.30), dec!(176.64), dec!(1015.13), dec!(10911.92), dec!(19246.67)),
-        2026.. => (dec!(12348), dec!(17799), dec!(69878), dec!(914.51), dec!(173.10), dec!(1034.87), dec!(11135.63), dec!(19470.38)),
-        _ => return None,
-    };
+fn tarif_32a_exact(x: Decimal, p: &Params) -> Option<Decimal> {
+    let e = p.exact.as_ref()?;
     let x = x.floor();
-    let st = if x <= gbf {
+    let st = if x <= p.gbf {
         Decimal::ZERO
-    } else if x <= z1 {
-        let y = (x - gbf) / dec!(10000);
-        (a1 * y + dec!(1400)) * y
-    } else if x <= z2 {
-        let z = (x - z1) / dec!(10000);
-        (a2 * z + dec!(2397)) * z + c2
-    } else if x <= dec!(277825) {
-        dec!(0.42) * x - k42
+    } else if x <= p.z1 {
+        let y = (x - p.gbf) / dec!(10000);
+        (e.a1 * y + dec!(1400)) * y
+    } else if x <= p.z2 {
+        let z = (x - p.z1) / dec!(10000);
+        (e.a2 * z + dec!(2397)) * z + e.c2
+    } else if x <= Z3 {
+        dec!(0.42) * x - e.k42
     } else {
-        dec!(0.45) * x - k45
+        dec!(0.45) * x - e.k45
     };
     Some(st.max(Decimal::ZERO).floor())
 }
 
 /// Impôt sur le revenu imposable `x` : tarif exact dès 2023, approximation
 /// historique (zones à coefficients fixes) avant.
-fn einkommensteuer_annuel(revenu: Decimal, annee: i32) -> Decimal {
-    tarif_32a_exact(revenu, annee).unwrap_or_else(|| einkommensteuer_ancien(revenu, annee))
+fn einkommensteuer_annuel(revenu: Decimal, p: &Params) -> Decimal {
+    tarif_32a_exact(revenu, p).unwrap_or_else(|| einkommensteuer_ancien(revenu, p))
 }
 
-/// Approximation antérieure à 2023 (coefficients 2023 appliqués à des seuils datés).
-fn einkommensteuer_ancien(revenu: Decimal, annee: i32) -> Decimal {
+/// APPROXIMATION antérieure à 2023, faute de coefficients relevés : bornes des
+/// zones datées (en base), coefficients et abattements de 2023 en dur.
+fn einkommensteuer_ancien(revenu: Decimal, p: &Params) -> Decimal {
     if revenu <= Decimal::ZERO {
         return Decimal::ZERO;
     }
-
-    // Seuils des zones selon l'année (EStG §32a — Progressionszonen)
-    let (z1_debut, z1_fin, z2_fin): (Decimal, Decimal, Decimal) = match annee {
-        i32::MIN..=2015 => (dec!(8473),  dec!(13469),  dec!(52881)),
-        2016            => (dec!(8653),  dec!(13669),  dec!(53665)),
-        2017            => (dec!(8821),  dec!(13769),  dec!(54057)),
-        2018            => (dec!(9001),  dec!(13996),  dec!(54949)),
-        2019            => (dec!(9169),  dec!(14254),  dec!(55960)),
-        2020            => (dec!(9409),  dec!(14532),  dec!(57051)),
-        2021            => (dec!(9745),  dec!(14754),  dec!(57918)),
-        2022            => (dec!(10348), dec!(14927),  dec!(58597)),
-        2023            => (dec!(10909), dec!(15999),  dec!(62809)),
-        2024            => (dec!(11605), dec!(17005),  dec!(66760)),
-        2025            => (dec!(12097), dec!(17430),  dec!(68430)),
-        _               => (dec!(12097), dec!(17430),  dec!(68430)),
-    };
-    let z3_fin = dec!(277825); // Reichensteuersatz — stable
+    let (z1_debut, z1_fin, z2_fin) = (p.gbf + dec!(1), p.z1, p.z2);
 
     if revenu <= z1_debut - dec!(1) {
         return Decimal::ZERO;
@@ -123,7 +121,7 @@ fn einkommensteuer_ancien(revenu: Decimal, annee: i32) -> Decimal {
         };
         let z = (revenu - z1_fin) / dec!(10000);
         (steuer_z1 + (dec!(108.73) * z + dec!(2397)) * z).round_dp(0)
-    } else if revenu <= z3_fin {
+    } else if revenu <= Z3 {
         // Zone 3 : 42 % (Spitzensteuersatz) — moins abattement
         let abat = dec!(9972); // Abzugsbetrag 2023
         (revenu * dec!(0.42) - abat).max(Decimal::ZERO).round_dp(0)
@@ -149,30 +147,15 @@ pub struct Vorsorge {
     pub av: Decimal,
 }
 
-/// Arbeitnehmer-Pauschbetrag (§9a EStG).
-fn an_pauschbetrag(annee: i32) -> Decimal {
-    match annee {
-        i32::MIN..=2021 => dec!(1000),
-        2022            => dec!(1200),
-        _               => dec!(1230),
-    }
-}
-
 /// Vorsorgepauschale annuelle : part retraite (100 % dès 2023, 88 % en 2022…), puis
 /// maladie (au taux réduit du PAP, voir de_bulletin.rs) + dépendance. Jusqu'en 2025,
 /// plancher de 12 % du salaire plafonné à 1 900 € (3 000 € en classe III) ; dès 2026,
 /// plancher supprimé et part chômage ajoutée tant que maladie + dépendance +
 /// chômage ne dépassent pas 1 900 €.
-fn vorsorgepauschale(brut_an: Decimal, v: Vorsorge, steuerklasse: u8, annee: i32) -> Decimal {
-    let part_rv = match annee {
-        i32::MIN..=2017 => dec!(0.68),
-        2018 => dec!(0.72), 2019 => dec!(0.76), 2020 => dec!(0.80),
-        2021 => dec!(0.84), 2022 => dec!(0.88),
-        _ => dec!(1),
-    };
-    let rv = v.rv * dec!(12) * part_rv;
+fn vorsorgepauschale(brut_an: Decimal, v: Vorsorge, steuerklasse: u8, p: &Params) -> Decimal {
+    let rv = v.rv * dec!(12) * p.vorsorge_rv;
     let kv_pv = (v.kv + v.pv) * dec!(12);
-    let sante = if annee >= 2026 {
+    let sante = if p.regime_2026 {
         kv_pv + (v.av * dec!(12)).min((dec!(1900) - kv_pv).max(Decimal::ZERO))
     } else {
         let plafond = if steuerklasse == 3 { dec!(3000) } else { dec!(1900) };
@@ -181,31 +164,31 @@ fn vorsorgepauschale(brut_an: Decimal, v: Vorsorge, steuerklasse: u8, annee: i32
     (rv + sante).ceil()
 }
 
-fn lohnsteuer_annuel(brut_mensuel: Decimal, v: Vorsorge, steuerklasse: u8, annee: i32) -> Decimal {
+fn lohnsteuer_annuel(brut_mensuel: Decimal, v: Vorsorge, steuerklasse: u8, p: &Params) -> Decimal {
     let brut_an = brut_mensuel * dec!(12);
     // Forfaits : frais professionnels (sauf classe VI) et dépenses spéciales (36 €,
     // 72 € en classe III), Vorsorgepauschale, Entlastungsbetrag en classe II.
     let forfaits = match steuerklasse {
         6 => Decimal::ZERO,
-        3 => an_pauschbetrag(annee) + dec!(72),
-        _ => an_pauschbetrag(annee) + dec!(36),
+        3 => p.an_pausch + dec!(72),
+        _ => p.an_pausch + dec!(36),
     };
-    let mut zve = brut_an - forfaits - vorsorgepauschale(brut_an, v, steuerklasse, annee);
-    if steuerklasse == 2 { zve -= entlastungsbetrag(annee); }
+    let mut zve = brut_an - forfaits - vorsorgepauschale(brut_an, v, steuerklasse, p);
+    if steuerklasse == 2 { zve -= p.entlastung; }
     let zve = zve.max(Decimal::ZERO);
 
     match steuerklasse {
         // Classe III : procédure du splitting (2 × tarif sur la moitié).
-        3 => einkommensteuer_annuel(zve / dec!(2), annee) * dec!(2),
+        3 => einkommensteuer_annuel(zve / dec!(2), p) * dec!(2),
         // Classes V et VI : sans Grundfreibetrag, §39b al. 2 phrase 7 — impôt égal
         // au double de l'écart entre les tarifs sur 1,25 × zvE et 0,75 × zvE, au
         // minimum 14 % (plafonds de la formule officielle non modélisés).
         5 | 6 => {
-            let ecart = einkommensteuer_annuel(zve * dec!(1.25), annee)
-                - einkommensteuer_annuel(zve * dec!(0.75), annee);
+            let ecart = einkommensteuer_annuel(zve * dec!(1.25), p)
+                - einkommensteuer_annuel(zve * dec!(0.75), p);
             (ecart * dec!(2)).max(zve * dec!(0.14)).floor()
         }
-        _ => einkommensteuer_annuel(zve, annee),
+        _ => einkommensteuer_annuel(zve, p),
     }
 }
 
@@ -214,15 +197,19 @@ fn lohnsteuer_annuel(brut_mensuel: Decimal, v: Vorsorge, steuerklasse: u8, annee
 /// Solidaritätszuschlag : 5,5 % de l'impôt au-delà d'un seuil d'exonération
 /// (Freigrenze, doublé en classe III), avec zone de transition à 11,9 % de
 /// l'excédent (SolzG §3 et §4).
-fn solidaritaetszuschlag(lohnsteuer_annuel: Decimal, steuerklasse: u8, annee: i32) -> Decimal {
-    let freigrenze = match annee {
-        i32::MIN..=2020 => dec!(972),
-        2021 | 2022     => dec!(16956),
-        2023            => dec!(17543),
-        2024            => dec!(18130),
-        2025            => dec!(19950),
-        _               => dec!(20350),
-    } * if steuerklasse == 3 { dec!(2) } else { dec!(1) };
+/// Seuil d'exonération de la Soli, doublé en classe III.
+fn soli_freigrenze(steuerklasse: u8, p: &Params) -> Decimal {
+    p.soli_frei * if steuerklasse == 3 { dec!(2) } else { dec!(1) }
+}
+
+/// Fin de la zone de transition : là où 11,9 % de l'excédent rejoint 5,5 % de
+/// l'impôt entier, soit Freigrenze × 0,119 / 0,064.
+fn soli_fin_transition(steuerklasse: u8, p: &Params) -> Decimal {
+    (soli_freigrenze(steuerklasse, p) * dec!(0.119) / dec!(0.064)).floor()
+}
+
+fn solidaritaetszuschlag(lohnsteuer_annuel: Decimal, steuerklasse: u8, p: &Params) -> Decimal {
+    let freigrenze = soli_freigrenze(steuerklasse, p);
     if lohnsteuer_annuel <= freigrenze {
         return Decimal::ZERO;
     }
@@ -251,10 +238,11 @@ pub fn lohnsteuer_mensuel(
     ctx: &ContextPaie,
 ) -> Vec<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let lst_annuel = lohnsteuer_annuel(brut, vorsorge, steuerklasse, annee);
+    let p = Params::charger(ctx).expect("paramètres DE vérifiés par de_bulletin");
+    let lst_annuel = lohnsteuer_annuel(brut, vorsorge, steuerklasse, &p);
     let lst_mensuel = (lst_annuel / dec!(12)).round_dp(2);
 
-    let soli_annuel  = solidaritaetszuschlag(lst_annuel, steuerklasse, annee);
+    let soli_annuel  = solidaritaetszuschlag(lst_annuel, steuerklasse, &p);
     let soli_mensuel = (soli_annuel / dec!(12)).round_dp(2);
 
     let sk_libelle = ctx.libelle(
@@ -275,15 +263,15 @@ pub fn lohnsteuer_mensuel(
 
     let gbf_info = match steuerklasse {
         1 | 4 => ctx.expl("DE_GBF_STD", "Grundfreibetrag ({gbf} €/an) appliqué")
-            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee))),
+            .replace("{gbf}", &format!("{:.0}", p.gbf)),
         2 => ctx.expl("DE_GBF_SK2", "Grundfreibetrag + Entlastungsbetrag Alleinerziehende ({ent} €/an)")
-            .replace("{ent}", &format!("{:.0}", entlastungsbetrag(annee))),
+            .replace("{ent}", &format!("{:.0}", p.entlastung)),
         3 => ctx.expl("DE_GBF_SK3", "Grundfreibetrag doublé ({gbf2} €/an) — conjoint en SK V")
-            .replace("{gbf2}", &format!("{:.0}", grundfreibetrag(annee) * dec!(2))),
+            .replace("{gbf2}", &format!("{:.0}", p.gbf * dec!(2))),
         5 => ctx.expl("DE_GBF_SK5", "Pas de Grundfreibetrag — revenu entièrement imposable"),
         6 => ctx.expl("DE_GBF_SK6", "Pas de Grundfreibetrag + majoration second emploi"),
         _ => ctx.expl("DE_GBF_STD", "Grundfreibetrag ({gbf} €/an) appliqué")
-            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee))),
+            .replace("{gbf}", &format!("{:.0}", p.gbf)),
     };
 
     let mut lignes = Vec::new();
@@ -317,7 +305,7 @@ pub fn lohnsteuer_mensuel(
             .replace("{skn}", &steuerklasse.to_string())
             .replace("{skl}", &sk_libelle)
             .replace("{gbf_info}", &gbf_info)
-            .replace("{gbf}", &format!("{:.0}", grundfreibetrag(annee)))
+            .replace("{gbf}", &format!("{:.0}", p.gbf))
             .replace("{lst_an}", &format!("{:.2}", lst_annuel))
             .replace("{lst_m}", &format!("{:.2}", lst_mensuel))
             .replace("{annee}", &annee.to_string()),
@@ -342,8 +330,10 @@ pub fn lohnsteuer_mensuel(
                 exonération si Lohnsteuer annuelle ≤ {seuil} €. \
                 Zone de transition jusqu'à {seuil_haut} € de Lohnsteuer annuelle : taux progressif 11,9 %. \
                 Au-delà : taux plein 5,5 %. {annee_info}")
-                .replace("{seuil}", if annee >= 2021 { "17 543" } else { "0 (taux plein)" })
-                .replace("{seuil_haut}", "66 915")
+                .replace("{seuil}", &if annee >= 2021 {
+                    format!("{:.0}", soli_freigrenze(steuerklasse, &p))
+                } else { "0 (taux plein)".to_string() })
+                .replace("{seuil_haut}", &format!("{:.0}", soli_fin_transition(steuerklasse, &p)))
                 .replace("{annee_info}", &if annee <= 2020 {
                     ctx.expl("DE_SOLI_ANNEE_PRE", "En {an}, le taux plein s'appliquait à tous.")
                         .replace("{an}", &annee.to_string())
@@ -394,27 +384,31 @@ pub fn lohnsteuer_mensuel(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::dec;
 
     /// Le tarif §32a est nul jusqu'au Grundfreibetrag et continu aux bornes de
-    /// zones (à l'euro près) : une coquille dans un coefficient casse l'un ou l'autre.
-    #[test]
-    fn tarif_32a_nul_puis_continu() {
+    /// zones (à l'euro près) : une coquille dans un coefficient en base casse
+    /// l'un ou l'autre.
+    #[tokio::test]
+    async fn tarif_32a_nul_puis_continu() {
+        let path = std::env::temp_dir().join(format!("xenna_de_tarif_{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        let pool = crate::db::init_db(&path).await.unwrap();
         for annee in 2023..=2026 {
-            let gbf = grundfreibetrag(annee);
-            assert_eq!(tarif_32a_exact(gbf, annee), Some(Decimal::ZERO), "{annee}");
-            let st = |x: Decimal| tarif_32a_exact(x, annee).unwrap();
-            let bornes = match annee {
-                2023 => [dec!(15999), dec!(62809), dec!(277825)],
-                2024 => [dec!(17005), dec!(66760), dec!(277825)],
-                2025 => [dec!(17443), dec!(68480), dec!(277825)],
-                _    => [dec!(17799), dec!(69878), dec!(277825)],
-            };
-            for b in bornes {
+            let date = chrono::NaiveDate::from_ymd_opt(annee, 6, 15).unwrap();
+            let ctx = ContextPaie::charger(&pool, date).await.unwrap();
+            let p = Params::charger(&ctx).unwrap();
+            assert_eq!(tarif_32a_exact(p.gbf, &p), Some(Decimal::ZERO), "{annee}");
+            let st = |x: Decimal| tarif_32a_exact(x, &p).unwrap();
+            for b in [p.z1, p.z2, Z3] {
                 let saut = st(b + dec!(1)) - st(b);
                 assert!(saut >= Decimal::ZERO && saut <= dec!(2), "{annee} : saut de {saut} € à {b} €");
             }
+            if annee == 2026 {
+                // VZ 2026, 40 000 € de revenu imposable : 7 209 € (formule de la zone 2).
+                assert_eq!(tarif_32a_exact(dec!(40000), &p), Some(dec!(7209)));
+            }
         }
-        // VZ 2026, 40 000 € de revenu imposable : 7 209 € (formule de la zone 2).
-        assert_eq!(tarif_32a_exact(dec!(40000), 2026), Some(dec!(7209)));
+        let _ = std::fs::remove_file(&path);
     }
 }

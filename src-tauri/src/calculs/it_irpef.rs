@@ -8,59 +8,13 @@ use crate::models::LigneCotisation;
 //
 // Calcule l'IRPEF annuelle brute sur un revenu imposable annuel.
 // Source : DPR 917/1986 art. 11, modifié par chaque Legge di Bilancio.
-pub fn irpef_annuel(revenu: Decimal, annee: i32) -> Decimal {
-    if annee <= 2021 {
-        // 5 tranches (DPR 917/1986)
-        if revenu <= dec!(15000) {
-            revenu * dec!(0.23)
-        } else if revenu <= dec!(28000) {
-            dec!(3450) + (revenu - dec!(15000)) * dec!(0.27)
-        } else if revenu <= dec!(55000) {
-            dec!(6960) + (revenu - dec!(28000)) * dec!(0.38)
-        } else if revenu <= dec!(75000) {
-            dec!(17220) + (revenu - dec!(55000)) * dec!(0.41)
-        } else {
-            dec!(25420) + (revenu - dec!(75000)) * dec!(0.43)
-        }
-    } else if annee <= 2023 {
-        // 4 tranches (L. 234/2021 — Bilancio 2022)
-        if revenu <= dec!(15000) {
-            revenu * dec!(0.23)
-        } else if revenu <= dec!(28000) {
-            dec!(3450) + (revenu - dec!(15000)) * dec!(0.25)
-        } else if revenu <= dec!(50000) {
-            dec!(6700) + (revenu - dec!(28000)) * dec!(0.35)
-        } else {
-            dec!(14400) + (revenu - dec!(50000)) * dec!(0.43)
-        }
-    } else if annee <= 2025 {
-        // 3 tranches (L. 213/2023 — Bilancio 2024, rendu structurel par L. 207/2024)
-        if revenu <= dec!(28000) {
-            revenu * dec!(0.23)
-        } else if revenu <= dec!(50000) {
-            dec!(6440) + (revenu - dec!(28000)) * dec!(0.35)
-        } else {
-            dec!(14140) + (revenu - dec!(50000)) * dec!(0.43)
-        }
-    } else {
-        // 3 tranches, 2ᵉ ramenée de 35 à 33 % au 01/01/2026 (L. 199/2025 art. 1 c. 3 —
-        // Bilancio 2026). La « sterilizzazione » au-delà de 200 000 € de revenu passe par
-        // une réduction des détractions pour charges (oneri), réglée à la déclaration :
-        // elle ne touche pas la retenue mensuelle de l'employeur.
-        if revenu <= dec!(28000) {
-            revenu * dec!(0.23)
-        } else if revenu <= dec!(50000) {
-            dec!(6440) + (revenu - dec!(28000)) * dec!(0.33)
-        } else {
-            dec!(13700) + (revenu - dec!(50000)) * dec!(0.43)
-        }
-    }
+
+/// IRPEF annuelle brute : barème progressif IT_IRPEF en base (art. 11 TUIR,
+/// migration 0151), ou None si la date n'est pas couverte.
+pub fn irpef_annuel(revenu: Decimal, ctx: &ContextPaie) -> Option<Decimal> {
+    ctx.bareme_progressif("IT_IRPEF", revenu)
 }
 
-// ── Détractions travail salarié (art. 13 TUIR) ───────────────────────────────
-//
-// Réduit l'IRPEF payable. Inversement proportionnel au revenu.
-// Calcul sur revenu annuel estimé.
 pub fn detrazione_lavdip(revenu: Decimal, annee: i32) -> Decimal {
     if annee <= 2021 {
         // Art. 13 TUIR original
@@ -105,22 +59,9 @@ pub fn bonus_cuneo_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie
     let annee          = ctx.date_paie.year();
     let reddito_annuo  = imponibile * dec!(12);
 
-    if annee < 2025 {
-        return None;
-    }
-    let bonus_annuel = if reddito_annuo <= dec!(8500) {
-        reddito_annuo * dec!(0.071)
-    } else if reddito_annuo <= dec!(15000) {
-        reddito_annuo * dec!(0.053)
-    } else if reddito_annuo <= dec!(20000) {
-        reddito_annuo * dec!(0.048)
-    } else if reddito_annuo <= dec!(32000) {
-        dec!(1000)
-    } else if reddito_annuo <= dec!(40000) {
-        dec!(1000) * (dec!(40000) - reddito_annuo) / dec!(8000)
-    } else {
-        return None;
-    };
+    // Barème IT_BONUS_CUNEO (dès 2025) ; au-delà de 40 000 € ou avant 2025 :
+    // aucune tranche, aucun bonus.
+    let bonus_annuel = ctx.bareme_lineaire("IT_BONUS_CUNEO", reddito_annuo)?;
 
     let bonus_mensuel = (bonus_annuel / dec!(12)).round_dp(2);
 
@@ -151,7 +92,8 @@ pub fn bonus_cuneo_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie
         libelle:     ctx.libelle("IT_BONUS_CUNEO", "Taglio del cuneo fiscale {annee}")
                         .replace("{annee}", &annee.to_string()),
         base:        brut,
-        taux_sal:    -bonus_mensuel / brut, // taux effectif indicatif
+        // Taux effectif indicatif ; brut nul (dichotomie de la paye inversée) : 0.
+        taux_sal:    if brut > Decimal::ZERO { -bonus_mensuel / brut } else { Decimal::ZERO },
         montant_sal: -bonus_mensuel,        // négatif = réduit les retenues (augmente le net)
         taux_pat:    Decimal::ZERO,
         montant_pat: Decimal::ZERO,
@@ -170,7 +112,7 @@ pub fn irpef_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie) -> L
     let annee        = ctx.date_paie.year();
     let reddito_ann  = imponibile * dec!(12);
 
-    let irpef_brute  = irpef_annuel(reddito_ann, annee);
+    let irpef_brute  = irpef_annuel(reddito_ann, ctx).unwrap_or(Decimal::ZERO);
     let detrazione   = detrazione_lavdip(reddito_ann, annee).max(Decimal::ZERO);
     let irpef_nette  = (irpef_brute - detrazione).max(Decimal::ZERO);
     let irpef_mensuelle = (irpef_nette / dec!(12)).round_dp(2);
@@ -181,7 +123,7 @@ pub fn irpef_mensuel(brut: Decimal, imponibile: Decimal, ctx: &ContextPaie) -> L
         Decimal::ZERO
     };
 
-    let nb_tranches = if annee <= 2021 { 5 } else if annee <= 2023 { 4 } else { 3 };
+    let nb_tranches = ctx.bareme("IT_IRPEF").map_or(0, |t| t.len());
     let explication = ctx.expl("IT_IRPEF",
         "L'IRPEF (Imposta sul Reddito delle Persone Fisiche) est l'impôt progressif \
         sur le revenu des personnes physiques, régi par le TUIR (DPR 917/1986). \

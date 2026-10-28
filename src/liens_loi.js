@@ -107,10 +107,12 @@ const ARTICLES = {
   'CGI:81 quater':     'LEGIARTI000046195916',
   'CGI:204 A':         'LEGIARTI000033812067',
 };
-// Volontairement absents (vérifiés, à NE PAS ajouter sans correction de la
-// citation) : CSS L241-6-1, D241-3-2, L834-1, R1221-1 et CASF L14-10-4
-// n'existent pas (ou plus) sous ces numéros ; CGFP L712-3 existe mais traite
-// du classement des policiers, pas de la CNRACL.
+// Citations corrigées le 28/10/2026 : D241-3-2 → L241-6-1 (taux réduit
+// famille, article bien en vigueur jusqu'en 2025 ; le relevé du 01/10 le disait
+// à tort inexistant), CSS L834-1 (abrogé en 2020) → CCH L813-5 (FNAL), CASF
+// L14-10-4 → CSS L137-40 (CSA sur les salaires), CSS R1221-1 → code du travail
+// R1221-5 (DPAE), CGFP L712-3 retiré de la CNRACL. Non liés faute d'identifiant
+// vérifié : L241-6-1, D241-3-1, L137-40, CCH L813-5, CT R1221-5.
 
 // Marqueurs de code : la citation d'un article se rattache au code nommé dans
 // la même portion de phrase (« CSS art. L241-3 », « art. L. 911-7 CSS »,
@@ -263,9 +265,10 @@ const TEXTES = [
   // Suisse : Recueil officiel (modification AVS 21 de la LAVS).
   t('\\bRO 2023 92\\b', 'https://www.fedlex.admin.ch/eli/oc/2023/92/fr'),
 ];
-// Volontairement absents : décret n° 2011-291 (c'est le régime SNCF, pas la
-// CNRACL), décret n° 2015-390 (traitements de données de l'assurance maladie,
-// pas les allocations familiales) ; lois des 5 avril 1910, 5 avril 1928,
+// Citations corrigées le 28/10/2026 : décret n° 2011-291 (régime SNCF) →
+// décrets n° 2010-1749, 2014-1531, 2024-49 et 2025-86 (CNRACL) ; décret
+// n° 2015-390 (données de l'assurance maladie) → CSS L241-6 et D241-3-1.
+// Volontairement absents : lois des 5 avril 1910, 5 avril 1928,
 // 30 avril 1930, 4 mars 1931 et 11 mars 1932 (non publiées sur Légifrance).
 
 // ── Lois désignées par un sigle (étranger) ───────────────────────────────────
@@ -304,8 +307,9 @@ gii('estg', ['32a', '38', '39', '51a']);
 
 // Suisse — fedlex.admin.ch (Chancellerie fédérale). Identifiants ELI tirés du
 // point SPARQL officiel (fedlex.data.admin.ch) par numéro RS ; ancres d'articles
-// contrôlées dans la version applicable au 01/10/2026. LIFD art. 90a n'existe
-// pas (borne de l'intervalle « 83-90a » cité) ; « ORIS » est en réalité l'OIS.
+// contrôlées dans la version applicable au 01/10/2026. Les citations « LIFD
+// art. 83-90a » et « ORIS » ont été corrigées le 28/10/2026 en « art. 83-101 »
+// (imposition à la source, résidents et non-résidents) et « OIS ».
 const FEDLEX = 'https://www.fedlex.admin.ch/eli/cc';
 const fedlex = (re, eli, arts = []) => loi(re, `${FEDLEX}/${eli}/fr`, arts,
   n => `${FEDLEX}/${eli}/fr#art_${n.replace(/([0-9])([a-z])$/, '$1_$2')}`);
@@ -334,8 +338,8 @@ loi('\\bCSS LU\\b', 'https://legilux.public.lu/eli/etat/leg/code/securite_social
 // Italie — Normattiva (portail officiel de la législation en vigueur), URN
 // « urn:nir:stato:type:année;numéro~artN ». Chaque acte et chaque article cité
 // vérifiés le 01/10/2026 (titre exact ; un article inexistant renvoie à
-// l'article 1, contrôle fait). « D.P.R. 663/1979 » (quiz) est en réalité le
-// décret-loi n° 663 du 30/12/1979 : Normattiva y renvoie, on suit.
+// l'article 1, contrôle fait). Le décret-loi n° 663 du 30/12/1979 (cité
+// « D.P.R. » par le quiz jusqu'au 28/10/2026) se lie sous les deux sigles.
 const NORMATTIVA = 'https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:';
 const SIGLE_IT = {
   'legge': 'L\\.',
@@ -373,8 +377,9 @@ loi('\\bD\\.?P\\.?R\\.? 663\\/1979\\b|\\bD\\.?L\\.? 663\\/1979\\b', `${NORMATTIV
 
 // Espagne — BOE (Boletín Oficial del Estado), textes consolidés. Identifiants
 // vérifiés par l'API officielle (datosabiertos) ; ancres d'articles « #a33 »
-// contrôlées dans la page. « LGSS art. 19 bis » : aucun article de ce numéro
-// dans la LGSS consolidée, non lié. L'ordre de cotisation 2026 n'a pas encore
+// contrôlées dans la page. « LGSS art. 19 bis » existe (cotización adicional de
+// solidaridad, ajouté par le RDL 2/2023, en vigueur au 01/01/2025 ; vérifié sur
+// la LGSS consolidée le 28/10/2026) : ancre non contrôlée, non lié. L'ordre de cotisation 2026 n'a pas encore
 // de version consolidée : lié au texte publié, sans article.
 const BOE = 'https://www.boe.es/buscar/act.php?id=';
 const boe = (re, id, arts = []) => loi(re, BOE + id, arts, n => `${BOE}${id}#a${n}`);
@@ -478,9 +483,9 @@ loi('«Par valsts sociālo apdrošināšanu»|\\bPar valsts sociālo apdrošinā
 loi('\\bGyventojų pajamų mokesčio įstatymas', 'https://e-seimas.lrs.lt/portal/legalAct/lt/TAD/TAIS.171369/asr');
 loi('\\bValstybinio socialinio draudimo įstatymas', 'https://e-seimas.lrs.lt/portal/legalAct/lt/TAD/adf586f244fe11e68f45bcf65e0a17ee/asr');
 // Chine — site de l'Assemblée populaire nationale (npc.gov.cn), version en
-// vigueur (révisions de 2018 vérifiées dans le texte). « 国税发〔2018〕164号 »
-// est en réalité le 财税〔2018〕164号 (Finances / administration fiscale) :
-// citation à corriger, non liée.
+// vigueur (révisions de 2018 vérifiées dans le texte). La circulaire
+// 财税〔2018〕164号 (Finances / administration fiscale ; citée « 国税发 » jusqu'au
+// 28/10/2026) n'est pas liée.
 loi('个人所得税法', 'http://www.npc.gov.cn/npc/c2/c183/c198/201905/t20190523_10668.html');
 loi('社会保险法', 'http://www.npc.gov.cn/zgrdw/npc/xinwen/2019-01/07/content_2070267.htm');
 // Corée — Centre national d'information juridique (law.go.kr, ministère de la

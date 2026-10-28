@@ -78,6 +78,8 @@ pub fn generer_bulletin(salarie: Salarie, ctx: &ContextPaie, absence: Option<&Ab
     if bulletin.salarie.pays == Pays::France {
         bulletin.droits = super::droits::calculer(&bulletin, ctx);
         bulletin.alertes = super::alertes::controler(&bulletin.salarie, ctx);
+    } else if bulletin.salarie.pays != Pays::FonctionPublique {
+        bulletin.alertes.extend(super::alertes::lignes_sans_montant(&bulletin.cotisations));
     }
     // Histoire de chaque cotisation (crate::anecdotes), accolée à l'explication
     // derrière un séparateur que le front détache pour l'afficher à part.

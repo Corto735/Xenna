@@ -2,10 +2,20 @@ use rust_decimal::Decimal;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
 use super::jp_cotisations::{jp_kenpo, jp_kaigo, jp_kodomo, jp_kosei, jp_koyo, jp_rousai};
-use super::jp_impot::{jp_shotokuzei, jp_juminzei};
+use super::jp_impot::{jp_shotokuzei, jp_juminzei, BAREMES_REQUIS};
 
 pub fn generer_bulletin_jp(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
+
+    // Barèmes datés en base (migration 0150) : avant leurs dates, rien n'est
+    // sourcé ; on le dit plutôt que de prolonger un barème qui n'était pas le bon.
+    let requis = ["JP_HYOJUN_KENPO", "JP_HYOJUN_KOSEI"].into_iter().chain(BAREMES_REQUIS);
+    if requis.into_iter().any(|code| ctx.bareme(code).is_none())
+        || ctx.plafond("JP_SEUIL_AFFILIATION").is_none() {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "JPY", "JP",
+            "Japon : barèmes intégrés à partir de septembre 2020.", ctx);
+    }
 
     // Cotisations salariales (pour base IIT, on les calcule d'abord)
     let kenpo  = jp_kenpo(brut, ctx);

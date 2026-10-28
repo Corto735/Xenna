@@ -7,6 +7,12 @@ use super::pt_irs::irs_retencao;
 pub fn generer_bulletin_pt(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
 
+    // Barèmes datés en base (migration 0152) depuis 2015.
+    if !super::pt_irs::couvert(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "EUR", "PT", "Portugal : barèmes intégrés à partir de 2015.", ctx);
+    }
+
     let mut cotisations = vec![
         seguranca_social(brut, ctx),
         acidentes_trabalho(brut, ctx),

@@ -115,7 +115,7 @@ pub fn de_rentenversicherung(brut: Decimal, ctx: &ContextPaie) -> LigneCotisatio
             .replace("{tp}", &format!("{:.2}", tp * dec!(100)))
             .replace("{bbg}", &format!("{:.2}", bbg))
             .replace("{annee}", &annee.to_string()),
-        loi_ref: Some(ctx.loi_ref("SGB VI §158, §160 — RV-Stabilitäts-G 2025 (unification BBG)")),
+        loi_ref: Some(ctx.loi_ref("SGB VI §158, §160 — Rentenüberleitungs-Abschlussgesetz du 17/07/2017 (unification BBG au 01/01/2025)")),
     }
 }
 

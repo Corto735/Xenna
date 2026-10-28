@@ -47,7 +47,7 @@ export function modeleApplicable(dateIso) {
 // plusieurs lignes du moteur ramenées à une seule (même assiette, taux et
 // montants additionnés), comme la CEG avec la tranche 1 de l'Agirc-Arrco.
 
-const GROUPES = [
+const GROUPES_ADAPTE = [
   { titre: 'Santé', postes: [
     { lbl: 'Sécurité Sociale - Mal. Mat. Inval. Décès',
       codes: ['SS_MALADIE', 'ALSACE_MOSELLE_MALADIE'], fusion: true },
@@ -78,17 +78,66 @@ const GROUPES = [
   ] },
 ];
 
+// Modèle définitif, seul autorisé pour les paies à compter du 1er janvier 2027 :
+// article 1 de l'arrêté du 25 février 2016, dans sa rédaction issue de l'arrêté
+// du 31 janvier 2023 (JORFTEXT000047096915) ; les arrêtés du 25 juin 2024 et du
+// 11 août 2025 n'en ont reporté que l'obligation. Libellés repris du texte.
+// AT/MP passe sous Santé. La prévoyance cadre obligatoire (1,50 % T1, ANI du
+// 17 novembre 2017) va en « Cotisations statutaires ou prévues par la convention
+// collective », choix de l'utilisateur : la section « facultatives » du modèle
+// ne lui convient pas. Lignes du modèle sans équivalent dans le moteur, donc
+// absentes : complémentaire frais de santé, Apec, CSG/CRDS sur les revenus non
+// imposables, cotisations facultatives, remboursements et déductions.
+const GROUPES_RENOVE = [
+  { titre: 'Santé', postes: [
+    { lbl: 'Sécurité Sociale Maladie Maternité Invalidité Décès',
+      codes: ['SS_MALADIE', 'ALSACE_MOSELLE_MALADIE'], fusion: true },
+    { lbl: 'Accidents du travail & maladies professionnelles', codes: ['AT_MP'] },
+  ] },
+  { titre: 'Retraite', postes: [
+    { lbl: 'Sécurité Sociale Vieillesse plafonnée',   codes: ['SS_VIEILLESSE_PLAF'] },
+    { lbl: 'Sécurité Sociale Vieillesse déplafonnée', codes: ['SS_VIEILLESSE_DEPLAF'] },
+    { lbl: 'Retraite complémentaire, CEG et CET T1', codes: ['AGIRC_ARRCO_T1', 'AGIRC_ARRCO_CEG_T1'], fusion: true },
+    { lbl: 'Retraite complémentaire, CEG et CET T2', codes: ['AGIRC_ARRCO_T2', 'AGIRC_ARRCO_CEG_T2'], fusion: true },
+  ] },
+  { titre: 'Famille', seul: true, postes: [{ codes: ['FAMILLE'] }] },
+  { titre: 'Assurance chômage', seul: true, postes: [
+    { codes: ['CHOMAGE', 'AGS'], fusion: true },
+  ] },
+  { titre: "Autres charges dues par l'employeur", autres: true, postes: [] },
+  { titre: 'Cotisations statutaires ou prévues par la convention collective', seul: true, postes: [
+    { codes: ['PREVOYANCE_CADRE_MIN'] },
+  ] },
+  { titre: "CSG déductible de l'impôt sur le revenu", seul: true, postes: [
+    { codes: ['CSG_DEDUCTIBLE'] },
+  ] },
+  { titre: "CSG/CRDS non déductible de l'impôt sur le revenu", seul: true, postes: [
+    { codes: ['CSG_NON_DEDUCTIBLE', 'CRDS'], fusion: true },
+  ] },
+];
+
 /**
- * Mêmes groupes, pour l'écran (vue « comme sur mon bulletin ») : chaque groupe
+ * Grille de la date de paie : modèle définitif à compter de MODELE_BASCULE,
+ * modèle adapté avant. La fonction publique garde la grille adaptée : le modèle
+ * du code du travail ne la régit pas (cf. l'annexe du PDF).
+ */
+function groupesPour(dateIso, pays) {
+  return pays !== 'fonction_publique' && modeleApplicable(dateIso) === 'renove'
+    ? GROUPES_RENOVE : GROUPES_ADAPTE;
+}
+
+/**
+ * Mêmes groupes (ceux de la date de paie), pour l'écran (vue « comme sur mon bulletin ») : chaque groupe
  * avec les lignes du moteur qu'il rassemble, dans l'ordre réglementaire. Les
  * cotisations qu'aucun groupe ne connaît vont dans le groupe `autres` plutôt
  * que de disparaître. Un seul regroupement pour l'écran et le PDF.
  * @returns {{ titre: string, cle: string, autres: boolean, lignes: object[] }[]}
  */
-export function regrouperCotisations(cots) {
+export function regrouperCotisations(cots, dateIso, pays) {
+  const groupes = groupesPour(dateIso, pays);
   const connus = new Set();
-  GROUPES.forEach(g => g.postes.forEach(p => p.codes.forEach(c => connus.add(c))));
-  return GROUPES.map((g, i) => ({
+  groupes.forEach(g => g.postes.forEach(p => p.codes.forEach(c => connus.add(c))));
+  return groupes.map((g, i) => ({
     titre: g.titre,
     cle: 'g' + i,
     autres: !!g.autres,
@@ -284,11 +333,12 @@ export function composerBulletinPdf(b, opt = {}) {
   vide();
 
   // ── Cotisations et contributions ──────────────────────────────────────────
+  const groupes = groupesPour(datePaie, b.salarie?.pays);
   const utilises = new Set([...EXO_PATRONALES, ...EXO_SALARIALES, ...AIDES]);
-  GROUPES.forEach(g => g.postes.forEach(p => p.codes.forEach(c => utilises.add(c))));
+  groupes.forEach(g => g.postes.forEach(p => p.codes.forEach(c => utilises.add(c))));
   const orphelines = cots.filter(c => !utilises.has(c.code));
 
-  for (const g of GROUPES) {
+  for (const g of groupes) {
     const lignes = [];
     if (g.autres) {
       orphelines.forEach(c => lignes.push(ligneDe([c], c.libelle || c.code)));
@@ -314,12 +364,21 @@ export function composerBulletinPdf(b, opt = {}) {
   const somme = (codes, champ) => cots.filter(c => codes.includes(c.code))
     .reduce((s, c) => s + _n(c[champ]), 0);
   const exoPat = somme(EXO_PATRONALES, 'montant_pat');
-  if (Math.abs(exoPat) >= 0.005) {
-    L.push({ libelle: 'Exonérations de cotisations employeur', montant_pat: _m(exoPat), fort: true });
-  }
   const exoSal = somme(EXO_SALARIALES, 'montant_sal');
-  if (Math.abs(exoSal) >= 0.005) {
-    L.push({ libelle: 'Exonérations de cotisations salariales', a_deduire: _m(exoSal), fort: true });
+  const definitif = groupes === GROUPES_RENOVE;
+  if (definitif) {
+    // Modèle définitif : une seule ligne, parts salarié et employeur.
+    if (Math.abs(exoPat) >= 0.005 || Math.abs(exoSal) >= 0.005) {
+      L.push({ libelle: 'Exonérations et allègements de cotisations',
+        a_deduire: _m(exoSal), montant_pat: _m(exoPat), fort: true });
+    }
+  } else {
+    if (Math.abs(exoPat) >= 0.005) {
+      L.push({ libelle: 'Exonérations de cotisations employeur', montant_pat: _m(exoPat), fort: true });
+    }
+    if (Math.abs(exoSal) >= 0.005) {
+      L.push({ libelle: 'Exonérations de cotisations salariales', a_deduire: _m(exoSal), fort: true });
+    }
   }
   cots.filter(c => AIDES.includes(c.code))
     .forEach(c => L.push({ ...ligneDe([c], c.libelle || c.code), fort: true }));
@@ -327,7 +386,8 @@ export function composerBulletinPdf(b, opt = {}) {
 
   const totalSal = cots.reduce((s, c) => s + _n(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + _n(c.montant_pat), 0);
-  L.push({ libelle: 'Total des cotisations et contributions',
+  L.push({ libelle: definitif ? 'Total des cotisations et contributions obligatoires'
+                               : 'Total des cotisations et contributions',
            a_deduire: _m(totalSal), montant_pat: _m(totalPat), fort: true });
   vide();
 
@@ -440,7 +500,10 @@ export function composerBulletinPdf(b, opt = {}) {
           + 'du travail) régit les salariés de droit privé ; sa présentation est reprise pour la seule '
           + 'commodité de la lecture.'
         : 'Modèle réglementaire applicable à cette date : ' + (modeleApplicable(datePaie) === 'renove'
-            ? 'modèle rénové (arrêté du 31 janvier 2023), obligatoire à compter du 1er janvier 2027.'
+            ? 'modèle définitif (article 1 de l’arrêté du 25 février 2016, rédaction de l’arrêté du '
+              + '31 janvier 2023), seul autorisé à compter du 1er janvier 2027. La prévoyance cadre '
+              + 'obligatoire y figure en cotisations prévues par la convention collective ; l’Apec et '
+              + 'la CSG/CRDS sur les revenus non imposables ne sont pas modélisées.'
             : 'modèle adapté (arrêté du 25 février 2016, complété du montant net social), utilisable '
               + 'jusqu’au 31 décembre 2026 (arrêté du 11 août 2025).')
         + ' Ne sont pas modélisés : FNAL, versement mobilité, contribution au dialogue social, '

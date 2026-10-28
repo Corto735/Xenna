@@ -17,7 +17,7 @@ use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
-use crate::models::{Alerte, Salarie};
+use crate::models::{Alerte, LigneCotisation, Salarie};
 
 const HEURES_TEMPS_PLEIN: Decimal = dec!(151.67);
 
@@ -173,4 +173,32 @@ fn minimum_conventionnel(s: &Salarie, ctx: &ContextPaie, etp: Decimal) -> Option
                      rémunération, elle, se vérifie sur l'année civile.", euros(base)),
             source, valeurs))
     }
+}
+
+/// Régimes étrangers : lignes qui portent un taux mais aucun montant à ce
+/// salaire. Leur assiette y est nulle (seuil d'affiliation, comme les 88 000 ¥
+/// de l'assurance maladie japonaise, plancher, exonération) ; sans cette note,
+/// le bulletin semble avoir perdu ses cotisations. Rien n'est supposé sur la
+/// règle en cause : l'explication de chaque ligne la donne.
+pub fn lignes_sans_montant(cotisations: &[LigneCotisation]) -> Option<Alerte> {
+    let lignes: Vec<&str> = cotisations.iter()
+        .filter(|c| (c.taux_sal != Decimal::ZERO || c.taux_pat != Decimal::ZERO)
+            && c.montant_sal == Decimal::ZERO && c.montant_pat == Decimal::ZERO)
+        .map(|c| c.libelle.as_str())
+        .collect();
+    if lignes.is_empty() {
+        return None;
+    }
+    let liste = lignes.join(" ; ");
+    Some(Alerte {
+        code: "sans_montant".into(),
+        valeurs: [("lignes".to_string(), liste.clone())].into_iter().collect(),
+        niveau: "info".into(),
+        titre: "Cotisations sans montant à ce salaire".into(),
+        texte: format!(
+            "Ces lignes ont un taux mais leur assiette est nulle à ce salaire (seuil \
+             d'affiliation, plancher ou exonération ; l'explication de chaque ligne en donne \
+             la règle) : {liste}."),
+        source: String::new(),
+    })
 }

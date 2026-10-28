@@ -75,20 +75,14 @@ pub fn onss_patronal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // Montant mensuel dégressif entre seuil_bas et seuil_haut.
 // Retourne None si le salaire dépasse le seuil haut.
 
-fn bonus_emploi_params(annee: i32) -> (Decimal, Decimal, Decimal) {
-    // (max_mensuel, seuil_bas_annuel, seuil_haut_annuel)
-    match annee {
-        i32::MIN..=2018 => (dec!(15.48), dec!(17800), dec!(27082)),
-        2019             => (dec!(16.03), dec!(20832), dec!(29736)),
-        2020 | 2021      => (dec!(16.44), dec!(20832), dec!(29736)),
-        2022 | 2023      => (dec!(16.91), dec!(20832), dec!(29736)),
-        _                => (dec!(17.81), dec!(21060), dec!(30120)), // 2024+
-    }
+/// (max_mensuel, seuil_bas_annuel, seuil_haut_annuel), en base (migration 0152).
+fn bonus_emploi_params(ctx: &ContextPaie) -> Option<(Decimal, Decimal, Decimal)> {
+    Some((ctx.plafond("BE_BONUS_MAX")?, ctx.plafond("BE_BONUS_SEUIL_BAS")?, ctx.plafond("BE_BONUS_SEUIL_HAUT")?))
 }
 
 pub fn bonus_emploi(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let (max_mensuel, seuil_bas, seuil_haut) = bonus_emploi_params(annee);
+    let (max_mensuel, seuil_bas, seuil_haut) = bonus_emploi_params(ctx)?;
     let annuel = brut * dec!(12);
     if annuel > seuil_haut {
         return None;
@@ -140,19 +134,14 @@ pub fn bonus_emploi(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation>
 // Dégressive si salaire dépasse le seuil (→ 0 à seuil × 1,5).
 // Retourne None si salaire trop élevé.
 
-fn red_struct_params(annee: i32) -> (Decimal, Decimal) {
-    // (montant_plein_mensuel, seuil_annuel)
-    match annee {
-        i32::MIN..=2018 => (dec!(100.00), dec!(24000)),
-        2019..=2021      => (dec!(103.60), dec!(24012)),
-        2022 | 2023      => (dec!(107.64), dec!(24012)),
-        _                => (dec!(109.54), dec!(24012)), // 2024+
-    }
+/// (montant_plein_mensuel, seuil_annuel), en base (migration 0152).
+fn red_struct_params(ctx: &ContextPaie) -> Option<(Decimal, Decimal)> {
+    Some((ctx.plafond("BE_RED_STRUCT_MONTANT")?, ctx.plafond("BE_RED_STRUCT_SEUIL")?))
 }
 
 pub fn reduction_structurelle(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let (montant_plein, seuil_annuel) = red_struct_params(annee);
+    let (montant_plein, seuil_annuel) = red_struct_params(ctx)?;
     let annuel = brut * dec!(12);
     let seuil_haut = seuil_annuel * dec!(1.5);
     let montant = if annuel <= seuil_annuel {

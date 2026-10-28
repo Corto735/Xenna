@@ -16,55 +16,15 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, LigneCotisation, Salarie};
 
-/// Impôt à partir d'un barème : `bands` = [(borne haute, taux marginal)], `top` au-delà.
-fn tax_from_bands(revenu: Decimal, bands: &[(Decimal, Decimal)], top: Decimal) -> Decimal {
-    let mut tax = Decimal::ZERO;
-    let mut prev = Decimal::ZERO;
-    for &(upper, rate) in bands {
-        if revenu > upper {
-            tax += (upper - prev) * rate;
-            prev = upper;
-        } else {
-            tax += (revenu - prev).max(Decimal::ZERO) * rate;
-            return tax;
-        }
-    }
-    tax + (revenu - prev).max(Decimal::ZERO) * top
-}
-
-/// Barème résident par année calendaire (→ exercice (Y-1)/Y). `None` = non couvert.
-fn impot_annuel(revenu: Decimal, annee: i32) -> Option<Decimal> {
-    // Tranche exonérée 18 200 € constante depuis 2012-13.
-    let bands: &[(Decimal, Decimal)] = match annee {
-        // FY2014-15 / 2015-16 : 32,5 % jusqu'à 80 000.
-        2015 | 2016 => &[(dec!(18200), dec!(0.0)), (dec!(37000), dec!(0.19)),
-                         (dec!(80000), dec!(0.325)), (dec!(180000), dec!(0.37))],
-        // FY2016-17 / 2017-18 : 32,5 % jusqu'à 87 000.
-        2017 | 2018 => &[(dec!(18200), dec!(0.0)), (dec!(37000), dec!(0.19)),
-                         (dec!(87000), dec!(0.325)), (dec!(180000), dec!(0.37))],
-        // FY2018-19 / 2019-20 : 32,5 % jusqu'à 90 000.
-        2019 | 2020 => &[(dec!(18200), dec!(0.0)), (dec!(37000), dec!(0.19)),
-                         (dec!(90000), dec!(0.325)), (dec!(180000), dec!(0.37))],
-        // FY2020-21 → 2023-24 (Stage 2) : 19 % jusqu'à 45 000, 32,5 % jusqu'à 120 000.
-        2021..=2024 => &[(dec!(18200), dec!(0.0)), (dec!(45000), dec!(0.19)),
-                         (dec!(120000), dec!(0.325)), (dec!(180000), dec!(0.37))],
-        // FY2024-25 / 2025-26 (Stage 3) : 16 % jusqu'à 45 000, 30 % jusqu'à 135 000.
-        2025 | 2026 => &[(dec!(18200), dec!(0.0)), (dec!(45000), dec!(0.16)),
-                         (dec!(135000), dec!(0.30)), (dec!(190000), dec!(0.37))],
-        // FY2026-27 : 2ᵉ taux ramené de 16 à 15 % (Treasury Laws Amendment (More Cost
-        // of Living Relief) Act 2025) ; 14 % prévu dès 2027-28, non intégré.
-        2027 => &[(dec!(18200), dec!(0.0)), (dec!(45000), dec!(0.15)),
-                  (dec!(135000), dec!(0.30)), (dec!(190000), dec!(0.37))],
-        _ => return None,
-    };
-    Some(tax_from_bands(revenu, bands, dec!(0.45)))
-}
+// Barème des résidents par exercice (AU_IT) et taux du Medicare levy
+// (AU_MEDICARE_TAUX) en base (migration 0153). Pas de barème à la date : non couvert.
 
 pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
     let annee = if ctx.date_paie.month() >= 7 { ctx.date_paie.year() + 1 } else { ctx.date_paie.year() };
 
-    let Some(impot_an) = impot_annuel(brut * dec!(12), annee) else {
+    let (Some(impot_an), Some(t_medicare)) =
+        (ctx.bareme_progressif("AU_IT", brut * dec!(12)), ctx.plafond("AU_MEDICARE_TAUX")) else {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "AUD", "AU",
             "Australie : données disponibles pour les exercices 2014-15 à 2026-27.", ctx);
@@ -92,12 +52,12 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
         loi_ref: Some(ctx.loi_ref("Income Tax Assessment Act 1997")),
     };
 
-    // Medicare levy 2 % (constant depuis 2014-15)
-    let medicare_mens = (brut * dec!(0.02)).round_dp(2);
+    // Medicare levy (2 % depuis 2014-15)
+    let medicare_mens = (brut * t_medicare).round_dp(2);
     let ligne_medicare = LigneCotisation {
         code: "AU_MEDICARE".into(),
         libelle: ctx.libelle("AU_MEDICARE", "Medicare levy — Contribution santé (2 %)"),
-        base: brut, taux_sal: dec!(0.02), montant_sal: medicare_mens,
+        base: brut, taux_sal: t_medicare, montant_sal: medicare_mens,
         taux_pat: Decimal::ZERO, montant_pat: Decimal::ZERO,
         categorie: "Sécurité sociale".into(),
         explication: ctx.expl("AU_MEDICARE",
@@ -111,7 +71,7 @@ pub fn generer_bulletin_au(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // Superannuation Guarantee (patronale, taux daté lu en base ; échéancier 9,5 → 12 %)
     // Maximum contribution base : 62 500 $/trimestre en 2025-26 (250 000 $/an) ; devenue
     // annuelle avec le Payday Super, 270 830 $ en 2026-27 (32 500 $ de SG à 12 %).
-    let plafond_super_mens = if annee >= 2027 { dec!(270830) } else { dec!(250000) } / dec!(12);
+    let plafond_super_mens = ctx.plafond("AU_SUPER_PLAFOND").unwrap_or(Decimal::MAX) / dec!(12);
     let base_super = brut.min(plafond_super_mens);
     let ts = ctx.taux_pat("AU_SUPER");
     let ligne_super = LigneCotisation {

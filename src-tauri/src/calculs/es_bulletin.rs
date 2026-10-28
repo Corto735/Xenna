@@ -6,6 +6,12 @@ use super::es_cotizaciones::*;
 pub fn generer_bulletin_es(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
 
+    // Bases de cotisation datées en base (migration 0151) depuis 2015.
+    if !super::es_cotizaciones::couvert(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "EUR", "ES", "Espagne : barèmes intégrés à partir de 2015.", ctx);
+    }
+
     let mut cotisations = vec![
         contingencias_comunes(brut, ctx),
         desempleo(brut, ctx),

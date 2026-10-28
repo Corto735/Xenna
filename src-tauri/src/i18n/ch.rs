@@ -268,52 +268,52 @@ pub fn t_explication(code: &str, lang: &str) -> Option<&'static str> {
         "CH_IS" => match lang {
             "en" => "Withholding tax (IS, Quellensteuer) is levied directly on the pay of foreign \
                 workers without a settlement permit (C), cross-border and non-resident workers \
-                (art. 83-90a LIFD). It replaces the ordinary tax return below CHF 120,000/yr.\n\n\
-                [ Parameters ]\nCanton: {canton} — {libelle_canton}\nORIS tariff: {tarif} — \
+                (art. 83-101 LIFD). It replaces the ordinary tax return below CHF 120,000/yr.\n\n\
+                [ Parameters ]\nCanton: {canton} — {libelle_canton}\nOIS tariff: {tarif} — \
                 {tarif_label}\nMonthly gross: CHF {sal}\nScale threshold: CHF {seuil}\nBase A0 rate: \
                 {taux_a0} %\nTariff multiplier {tarif}: × {mult}\nApplied rate: {taux_a0} % × {mult} \
                 = {taux_final} %\nIS amount = CHF {sal} × {taux_final} % = CHF {montant}\n\n\
                 Computed monthly on the gross pay (smoothing rules may apply to irregular income). \
-                Since the RAS reform (ORIS 12/11/2014), a single tariff scale applies across the \
+                Since the RAS reform (OIS 2018), a single tariff scale applies across the \
                 canton.",
             "de" => "Die Quellensteuer (IS) wird direkt auf den Lohn ausländischer Arbeitnehmer \
                 ohne Niederlassungsbewilligung (C), Grenzgänger und Nichtansässiger erhoben (Art. \
-                83-90a LIFD). Sie ersetzt die ordentliche Steuererklärung unter CHF 120'000/Jahr.\n\n\
-                [ Parameter ]\nKanton: {canton} — {libelle_canton}\nORIS-Tarif: {tarif} — \
+                83-101 LIFD). Sie ersetzt die ordentliche Steuererklärung unter CHF 120'000/Jahr.\n\n\
+                [ Parameter ]\nKanton: {canton} — {libelle_canton}\nOIS-Tarif: {tarif} — \
                 {tarif_label}\nMonatsbrutto: CHF {sal}\nTarifschwelle: CHF {seuil}\nA0-Basissatz: \
                 {taux_a0} %\nTarifmultiplikator {tarif}: × {mult}\nAngewandter Satz: {taux_a0} % × \
                 {mult} = {taux_final} %\nQuellensteuer = CHF {sal} × {taux_final} % = CHF {montant}\n\n\
                 Monatlich auf das Bruttogehalt berechnet (Glättungsregeln bei unregelmässigem \
-                Einkommen). Seit der RAS-Reform (ORIS 12.11.2014) gilt ein einheitlicher Tarif pro \
+                Einkommen). Seit der RAS-Reform (OIS 2018) gilt ein einheitlicher Tarif pro \
                 Kanton.",
             "nl" => "De bronbelasting (IS, Quellensteuer) wordt rechtstreeks ingehouden op het loon \
                 van buitenlandse werknemers zonder vestigingsvergunning (C), grensarbeiders en niet-\
-                ingezetenen (art. 83-90a LIFD). Ze vervangt de gewone aangifte onder CHF 120.000/jr.\n\n\
-                [ Parameters ]\nKanton: {canton} — {libelle_canton}\nORIS-tarief: {tarif} — \
+                ingezetenen (art. 83-101 LIFD). Ze vervangt de gewone aangifte onder CHF 120.000/jr.\n\n\
+                [ Parameters ]\nKanton: {canton} — {libelle_canton}\nOIS-tarief: {tarif} — \
                 {tarif_label}\nMaandbruto: CHF {sal}\nSchaaldrempel: CHF {seuil}\nA0-basistarief: \
                 {taux_a0} %\nTariefvermenigvuldiger {tarif}: × {mult}\nToegepast tarief: {taux_a0} % \
                 × {mult} = {taux_final} %\nIS-bedrag = CHF {sal} × {taux_final} % = CHF {montant}\n\n\
                 Maandelijks berekend op het brutoloon (afvlakkingsregels bij onregelmatig inkomen). \
-                Sinds de RAS-hervorming (ORIS 12-11-2014) geldt één tariefschaal per kanton.",
+                Sinds de RAS-hervorming (OIS 2018) geldt één tariefschaal per kanton.",
             "it" => "L'imposta alla fonte (IS, Quellensteuer) è prelevata direttamente sul salario \
                 dei lavoratori stranieri senza permesso di domicilio (C), frontalieri e non \
-                residenti (art. 83-90a LIFD). Sostituisce la dichiarazione ordinaria sotto i CHF \
-                120'000/anno.\n\n[ Parametri ]\nCantone: {canton} — {libelle_canton}\nTariffa ORIS: \
+                residenti (art. 83-101 LIFD). Sostituisce la dichiarazione ordinaria sotto i CHF \
+                120'000/anno.\n\n[ Parametri ]\nCantone: {canton} — {libelle_canton}\nTariffa OIS: \
                 {tarif} — {tarif_label}\nLordo mensile: CHF {sal}\nSoglia scala: CHF {seuil}\n\
                 Aliquota base A0: {taux_a0} %\nMoltiplicatore tariffa {tarif}: × {mult}\nAliquota \
                 applicata: {taux_a0} % × {mult} = {taux_final} %\nImporto IS = CHF {sal} × \
                 {taux_final} % = CHF {montant}\n\nCalcolata mensilmente sul lordo (regole di \
-                livellamento per redditi irregolari). Dalla riforma RAS (ORIS 12/11/2014) si applica \
+                livellamento per redditi irregolari). Dalla riforma RAS (OIS 2018) si applica \
                 un'unica scala tariffaria per cantone.",
             "es" => "El impuesto en origen (IS, Quellensteuer) se retiene directamente del salario \
                 de trabajadores extranjeros sin permiso de establecimiento (C), fronterizos y no \
-                residentes (art. 83-90a LIFD). Sustituye a la declaración ordinaria por debajo de \
+                residentes (art. 83-101 LIFD). Sustituye a la declaración ordinaria por debajo de \
                 CHF 120.000/año.\n\n[ Parámetros ]\nCantón: {canton} — {libelle_canton}\nTarifa \
-                ORIS: {tarif} — {tarif_label}\nBruto mensual: CHF {sal}\nUmbral de escala: CHF \
+                OIS: {tarif} — {tarif_label}\nBruto mensual: CHF {sal}\nUmbral de escala: CHF \
                 {seuil}\nTipo base A0: {taux_a0} %\nMultiplicador tarifa {tarif}: × {mult}\nTipo \
                 aplicado: {taux_a0} % × {mult} = {taux_final} %\nImporte IS = CHF {sal} × \
                 {taux_final} % = CHF {montant}\n\nCalculado mensualmente sobre el bruto (reglas de \
-                suavizado para ingresos irregulares). Desde la reforma RAS (ORIS 12/11/2014) se \
+                suavizado para ingresos irregulares). Desde la reforma RAS (OIS 2018) se \
                 aplica una única escala por cantón.",
             _ => return None,
         },

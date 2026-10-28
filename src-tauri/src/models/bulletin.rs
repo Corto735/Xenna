@@ -180,7 +180,7 @@ pub struct Salarie {
     /// Code canton suisse à 2 lettres (ex. "GE", "ZH") — utilisé pour l'IS.
     #[serde(default)]
     pub canton: Option<String>,
-    /// Code tarif IS ORIS (A0, A1, A2, B0, B1, B2, C0, C1, C2, H0, H1, H2).
+    /// Code tarif IS OIS (A0, A1, A2, B0, B1, B2, C0, C1, C2, H0, H1, H2).
     #[serde(default)]
     pub tarif_is: Option<String>,
     /// Vrai si le salarié est soumis à la retenue à la source (IS) suisse.

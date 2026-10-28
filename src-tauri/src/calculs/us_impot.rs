@@ -4,7 +4,7 @@
 // brut (× 12), on retranche la déduction standard, on applique le barème par
 // tranches, puis on redivise par 12 pour la retenue mensuelle.
 //
-// Barèmes codés en dur par année (match annee) ; année courante 2026.
+// Barèmes, déductions et seuils en base (migration 0152), datés comme les taux.
 // Sources : 26 U.S.C. §1 (barème fédéral), §63 (déduction standard) ;
 // codes fiscaux des États (Revenue and Taxation Code CA §17041, NY Tax Law
 // §601, Illinois 35 ILCS 5/, Pennsylvania 72 P.S. §7302, Colorado C.R.S. §39-22-104).
@@ -15,50 +15,23 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-/// Impôt annuel par tranches : chaque part de revenu est taxée à son taux marginal.
-/// `seuils` = plafonds de tranche croissants ; `taux` = taux de chaque tranche.
-fn impot_tranches(revenu: Decimal, seuils: &[Decimal], taux: &[Decimal]) -> Decimal {
-    let mut impot = Decimal::ZERO;
-    let mut prev = Decimal::ZERO;
-    for (i, &seuil) in seuils.iter().enumerate() {
-        if revenu <= prev { break; }
-        let taxable = revenu.min(seuil) - prev;
-        impot += taxable * taux[i];
-        prev = seuil;
-        if revenu <= seuil { break; }
-    }
-    impot
+/// Le régime est-il couvert à la date de paie ? (us_bulletin)
+pub fn couvert(ctx: &ContextPaie) -> bool {
+    ctx.bareme("US_FED").is_some() && ctx.plafond("US_FED_DEDUCTION").is_some()
 }
 
-/// Barème fédéral (célibataire) + déduction standard, par année.
-fn federal_params(annee: i32) -> (Decimal, [Decimal; 7], [Decimal; 7]) {
-    match annee {
-        // 2026 : Rev. Proc. 2025-32 (barème rendu permanent par l'OBBBA du 04/07/2025).
-        2026 => (
-            dec!(16100),
-            [dec!(12400), dec!(50400), dec!(105700), dec!(201775), dec!(256225), dec!(640600), dec!(9999999999)],
-            [dec!(0.10),  dec!(0.12),  dec!(0.22),   dec!(0.24),    dec!(0.32),    dec!(0.35),    dec!(0.37)],
-        ),
-        2025 => ( // Rev. Proc. 2024-40, déduction standard relevée par l'OBBBA
-            dec!(15750),
-            [dec!(11925), dec!(48475), dec!(103350), dec!(197300), dec!(250525), dec!(626350), dec!(9999999999)],
-            [dec!(0.10),  dec!(0.12),  dec!(0.22),   dec!(0.24),    dec!(0.32),    dec!(0.35),    dec!(0.37)],
-        ),
-        _ => ( // 2024 (repli)
-            dec!(14600),
-            [dec!(11600), dec!(47150), dec!(100525), dec!(191950), dec!(243725), dec!(609350), dec!(9999999999)],
-            [dec!(0.10),  dec!(0.12),  dec!(0.22),   dec!(0.24),    dec!(0.32),    dec!(0.35),    dec!(0.37)],
-        ),
-    }
+/// Taux en pourcentage, à la française (0,0495 → « 4,95 »).
+fn pct(t: Decimal) -> String {
+    (t * dec!(100)).normalize().to_string().replace('.', ",")
 }
 
 /// Impôt fédéral sur le revenu (retenue mensuelle).
 pub fn us_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
     let annee = ctx.date_paie.year();
-    let (deduction, seuils, taux) = federal_params(annee);
+    let deduction = ctx.plafond("US_FED_DEDUCTION").unwrap_or(Decimal::ZERO);
     let revenu_annuel = brut * dec!(12);
     let imposable = (revenu_annuel - deduction).max(Decimal::ZERO);
-    let impot_annuel = impot_tranches(imposable, &seuils, &taux);
+    let impot_annuel = ctx.bareme_progressif("US_FED", imposable).unwrap_or(Decimal::ZERO);
     let impot_mensuel = (impot_annuel / dec!(12)).round_dp(2);
     let taux_eff = if brut > Decimal::ZERO { (impot_mensuel / brut).round_dp(4) } else { Decimal::ZERO };
 
@@ -90,41 +63,36 @@ pub fn us_impot_federal(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 }
 
 /// Impôt d'État. None pour les États sans impôt sur le revenu (TX, FL, WA…).
-/// `state` = code à 2 lettres. Barèmes 2025 ; New York 2026 (baisse des taux).
+/// `state` = code à 2 lettres.
 pub fn us_impot_state(brut: Decimal, state: &str, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
     let revenu_annuel = brut * dec!(12);
-    // (déduction, seuils, taux, nom, loi, description barème). Flat = 1 tranche.
-    let (deduction, seuils, taux, nom, loi, desc): (Decimal, Vec<Decimal>, Vec<Decimal>, &str, &str, &str) = match state {
+    // Nom, loi et précision de chaque État modélisé ; barème (US_ETAT_<XX>) et
+    // déduction (US_ETAT_<XX>_DEDUCTION) en base. Une tranche = forfaitaire.
+    let (nom, loi, precision): (&str, &str, &str) = match state {
         "TX" | "FL" | "WA" => return None, // pas d'impôt sur le revenu d'État
-        "IL" => (dec!(2850), vec![dec!(9999999999)], vec![dec!(0.0495)],
-            "Illinois", "35 ILCS 5/ — Illinois Income Tax Act", "forfaitaire 4,95 %"),
-        "PA" => (Decimal::ZERO, vec![dec!(9999999999)], vec![dec!(0.0307)],
-            "Pennsylvanie", "72 P.S. §7302 — PA Tax Reform Code", "forfaitaire 3,07 %"),
-        "CO" => (dec!(15750), vec![dec!(9999999999)], vec![dec!(0.0440)],
-            "Colorado", "C.R.S. §39-22-104", "forfaitaire 4,40 % (base imposable fédérale)"),
-        "CA" => (dec!(5540),
-            vec![dec!(11079), dec!(26264), dec!(41452), dec!(57542), dec!(72724), dec!(371479), dec!(445771), dec!(742953), dec!(9999999999)],
-            vec![dec!(0.01),  dec!(0.02),  dec!(0.04),  dec!(0.06),  dec!(0.08),  dec!(0.093),  dec!(0.103),  dec!(0.113),  dec!(0.123)],
-            "Californie", "California Revenue and Taxation Code §17041", "progressif 1 à 12,3 % (+1 % > 1 M$)"),
-        // Budget FY2026 de l'État : les cinq premiers taux baissent de 0,1 point en 2026
-        // (et de nouveau en 2027, non intégré) ; seuils inchangés.
-        "NY" if annee >= 2026 => (dec!(8000),
-            vec![dec!(8500), dec!(11700), dec!(13900), dec!(80650), dec!(215400), dec!(1077550), dec!(5000000), dec!(25000000), dec!(9999999999)],
-            vec![dec!(0.039), dec!(0.044), dec!(0.0515), dec!(0.054), dec!(0.059), dec!(0.0685),  dec!(0.0965),  dec!(0.103),    dec!(0.109)],
-            "New York", "New York Tax Law §601", "progressif 3,9 à 10,9 %"),
-        "NY" => (dec!(8000),
-            vec![dec!(8500), dec!(11700), dec!(13900), dec!(80650), dec!(215400), dec!(1077550), dec!(5000000), dec!(25000000), dec!(9999999999)],
-            vec![dec!(0.04), dec!(0.045), dec!(0.0525), dec!(0.055), dec!(0.06),  dec!(0.0685),  dec!(0.0965),  dec!(0.103),    dec!(0.109)],
-            "New York", "New York Tax Law §601", "progressif 4 à 10,9 %"),
+        "IL" => ("Illinois", "35 ILCS 5/ — Illinois Income Tax Act", ""),
+        "PA" => ("Pennsylvanie", "72 P.S. §7302 — PA Tax Reform Code", ""),
+        "CO" => ("Colorado", "C.R.S. §39-22-104", " (base imposable fédérale)"),
+        "CA" => ("Californie", "California Revenue and Taxation Code §17041", " (+1 % > 1 M$)"),
+        "NY" => ("New York", "New York Tax Law §601", ""),
         _ => return None, // État non modélisé
     };
-
+    let code = format!("US_ETAT_{state}");
+    let tranches = ctx.bareme(&code)?;
+    let desc = match (tranches.first(), tranches.last()) {
+        (Some(t), _) if tranches.len() == 1 => format!("forfaitaire {} %{precision}", pct(t.taux)),
+        (Some(a), Some(z)) => format!("progressif {} à {} %{precision}", pct(a.taux), pct(z.taux)),
+        _ => return None,
+    };
+    let deduction = ctx.plafond(&format!("{code}_DEDUCTION")).unwrap_or(Decimal::ZERO);
     let imposable = (revenu_annuel - deduction).max(Decimal::ZERO);
-    let mut impot_annuel = impot_tranches(imposable, &seuils, &taux);
-    // Californie : surtaxe santé mentale 1 % sur la fraction > 1 000 000 $.
-    if state == "CA" && imposable > dec!(1000000) {
-        impot_annuel += (imposable - dec!(1000000)) * dec!(0.01);
+    let mut impot_annuel = ctx.bareme_progressif(&code, imposable).unwrap_or(Decimal::ZERO);
+    // Californie : surtaxe santé mentale (1 %) sur la fraction au-delà du seuil.
+    if let (Some(seuil), Some(t)) = (ctx.plafond(&format!("{code}_SURTAXE_SEUIL")), ctx.plafond(&format!("{code}_SURTAXE_TAUX"))) {
+        if imposable > seuil {
+            impot_annuel += (imposable - seuil) * t;
+        }
     }
     let impot_mensuel = (impot_annuel / dec!(12)).round_dp(2);
     let taux_eff = if brut > Decimal::ZERO { (impot_mensuel / brut).round_dp(4) } else { Decimal::ZERO };
@@ -146,7 +114,7 @@ pub fn us_impot_state(brut: Decimal, state: &str, ctx: &ContextPaie) -> Option<L
             Impôt annuel : {ia} $ / 12 = {im} $/mois\nTaux effectif : {teff} %\n\
             Base légale : {loi}.")
             .replace("{nom}", nom)
-            .replace("{desc}", desc)
+            .replace("{desc}", &desc)
             .replace("{rev}", &format!("{:.0}", revenu_annuel))
             .replace("{imp}", &format!("{:.0}", imposable))
             .replace("{ded}", &format!("{:.0}", deduction))

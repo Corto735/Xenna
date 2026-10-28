@@ -291,22 +291,20 @@ pub fn it_tfr(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // Le montant est NÉGATIF : réduit les cotisations salariales (augmente le net).
 pub fn esonero_contributivo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let h2 = ctx.date_paie.month() >= 7;
-    let bas = brut <= dec!(1923);
-    let sous_plafond = brut <= dec!(2692);
-    if !sous_plafond {
-        return None;
-    }
-    let (taux, regle, loi) = match annee {
-        2022 if h2 => (dec!(0.02), "≤ 2692 € : 2", "L. 234/2021 art. 1 c. 121 — DL 115/2022 art. 20"),
-        2022       => (dec!(0.008), "≤ 2692 € : 0,8", "L. 234/2021 art. 1 c. 121"),
-        2023 if h2 => (if bas { dec!(0.07) } else { dec!(0.06) }, "≤ 1923 € : 7 ; ≤ 2692 € : 6",
-                       "L. 197/2022 art. 1 c. 281 — DL 48/2023 art. 39"),
-        2023       => (if bas { dec!(0.03) } else { dec!(0.02) }, "≤ 1923 € : 3 ; ≤ 2692 € : 2",
-                       "L. 197/2022 art. 1 c. 281"),
-        2024       => (if bas { dec!(0.07) } else { dec!(0.06) }, "≤ 1923 € : 7 ; ≤ 2692 € : 6",
-                       "L. 213/2023 art. 1 c. 15"),
-        _ => return None,
+    // Points retirés selon le brut mensuel : barème IT_ESONERO en base (0151) ;
+    // au-delà de la dernière borne, ou hors 2022-2024, aucune tranche.
+    let taux = ctx.bareme_lineaire("IT_ESONERO", brut)?;
+    let pt = |v: Decimal| (v * dec!(100)).normalize().to_string().replace('.', ",");
+    let regle = ctx.bareme("IT_ESONERO")?.iter()
+        .filter_map(|t| t.borne_sup.map(|b| format!("≤ {b} € : {}", pt(t.fixe))))
+        .collect::<Vec<_>>().join(" ; ");
+    // Textes de loi de chaque période (citations, pas des paramètres).
+    let loi = match (annee, ctx.date_paie.month() >= 7) {
+        (2022, false) => "L. 234/2021 art. 1 c. 121",
+        (2022, true)  => "L. 234/2021 art. 1 c. 121 — DL 115/2022 art. 20",
+        (2023, false) => "L. 197/2022 art. 1 c. 281",
+        (2023, true)  => "L. 197/2022 art. 1 c. 281 — DL 48/2023 art. 39",
+        _             => "L. 213/2023 art. 1 c. 15",
     };
     let code = format!("IT_ESONERO_{annee}");
     let taux_pp_s = (taux * dec!(100)).normalize().to_string().replace('.', ",");
@@ -327,7 +325,7 @@ pub fn esonero_contributivo(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCot
             Points retirés en {annee} : {regle}. Ici {brut} € → −{taux_pp} points. Le montant \
             négatif augmente le net. Remplacée en 2025 par un avantage fiscal.")
             .replace("{annee}", &annee.to_string())
-            .replace("{regle}", regle)
+            .replace("{regle}", &regle)
             .replace("{brut}", &brut.to_string())
             .replace("{taux_pp}", &taux_pp_s),
         loi_ref: Some(ctx.loi_ref(loi)),

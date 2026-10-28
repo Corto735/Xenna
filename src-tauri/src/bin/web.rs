@@ -116,7 +116,17 @@ fn verifier_secrets_ou_quitter() {
 }
 
 // ── Middleware : redirection HTTP → HTTPS (via X-Forwarded-Proto) ─────────────
+// Le domaine nu (payetonbulletin.fr, enregistrements A vers Clever Cloud) part
+// aussi vers www, en HTTP comme en HTTPS : une seule adresse canonique, celle
+// des balises og:url.
 async fn https_redirect(req: Request, next: Next) -> Response {
+    let domaine_nu = req.headers().get("host").and_then(|v| v.to_str().ok())
+        .map(|h| h.split(':').next().unwrap_or(h))
+        == Some("payetonbulletin.fr");
+    if domaine_nu {
+        let path_query = req.uri().path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+        return Redirect::permanent(&format!("https://www.payetonbulletin.fr{path_query}")).into_response();
+    }
     if req.headers()
         .get("x-forwarded-proto")
         .and_then(|v| v.to_str().ok())
@@ -128,8 +138,7 @@ async fn https_redirect(req: Request, next: Next) -> Response {
             .get("host")
             .and_then(|v| v.to_str().ok())
             .filter(|h| {
-                matches!(*h, "www.payetonbulletin.fr" | "payetonbulletin.fr")
-                    || h.ends_with(".cleverapps.io")
+                *h == "www.payetonbulletin.fr" || h.ends_with(".cleverapps.io")
             })
             .unwrap_or("www.payetonbulletin.fr");
         let path_query = req.uri().path_and_query()

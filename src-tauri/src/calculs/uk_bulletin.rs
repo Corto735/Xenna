@@ -6,6 +6,13 @@ use super::uk_cotisations::{uk_ni_sal, uk_ni_pat, uk_income_tax};
 pub fn generer_bulletin_uk(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
 
+    // Seuils et barème datés en base (migration 0151) depuis l'exercice 2024/25.
+    if !super::uk_cotisations::couvert(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "GBP", "UK",
+            "Royaume-Uni : barèmes intégrés à partir de l'exercice 2024/25.", ctx);
+    }
+
     let cotisations = vec![
         uk_ni_sal(brut, ctx),
         uk_ni_pat(brut, ctx),

@@ -34,17 +34,17 @@ pub fn fpt_cnracl(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             • Taux de remplacement cible : 75 % après 41 ans et 3 trimestres (2016)\n\
             • Pas de capitalisation : régime par répartition\n\
             \n\
-            Montée en charge 2011-2020 (décret n°2011-291) :\n\
+            Montée en charge 2011-2020 (décret n°2010-1749, modifié en dernier lieu par le décret n°2014-1531) :\n\
             2015 : 9,54 % — 2016 : 9,94 % — 2017 : 10,29 % — 2018 : 10,56 % — 2019 : 10,83 % — 2020+ : 11,10 %\n\
-            Taux collectivité : 30,65 % jusqu'en 2024, puis relevé de 3 points par an \
+            Taux collectivité : 30,65 % de 2017 à 2023, 31,65 % en 2024 (décret n°2024-49), puis relevé de 3 points par an \
             (décret n°2025-86) : 34,65 % en 2025, 37,65 % en 2026, 40,65 % en 2027, 43,65 % en 2028\n\
             \n\
             Taux appliqués : agent {ts_pct} % — collectivité {tp_pct} %.")
             .replace("{ts_pct}", &ts_pct.to_string())
             .replace("{tp_pct}", &tp_pct.to_string()),
         loi_ref: Some(ctx.loi_ref(
-            "Décret n°2011-291 du 15/03/2011 — Décret n°2025-86 du 30/01/2025 — CGFP art. L712-3 et s. — \
-            Loi n°83-634 du 13/07/1983 (statut général FP)"
+            "Décret n°2010-1749 du 30/12/2010 (retenue) — Décret n°2025-86 du 30/01/2025 (contribution \
+            employeur) — Code général de la fonction publique (statut général)"
         )),
     }
 }
@@ -115,7 +115,7 @@ pub fn fpt_fnal(brut: Decimal, effectif: Option<&str>, ctx: &ContextPaie) -> Opt
         ctx.expl("FPT_FNAL", "Le Fonds national d'aide au logement finance les aides personnelles \
             au logement. Collectivités de moins de 50 agents : 0,10 % dans la limite du plafond de \
             la Sécurité sociale ; 50 agents et plus : 0,50 % sur la totalité du traitement."),
-        "CSS art. L834-1", ctx)
+        "CCH art. L813-5", ctx)
 }
 
 /// Contribution solidarité autonomie : 0,30 %, finance la perte d'autonomie

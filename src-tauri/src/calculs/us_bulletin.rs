@@ -3,9 +3,8 @@
 // L'impôt d'État dépend de `salarie.us_state` (comme l'impôt provincial canadien
 // dépend de `province`). États modélisés : sans impôt (TX, FL, WA), forfaitaire
 // (IL, CO, PA), progressif (CA, NY). California SDI en sus pour la Californie.
-// Devise USD. Données : 2025 (2026 reconduit).
+// Devise USD. Barèmes 2025 et 2026 en base.
 
-use chrono::Datelike;
 use rust_decimal::Decimal;
 use crate::db::ContextPaie;
 use crate::models::{Bulletin, Salarie};
@@ -14,12 +13,11 @@ use super::us_impot::{us_impot_federal, us_impot_state};
 
 pub fn generer_bulletin_us(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut  = salarie.salaire_brut;
-    let annee = ctx.date_paie.year();
 
-    if !(2025..=2026).contains(&annee) {
+    // Barèmes datés en base (migration 0152) depuis 2025.
+    if !super::us_impot::couvert(ctx) {
         return super::pays_non_couvert::bulletin_non_couvert(
-            salarie, brut, "USD", "US",
-            "États-Unis : données disponibles pour 2025 (2026 reconduit).", ctx);
+            salarie, brut, "USD", "US", "États-Unis : barèmes intégrés à partir de 2025.", ctx);
     }
 
     let state = salarie.us_state.as_deref().unwrap_or("TX");

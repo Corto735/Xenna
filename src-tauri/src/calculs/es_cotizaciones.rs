@@ -18,39 +18,20 @@ use crate::models::LigneCotisation;
 // ── Plafonds de cotisation mensuels ──────────────────────────────────────────
 
 /// Base minimale des groupes 4 à 7 (régime général) : SMI mensuel majoré d'un
-/// sixième (prorata des deux paies extraordinaires). Ordres de cotisation annuels ;
-/// 2026 : Orden PJC/297/2026, art. 3 (1 424,40 €).
+/// sixième (prorata des deux paies extraordinaires). Ordres de cotisation
+/// annuels, en base (ES_BASE_MIN, migration 0151).
 fn es_base_min(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(756.60),
-        2016            => dec!(764.40),
-        2017            => dec!(825.60),
-        2018            => dec!(858.60),
-        2019            => dec!(1050.00),
-        2020            => dec!(1108.33),
-        2021 if ctx.date_paie.month() < 9 => dec!(1108.33),
-        2021            => dec!(1125.83),
-        2022            => dec!(1166.70),
-        2023            => dec!(1260.00),
-        2024            => dec!(1323.00),
-        2025            => dec!(1381.20),
-        _               => dec!(1424.40), // 2026
-    }
+    ctx.plafond("ES_BASE_MIN").unwrap_or(Decimal::ZERO)
 }
 
+/// Base maximale (ES_BASE_MAX) ; sans elle, le régime n'est pas couvert.
 fn es_base_max(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(3606.00),
-        2016            => dec!(3642.00),
-        2017            => dec!(3751.20),
-        2018            => dec!(3803.70),
-        2019..=2021     => dec!(4070.10),
-        2022            => dec!(4139.40),
-        2023            => dec!(4495.50),
-        2024            => dec!(4720.50),
-        2025            => dec!(4909.50),
-        _               => dec!(5101.20), // 2026 — Orden PJC/297/2026
-    }
+    ctx.plafond("ES_BASE_MAX").unwrap_or(Decimal::MAX)
+}
+
+/// Le régime est-il couvert à la date de paie ? (es_bulletin)
+pub fn couvert(ctx: &ContextPaie) -> bool {
+    ctx.plafond("ES_BASE_MIN").is_some() && ctx.plafond("ES_BASE_MAX").is_some()
 }
 
 fn assiette(brut: Decimal, ctx: &ContextPaie) -> Decimal {
@@ -245,18 +226,19 @@ pub fn mei(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
 // Sur la part du salaire qui excède la base maximale, en trois tranches (jusqu'à
 // 10 % au-dessus, de 10 à 50 %, au-delà), réparties comme les contingences
 // communes. RDL 2/2023 ; 2025 : Orden TRM/42/2025 ; 2026 : Orden PJC/297/2026 art. 17.
-// Taux (salarié, employeur) par tranche.
-fn solidaridad_taux(annee: i32) -> Option<[(Decimal, Decimal); 3]> {
-    match annee {
-        i32::MIN..=2024 => None,
-        2025 => Some([(dec!(0.0015), dec!(0.0077)), (dec!(0.0017), dec!(0.0083)), (dec!(0.0019), dec!(0.0098))]),
-        _    => Some([(dec!(0.0019), dec!(0.0096)), (dec!(0.0021), dec!(0.0104)), (dec!(0.0024), dec!(0.0122))]),
-    }
+// Taux (salarié, employeur) par tranche, en base (ES_SOLIDARIDAD_Tn_SAL/PAT) ;
+// absents avant 2025.
+fn solidaridad_taux(ctx: &ContextPaie) -> Option<[(Decimal, Decimal); 3]> {
+    let t = |n: u8| -> Option<(Decimal, Decimal)> {
+        Some((ctx.plafond(&format!("ES_SOLIDARIDAD_T{n}_SAL"))?,
+              ctx.plafond(&format!("ES_SOLIDARIDAD_T{n}_PAT"))?))
+    };
+    Some([t(1)?, t(2)?, t(3)?])
 }
 
 pub fn solidaridad(brut: Decimal, ctx: &ContextPaie) -> Option<LigneCotisation> {
     let annee = ctx.date_paie.year();
-    let taux = solidaridad_taux(annee)?;
+    let taux = solidaridad_taux(ctx)?;
     let bmax = es_base_max(ctx);
     if brut <= bmax {
         return None;

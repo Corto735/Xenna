@@ -12,7 +12,7 @@
 //
 // Méthode : annualisation du revenu mensuel, retenue = impôt annuel / 12.
 //
-// Sources : 个人所得税法 (2018) ; 国税发〔2018〕164号.
+// Sources : 个人所得税法 (2018) ; 财税〔2018〕164号.
 
 use chrono::Datelike;
 use rust_decimal::Decimal;
@@ -70,7 +70,7 @@ pub fn cn_iit(brut: Decimal, cotisations_sal: Decimal, ctx: &ContextPaie) -> Lig
             IIT annuel (tranches 3/10/20/25/30/35/45 %) : ¥{ia}\n\
             Retenue mensuelle : ¥{ia} / 12 = ¥{mens}\n\
             Taux effectif mensuel : {teff} %\n\n\
-            Base légale : 个人所得税法 (L. 31/08/2018) ; 国税发〔2018〕164号.")
+            Base légale : 个人所得税法 (L. 31/08/2018) ; 财税〔2018〕164号.")
             .replace("{brut}", &format!("{:.2}", brut))
             .replace("{cot}", &format!("{:.2}", cotisations_sal))
             .replace("{dp}", &format!("{:.0}", deduction_perso))
@@ -79,6 +79,6 @@ pub fn cn_iit(brut: Decimal, cotisations_sal: Decimal, ctx: &ContextPaie) -> Lig
             .replace("{ia}", &format!("{:.2}", iit_ann))
             .replace("{mens}", &format!("{:.2}", mensuel))
             .replace("{teff}", &format!("{:.2}", taux_eff * dec!(100))),
-        loi_ref: Some(ctx.loi_ref("个人所得税法 (2018) — 国税发〔2018〕164号")),
+        loi_ref: Some(ctx.loi_ref("个人所得税法 (2018) — 财税〔2018〕164号")),
     }
 }

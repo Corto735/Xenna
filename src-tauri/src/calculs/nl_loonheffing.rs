@@ -45,79 +45,33 @@ pub struct NlParams {
     pub max_premieloon: Decimal,
 }
 
-/// Renvoie les paramètres officiels de l'année, ou `None` si non encore sourcée.
-pub fn nl_parametres(annee: i32) -> Option<NlParams> {
-    match annee {
-        // 2026 — tables officielles Belastingdienst (vérifiées).
-        2026 => Some(NlParams {
-            b1_plafond: dec!(38883), b1_taux: dec!(0.3575),
-            b2_plafond: dec!(78426), b2_taux: dec!(0.3756),
-            b3_taux:    dec!(0.4950),
-            premie_vv:  dec!(0.2765), // AOW 17,90 + Anw 0,10 + Wlz 9,65
-            ahk_max:    dec!(3115), ahk_seuil: dec!(29736), ahk_afbouw: dec!(0.06398),
-            ak_s1_plafond: dec!(11965), ak_s1_taux: dec!(0.08324),
-            ak_s2_plafond: dec!(25845), ak_s2_base: dec!(996),  ak_s2_taux: dec!(0.31009),
-            ak_s3_plafond: dec!(45592), ak_s3_base: dec!(5300), ak_s3_taux: dec!(0.01950),
-            ak_max:        dec!(5685), ak_afbouw_seuil: dec!(45592), ak_afbouw: dec!(0.06510),
-            max_premieloon: dec!(79409),
-        }),
-        // 2025 — tables officielles Belastingdienst (vérifiées, cumuls recoupés).
-        2025 => Some(NlParams {
-            b1_plafond: dec!(38441), b1_taux: dec!(0.3582),
-            b2_plafond: dec!(76817), b2_taux: dec!(0.3748),
-            b3_taux:    dec!(0.4950),
-            premie_vv:  dec!(0.2765),
-            ahk_max:    dec!(3068), ahk_seuil: dec!(28406), ahk_afbouw: dec!(0.06337),
-            ak_s1_plafond: dec!(12169), ak_s1_taux: dec!(0.08053),
-            ak_s2_plafond: dec!(26288), ak_s2_base: dec!(980),  ak_s2_taux: dec!(0.30030),
-            ak_s3_plafond: dec!(43071), ak_s3_base: dec!(5220), ak_s3_taux: dec!(0.02258),
-            ak_max:        dec!(5599), ak_afbouw_seuil: dec!(43071), ak_afbouw: dec!(0.06510),
-            max_premieloon: dec!(75864),
-        }),
-        // 2024 — tables officielles Belastingdienst (vérifiées, cumuls recoupés).
-        // Tranches 1 et 2 au même taux 36,97 % ; premies volksverzekeringen jusqu'à 38 098 €.
-        2024 => Some(NlParams {
-            b1_plafond: dec!(38098), b1_taux: dec!(0.3697),
-            b2_plafond: dec!(75518), b2_taux: dec!(0.3697),
-            b3_taux:    dec!(0.4950),
-            premie_vv:  dec!(0.2765),
-            ahk_max:    dec!(3362), ahk_seuil: dec!(24812), ahk_afbouw: dec!(0.0663),
-            ak_s1_plafond: dec!(11490), ak_s1_taux: dec!(0.08425),
-            ak_s2_plafond: dec!(24820), ak_s2_base: dec!(968),  ak_s2_taux: dec!(0.31433),
-            ak_s3_plafond: dec!(39957), ak_s3_base: dec!(5158), ak_s3_taux: dec!(0.02471),
-            ak_max:        dec!(5532), ak_afbouw_seuil: dec!(39957), ak_afbouw: dec!(0.06510),
-            max_premieloon: dec!(71628),
-        }),
-        // 2023 — système à 2 tranches (combiné 36,93 % jusqu'à 73 031 €). Tables officielles.
-        2023 => Some(NlParams {
-            b1_plafond: dec!(73031), b1_taux: dec!(0.3693),
-            b2_plafond: dec!(73031), b2_taux: dec!(0.3693),
-            b3_taux:    dec!(0.4950),
-            premie_vv:  dec!(0.2765),
-            ahk_max:    dec!(3070), ahk_seuil: dec!(22660), ahk_afbouw: dec!(0.06095),
-            ak_s1_plafond: dec!(10741), ak_s1_taux: dec!(0.08231),
-            ak_s2_plafond: dec!(23201), ak_s2_base: dec!(884),  ak_s2_taux: dec!(0.29861),
-            ak_s3_plafond: dec!(37691), ak_s3_base: dec!(4605), ak_s3_taux: dec!(0.03085),
-            ak_max:        dec!(5052), ak_afbouw_seuil: dec!(37691), ak_afbouw: dec!(0.06510),
-            max_premieloon: dec!(66956),
-        }),
-        // 2022 — système à 2 tranches (combiné 37,07 % jusqu'à 69 398 €). Tables officielles
-        // (arbeidskorting : cumuls recoupés à partir des bornes officielles).
-        2022 => Some(NlParams {
-            b1_plafond: dec!(69398), b1_taux: dec!(0.3707),
-            b2_plafond: dec!(69398), b2_taux: dec!(0.3707),
-            b3_taux:    dec!(0.4950),
-            premie_vv:  dec!(0.2765),
-            ahk_max:    dec!(2888), ahk_seuil: dec!(21317), ahk_afbouw: dec!(0.06007),
-            ak_s1_plafond: dec!(10350), ak_s1_taux: dec!(0.04541),
-            ak_s2_plafond: dec!(22356), ak_s2_base: dec!(470),  ak_s2_taux: dec!(0.28461),
-            ak_s3_plafond: dec!(36649), ak_s3_base: dec!(3887), ak_s3_taux: dec!(0.02610),
-            ak_max:        dec!(4260), ak_afbouw_seuil: dec!(36649), ak_afbouw: dec!(0.0586),
-            max_premieloon: dec!(59706),
-        }),
-        // 2015-2021 : à sourcer année par année depuis les archives officielles.
-        _ => None,
-    }
+/// Paramètres officiels à la date, en base (NL_<CHAMP>, migration 0153 : 2022 à
+/// 2026), ou `None` si l'année n'est pas sourcée (lacune assumée, rien d'inventé).
+pub fn nl_parametres(ctx: &ContextPaie) -> Option<NlParams> {
+    let p = |c: &str| ctx.plafond(c);
+    Some(NlParams {
+        b1_plafond: p("NL_B1_PLAFOND")?,
+        b1_taux: p("NL_B1_TAUX")?,
+        b2_plafond: p("NL_B2_PLAFOND")?,
+        b2_taux: p("NL_B2_TAUX")?,
+        b3_taux: p("NL_B3_TAUX")?,
+        premie_vv: p("NL_PREMIE_VV")?,
+        ahk_max: p("NL_AHK_MAX")?,
+        ahk_seuil: p("NL_AHK_SEUIL")?,
+        ahk_afbouw: p("NL_AHK_AFBOUW")?,
+        ak_s1_plafond: p("NL_AK_S1_PLAFOND")?,
+        ak_s1_taux: p("NL_AK_S1_TAUX")?,
+        ak_s2_plafond: p("NL_AK_S2_PLAFOND")?,
+        ak_s2_base: p("NL_AK_S2_BASE")?,
+        ak_s2_taux: p("NL_AK_S2_TAUX")?,
+        ak_s3_plafond: p("NL_AK_S3_PLAFOND")?,
+        ak_s3_base: p("NL_AK_S3_BASE")?,
+        ak_s3_taux: p("NL_AK_S3_TAUX")?,
+        ak_max: p("NL_AK_MAX")?,
+        ak_afbouw_seuil: p("NL_AK_AFBOUW_SEUIL")?,
+        ak_afbouw: p("NL_AK_AFBOUW")?,
+        max_premieloon: p("NL_MAX_PREMIELOON")?,
+    })
 }
 
 /// Barème box 1 brut (impôt + premies volksverzekeringen) sur le revenu annuel.
@@ -152,7 +106,7 @@ fn arbeidskorting(revenu: Decimal, p: &NlParams) -> Decimal {
 
 /// Ligne « loonheffing » mensuelle (côté salarié). `None` si l'année n'est pas sourcée.
 pub fn nl_loonheffing(brut: Decimal, annee: i32, ctx: &ContextPaie) -> Option<LigneCotisation> {
-    let p = nl_parametres(annee)?;
+    let p = nl_parametres(ctx)?;
     let rev_ann = brut * dec!(12);
 
     let box1   = box1_brut(rev_ann, &p);

@@ -88,13 +88,70 @@ const _nextMonth = _month === 12 ? 1 : _month + 1;
 const DATE_MAX   = _fmLastDay(_nextYear, _nextMonth).toISOString().slice(0, 10);
 const TODAY      = DATE_TODAY;  // alias rétrocompatible
 
-// ── Liste des pays : par défaut, seuls les pays frontaliers de la France + l'Angleterre
-// sont visibles ; les autres sont masqués derrière le lien « autres pays européens ». ──
-const PAYS_EXTRA = ['autriche', 'bulgarie', 'chypre', 'croatie', 'danemark', 'estonie',
-  'finlande', 'grece', 'hongrie', 'irlande', 'lettonie', 'lituanie', 'malte', 'paysbas',
-  'pologne', 'portugal', 'roumanie', 'slovaquie', 'slovenie', 'suede', 'tchequie',
-  'canada', 'quebec', 'japon', 'chine', 'coree', 'australie', 'nouvellezelande', 'etatsunis', 'mexique',
-  'bresil', 'emirats', 'inde'];
+// ── Pays et régimes : la seule déclaration côté front ────────────────────────
+// `id` : suffixe des cases à cocher (d-<id>, m-<id>) et clé des liens partagés ;
+// `back` : valeur de `pays` attendue par le moteur (enum Pays, snake_case) ;
+// `nom` : libellé (veille, Chakrram) ; `devise` : devise de saisie quand ce
+// n'est pas l'euro (src-tauri/src/change.rs convertit) ; `extra` : masqué
+// derrière « + autres pays » (seuls les frontaliers et l'Angleterre sont
+// visibles d'emblée). Ajouter un pays côté front, c'est ajouter une ligne ici,
+// plus ses cases dans index.html.
+const PAYS = [
+  { id: 'france',          back: 'france',            nom: '🇫🇷 France' },
+  { id: 'suisse',          back: 'suisse',            nom: '🇨🇭 Suisse',            devise: 'CHF' },
+  { id: 'luxembourg',      back: 'luxembourg',        nom: '🇱🇺 Luxembourg' },
+  { id: 'fpt',             back: 'fonction_publique', nom: '🇫🇷 Fonction publique territoriale' },
+  { id: 'italie',          back: 'italia',            nom: '🇮🇹 Italie' },
+  { id: 'espagne',         back: 'espagne',           nom: '🇪🇸 Espagne' },
+  { id: 'portugal',        back: 'portugal',          nom: '🇵🇹 Portugal',          extra: true },
+  { id: 'belgique',        back: 'belgique',          nom: '🇧🇪 Belgique' },
+  { id: 'allemagne',       back: 'allemagne',         nom: '🇩🇪 Allemagne' },
+  { id: 'canada',          back: 'canada',            nom: '🇨🇦 Canada (Ontario)',  devise: 'CAD', extra: true },
+  { id: 'quebec',          back: 'quebec',            nom: '🇨🇦 Québec',            devise: 'CAD', extra: true },
+  { id: 'angleterre',      back: 'angleterre',        nom: '🇬🇧 Angleterre',        devise: 'GBP' },
+  { id: 'japon',           back: 'japon',             nom: '🇯🇵 Japon',             devise: 'JPY', extra: true },
+  { id: 'chine',           back: 'chine',             nom: '🇨🇳 Chine',             devise: 'CNY', extra: true },
+  { id: 'paysbas',         back: 'pays_bas',          nom: '🇳🇱 Pays-Bas',          extra: true },
+  { id: 'australie',       back: 'australie',         nom: '🇦🇺 Australie',         devise: 'AUD', extra: true },
+  { id: 'nouvellezelande', back: 'nouvelle_zelande',  nom: '🇳🇿 Nouvelle-Zélande',  devise: 'NZD', extra: true },
+  { id: 'pologne',         back: 'pologne',           nom: '🇵🇱 Pologne',           devise: 'PLN', extra: true },
+  { id: 'coree',           back: 'coree_du_sud',      nom: '🇰🇷 Corée du Sud',      devise: 'KRW', extra: true },
+  { id: 'andorre',         back: 'andorre',           nom: '🇦🇩 Andorre' },
+  { id: 'monaco',          back: 'monaco',            nom: '🇲🇨 Monaco' },
+  { id: 'danemark',        back: 'danemark',          nom: '🇩🇰 Danemark',          devise: 'DKK', extra: true },
+  { id: 'finlande',        back: 'finlande',          nom: '🇫🇮 Finlande',          extra: true },
+  { id: 'suede',           back: 'suede',             nom: '🇸🇪 Suède',             devise: 'SEK', extra: true },
+  { id: 'estonie',         back: 'estonie',           nom: '🇪🇪 Estonie',           extra: true },
+  { id: 'lettonie',        back: 'lettonie',          nom: '🇱🇻 Lettonie',          extra: true },
+  { id: 'lituanie',        back: 'lituanie',          nom: '🇱🇹 Lituanie',          extra: true },
+  { id: 'autriche',        back: 'autriche',          nom: '🇦🇹 Autriche',          extra: true },
+  { id: 'tchequie',        back: 'tchequie',          nom: '🇨🇿 Tchéquie',          devise: 'CZK', extra: true },
+  { id: 'slovaquie',       back: 'slovaquie',         nom: '🇸🇰 Slovaquie',         extra: true },
+  { id: 'hongrie',         back: 'hongrie',           nom: '🇭🇺 Hongrie',           devise: 'HUF', extra: true },
+  { id: 'slovenie',        back: 'slovenie',          nom: '🇸🇮 Slovénie',          extra: true },
+  { id: 'grece',           back: 'grece',             nom: '🇬🇷 Grèce',             extra: true },
+  { id: 'chypre',          back: 'chypre',            nom: '🇨🇾 Chypre',            extra: true },
+  { id: 'malte',           back: 'malte',             nom: '🇲🇹 Malte',             extra: true },
+  { id: 'croatie',         back: 'croatie',           nom: '🇭🇷 Croatie',           extra: true },
+  { id: 'irlande',         back: 'irlande',           nom: '🇮🇪 Irlande',           extra: true },
+  { id: 'roumanie',        back: 'roumanie',          nom: '🇷🇴 Roumanie',          devise: 'RON', extra: true },
+  // Bulgarie : lev pour une paie 2025, euro dès 2026 — cf. _deviseSaisie.
+  { id: 'bulgarie',        back: 'bulgarie',          nom: '🇧🇬 Bulgarie',          extra: true },
+  { id: 'etatsunis',       back: 'etats_unis',        nom: '🇺🇸 États-Unis',        devise: 'USD', extra: true },
+  { id: 'mexique',         back: 'mexique',           nom: '🇲🇽 Mexique',           devise: 'MXN', extra: true },
+  { id: 'bresil',          back: 'bresil',            nom: '🇧🇷 Brésil',            devise: 'BRL', extra: true },
+  { id: 'emirats',         back: 'emirats',           nom: '🇦🇪 Émirats arabes unis', devise: 'AED', extra: true },
+  { id: 'inde',            back: 'inde',              nom: '🇮🇳 Inde',              devise: 'INR', extra: true },
+];
+// Régimes de paie française (privé, fonction publique) : tout le reste est étranger.
+const PAYS_FRANCAIS = ['france', 'fpt'];
+// Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
+const TOUS_PAYS  = PAYS.map(p => p.id);
+const PAYS_EXTRA = PAYS.filter(p => p.extra).map(p => p.id);
+// Bulletin d'un régime étranger (code du back) : ni PAS, ni droits, ni DSN.
+const _estEtranger = b => !['france', 'fonction_publique'].includes(b?.salarie?.pays);
+// Régime coché dans le formulaire bureau (« d ») ou mobile (« m ») ; France à défaut.
+const _paysCoche = prefixe => PAYS.find(p => document.getElementById(`${prefixe}-${p.id}`)?.checked) || PAYS[0];
 
 // Tague (classe pays-extra) les pays non frontaliers + les groupes Amérique/Asie/Océanie.
 function _setupPaysExtra() {
@@ -367,6 +424,7 @@ window.translateApp = async function(lang) {
   if (lang === 'fr') {
     _currentLang = 'fr';
     await _recalcForLang('fr');
+    _rendreNoteConversion();
     _origTexts.forEach((orig, node) => { if (node.isConnected) node.textContent = orig; });
     document.documentElement.lang = 'fr';
     return;
@@ -380,6 +438,7 @@ window.translateApp = async function(lang) {
   // déjà traduits du backend (nœuds marqués .trad-skip → ignorés ci-dessous).
   _currentLang = lang;
   await _recalcForLang(lang);
+  _rendreNoteConversion();
 
   const nodes = _getTranslatableNodes();
 
@@ -2586,7 +2645,7 @@ function _vueCotBascule(b) {
 function renderDesktop(b) {
   const el = document.getElementById("res-desktop");
   const cots = b.cotisations;
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etats_unis', 'mexique', 'bresil', 'emirats', 'inde'].includes(b.salarie?.pays);
+  const skipPas  = _estEtranger(b);
   const isItalie = b.salarie?.pays === 'italia';
   const totalSal = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -2717,7 +2776,7 @@ function renderDesktop(b) {
       const starPat = buildFormulaStar(keyPat, hasFmPat);
 
       return `
-        <tr class="data-row" id="row-${idx}" onclick="toggleExpl(${idx})">
+        <tr class="data-row${_sansMontant(c) ? ' sans-montant' : ''}" id="row-${idx}" onclick="toggleExpl(${idx})">
           <td>
             <span class="expand-icon">▶</span>
             <span class="cat trad-skip ${catCls}">[${trCat(c.categorie, _currentLang)}]</span>
@@ -2764,7 +2823,7 @@ function renderDesktop(b) {
   // dessous. Les index de lignes restent uniques (toggleExpl, f(x)).
   const groupesHtml = () => {
     let offset = 0;
-    return regrouperCotisations(cotAll).map(g => {
+    return regrouperCotisations(cotAll, getDatePaie(), b.salarie?.pays).map(g => {
       const sal = g.lignes.reduce((t, c) => t + parseFloat(c.montant_sal), 0);
       const pat = g.lignes.reduce((t, c) => t + parseFloat(c.montant_pat), 0);
       const titre = g.autres ? 'Autres cotisations et contributions' : g.titre;
@@ -2894,6 +2953,11 @@ const _ts = fr => { const t = trStatic(fr, _currentLang); return t === undefined
 // Une ligne dont le taux a changé dans les douze mois porte une pastille :
 // date d'effet, ancien et nouveau taux. C'est ce que le salarié remarque d'un
 // mois à l'autre sans savoir pourquoi.
+// Ligne à taux mais sans montant à ce salaire (assiette nulle : seuil
+// d'affiliation…) : grisée, l'alerte « sans_montant » (alertes.rs) l'explique.
+const _sansMontant = c => (parseFloat(c.taux_sal) || parseFloat(c.taux_pat))
+  && estZero(c.montant_sal) && estZero(c.montant_pat);
+
 function _badgeEvolution(b, c) {
   const e = (b.evolutions || []).find(x => x.code === c.code);
   if (!e) return '';
@@ -2926,7 +2990,8 @@ function buildAlertes(b) {
   // Le back envoie code + valeurs : la phrase se compose dans la langue
   // d'affichage ; son texte français reste le repli d'un code inconnu.
   const cle = { smic: 'al.smic', temps_partiel: 'al.partiel', ccn_sous_minimum: 'al.ccn_bas',
-    ccn_sous_smic: 'al.ccn_smic', ccn_conforme: 'al.ccn_ok', ccn_inconnu: 'al.ccn_inconnu' };
+    ccn_sous_smic: 'al.ccn_smic', ccn_conforme: 'al.ccn_ok', ccn_inconnu: 'al.ccn_inconnu',
+    sans_montant: 'al.sans_montant' };
   const phrase = (x, quoi) => {
     const k = cle[x.code];
     if (!k) return esc(quoi === 'titre' ? x.titre : x.texte);
@@ -2940,7 +3005,7 @@ function buildAlertes(b) {
         <span class="cc-resume${grave ? ' al-grave' : ''}">${grave ? '⚠' : 'ℹ'} ${n}</span></summary>
       <div class="alertes">${a.map(x => `<div class="alerte alerte-${esc(x.niveau)}">
       <div class="alerte-titre trad-skip">${x.niveau === 'alerte' ? '⚠' : 'ℹ'} ${phrase(x, 'titre')}</div>
-      <div class="alerte-txt"><span class="trad-skip">${phrase(x, 'texte')}</span> <span class="alerte-src trad-skip">§ ${esc(x.source)}</span></div>
+      <div class="alerte-txt"><span class="trad-skip">${phrase(x, 'texte')}</span> ${x.source ? `<span class="alerte-src trad-skip">§ ${esc(x.source)}</span>` : ''}</div>
     </div>`).join('')}${ccn}</div>
     </details>`;
 }
@@ -3227,7 +3292,7 @@ function renderMobile(b) {
     _fmStore['TOT_' + w.toUpperCase()] = { type: 'total', which: w };
   });
 
-  const skipPas  = ['suisse', 'luxembourg', 'italia', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'pays_bas', 'australie', 'nouvelle_zelande', 'pologne', 'coree_du_sud', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etats_unis', 'mexique', 'bresil', 'emirats', 'inde'].includes(b.salarie?.pays);
+  const skipPas  = _estEtranger(b);
   const isItalieMob = b.salarie?.pays === 'italia';
   const totalSal  = cots.reduce((s, c) => s + parseFloat(c.montant_sal), 0);
   const totalPat  = cots.reduce((s, c) => s + parseFloat(c.montant_pat), 0);
@@ -3302,7 +3367,7 @@ function renderMobile(b) {
   };
   // Vue « comme sur mon bulletin » : un en-tête par risque, ses lignes repliées.
   const cotLines = (_vueCotDispo(b) && _vueCot === 'bulletin')
-    ? regrouperCotisations(cotAllMob).map(g => {
+    ? regrouperCotisations(cotAllMob, getDatePaie(), b.salarie?.pays).map(g => {
         const sal = g.lignes.reduce((t, c) => t + parseFloat(c.montant_sal), 0);
         const pat = g.lignes.reduce((t, c) => t + parseFloat(c.montant_pat), 0);
         const titre = g.autres ? 'Autres cotisations et contributions' : g.titre;
@@ -3840,23 +3905,7 @@ window.vbDeplier = function(btn) {
 // Noms des régimes pour la veille du Chakrram.
 // Les clés sont celles de l'enum `Pays` (snake_case) ; un régime sans nom ici
 // s'affiche sous sa clé plutôt que de disparaître.
-const VEILLE_NOMS = {
-  france: '🇫🇷 France', fonction_publique: '🇫🇷 Fonction publique territoriale',
-  suisse: '🇨🇭 Suisse', luxembourg: '🇱🇺 Luxembourg', italia: '🇮🇹 Italie',
-  canada: '🇨🇦 Canada (Ontario)', quebec: '🇨🇦 Québec', allemagne: '🇩🇪 Allemagne',
-  espagne: '🇪🇸 Espagne', portugal: '🇵🇹 Portugal', belgique: '🇧🇪 Belgique',
-  angleterre: '🇬🇧 Angleterre', japon: '🇯🇵 Japon', chine: '🇨🇳 Chine',
-  pays_bas: '🇳🇱 Pays-Bas', australie: '🇦🇺 Australie', nouvelle_zelande: '🇳🇿 Nouvelle-Zélande',
-  pologne: '🇵🇱 Pologne', coree_du_sud: '🇰🇷 Corée du Sud', andorre: '🇦🇩 Andorre',
-  monaco: '🇲🇨 Monaco', danemark: '🇩🇰 Danemark', finlande: '🇫🇮 Finlande',
-  suede: '🇸🇪 Suède', estonie: '🇪🇪 Estonie', lettonie: '🇱🇻 Lettonie',
-  lituanie: '🇱🇹 Lituanie', autriche: '🇦🇹 Autriche', tchequie: '🇨🇿 Tchéquie',
-  slovaquie: '🇸🇰 Slovaquie', hongrie: '🇭🇺 Hongrie', slovenie: '🇸🇮 Slovénie',
-  grece: '🇬🇷 Grèce', chypre: '🇨🇾 Chypre', malte: '🇲🇹 Malte', croatie: '🇭🇷 Croatie',
-  irlande: '🇮🇪 Irlande', roumanie: '🇷🇴 Roumanie', bulgarie: '🇧🇬 Bulgarie',
-  etats_unis: '🇺🇸 États-Unis', mexique: '🇲🇽 Mexique', bresil: '🇧🇷 Brésil',
-  emirats: '🇦🇪 Émirats arabes unis', inde: '🇮🇳 Inde',
-};
+const VEILLE_NOMS = Object.fromEntries(PAYS.map(p => [p.back, p.nom]));
 // Spécificités journalisées à part (enum `Specificite` de veille.rs).
 const VEILLE_SPECIFICITES = { alsace_moselle: 'Alsace-Moselle', esat: 'ESAT', idcc0016: 'IDCC 0016' };
 
@@ -3963,54 +4012,21 @@ async function calculate(source) {
   const prenom       = document.getElementById(isM ? "m-prenom" : "d-prenom").value || "Marie";
   let date           = document.getElementById(isM ? "m-date"   : "d-date").value  || TODAY;
   const alsaceMoselle  = document.getElementById(isM ? "m-alsace-moselle" : "d-alsace-moselle")?.checked ?? false;
-  const isSuisse       = document.getElementById(isM ? "m-suisse"      : "d-suisse")?.checked ?? false;
-  const isLuxembourg   = document.getElementById(isM ? "m-luxembourg"  : "d-luxembourg")?.checked ?? false;
-  const isFPT          = document.getElementById(isM ? "m-fpt"         : "d-fpt")?.checked ?? false;
+  // Régime coché (table PAYS) ; quelques régimes ont leurs propres options.
+  const pays           = _paysCoche(isM ? "m" : "d");
+  const isFPT          = pays.id === 'fpt';
+  const isSuisse       = pays.id === 'suisse';
+  const isBelgique     = pays.id === 'belgique';
+  const isAllemagne    = pays.id === 'allemagne';
+  const isCanada       = pays.id === 'canada';
+  const isEtatsUnis    = pays.id === 'etatsunis';
+  const isEmirats      = pays.id === 'emirats';
+  const isInde         = pays.id === 'inde';
   const isEA           = document.getElementById(isM ? "m-ea"          : "d-ea")?.checked ?? false;
   const eaTranche      = document.getElementById(isM ? "m-ea-tranche"  : "d-ea-tranche")?.value || "m50";
   const isESAT         = document.getElementById(isM ? "m-esat"        : "d-esat")?.checked ?? false;
-  const isItalie       = document.getElementById(isM ? "m-italie"      : "d-italie")?.checked ?? false;
-  const isEspagne      = document.getElementById(isM ? "m-espagne"     : "d-espagne")?.checked ?? false;
-  const isPortugal     = document.getElementById(isM ? "m-portugal"    : "d-portugal")?.checked ?? false;
-  const isBelgique     = document.getElementById(isM ? "m-belgique"    : "d-belgique")?.checked ?? false;
   const beRegion       = document.getElementById(isM ? "m-be-region"   : "d-be-region")?.value || "bruxelles";
-  const isAllemagne    = document.getElementById(isM ? "m-allemagne"   : "d-allemagne")?.checked ?? false;
-  const isAngleterre   = document.getElementById(isM ? "m-angleterre"  : "d-angleterre")?.checked ?? false;
-  const isJapon        = document.getElementById(isM ? "m-japon"       : "d-japon")?.checked ?? false;
-  const isChine        = document.getElementById(isM ? "m-chine"       : "d-chine")?.checked ?? false;
-  const isPaysBas      = document.getElementById(isM ? "m-paysbas"     : "d-paysbas")?.checked ?? false;
-  const isAustralie    = document.getElementById(isM ? "m-australie"   : "d-australie")?.checked ?? false;
-  const isNouvelleZl   = document.getElementById(isM ? "m-nouvellezelande" : "d-nouvellezelande")?.checked ?? false;
-  const isPologne      = document.getElementById(isM ? "m-pologne"     : "d-pologne")?.checked ?? false;
-  const isCoree        = document.getElementById(isM ? "m-coree"       : "d-coree")?.checked ?? false;
-  const isAndorre      = document.getElementById(isM ? "m-andorre"     : "d-andorre")?.checked ?? false;
-  const isMonaco       = document.getElementById(isM ? "m-monaco"      : "d-monaco")?.checked ?? false;
-  const isDanemark     = document.getElementById(isM ? "m-danemark"    : "d-danemark")?.checked ?? false;
-  const isFinlande     = document.getElementById(isM ? "m-finlande"    : "d-finlande")?.checked ?? false;
-  const isSuede        = document.getElementById(isM ? "m-suede"       : "d-suede")?.checked ?? false;
-  const isEstonie      = document.getElementById(isM ? "m-estonie"     : "d-estonie")?.checked ?? false;
-  const isLettonie     = document.getElementById(isM ? "m-lettonie"    : "d-lettonie")?.checked ?? false;
-  const isLituanie     = document.getElementById(isM ? "m-lituanie"    : "d-lituanie")?.checked ?? false;
-  const isAutriche     = document.getElementById(isM ? "m-autriche"    : "d-autriche")?.checked ?? false;
-  const isTchequie     = document.getElementById(isM ? "m-tchequie"    : "d-tchequie")?.checked ?? false;
-  const isSlovaquie    = document.getElementById(isM ? "m-slovaquie"   : "d-slovaquie")?.checked ?? false;
-  const isHongrie      = document.getElementById(isM ? "m-hongrie"     : "d-hongrie")?.checked ?? false;
-  const isSlovenie     = document.getElementById(isM ? "m-slovenie"    : "d-slovenie")?.checked ?? false;
-  const isGrece        = document.getElementById(isM ? "m-grece"       : "d-grece")?.checked ?? false;
-  const isChypre       = document.getElementById(isM ? "m-chypre"      : "d-chypre")?.checked ?? false;
-  const isMalte        = document.getElementById(isM ? "m-malte"       : "d-malte")?.checked ?? false;
-  const isCroatie      = document.getElementById(isM ? "m-croatie"     : "d-croatie")?.checked ?? false;
-  const isIrlande      = document.getElementById(isM ? "m-irlande"     : "d-irlande")?.checked ?? false;
-  const isRoumanie     = document.getElementById(isM ? "m-roumanie"    : "d-roumanie")?.checked ?? false;
-  const isBulgarie     = document.getElementById(isM ? "m-bulgarie"    : "d-bulgarie")?.checked ?? false;
-  const isCanada       = document.getElementById(isM ? "m-canada"      : "d-canada")?.checked ?? false;
-  const isQuebec       = document.getElementById(isM ? "m-quebec"      : "d-quebec")?.checked ?? false;
   const caProvince     = document.getElementById(isM ? "m-ca-province" : "d-ca-province")?.value || "ON";
-  const isEtatsUnis    = document.getElementById(isM ? "m-etatsunis"   : "d-etatsunis")?.checked ?? false;
-  const isMexique      = document.getElementById(isM ? "m-mexique"     : "d-mexique")?.checked ?? false;
-  const isBresil       = document.getElementById(isM ? "m-bresil"      : "d-bresil")?.checked ?? false;
-  const isEmirats      = document.getElementById(isM ? "m-emirats"     : "d-emirats")?.checked ?? false;
-  const isInde         = document.getElementById(isM ? "m-inde"        : "d-inde")?.checked ?? false;
   const emiratiNational= document.getElementById(isM ? "m-emirati-national" : "d-emirati-national")?.checked ?? false;
   const indeRegime     = document.getElementById(isM ? "m-inde-regime" : "d-inde-regime")?.value || "nouveau";
   const usState        = document.getElementById(isM ? "m-us-state"    : "d-us-state")?.value || "TX";
@@ -4055,24 +4071,7 @@ async function calculate(source) {
   ["d-prenom","m-prenom"].forEach(id => { const e = document.getElementById(id); if(e) e.value = prenom; });
   ["d-date","m-date"].forEach(id => { const e = document.getElementById(id); if(e) e.value = date; });
 
-  const paysEtranger = isSuisse ? "suisse" : isLuxembourg ? "luxembourg"
-    : isItalie ? "italia" : isEspagne ? "espagne" : isPortugal ? "portugal"
-    : isEtatsUnis ? "etats_unis"
-    : isMexique ? "mexique"
-    : isBresil ? "bresil"
-    : isEmirats ? "emirats"
-    : isInde ? "inde"
-    : isBelgique ? "belgique" : isAllemagne ? "allemagne" : isCanada ? "canada" : isQuebec ? "quebec"
-    : isAngleterre ? "angleterre" : isJapon ? "japon" : isChine ? "chine"
-    : isPaysBas ? "pays_bas" : isAustralie ? "australie" : isNouvelleZl ? "nouvelle_zelande"
-    : isPologne ? "pologne" : isCoree ? "coree_du_sud"
-    : isAndorre ? "andorre" : isMonaco ? "monaco" : isDanemark ? "danemark"
-    : isFinlande ? "finlande"
-    : isSuede ? "suede" : isEstonie ? "estonie" : isLettonie ? "lettonie" : isLituanie ? "lituanie"
-    : isAutriche ? "autriche" : isTchequie ? "tchequie" : isSlovaquie ? "slovaquie" : isHongrie ? "hongrie" : isSlovenie ? "slovenie"
-    : isGrece ? "grece" : isChypre ? "chypre" : isMalte ? "malte" : isCroatie ? "croatie"
-    : isIrlande ? "irlande" : isRoumanie ? "roumanie" : isBulgarie ? "bulgarie"
-    : null;
+  const paysEtranger = PAYS_FRANCAIS.includes(pays.id) ? null : pays.back;
   const datePaie = date;
 
   try {
@@ -4559,12 +4558,7 @@ async function calculerAnnee() {
 //
 // Devise du formulaire par régime cochable (suffixe des ids d-/m-) ; absent =
 // euro. Elle doit coïncider avec la devise que le back pose sur le bulletin.
-const DEVISE_SAISIE = {
-  suisse: 'CHF', canada: 'CAD', quebec: 'CAD', angleterre: 'GBP', japon: 'JPY',
-  chine: 'CNY', australie: 'AUD', nouvellezelande: 'NZD', pologne: 'PLN', coree: 'KRW',
-  danemark: 'DKK', suede: 'SEK', tchequie: 'CZK', hongrie: 'HUF', roumanie: 'RON',
-  etatsunis: 'USD', mexique: 'MXN', bresil: 'BRL', emirats: 'AED', inde: 'INR',
-};
+const DEVISE_SAISIE = Object.fromEntries(PAYS.filter(p => p.devise).map(p => [p.id, p.devise]));
 
 // Bulgarie : lev jusqu'au 31/12/2025, euro dès le 1er janvier 2026
 // (bg_bulletin.rs) — la devise suit alors la date de paie.
@@ -4600,13 +4594,21 @@ function _convertir(montant, de, vers, taux) {
   return Math.round(montant / taux[de] * taux[vers]);
 }
 
-function _noteConversion(html, erreur = false) {
+// Note sous le champ : gabarit de textes.js (`cle`) et ses valeurs, gardés pour
+// la recomposer dans la langue choisie ensuite (translateApp). `null` l'efface.
+let _noteConv = null;
+function _noteConversion(cle, vars = {}, erreur = false) {
+  _noteConv = cle ? { cle, vars, erreur } : null;
+  _rendreNoteConversion();
+}
+function _rendreNoteConversion() {
+  const n = _noteConv;
   ['d-brut-conv', 'm-brut-conv'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.hidden = !html;
-    el.classList.toggle('err', erreur);
-    el.innerHTML = html || '';
+    el.hidden = !n;
+    el.classList.toggle('err', !!n?.erreur);
+    el.textContent = n ? tx(n.cle, _currentLang, n.vars) : '';
   });
 }
 
@@ -4623,7 +4625,7 @@ async function _majDeviseSaisie({ convertir = true } = {}) {
     // Périme aussi une conversion lancée juste avant vers cette même devise.
     _deviseChamp = vers;
     ++_convGen;
-    _noteConversion('');
+    _noteConversion(null);
     return;
   }
   const de = _deviseChamp;
@@ -4650,14 +4652,14 @@ async function _majDeviseSaisie({ convertir = true } = {}) {
     cours = await _coursDuJour();
   } catch (e) {
     console.error('[taux_change]', e);
-    if (gen === _convGen) _noteConversion(`Cours de change indisponible : montant laissé tel quel, à saisir en ${esc(sym)}.`, true);
+    if (gen === _convGen) _noteConversion('cv.indispo', { devise: sym }, true);
     return;
   }
   if (gen !== _convGen) return;
   const t = cours.taux;
   const manque = [...champs, ...lignes].map(c => c.origine.devise).concat(vers).find(d => !t[d]);
   if (manque) {
-    _noteConversion(`Pas de cours pour ${esc(manque)} : montant laissé tel quel, à saisir en ${esc(sym)}.`, true);
+    _noteConversion('cv.manque', { manque, devise: sym }, true);
     return;
   }
 
@@ -4677,28 +4679,26 @@ async function _majDeviseSaisie({ convertir = true } = {}) {
 
   // Note sous le champ : de quel montant et de quel cours vient la valeur.
   const ref = champs[0]?.origine;
-  if (!ref || ref.devise === vers) { _noteConversion(''); return; }
+  if (!ref || ref.devise === vers) { _noteConversion(null); return; }
   const montantRef = ref.montant.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
-  _noteConversion(`≈ ${esc(montantRef)} ${esc(_symDevise(ref.devise))} convertis · cours BCE du ${esc(formatDate(cours.date))}`);
+  _noteConversion('cv.note', { montant: montantRef, devise: _symDevise(ref.devise), date: formatDate(cours.date) });
 }
 
 // Ressaisir le montant en fait la nouvelle origine : la note ne vaut plus.
 // La date bascule la devise de la Bulgarie (lev en 2025, euro en 2026).
 document.addEventListener('DOMContentLoaded', () => {
   ['d-brut', 'm-brut'].forEach(id => document.getElementById(id)
-    ?.addEventListener('input', () => _noteConversion('')));
+    ?.addEventListener('input', () => _noteConversion(null)));
   ['d-date', 'm-date'].forEach(id => document.getElementById(id)
     ?.addEventListener('change', () => _majDeviseSaisie()));
 });
 
 // ── Gestion multi-pays (Suisse / Luxembourg / FPT) ───────────────────────────
-// Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
-const TOUS_PAYS = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
 // Appelé depuis chaque checkbox pays ; gère l'exclusion mutuelle et l'UI commune.
 // FPT est France (EUR, date libre, Alsace-Moselle compatible).
 // Suisse/Luxembourg sont étrangers (date figée 2026, masque Alsace-Moselle).
 window.onTogglePays = function(pays, checked) {
-  const PAYS_ETR     = ['suisse', 'luxembourg', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
+  const PAYS_ETR     = TOUS_PAYS.filter(p => !PAYS_FRANCAIS.includes(p));
   const AUTRES_PAYS  = TOUS_PAYS.filter(p => p !== pays);
 
   // Si on coche un régime, décocher tous les autres (exclusion mutuelle)
@@ -8574,16 +8574,16 @@ const QUIZZ_DATA = [
     rep: "8,55 %",         mr: ["8,45 %", "8,75 %", "8,20 %"],                          src: "CSS, art. D242-4" },
   { id: 15, pays:'fr', q: "Quel est le taux normal des allocations familiales ?",
     rep: "5,25 %",         mr: ["5,40 %", "4,90 %", "5,10 %"],                          src: "CSS, art. L241-6" },
-  { id: 16, pays:'fr', q: "En dessous de quel seuil (en SMIC) s'applique le taux réduit des allocations familiales ?",
+  { id: 16, pays:'fr', q: "De 2016 à 2024, en dessous de quel seuil (en SMIC) s'appliquait le taux réduit des allocations familiales ?",
     rep: "3,5 SMIC",       mr: ["3 SMIC", "2,5 SMIC", "4 SMIC"],                        src: "CSS, art. L241-6-1" },
-  { id: 17, pays:'fr', q: "Quel est le taux réduit des allocations familiales ?",
-    rep: "3,45 %",         mr: ["3,25 %", "3,75 %", "3,60 %"],                          src: "CSS, art. D241-3-2" },
+  { id: 17, pays:'fr', q: "Quel était le taux réduit des allocations familiales (supprimé en 2026) ?",
+    rep: "3,45 %",         mr: ["3,25 %", "3,75 %", "3,60 %"],                          src: "CSS, art. L241-6-1" },
   { id: 18, pays:'fr', q: "Quel est le taux de la contribution solidarité autonomie (CSA) ?",
-    rep: "0,30 %",         mr: ["0,10 %", "0,50 %", "0,25 %"],                          src: "CASF, art. L14-10-4" },
+    rep: "0,30 %",         mr: ["0,10 %", "0,50 %", "0,25 %"],                          src: "CSS, art. L137-40" },
   { id: 19, pays:'fr', q: "Quel est le taux du FNAL pour les entreprises de moins de 50 salariés ?",
-    rep: "0,10 %",         mr: ["0,30 %", "0,20 %", "0,50 %"],                          src: "CSS, art. L834-1" },
+    rep: "0,10 %",         mr: ["0,30 %", "0,20 %", "0,50 %"],                          src: "CCH, art. L813-5" },
   { id: 20, pays:'fr', q: "Quel est le taux du FNAL pour les entreprises d'au moins 50 salariés ?",
-    rep: "0,50 %",         mr: ["0,30 %", "0,10 %", "0,40 %"],                          src: "CSS, art. L834-1" },
+    rep: "0,50 %",         mr: ["0,30 %", "0,10 %", "0,40 %"],                          src: "CCH, art. L813-5" },
   { id: 21, pays:'fr', q: "Comment est déterminé le taux AT/MP ?",
     rep: "Variable",       mr: ["Fixé à 0,70 % pour tous", "Forfait de 2 % du brut", "Fixé légalement à 1 %"], src: "CSS, art. L242-5" },
   { id: 22, pays:'fr', q: "Quel est le SMIC mensuel brut 2024 (base 35h) ?",
@@ -8755,7 +8755,7 @@ const QUIZZ_DATA = [
   { id:102, pays:'it', q: "Quel organisme gère les accidents du travail en Italie ?",
     rep: "INAIL",          mr: ["INPS", "Agenzia Entrate", "ISTAT"],                     src: "D.P.R. 1124/1965" },
   { id:103, pays:'it', q: "Qu'est-ce que la 'carenza' en Italie ?",
-    rep: "Les 3 premiers jours de maladie non indemnisés par l'INPS", mr: ["Le délai de carence AT", "La période d'essai", "Une retenue disciplinaire"], src: "D.P.R. 663/1979 ; CCNL" },
+    rep: "Les 3 premiers jours de maladie non indemnisés par l'INPS", mr: ["Le délai de carence AT", "La période d'essai", "Une retenue disciplinaire"], src: "D.L. 663/1979 ; CCNL" },
   { id:104, pays:'it', q: "Durée légale du congé maternité en Italie ?",
     rep: "5 mois",         mr: ["3 mois", "6 mois", "4 mois"],                           src: "D.Lgs. 151/2001, art. 16-17" },
   { id:105, pays:'it', q: "Durée minimale du congé paternité obligatoire en Italie (depuis L. 160/2019) ?",
@@ -8916,10 +8916,10 @@ const QUIZZ_DATA = [
     rep: "Oui, à un taux différent", mr: ["Non, uniquement les salariés", "Non, uniquement les employeurs", "Oui, au même taux que les salariés"], src: "Loi sur l'assurance parentale (Québec)" },
 
   // ── Fonction Publique Territoriale (FPT) ─────────────────────────────────
-  { id:181, pays:'fpt', q: "Quel est le taux CNRACL salarié applicable depuis 2019 ?",
-    rep: "11,10 %",        mr: ["10,56 %", "11,40 %", "10,83 %"],                       src: "Décret n°2011-291 — taux cible 2019" },
-  { id:182, pays:'fpt', q: "Quel est le taux CNRACL employeur (collectivité) ?",
-    rep: "30,65 %",        mr: ["28,12 %", "32,00 %", "26,50 %"],                       src: "Décret n°2011-291" },
+  { id:181, pays:'fpt', q: "Quel est le taux CNRACL salarié applicable depuis 2020 ?",
+    rep: "11,10 %",        mr: ["10,56 %", "11,40 %", "10,83 %"],                       src: "Décret n°2010-1749 modifié (décret n°2014-1531)" },
+  { id:182, pays:'fpt', q: "Quel était le taux CNRACL employeur (collectivité) de 2017 à 2023 ?",
+    rep: "30,65 %",        mr: ["28,12 %", "32,00 %", "26,50 %"],                       src: "Décret n°2014-1531 ; relevé à 31,65 % en 2024 (décret n°2024-49)" },
   { id:183, pays:'fpt', q: "Les fonctionnaires FPT titulaires cotisent-ils à l'assurance chômage ?",
     rep: "Non",            mr: ["Oui, au même taux que le privé", "Oui, à taux réduit 0,50 %", "Non, mais ils cotisent au FNPE"], src: "Statut FPT — L. 84-53" },
   { id:184, pays:'fpt', q: "La réduction Fillon s'applique-t-elle aux employeurs publics FPT ?",
@@ -8928,46 +8928,46 @@ const QUIZZ_DATA = [
     rep: "CNRACL",         mr: ["IRCANTEC", "AGIRC-ARRCO aussi", "Régime général SS"],   src: "Décret n°2003-1306" },
   { id:186, pays:'fpt', q: "L'IRCANTEC concerne-t-il les agents titulaires de la FPT ?",
     rep: "Non, il couvre les contractuels et non-titulaires", mr: ["Oui, tous les agents FPT", "Non, personne en FPT", "Oui, uniquement catégorie A"], src: "Décret n°70-1277" },
-  { id:187, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2016 ?",
-    rep: "10,29 %",        mr: ["11,10 %", "10,56 %", "9,82 %"],                        src: "Décret n°2011-291" },
-  { id:188, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2017 ?",
-    rep: "10,56 %",        mr: ["10,29 %", "10,83 %", "11,10 %"],                       src: "Décret n°2011-291" },
-  { id:189, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2018 ?",
-    rep: "10,83 %",        mr: ["10,56 %", "11,10 %", "10,29 %"],                       src: "Décret n°2011-291" },
-  { id:190, pays:'fpt', q: "Quel décret a encadré la convergence des taux CNRACL vers le régime général ?",
-    rep: "Décret n°2011-291", mr: ["Décret n°2014-1326", "Décret n°2003-1306", "Loi n°2010-1330"], src: "Décret n°2011-291 du 15/03/2011" },
+  { id:187, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2017 ?",
+    rep: "10,29 %",        mr: ["11,10 %", "10,56 %", "9,82 %"],                        src: "Décret n°2014-1531" },
+  { id:188, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2018 ?",
+    rep: "10,56 %",        mr: ["10,29 %", "10,83 %", "11,10 %"],                       src: "Décret n°2014-1531" },
+  { id:189, pays:'fpt', q: "Quel était le taux CNRACL salarié en 2019 ?",
+    rep: "10,83 %",        mr: ["10,56 %", "11,10 %", "10,29 %"],                       src: "Décret n°2014-1531" },
+  { id:190, pays:'fpt', q: "Quel décret a fixé la hausse de la retenue CNRACL décidée par la réforme des retraites de 2010 ?",
+    rep: "Décret n°2010-1749", mr: ["Décret n°2025-86", "Décret n°2003-1306", "Décret n°91-613"], src: "Décret n°2010-1749 du 30/12/2010 (loi n°2010-1330)" },
   { id:191, pays:'fpt', q: "La CSG/CRDS est-elle prélevée sur les agents FPT ?",
     rep: "Oui, aux mêmes taux qu'en secteur privé", mr: ["Non, exonération pour les fonctionnaires", "Oui, mais à taux réduit 6 %", "Non, remplacée par une contribution spécifique"], src: "CSS, art. L136-1 — applicable à la FP" },
   { id:192, pays:'fpt', q: "Les allocations familiales patronales sont-elles dues en FPT ?",
     rep: "Oui, aux mêmes taux",  mr: ["Non, prises en charge par la CAF", "Oui, à taux réduit", "Non, régime spécial"], src: "CSS, art. L241-6 — applicable" },
   { id:193, pays:'fpt', q: "Le taux CNRACL patronal représente combien de fois le taux salarié ?",
-    rep: "Presque 3 fois (30,65 % vs 11,10 %)", mr: ["Identique au taux salarié", "2 fois le taux salarié", "La moitié du taux salarié"], src: "Décret n°2011-291" },
+    rep: "Presque 3 fois (30,65 % vs 11,10 % de 2020 à 2023)", mr: ["Identique au taux salarié", "2 fois le taux salarié", "La moitié du taux salarié"], src: "Décret n°2014-1531" },
   { id:194, pays:'fpt', q: "Le plan de convergence CNRACL visait le rapprochement vers quel régime ?",
-    rep: "Le régime général des salariés du privé", mr: ["Le régime des fonctionnaires d'État", "L'AGIRC-ARRCO", "Le régime agricole MSA"], src: "Décret n°2011-291 — exposé des motifs" },
+    rep: "Le régime général des salariés du privé", mr: ["Le régime des fonctionnaires d'État", "L'AGIRC-ARRCO", "Le régime agricole MSA"], src: "Loi n°2010-1330 du 9/11/2010 ; décret n°2010-1749" },
   { id:195, pays:'fpt', q: "Le taux AT/MP suit-il les mêmes règles en FPT qu'en secteur privé ?",
     rep: "Oui, variable selon le risque", mr: ["Non, taux fixe à 0,70 %", "Non, l'État assume directement", "Oui, mais plafonné à 1 %"], src: "CSS, art. L242-5 — applicable FP" },
   { id:196, pays:'fpt', q: "Le FNAL est-il dû par les employeurs territoriaux ?",
-    rep: "Oui", mr: ["Non, exonération totale", "Oui, uniquement le taux 0,10 %", "Non, remplacé par une taxe spécifique"], src: "CSS, art. L834-1" },
+    rep: "Oui", mr: ["Non, exonération totale", "Oui, uniquement le taux 0,10 %", "Non, remplacé par une taxe spécifique"], src: "CCH, art. L813-5" },
   { id:197, pays:'fpt', q: "L'assiette de la CNRACL est-elle plafonnée ?",
     rep: "Non, traitement brut total sans plafond", mr: ["Oui, plafonnée au PMSS", "Oui, plafonnée à 4 × PMSS", "Oui, plafonnée au SMIC × 3,5"], src: "Décret n°2003-1306" },
   { id:198, pays:'fpt', q: "Les agents contractuels en FPT cotisent-ils à la CNRACL ?",
     rep: "Non, ils relèvent de l'IRCANTEC", mr: ["Oui, comme les titulaires", "Oui, à taux réduit", "Non, ils relèvent du régime général"], src: "Décret n°70-1277 — IRCANTEC" },
-  { id:199, pays:'fpt', q: "Quel est le taux total CNRACL (sal + pat) depuis 2019 ?",
-    rep: "41,75 %",        mr: ["33,00 %", "38,00 %", "44,00 %"],                       src: "Décret n°2011-291 (11,10+30,65)" },
+  { id:199, pays:'fpt', q: "Quel était le taux total CNRACL (sal + pat) de 2020 à 2023 ?",
+    rep: "41,75 %",        mr: ["33,00 %", "38,00 %", "44,00 %"],                       src: "Décret n°2014-1531 (11,10 + 30,65)" },
   { id:200, pays:'fpt', q: "La CNRACL a-t-elle été créée avant ou après le régime général ?",
     rep: "Avant — elle date de 1947", mr: ["Après, créée en 1975", "Après, créée en 1955", "En même temps, 1945"], src: "Ordonnance n°45-993 / Loi n°47-1465" },
-  { id:201, pays:'fpt', q: "Le taux CNRACL patronal a-t-il bougé pendant le plan de convergence ?",
-    rep: "Non, maintenu à 30,65 % tout au long", mr: ["Oui, il a augmenté avec le salarié", "Oui, il a baissé progressivement", "Non, il était à 28 % avant 2012"], src: "Décret n°2011-291" },
-  { id:202, pays:'fpt', q: "Le décret n°2011-291 visait un taux salarié cible de combien en 2019 ?",
-    rep: "11,10 %",        mr: ["12,00 %", "10,00 %", "11,30 %"],                       src: "Décret n°2011-291" },
+  { id:201, pays:'fpt', q: "Le taux CNRACL patronal a-t-il bougé pendant la hausse de la retenue salariale (2011-2020) ?",
+    rep: "Oui, de 27,30 % (2012) à 30,65 % (2017)", mr: ["Non, maintenu à 30,65 % tout au long", "Oui, il a baissé progressivement", "Non, il est resté à 27,30 %"], src: "Décrets n°2012-1525, 2013-1290 et 2014-1531" },
+  { id:202, pays:'fpt', q: "À quel taux la retenue salariale CNRACL est-elle arrivée en 2020, au terme de sa hausse ?",
+    rep: "11,10 %",        mr: ["12,00 %", "10,00 %", "11,30 %"],                       src: "Décret n°2010-1749 modifié (décret n°2014-1531)" },
   { id:203, pays:'fpt', q: "La CNRACL couvre-t-elle aussi l'invalidité des agents FPT ?",
     rep: "Oui, retraite, invalidité et réversion", mr: ["Non, géré par la SS", "Non, par la MGEN", "Oui mais uniquement la retraite"], src: "Décret n°2003-1306" },
   { id:204, pays:'fpt', q: "La CNRACL est gérée par quelle institution nationale ?",
     rep: "Caisse des Dépôts et Consignations", mr: ["CNAM", "AGIRC-ARRCO", "Caisse nationale d'assurance retraite"], src: "Art. L222-1 CSS / CDC" },
   { id:205, pays:'fpt', q: "Le régime local Alsace-Moselle s'applique-t-il aux agents FPT de ces départements ?",
     rep: "Oui, comme pour le secteur privé", mr: ["Non, les fonctionnaires en sont exonérés", "Non, uniquement pour les contractuels", "Oui mais à taux réduit 0,65 %"], src: "Droit local Alsace-Moselle — applicable à la FP" },
-  { id:206, pays:'fpt', q: "Quel était le taux salarié CNRACL au lancement du plan de convergence (2012) ?",
-    rep: "8,39 %",         mr: ["9,00 %", "10,00 %", "7,85 %"],                         src: "Décret n°2011-291 — entrée en vigueur 01/01/2012" },
+  { id:206, pays:'fpt', q: "Quel était le taux salarié CNRACL au 1er janvier 2012 ?",
+    rep: "8,39 %",         mr: ["9,00 %", "10,00 %", "7,85 %"],                         src: "Décret n°2010-1749 du 30/12/2010" },
   { id:207, pays:'fpt', q: "Le PAS (prélèvement à la source) s'applique-t-il aux agents FPT ?",
     rep: "Oui, depuis 2019 comme pour tous les salariés", mr: ["Non, les fonctionnaires déclarent séparément", "Non, impôt prélevé trimestriellement", "Oui, depuis 2024 uniquement"], src: "CGI, art. 204 A — applicable" },
   { id:208, pays:'fpt', q: "En FPT, quel est le traitement de référence pour le calcul de la CNRACL ?",
@@ -8983,7 +8983,7 @@ const QUIZZ_DATA = [
   { id:212, pays:'fr', q: "Quel est le délai de prescription pour réclamer un rappel de salaire ?",
     rep: "3 ans", mr: ["1 an", "2 ans", "5 ans"], src: "C. trav., art. L3245-1" },
   { id:213, pays:'fr', q: "Dans quel délai maximum avant l'embauche la DPAE peut-elle être transmise à l'URSSAF ?",
-    rep: "8 jours", mr: ["24 heures", "15 jours", "48 heures"], src: "CSS, art. R1221-1" },
+    rep: "8 jours", mr: ["24 heures", "15 jours", "48 heures"], src: "Code du travail, art. R1221-5" },
   { id:214, pays:'fr', q: "Quel est le délai de carence légal de la Sécurité sociale avant versement des indemnités journalières maladie ?",
     rep: "3 jours", mr: ["1 jour", "5 jours", "7 jours"], src: "CSS, art. L323-1" },
 
