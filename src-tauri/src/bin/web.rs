@@ -171,6 +171,7 @@ fn quota_pour(chemin: &str) -> Option<(u32, Duration)> {
     // Calculs : bon marché à l'unité, mais c'est le gros du trafic anonyme.
     if chemin.starts_with("/api/calculer_bulletin") || chemin.starts_with("/api/simuler_annee")
         || chemin == "/api/esat_minimum" || chemin == "/api/plafond_ss"
+        || chemin == "/api/taux_change"
     {
         return Some((120, Duration::from_secs(60)));
     }
@@ -364,6 +365,15 @@ async fn handle_plafond_ss(
     Ok(Json(ctx.pmss.to_string()))
 }
 
+/// Cours BCE du jour (base euro), mis en cache : conversion du montant saisi
+/// au changement de pays.
+async fn handle_taux_change() -> Result<impl IntoResponse, ApiError> {
+    xenna_paie_lib::change::cours_du_jour().await.map(Json).map_err(|e| {
+        tracing::warn!("taux_change : {e}");
+        ApiError("Cours de change indisponible".into())
+    })
+}
+
 async fn handle_bulletin(
     State(pool): State<Db>,
     Json(req): Json<BulletinReq>,
@@ -467,6 +477,7 @@ async fn main() {
         .route("/api/calculer_bulletin", post(handle_bulletin))
         .route("/api/esat_minimum", post(handle_esat_minimum))
         .route("/api/plafond_ss", post(handle_plafond_ss))
+        .route("/api/taux_change", post(handle_taux_change))
         .route("/api/simuler_annee", post(handle_annee))
         .route("/api/veille_baremes", post(handle_veille))
         .route("/api/veille_baremes_tous", post(handle_veille_tous))

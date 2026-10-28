@@ -4312,6 +4312,10 @@ function _restaurerDepuisLien() {
   if (/^\d{4}-\d{2}-\d{2}$/.test(date || '') && date >= DATE_MIN) {
     ['d-date', 'm-date'].forEach(id => { const e = document.getElementById(id); if (e) e.value = date; });
   }
+  // Le brut du lien est déjà dans la devise de son pays et de sa date : on pose
+  // cette devise sans rien convertir (et la conversion lancée par la case pays
+  // ci-dessus, devenue périmée, n'écrira rien).
+  _majDeviseSaisie({ convertir: false });
 
   // Un champ absent du lien reprend sa valeur par défaut : collé dans un onglet
   // déjà ouvert, le lien ne doit rien hériter de la simulation précédente.
@@ -4545,6 +4549,148 @@ async function calculerAnnee() {
   }
 }
 
+// ── Devise de saisie et conversion au changement de pays ─────────────────────
+// Chaque régime calcule dans sa devise : le montant saisi doit donc suivre le
+// pays. Le visiteur saisit un salaire une fois, dans la devise du pays coché ;
+// en changeant de pays, ce montant D'ORIGINE est reconverti au cours BCE du jour
+// (commande `taux_change`, src-tauri/src/change.rs). On reconvertit toujours
+// depuis l'origine, jamais depuis la dernière conversion : revenir au pays de
+// départ rend exactement le montant saisi, sans dérive d'arrondi.
+//
+// Devise du formulaire par régime cochable (suffixe des ids d-/m-) ; absent =
+// euro. Elle doit coïncider avec la devise que le back pose sur le bulletin.
+const DEVISE_SAISIE = {
+  suisse: 'CHF', canada: 'CAD', quebec: 'CAD', angleterre: 'GBP', japon: 'JPY',
+  chine: 'CNY', australie: 'AUD', nouvellezelande: 'NZD', pologne: 'PLN', coree: 'KRW',
+  danemark: 'DKK', suede: 'SEK', tchequie: 'CZK', hongrie: 'HUF', roumanie: 'RON',
+  etatsunis: 'USD', mexique: 'MXN', bresil: 'BRL', emirats: 'AED', inde: 'INR',
+};
+
+// Bulgarie : lev jusqu'au 31/12/2025, euro dès le 1er janvier 2026
+// (bg_bulletin.rs) — la devise suit alors la date de paie.
+function _deviseSaisie() {
+  const pays = TOUS_PAYS.find(p => document.getElementById(`d-${p}`)?.checked) || 'france';
+  if (pays === 'bulgarie') return getDatePaie() < '2026-01-01' ? 'BGN' : 'EUR';
+  return DEVISE_SAISIE[pays] || 'EUR';
+}
+const _symDevise = d => d === 'EUR' ? '€' : d;
+
+let _deviseChamp = 'EUR';   // devise du montant actuellement dans le champ
+let _convGen     = 0;       // une conversion périmée (pays rechangé, lien) n'écrit rien
+// Origine de chaque montant converti : { ecrit, montant, devise }. `ecrit` est la
+// valeur posée par la conversion ; un champ qui ne la porte plus a été ressaisi
+// (à la main, par un lien, par l'ESAT…) et sa valeur devient la nouvelle origine.
+const _origineChamp = {};
+
+// Cours BCE, gardés six heures par onglet (le back les garde autant).
+let _cours = null;
+function _coursDuJour() {
+  if (!_cours || Date.now() - _cours.t > 6 * 3600e3) {
+    const promesse = api('taux_change');
+    _cours = { t: Date.now(), promesse };
+    promesse.catch(() => { if (_cours?.promesse === promesse) _cours = null; });
+  }
+  return _cours.promesse;
+}
+
+// Les salaires convertis sont arrondis à l'unité : la conversion donne un ordre
+// de grandeur, pas un montant au centime près.
+function _convertir(montant, de, vers, taux) {
+  if (de === vers) return montant;
+  return Math.round(montant / taux[de] * taux[vers]);
+}
+
+function _noteConversion(html, erreur = false) {
+  ['d-brut-conv', 'm-brut-conv'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.hidden = !html;
+    el.classList.toggle('err', erreur);
+    el.innerHTML = html || '';
+  });
+}
+
+// Pose devise et libellés du champ salaire ; reconvertit le montant saisi (et
+// les primes en montant) si la devise change. `convertir: false` : le montant
+// en place est déjà dans la nouvelle devise (restauration d'un lien).
+async function _majDeviseSaisie({ convertir = true } = {}) {
+  const vers = _deviseSaisie();
+  const sym  = _symDevise(vers);
+  _labelsSalaire = { brut: `SALAIRE BRUT (${sym})`, brutM: `BRUT (${sym})` };
+  _appliquerLabelSalaire();
+
+  if (!convertir) {
+    // Périme aussi une conversion lancée juste avant vers cette même devise.
+    _deviseChamp = vers;
+    ++_convGen;
+    _noteConversion('');
+    return;
+  }
+  const de = _deviseChamp;
+  if (de === vers) return;
+  _deviseChamp = vers;
+  const gen = ++_convGen;
+
+  // Origines relevées AVANT l'attente : ce qui change pendant l'appel n'est
+  // plus le montant qu'on convertit, et n'est pas touché.
+  const champs = ['d-brut', 'm-brut'].map(id => {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const v = el.value, o = _origineChamp[id];
+    const origine = o && o.ecrit === v ? o : { montant: parseFloat(v), devise: de };
+    return Number.isFinite(origine.montant) ? { el, id, v, origine } : null;
+  }).filter(Boolean);
+  const lignes = _remLines
+    .filter(l => !_estHeure(l.type) && !_estFrais(l.type) && !_estAN(l.type) && l.amount)
+    .map(l => ({ l, v: l.amount,
+      origine: l._origine && l._origine.ecrit === l.amount ? l._origine : { montant: l.amount, devise: de } }));
+
+  let cours;
+  try {
+    cours = await _coursDuJour();
+  } catch (e) {
+    console.error('[taux_change]', e);
+    if (gen === _convGen) _noteConversion(`Cours de change indisponible : montant laissé tel quel, à saisir en ${esc(sym)}.`, true);
+    return;
+  }
+  if (gen !== _convGen) return;
+  const t = cours.taux;
+  const manque = [...champs, ...lignes].map(c => c.origine.devise).concat(vers).find(d => !t[d]);
+  if (manque) {
+    _noteConversion(`Pas de cours pour ${esc(manque)} : montant laissé tel quel, à saisir en ${esc(sym)}.`, true);
+    return;
+  }
+
+  champs.forEach(({ el, id, v, origine }) => {
+    if (el.value !== v) return;
+    el.value = String(_convertir(origine.montant, origine.devise, vers, t));
+    _origineChamp[id] = { ecrit: el.value, montant: origine.montant, devise: origine.devise };
+  });
+  let lignesConverties = false;
+  lignes.forEach(({ l, v, origine }) => {
+    if (l.amount !== v || !_remLines.includes(l)) return;
+    l.amount = _convertir(origine.montant, origine.devise, vers, t);
+    l._origine = { ecrit: l.amount, montant: origine.montant, devise: origine.devise };
+    lignesConverties = true;
+  });
+  if (lignesConverties) _reRenderRemInPlace();
+
+  // Note sous le champ : de quel montant et de quel cours vient la valeur.
+  const ref = champs[0]?.origine;
+  if (!ref || ref.devise === vers) { _noteConversion(''); return; }
+  const montantRef = ref.montant.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+  _noteConversion(`≈ ${esc(montantRef)} ${esc(_symDevise(ref.devise))} convertis · cours BCE du ${esc(formatDate(cours.date))}`);
+}
+
+// Ressaisir le montant en fait la nouvelle origine : la note ne vaut plus.
+// La date bascule la devise de la Bulgarie (lev en 2025, euro en 2026).
+document.addEventListener('DOMContentLoaded', () => {
+  ['d-brut', 'm-brut'].forEach(id => document.getElementById(id)
+    ?.addEventListener('input', () => _noteConversion('')));
+  ['d-date', 'm-date'].forEach(id => document.getElementById(id)
+    ?.addEventListener('change', () => _majDeviseSaisie()));
+});
+
 // ── Gestion multi-pays (Suisse / Luxembourg / FPT) ───────────────────────────
 // Tous les régimes cochables (suffixe des ids d-/m-) — relu aussi par le partage par lien.
 const TOUS_PAYS = ['france', 'suisse', 'luxembourg', 'fpt', 'italie', 'espagne', 'portugal', 'belgique', 'allemagne', 'canada', 'quebec', 'angleterre', 'japon', 'chine', 'paysbas', 'australie', 'nouvellezelande', 'pologne', 'coree', 'andorre', 'monaco', 'danemark', 'finlande', 'suede', 'estonie', 'lettonie', 'lituanie', 'autriche', 'tchequie', 'slovaquie', 'hongrie', 'slovenie', 'grece', 'chypre', 'malte', 'croatie', 'irlande', 'roumanie', 'bulgarie', 'etatsunis', 'mexique', 'bresil', 'emirats', 'inde'];
@@ -4616,33 +4762,7 @@ window.onTogglePays = function(pays, checked) {
     el.disabled = false;
   });
 
-  // Label devise : CHF (Suisse), CAD (Canada/Québec), GBP (Angleterre), JPY (Japon), CNY (Chine), EUR (autres)
   const isSuisse      = document.getElementById('d-suisse')?.checked;
-  const isCA          = document.getElementById('d-canada')?.checked || document.getElementById('d-quebec')?.checked;
-  const isAngleterre  = document.getElementById('d-angleterre')?.checked;
-  const isJapon       = document.getElementById('d-japon')?.checked;
-  const isChine       = document.getElementById('d-chine')?.checked;
-  const isAustralie   = document.getElementById('d-australie')?.checked;
-  const isNZ          = document.getElementById('d-nouvellezelande')?.checked;
-  const isPologne     = document.getElementById('d-pologne')?.checked;
-  const isCoree       = document.getElementById('d-coree')?.checked;
-  const isDanemark    = document.getElementById('d-danemark')?.checked;
-  const isSuede       = document.getElementById('d-suede')?.checked;
-  const isTchequie    = document.getElementById('d-tchequie')?.checked;
-  const isHongrie     = document.getElementById('d-hongrie')?.checked;
-  const isRoumanie    = document.getElementById('d-roumanie')?.checked;
-  const isBulgarie    = document.getElementById('d-bulgarie')?.checked;
-  const isUsa         = document.getElementById('d-etatsunis')?.checked;
-  const isMexique     = document.getElementById('d-mexique')?.checked;
-  const isBresil      = document.getElementById('d-bresil')?.checked;
-  const isEmirats     = document.getElementById('d-emirats')?.checked;
-  const isInde        = document.getElementById('d-inde')?.checked;
-  const labelBrut  = isBresil ? 'SALAIRE BRUT (BRL)' : isEmirats ? 'SALAIRE BRUT (AED)' : isInde ? 'SALAIRE BRUT (INR)' : isMexique ? 'SALAIRE BRUT (MXN)' : isUsa ? 'SALAIRE BRUT (USD)' : isSuisse ? 'SALAIRE BRUT (CHF)' : isCA ? 'SALAIRE BRUT (CAD)' : isAngleterre ? 'SALAIRE BRUT (GBP)' : isJapon ? 'SALAIRE BRUT (JPY)' : isChine ? 'SALAIRE BRUT (CNY)' : isAustralie ? 'SALAIRE BRUT (AUD)' : isNZ ? 'SALAIRE BRUT (NZD)' : isPologne ? 'SALAIRE BRUT (PLN)' : isCoree ? 'SALAIRE BRUT (KRW)' : isDanemark ? 'SALAIRE BRUT (DKK)' : isSuede ? 'SALAIRE BRUT (SEK)' : isTchequie ? 'SALAIRE BRUT (CZK)' : isHongrie ? 'SALAIRE BRUT (HUF)' : isRoumanie ? 'SALAIRE BRUT (RON)' : isBulgarie ? 'SALAIRE BRUT (BGN)' : 'SALAIRE BRUT (€)';
-  const labelBrutM = isBresil ? 'BRUT (BRL)'         : isEmirats ? 'BRUT (AED)'        : isInde ? 'BRUT (INR)'          : isMexique ? 'BRUT (MXN)'        : isUsa ? 'BRUT (USD)'            : isSuisse ? 'BRUT (CHF)'         : isCA ? 'BRUT (CAD)'         : isAngleterre ? 'BRUT (GBP)'         : isJapon ? 'BRUT (JPY)'         : isChine ? 'BRUT (CNY)'         : isAustralie ? 'BRUT (AUD)'         : isNZ ? 'BRUT (NZD)'         : isPologne ? 'BRUT (PLN)'         : isCoree ? 'BRUT (KRW)'         : isDanemark ? 'BRUT (DKK)'         : isSuede ? 'BRUT (SEK)'         : isTchequie ? 'BRUT (CZK)'         : isHongrie ? 'BRUT (HUF)'         : isRoumanie ? 'BRUT (RON)'         : isBulgarie ? 'BRUT (BGN)'         : 'BRUT (€)';
-  // Mémorise les libellés devise et laisse _appliquerLabelSalaire arbitrer
-  // l'affichage BRUT/NET selon le mode de saisie courant.
-  _labelsSalaire = { brut: labelBrut, brutM: labelBrutM };
-  _appliquerLabelSalaire();
 
   // Affiche/masque le bloc IS Suisse (et réinitialise si on décoche Suisse)
   ['d', 'm'].forEach(p => {
@@ -4724,6 +4844,9 @@ window.onTogglePays = function(pays, checked) {
     const fr = document.getElementById(`${p}-france`);
     if (fr) fr.checked = aucunActif;
   });
+
+  // Devise du régime retenu : libellé du champ, et montant saisi reconverti.
+  _majDeviseSaisie();
 };
 
 // Entreprise adaptée (aide au poste) : régime France privé.

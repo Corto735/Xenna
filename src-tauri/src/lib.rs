@@ -2,6 +2,7 @@ pub mod admin;
 pub mod altcha;
 pub mod membre;
 pub mod calculs;
+pub mod change;
 pub mod ccn;
 pub mod contrat;
 pub mod pdf;
@@ -21,7 +22,7 @@ pub mod commands;
 
 #[cfg(feature = "desktop")]
 use commands::{
-    calculer_bulletin, classifications_ccn, conventions_ccn, esat_minimum, plafond_ss, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
+    calculer_bulletin, classifications_ccn, taux_change, conventions_ccn, esat_minimum, plafond_ss, dossier_ccn, generer_bulletin_pdf, generer_contrat_pdf,
     journal_baremes, simuler_annee, veille_baremes, veille_baremes_tous,
 };
 #[cfg(feature = "desktop")]
@@ -72,6 +73,7 @@ pub fn run() {
             calculer_bulletin,
             esat_minimum,
             plafond_ss,
+            taux_change,
             simuler_annee,
             generer_contrat_pdf,
             generer_bulletin_pdf,

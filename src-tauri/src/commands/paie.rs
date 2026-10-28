@@ -90,6 +90,13 @@ pub async fn plafond_ss(
     Ok(ctx.pmss.to_string())
 }
 
+/// Cours BCE du jour (base euro) : conversion du montant saisi au changement
+/// de pays (src/change.rs).
+#[tauri::command]
+pub async fn taux_change() -> Result<crate::change::CoursChange, String> {
+    crate::change::cours_du_jour().await
+}
+
 #[tauri::command]
 pub async fn simuler_annee(
     state: tauri::State<'_, AppState>,

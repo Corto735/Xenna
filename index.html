@@ -4040,6 +4040,8 @@
     .bn-toggle.is-net  .bn-end-net { color: var(--bg); }
     .bn-reconst { font-size: 0.68rem; color: var(--muted-txt); margin-top: 0.25rem; }
     .bn-reconst b { color: var(--blue); }
+    .bn-conv { font-size: 0.68rem; color: var(--muted-txt); margin-top: 0.25rem; }
+    .bn-conv.err { color: var(--orange); }
   </style>
   <script src="/altcha.min.js" async defer type="module"></script>
 </head>
@@ -4210,7 +4212,8 @@
             <span class="bn-end bn-end-net">Net</span>
             <span class="bn-knob"></span>
           </button>
-          <div class="bn-reconst" id="d-brut-reconst" hidden>Brut reconstitué : <b class="trad-skip"></b></div></div>
+          <div class="bn-reconst" id="d-brut-reconst" hidden>Brut reconstitué : <b class="trad-skip"></b></div>
+          <div class="bn-conv" id="d-brut-conv" hidden></div></div>
         <div class="field"><label>DATE DE SIMULATION</label>
           <input type="date" id="d-date" min="2015-01-01" /></div>
 
@@ -4722,7 +4725,8 @@
                 <span class="bn-end bn-end-net">Net</span>
                 <span class="bn-knob"></span>
               </button>
-              <div class="bn-reconst" id="m-brut-reconst" hidden>Brut reconstitué : <b class="trad-skip"></b></div></div>
+              <div class="bn-reconst" id="m-brut-reconst" hidden>Brut reconstitué : <b class="trad-skip"></b></div>
+              <div class="bn-conv" id="m-brut-conv" hidden></div></div>
           </div>
           <div class="field" style="grid-column:1/-1"><label>DATE DE SIMULATION</label>
             <input type="date" id="m-date" min="2015-01-01" /></div>

@@ -176,6 +176,24 @@ dernière modification en base ne prouve pas qu'un taux stable a été revérifi
 Le `match` est exhaustif (un pays ajouté sans veille ne compile pas), et
 `fiabilite.rs` exige qu'un pays en retard sur l'année du relevé déclare ses lacunes.
 
+## Devise de saisie — conversion au changement de pays
+
+Chaque régime calcule dans SA devise : le montant du formulaire suit donc le pays.
+`DEVISE_SAISIE` (`src/main.js`) est la seule table pays → devise du front (absent
+= euro) ; elle doit coïncider avec la devise que le back pose sur le bulletin. La
+Bulgarie dépend de la date : lev pour une paie 2025, euro dès 2026.
+
+Au changement de pays, `_majDeviseSaisie` reconvertit le montant D'ORIGINE (et les
+primes en montant), jamais la dernière conversion : revenir au pays de départ rend
+exactement la saisie. Un champ ressaisi (main, lien, ESAT) devient la nouvelle
+origine. Une restauration de lien pose la devise sans convertir.
+
+Cours : commande `taux_change` (Tauri) / `POST /api/taux_change` (web),
+`src-tauri/src/change.rs`. Cours de référence BCE du jour via Frankfurter (sans
+clé, quotidien — pas de temps réel), cache mémoire 6 h, dernier cours connu servi
+en cas de panne. AED déduit de l'USD (ancrage 3,6725) ; BGN au taux irrévocable
+1,95583. Ne touche JAMAIS au calcul d'un bulletin : ce n'est qu'une aide de saisie.
+
 ## Histoire des cotisations — anecdotes
 
 `src-tauri/src/anecdotes/` associe à un **code** de cotisation un texte fixe :
