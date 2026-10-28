@@ -9,26 +9,18 @@ use crate::models::LigneCotisation;
 // Le SSM est indexé automatiquement (échelle mobile, tranche ±2,5 %)
 // et peut faire l'objet de revalorisations discrétionnaires (accords tripartites).
 // Source : CCSS — Journal officiel luxembourgeois.
-// Valeurs approximatives pour les années 2015-2024 (à vérifier contre CCSS).
-// Depuis 2025, au mois près : SSM non qualifié 2 637,79 € (janv.-avr. 2025),
-// 2 703,74 € (indice 968,04, mai 2025-mai 2026), 2 771,33 € (indice 992,24,
-// dès juin 2026) — FEDIL, paramètres sociaux au 01/01/2026 et au 01/06/2026.
+// Valeurs en base (LU_PLAFOND_5SSM, migrations 0017 et 0154), mensuelles.
+// 2015-2024 approximatives (à vérifier contre CCSS). Depuis 2025, au mois
+// près : SSM non qualifié 2 637,79 € (janv.-avr. 2025), 2 703,74 € (indice
+// 968,04, mai 2025-mai 2026), 2 771,33 € (indice 992,24, dès juin 2026) —
+// FEDIL, paramètres sociaux au 01/01/2026 et au 01/06/2026.
 fn lu_plafond_mensuel(ctx: &ContextPaie) -> Decimal {
-    let d = ctx.date_paie;
-    match d.year() {
-        i32::MIN..=2016 => dec!(9615.00),   // ~5 × 1 923 EUR — SSM pré-indexation 2017
-        2017 | 2018     => dec!(9995.00),   // ~5 × 1 999 EUR — indexation jan. 2017
-        2019            => dec!(10245.00),  // ~5 × 2 049 EUR — indexation 2019
-        2020            => dec!(10710.00),  // ~5 × 2 142 EUR
-        2021            => dec!(11010.00),  // ~5 × 2 202 EUR
-        2022            => dec!(11985.00),  // ~5 × 2 397 EUR — forte hausse post-COVID
-        2023            => dec!(12855.00),  // ~5 × 2 571 EUR
-        2024            => dec!(13185.00),  // ~5 × 2 637 EUR
-        2025 if d.month() < 5 => dec!(13188.95), // 5 × 2 637,79 EUR
-        2025            => dec!(13518.68),  // 5 × 2 703,74 EUR (indice 968,04)
-        2026 if d.month() < 6 => dec!(13518.68),
-        _               => dec!(13856.63),  // 5 × 2 771,33 EUR (indice 992,24, juin 2026)
-    }
+    ctx.plafond("LU_PLAFOND_5SSM").unwrap_or_default()
+}
+
+/// Plafond présent en base à la date de paie.
+pub fn plafonds_couverts(ctx: &ContextPaie) -> bool {
+    ctx.plafond("LU_PLAFOND_5SSM").is_some()
 }
 
 /// Salaire social minimum non qualifié (18 ans), cinquième du plafond.

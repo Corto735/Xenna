@@ -8,7 +8,7 @@ pub fn generer_bulletin_ca(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
 
     // Barèmes datés en base (migration 0152) depuis 2015.
-    if !super::ca_impot::couvert(ctx) {
+    if !super::ca_impot::couvert(ctx) || !super::ca_cotisations::couvert(ctx) {
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "CAD", "CA", "Canada : barèmes intégrés à partir de 2015.", ctx);
     }

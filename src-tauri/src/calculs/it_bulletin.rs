@@ -6,6 +6,10 @@ use super::it_irpef::*;
 
 pub fn generer_bulletin_it(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
+    if !super::it_cotisations::plafonds_couverts(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "EUR", "IT", "Italie : plafonds intégrés à partir de 2015.", ctx);
+    }
     let mut cotisations = Vec::new();
 
     // ── Cotisations INPS ─────────────────────────────────────

@@ -77,6 +77,22 @@ pub enum Specificite {
 pub const JOURNAL: &[MiseAJour] = &[
     MiseAJour {
         date: "2026-10-28",
+        pays: Pays::Italia,
+        specificite: None,
+        objet: "Massimale contributivo IVS corrigé et passé en base : 105 014 € en 2022 et 113 520 € en 2023 (le simulateur avait un an de retard), 120 607 € en 2025 et 122 295 € en 2026 au lieu d'estimations",
+        taux: true,
+        sources: &["https://ascom.bo.it/wp-content/uploads/2026/02/CIRCO-23-26_Minimi-retributivi-per-calcolo-contributi-2026.pdf"],
+    },
+    MiseAJour {
+        date: "2026-10-28",
+        pays: Pays::Suisse,
+        specificite: None,
+        objet: "Gain maximal assuré LAA/LACI : 126 000 CHF par an jusqu'en 2015 (le simulateur appliquait déjà 148 200 CHF, valeur en vigueur depuis 2016) ; ce plafond et ceux de la LPP sont désormais lus en base",
+        taux: true,
+        sources: &["https://www.ahv-iv.ch/p/1.2016.f", "https://www.svv.ch/sites/default/files/2017-11/1-2016_remplace_1-2008_montant_maximum_du_gain_assure_neu_1.pdf"],
+    },
+    MiseAJour {
+        date: "2026-10-28",
         pays: Pays::Australie,
         specificite: None,
         objet: "Barème des résidents par exercice (2014-15 à 2026-27), taux du Medicare levy et plafond de la Superannuation Guarantee passés en base, valeurs inchangées ; l'exercice 2026-27 reste le dernier couvert (14 % prévu en 2027-28 non intégré)",

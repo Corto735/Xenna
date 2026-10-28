@@ -173,8 +173,9 @@ l'instantané et comparer : zéro écart sur les années couvertes. Avant la pre
 date en base, le régime se déclare non couvert (`pays_non_couvert`) plutôt que
 de prolonger un barème. Migrés : Japon (pilote), Royaume-Uni, Allemagne,
 Italie, Espagne (lot 1), Belgique, États-Unis, Canada et Québec, Portugal (lot 2),
-Australie, Nouvelle-Zélande, Pologne, Danemark, Pays-Bas (lot 3). Restent les
-plafonds de COTISATIONS de CA, QC, DE (déjà en base mais non lus), CH, IT, LU. Ce qui ne s'écrit pas en tranches sans perte reste
+Australie, Nouvelle-Zélande, Pologne, Danemark, Pays-Bas (lot 3), et les
+plafonds de COTISATIONS de CA, QC, DE, CH, IT, LU (lot 4, migration 0154 :
+`plafonds_couverts`/`couvert` gardent chaque bulletin). Ce qui ne s'écrit pas en tranches sans perte reste
 une formule dans le code, ses paramètres en base (tarif §32a allemand,
 détraction italienne). Tests : `cargo test --test baremes`.
 

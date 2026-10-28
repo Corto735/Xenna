@@ -63,3 +63,21 @@ async fn baremes_dates() {
     assert_eq!(ctx("2026-06-15").await.bareme_lineaire("JP_KISO_KOJO", d("3000000")), Some(d("1040000")));
     assert!(ctx("2019-06-15").await.bareme("JP_KISO_KOJO").is_none());
 }
+
+/// Plafonds de cotisations (migration 0154) : date_fin exclusive jusqu'au 31
+/// décembre, massimale italien recalé sur les circulaires INPS, gain maximal
+/// assuré suisse de 126 000 CHF jusqu'en 2015.
+#[tokio::test]
+async fn plafonds_cotisations_dates() {
+    let c = ctx("2025-12-31").await;
+    assert_eq!(c.plafond("DE_BBG_KV"), Some(d("5512.50")));
+    assert_eq!(c.plafond("DE_BBG_RV"), Some(d("8050.00")));
+    assert_eq!(ctx("2023-06-15").await.plafond("IT_MASSIMALE_IVS"), Some(d("113520")));
+    assert_eq!(ctx("2026-06-15").await.plafond("IT_MASSIMALE_IVS"), Some(d("122295")));
+    assert_eq!(ctx("2015-12-31").await.plafond("CH_GAIN_ASSURE_MAX"), Some(d("126000")));
+    assert_eq!(ctx("2016-01-01").await.plafond("CH_GAIN_ASSURE_MAX"), Some(d("148200")));
+    assert_eq!(ctx("2025-06-15").await.plafond("QC_MAGA_RQAP"), Some(d("98000")));
+    assert_eq!(ctx("2026-06-15").await.plafond("CA_MGAP2"), Some(d("85000")));
+    assert_eq!(ctx("2025-04-30").await.plafond("LU_PLAFOND_5SSM"), Some(d("13188.95")));
+    assert_eq!(ctx("2026-06-01").await.plafond("LU_PLAFOND_5SSM"), Some(d("13856.63")));
+}

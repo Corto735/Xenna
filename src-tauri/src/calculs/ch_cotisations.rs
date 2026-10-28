@@ -4,56 +4,35 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-// ── Plafond LACI/LAA : stable depuis 2014 ────────────────────────────────────
-// CHF 148 200/an = CHF 12 350/mois
-const CH_PLAFOND_MENSUEL: Decimal = dec!(12350);
+// Plafonds annuels lus en base (CHF/an ÷ 12, au centime).
+fn mensuel(ctx: &ContextPaie, code: &str) -> Decimal {
+    ctx.plafond(code).map(|a| (a / dec!(12)).round_dp(2)).unwrap_or_default()
+}
+
+/// Plafonds présents en base à la date de paie.
+pub fn plafonds_couverts(ctx: &ContextPaie) -> bool {
+    ["CH_GAIN_ASSURE_MAX", "CH_LPP_SEUIL", "CH_LPP_COORD_DED", "CH_LPP_COORD_MIN", "CH_LPP_COORD_MAX"]
+        .into_iter().all(|c| ctx.plafond(c).is_some())
+}
+
+// ── Gain maximal assuré LAA/LACI (CH_GAIN_ASSURE_MAX) ────────────────────────
+// 126 000 CHF/an jusqu'en 2015, 148 200 CHF/an dès 2016 (OLAA art. 22 al. 1).
+fn plafond_laa_laci(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CH_GAIN_ASSURE_MAX") }
 
 // ── LPP — plafonds OPP 2, revalorisés tous les 2 ans par le CF ───────────────
 // Source : OFAS, RS 831.441.1 (OPP 2), art. 2 et 8 ; montants limites OFAS.
 // Déduction de coordination = 7/8, seuil d'entrée = 3/4, salaire coordonné
 // minimal = 1/8 de la rente AVS maximale annuelle ; salaire coordonné maximal
 // = 3 rentes maximales − déduction de coordination.
-// Valeurs en CHF/mois (= annuel ÷ 12).
+// Valeurs annuelles en base (CH_LPP_*), ramenées au mois.
 
-fn lpp_seuil_entree(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(1762.50),  // 21 150 CHF/an
-        2019 | 2020     => dec!(1777.50),  // 21 330 CHF/an
-        2021 | 2022     => dec!(1792.50),  // 21 510 CHF/an
-        2023 | 2024     => dec!(1837.50),  // 22 050 CHF/an
-        _               => dec!(1890.00),  // 22 680 CHF/an (2025+)
-    }
-}
+fn lpp_seuil_entree(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CH_LPP_SEUIL") }
 
-fn lpp_deduction_coord(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(2056.25),  // 24 675 CHF/an
-        2019 | 2020     => dec!(2073.75),  // 24 885 CHF/an
-        2021 | 2022     => dec!(2091.25),  // 25 095 CHF/an
-        2023 | 2024     => dec!(2143.75),  // 25 725 CHF/an
-        _               => dec!(2205.00),  // 26 460 CHF/an (2025+)
-    }
-}
+fn lpp_deduction_coord(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CH_LPP_COORD_DED") }
 
-fn lpp_coord_min(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(293.75),   //  3 525 CHF/an
-        2019 | 2020     => dec!(296.25),   //  3 555 CHF/an
-        2021 | 2022     => dec!(298.75),   //  3 585 CHF/an
-        2023 | 2024     => dec!(306.25),   //  3 675 CHF/an
-        _               => dec!(315.00),   //  3 780 CHF/an (2025+)
-    }
-}
+fn lpp_coord_min(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CH_LPP_COORD_MIN") }
 
-fn lpp_coord_max(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2018 => dec!(4993.75),  // 59 925 CHF/an
-        2019 | 2020     => dec!(5036.25),  // 60 435 CHF/an
-        2021 | 2022     => dec!(5078.75),  // 60 945 CHF/an
-        2023 | 2024     => dec!(5206.25),  // 62 475 CHF/an
-        _               => dec!(5355.00),  // 64 260 CHF/an (2025+)
-    }
-}
+fn lpp_coord_max(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CH_LPP_COORD_MAX") }
 
 /// Salaire coordonné LPP mensuel selon les plafonds OPP 2 de l'année.
 fn lpp_salaire_coordonne(brut: Decimal, ctx: &ContextPaie) -> Decimal {
@@ -144,7 +123,8 @@ pub fn ch_apg(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // ── Assurance chômage ─────────────────────────────────────────────────────────
 
 pub fn ch_ac(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let base = brut.min(CH_PLAFOND_MENSUEL);
+    let plafond = plafond_laa_laci(ctx);
+    let base = brut.min(plafond);
     let ts = ctx.taux_sal("CH_AC");
     let tp = ctx.taux_pat("CH_AC");
     LigneCotisation {
@@ -165,7 +145,7 @@ pub fn ch_ac(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Administrée par le SECO, les cantons et les caisses de chômage (paritaires ou syndicales). \
             Révision LACI de 2011 : durcissement des conditions d'indemnisation ; \
             révision 2014 : stabilisation des finances (solde IDA remboursé).")
-            .replace("{plafond}", &format!("{}", CH_PLAFOND_MENSUEL)),
+            .replace("{plafond}", &format!("{}", plafond.normalize())),
         loi_ref: Some(ctx.loi_ref("Art. 3 LACI (RS 837.0) — Ordonnance OACI (RS 837.02)")),
     }
 }
@@ -173,7 +153,8 @@ pub fn ch_ac(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
 // ── Assurance accidents (LAA) ─────────────────────────────────────────────────
 
 pub fn ch_aanp(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let base = brut.min(CH_PLAFOND_MENSUEL);
+    let plafond = plafond_laa_laci(ctx);
+    let base = brut.min(plafond);
     let ts = ctx.taux_sal("CH_AANP");
     LigneCotisation {
         code:        "CH_AANP".into(),
@@ -193,14 +174,15 @@ pub fn ch_aanp(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             Assiette : salaire brut plafonné à CHF 148 200/an (CHF {plafond} /mois). \
             Le taux (ici {taux} %) est fixé par l'assureur (SUVA ou assureur privé agréé) \
             selon la classe de risque professionnelle — ce taux est indicatif pour un emploi de bureau.")
-            .replace("{plafond}", &format!("{}", CH_PLAFOND_MENSUEL))
+            .replace("{plafond}", &format!("{}", plafond.normalize()))
             .replace("{taux}", &format!("{:.1}", ts * dec!(100))),
         loi_ref: Some(ctx.loi_ref("Art. 92 et 93 LAA (RS 832.20) — OLAA (RS 832.202)")),
     }
 }
 
 pub fn ch_aap(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
-    let base = brut.min(CH_PLAFOND_MENSUEL);
+    let plafond = plafond_laa_laci(ctx);
+    let base = brut.min(plafond);
     let tp = ctx.taux_pat("CH_AAP");
     LigneCotisation {
         code:        "CH_AAP".into(),
@@ -219,7 +201,7 @@ pub fn ch_aap(brut: Decimal, ctx: &ContextPaie) -> LigneCotisation {
             selon la classe de risque de l'entreprise (code NOGA). \
             Les entreprises à risque élevé (bâtiment, chimie…) paient un taux nettement plus fort \
             que les employeurs de bureau. Taux indicatif pour un secteur tertiaire standard.")
-            .replace("{plafond}", &format!("{}", CH_PLAFOND_MENSUEL))
+            .replace("{plafond}", &format!("{}", plafond.normalize()))
             .replace("{taux}", &format!("{:.1}", tp * dec!(100))),
         loi_ref: Some(ctx.loi_ref("Art. 92 et 93 LAA (RS 832.20) — OLAA (RS 832.202)")),
     }

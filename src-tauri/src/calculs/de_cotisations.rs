@@ -7,36 +7,16 @@ use crate::models::LigneCotisation;
 // ── Plafonds (BBG) ────────────────────────────────────────────────────────────
 
 fn de_bbg_kv(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(4125.00),
-        2016            => dec!(4237.50),
-        2017            => dec!(4350.00),
-        2018            => dec!(4425.00),
-        2019            => dec!(4537.50),
-        2020            => dec!(4687.50),
-        2021 | 2022     => dec!(4837.50),
-        2023            => dec!(4987.50),
-        2024            => dec!(5175.00),
-        2025            => dec!(5512.50),
-        _               => dec!(5812.50),
-    }
+    ctx.plafond("DE_BBG_KV").unwrap_or_default()
 }
 
 fn de_bbg_rv(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(6050.00),
-        2016            => dec!(6200.00),
-        2017            => dec!(6350.00),
-        2018            => dec!(6500.00),
-        2019            => dec!(6700.00),
-        2020            => dec!(6900.00),
-        2021            => dec!(7100.00),
-        2022            => dec!(7050.00),
-        2023            => dec!(7300.00),
-        2024            => dec!(7550.00),
-        2025            => dec!(8050.00),
-        _               => dec!(8450.00),
-    }
+    ctx.plafond("DE_BBG_RV").unwrap_or_default()
+}
+
+/// Beitragsbemessungsgrenzen présentes en base à la date de paie.
+pub fn plafonds_couverts(ctx: &ContextPaie) -> bool {
+    ctx.plafond("DE_BBG_KV").is_some() && ctx.plafond("DE_BBG_RV").is_some()
 }
 
 // ── KV — Krankenversicherung ──────────────────────────────────────────────────

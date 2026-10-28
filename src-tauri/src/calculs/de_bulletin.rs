@@ -7,7 +7,7 @@ use super::de_lohnsteuer::{lohnsteuer_mensuel, Vorsorge};
 
 pub fn generer_bulletin_de(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     // Paramètres de la Lohnsteuer datés en base (migration 0151) depuis 2015.
-    if !super::de_lohnsteuer::couvert(ctx) {
+    if !super::de_lohnsteuer::couvert(ctx) || !super::de_cotisations::plafonds_couverts(ctx) {
         let brut = salarie.salaire_brut;
         return super::pays_non_couvert::bulletin_non_couvert(
             salarie, brut, "EUR", "DE", "Allemagne : barèmes intégrés à partir de 2015.", ctx);

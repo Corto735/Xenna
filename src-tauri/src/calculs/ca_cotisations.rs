@@ -4,52 +4,27 @@ use rust_decimal_macros::dec;
 use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 
-// ── Plafonds annuels (en CAD/mois = annuel ÷ 12) ─────────────────────────────
+// ── Plafonds annuels, lus en base (CAD/an ÷ 12, au cent) ─────────────────────
+// CA_MGA (RPC/RRQ), CA_MGAP2 (RPC2/RRQ2, dès 2024), CA_MAGA (AE) : migrations
+// 0021 et 0154.
+
+fn mensuel(ctx: &ContextPaie, code: &str) -> Decimal {
+    ctx.plafond(code).map(|a| (a / dec!(12)).round_dp(2)).unwrap_or_default()
+}
+
+/// Plafonds de cotisation présents en base à la date de paie.
+pub fn couvert(ctx: &ContextPaie) -> bool {
+    ctx.plafond("CA_MGA").is_some() && ctx.plafond("CA_MAGA").is_some()
+}
 
 /// MGA mensuel (Maximum des gains annuels ouvrant droit à pension).
-pub fn mga_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(4466.67),  // 53 600 / 12
-        2016            => dec!(4575.00),  // 54 900 / 12
-        2017            => dec!(4608.33),  // 55 300 / 12
-        2018            => dec!(4658.33),  // 55 900 / 12
-        2019            => dec!(4783.33),  // 57 400 / 12
-        2020            => dec!(4891.67),  // 58 700
-        2021            => dec!(5133.33),  // 61 600
-        2022            => dec!(5408.33),  // 64 900
-        2023            => dec!(5550.00),  // 66 600
-        2024            => dec!(5708.33),  // 68 500
-        2025            => dec!(5941.67),  // 71 300
-        _               => dec!(6216.67),  // 74 600 / 12 (2026)
-    }
-}
+pub fn mga_mensuel(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CA_MGA") }
 
-/// MGAP2 mensuel (plafond RPC2/RRQ2, dès 2024).
-pub fn mgap2_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        2024 => dec!(6100.00),  // 73 200 / 12
-        2025 => dec!(6825.00),  // 81 900 / 12
-        _    => dec!(7083.33),  // 85 000 / 12 (2026)
-    }
-}
+/// MGAP2 mensuel (plafond RPC2/RRQ2, dès 2024 ; nul avant).
+pub fn mgap2_mensuel(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CA_MGAP2") }
 
 /// MAGA mensuel (Maximum des gains assurables AE).
-pub fn maga_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(4125.00),  // 49 500 / 12
-        2016            => dec!(4233.33),  // 50 800 / 12
-        2017            => dec!(4275.00),  // 51 300 / 12
-        2018            => dec!(4308.33),  // 51 700 / 12
-        2019            => dec!(4425.00),  // 53 100 / 12
-        2020            => dec!(4516.67),  // 54 200
-        2021            => dec!(4691.67),  // 56 300
-        2022            => dec!(5025.00),  // 60 300
-        2023            => dec!(5125.00),  // 61 500
-        2024            => dec!(5266.67),  // 63 200
-        2025            => dec!(5475.00),  // 65 700
-        _               => dec!(5741.67),  // 68 900 / 12 (2026)
-    }
-}
+pub fn maga_mensuel(ctx: &ContextPaie) -> Decimal { mensuel(ctx, "CA_MAGA") }
 
 /// Exonération de base mensuelle RPC/RRQ (3 500 CAD/an ÷ 12).
 pub const EXEMPTION_BASE: Decimal = dec!(291.67);

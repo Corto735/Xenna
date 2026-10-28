@@ -5,22 +5,10 @@ use crate::db::ContextPaie;
 use crate::models::LigneCotisation;
 use super::ca_cotisations::{mga_mensuel, mgap2_mensuel, maga_mensuel, EXEMPTION_BASE};
 
-/// MAGA RQAP mensuel (Maximum des gains assurables RQAP — Québec).
+/// MAGA RQAP mensuel (Maximum des gains assurables RQAP — Québec), lu en base
+/// (QC_MAGA_RQAP, CAD/an ÷ 12 au cent).
 pub fn maga_rqap_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2015 => dec!(5864.58),  // 70 375 / 12
-        2016            => dec!(5958.33),  // 71 500 / 12
-        2017            => dec!(6041.67),  // 72 500 / 12
-        2018            => dec!(6166.67),  // 74 000 / 12
-        2019            => dec!(6375.00),  // 76 500 / 12
-        2020            => dec!(6541.67),  // 78 500
-        2021            => dec!(6958.33),  // 83 500
-        2022            => dec!(7333.33),  // 88 000
-        2023            => dec!(7583.33),  // 91 000
-        2024            => dec!(7833.33),  // 94 000
-        2025            => dec!(8166.67),  // 98 000
-        _               => dec!(8583.33),  // 103 000 / 12 (2026)
-    }
+    ctx.plafond("QC_MAGA_RQAP").map(|a| (a / dec!(12)).round_dp(2)).unwrap_or_default()
 }
 
 // ── RRQ — Régime de rentes du Québec ─────────────────────────────────────────

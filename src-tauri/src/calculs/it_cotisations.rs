@@ -7,22 +7,16 @@ use crate::models::LigneCotisation;
 // ── Massimale contributivo IVS (mensuel) ─────────────────────────────────────
 //
 // Applicable uniquement aux salariés sans ancienneté INPS au 31/12/1995.
-// Sources : Circolari INPS annuali. Valeurs en €/mois = montant annuel / 12.
+// L. 335/1995, art. 2 c. 18, revalorisé chaque année par circulaire INPS ;
+// montant annuel en base (IT_MASSIMALE_IVS, migrations 0018 et 0154), ÷ 12.
 // Salariés pré-1996 : aucun plafond (brut total soumis).
 pub fn massimale_mensuel(ctx: &ContextPaie) -> Decimal {
-    match ctx.date_paie.year() {
-        i32::MIN..=2016 => dec!(8360.33),  // 100 324 € / 12 — circ. INPS 13/2015
-        2017            => dec!(8360.33),
-        2018            => dec!(8452.25),  // 101 427 € / 12 — approx.
-        2019            => dec!(8545.25),  // 102 543 € / 12 — circ. INPS 12/2019
-        2020            => dec!(8587.92),  // 103 055 € / 12
-        2021            => dec!(8587.92),  // gelé
-        2022            => dec!(8587.92),  // gelé
-        2023            => dec!(8751.17),  // 105 014 € / 12 — circ. INPS 7/2023
-        2024            => dec!(9970.83),  // 119 650 € / 12 — circ. INPS 3/2024
-        2025            => dec!(10281.58), // 123 379 € / 12 — estimation ISTAT
-        _               => dec!(10384.42), // 2026+ : estimation ~1 %
-    }
+    ctx.plafond("IT_MASSIMALE_IVS").map(|a| (a / dec!(12)).round_dp(2)).unwrap_or_default()
+}
+
+/// Massimale présent en base à la date de paie.
+pub fn plafonds_couverts(ctx: &ContextPaie) -> bool {
+    ctx.plafond("IT_MASSIMALE_IVS").is_some()
 }
 
 // ── IVS — Invalidità, Vecchiaia, Superstiti ──────────────────────────────────

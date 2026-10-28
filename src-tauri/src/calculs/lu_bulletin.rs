@@ -5,6 +5,10 @@ use super::lu_cotisations::*;
 
 pub fn generer_bulletin_lu(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
+    if !super::lu_cotisations::plafonds_couverts(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "EUR", "LU", "Luxembourg : plafonds intégrés à partir de 2015.", ctx);
+    }
     let mut cotisations = vec![
         lu_ap(brut, ctx),
         lu_am(brut, ctx),

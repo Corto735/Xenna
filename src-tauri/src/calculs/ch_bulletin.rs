@@ -6,6 +6,10 @@ use super::ch_is;
 
 pub fn generer_bulletin_ch(salarie: Salarie, ctx: &ContextPaie) -> Bulletin {
     let brut = salarie.salaire_brut;
+    if !super::ch_cotisations::plafonds_couverts(ctx) {
+        return super::pays_non_couvert::bulletin_non_couvert(
+            salarie, brut, "CHF", "CH", "Suisse : plafonds intégrés à partir de 2015.", ctx);
+    }
     let mut cotisations = vec![
         ch_avs(brut, ctx),
         ch_ai(brut, ctx),
